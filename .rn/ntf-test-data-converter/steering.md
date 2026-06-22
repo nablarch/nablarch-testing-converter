@@ -153,14 +153,3 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 # State
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
-
-- **Status**: paused
-- **Date**: 2026-06-22
-- **Last completed**: なし（全タスク未着手）
-- **Next**: #1 pom.xml の作成
-- **Notes**: |
-    追加指示あり：Adapter 群 4件（TestCoreFileAdapter, YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo）とテスト 3件＋データを steering.md にタスク #5 として追加済み。
-    タスク #5 は本体と同一パッケージ（nablarch.test.core.reader / nablarch.test.core.file）への配置が必須。
-    コンバーターリポジトリは空（src/ なし、pom.xml なし）のため #1 から開始。
-    本体ブランチは convert-testdata-excel-to-text、yaml は mvn install 済みと仮定。
-    /rn:hi 再開時はタスク #1（pom.xml 作成）から task-workflow.md に従い実行すること。
