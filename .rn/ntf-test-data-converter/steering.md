@@ -97,6 +97,34 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #5: Adapter 群追加（4件＋テスト3件＋データ）
+
+**Purpose**: 本体現ブランチ `convert-testdata-excel-to-text` の Adapter 群をコンバーターリポジトリへ受け入れる。パッケージプライベートアクセスのため、本体と同一パッケージ（`nablarch.test.core.reader` / `nablarch.test.core.file`）に配置する。
+
+**Prerequisites**: #4（mvn test 全 PASS 後）
+
+**Steps**:
+
+- [ ] 本体現ブランチから src/main 4件（TestCoreFileAdapter, YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo）をコピー配置
+- [ ] 本体現ブランチから src/test 3件＋データディレクトリをコピー配置
+- [ ] `mvn test` で全 PASS を確認（失敗は配置・依存で解決。実装変更不可）
+- [ ] 全追加ファイルを本体現ブランチと diff し package/import 以外の差分ゼロを確認
+- [ ] self-check（OK/NG per completion criterion、checks/task-5.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `src/main/java/nablarch/test/core/file/TestCoreFileAdapter.java` が存在する
+- `src/main/java/nablarch/test/core/reader/` に YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo の3件が存在する
+- `src/test/java/nablarch/test/core/` 配下にテスト3件＋データが存在する
+- `mvn test` が全テスト PASS する
+- 各追加ファイルが本体現ブランチと package/import を除いて完全一致する
+
+---
+
 ### #4: mvn test 全 PASS・差分ゼロ確認
 
 **Purpose**: `mvn test` で全テストが通ることと、全移動ファイルの実装無改変を確認する。
@@ -126,8 +154,13 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: context needed for resume
+- **Status**: paused
+- **Date**: 2026-06-22
+- **Last completed**: なし（全タスク未着手）
+- **Next**: #1 pom.xml の作成
+- **Notes**: |
+    追加指示あり：Adapter 群 4件（TestCoreFileAdapter, YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo）とテスト 3件＋データを steering.md にタスク #5 として追加済み。
+    タスク #5 は本体と同一パッケージ（nablarch.test.core.reader / nablarch.test.core.file）への配置が必須。
+    コンバーターリポジトリは空（src/ なし、pom.xml なし）のため #1 から開始。
+    本体ブランチは convert-testdata-excel-to-text、yaml は mvn install 済みと仮定。
+    /rn:hi 再開時はタスク #1（pom.xml 作成）から task-workflow.md に従い実行すること。
