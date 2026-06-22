@@ -35,14 +35,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] 本体 pom.xml を参照し groupId・親 POM を確認する
-- [ ] nablarch-testing-yaml の groupId・artifactId・version を確認する
-- [ ] yaml・本体・poi 3.8・snakeyaml 3.0.1 を依存に持つ pom.xml を作成する
-- [ ] self-check（OK/NG per completion criterion、checks/task-1.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
-- [ ] user review
+- [x] 本体 pom.xml を参照し groupId・親 POM を確認する
+- [x] nablarch-testing-yaml の groupId・artifactId・version を確認する
+- [x] yaml・本体・poi 3.8・snakeyaml 3.0.1 を依存に持つ pom.xml を作成する
+- [x] self-check（OK/NG per completion criterion、checks/task-1.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review
 
 **Completion criteria**:
 
