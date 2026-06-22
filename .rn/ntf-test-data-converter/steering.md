@@ -59,13 +59,13 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] 本体現ブランチから対象 28件を同一パッケージパスへコピーする
-- [ ] package/import を converter リポジトリ向けに機械的調整する（ロジック変更なし）
-- [ ] self-check（OK/NG per completion criterion、checks/task-2.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
-- [ ] user review
+- [x] 本体現ブランチから対象 28件を同一パッケージパスへコピーする
+- [x] package/import を converter リポジトリ向けに機械的調整する（ロジック変更なし）
+- [x] self-check（OK/NG per completion criterion、checks/task-2.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review
 
 **Completion criteria**:
 
