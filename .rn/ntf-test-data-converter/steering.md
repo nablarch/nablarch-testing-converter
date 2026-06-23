@@ -154,3 +154,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 # State
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
+
+- **Status**: paused
+- **Date**: 2026-06-23
+- **Last completed**: #5 Adapter 群追加（全277テスト PASS、mvn install 成功）
+- **Next**: なし（全タスク完了）。次は nablarch-testing-integration の開発へ。
+- **Notes**: |
+    全タスク（#1〜#5）完了済み。PR: https://github.com/nablarch/nablarch-testing-converter/pull/1
+    mvn install 済み（nablarch-testing-converter:1.0.0-SNAPSHOT がローカル Maven リポジトリに登録済み）。
+    JAVA_HOME を明示しないと javadoc プラグインが失敗する（JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 を使用）。
+    Acceptance criteria はユーザーが PR レビューで確認予定。
+    次セッションは nablarch-testing-integration の開発。steering.md は新規作成が必要（/rn:gm を使用）。
