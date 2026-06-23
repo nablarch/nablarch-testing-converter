@@ -98,6 +98,85 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #6: 分類1 — 到達不能デッドコード削除（2箇所）
+
+**Purpose**: カバレッジ計測で検出した到達不能デッドコード2箇所を削除し、コードの正確性を高める。
+
+**Prerequisites**: #5
+
+**Steps**:
+
+- [ ] `XlsFormatReader#stripQuotes` L455 の `if (value == null) return null;` を削除する（全呼び出し元がnull非通過を保証）
+- [ ] `YamlFormatWriter#emitBlock` の `throw new IllegalArgumentException("unsupported block")` を削除する（sealed class で全具象サブクラス網羅済み）
+- [ ] `mvn test` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-6.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `XlsFormatReader#stripQuotes` の `if (value == null) return null;` が削除されている
+- `YamlFormatWriter#emitBlock` の `throw new IllegalArgumentException("unsupported block")` が削除されている
+- `mvn test` が全テスト PASS する
+
+---
+
+### #7: 分類2 — NTF仕様内テスト追加（4箇所）
+
+**Purpose**: カバレッジ計測で未カバーだった仕様内コードパス4箇所にテストを追加する。
+
+**Prerequisites**: #6
+
+**Steps**:
+
+- [ ] `XlsFormatReader#normalizeDirectiveValue`: record-separator の CRLF/LF/CR シンボル変換（L394/L408/L422）のテストを追加する
+- [ ] `XlsFormatReader#readMessageBlock`: `message == null → return null` パス（MESSAGE ブロック不在）のテストを追加する
+- [ ] `mvn test` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-7.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- record-separator の CRLF/LF/CR 各シンボル変換パスをカバーするテストが存在する
+- MESSAGE ブロック不在（`readMessageBlock` が null を返す）パスをカバーするテストが存在する
+- `mvn test` が全テスト PASS する
+
+---
+
+### #8: 分類3 — Java イディオム コメント追加（7箇所）
+
+**Purpose**: Java言語仕様上必要な実装（到達不能に見える防御コード）に説明コメントを追加し、読み手の混乱を防ぐ。
+
+**Prerequisites**: #7
+
+**Steps**:
+
+- [ ] `TestDataConverter` L34-35 / `ConverterPathResolver` L25-26 のプライベートコンストラクタ（`AssertionError`）にコメントを追加する
+- [ ] `ConverterFileFilter` L38-39 / L71-72 / L96-97 の `UncheckedIOException` ラップにコメントを追加する
+- [ ] `YamlTestDataValidator#loadSchema` L250-255 の null ガード・`IOException` catch にコメントを追加する
+- [ ] `YamlTestDataValidator` L141-142 の `RuntimeException` catch にコメントを追加する
+- [ ] `XlsFormatReader#toRecordLayouts` L307 / `requireLine` L354 の `IllegalStateException` にコメントを追加する
+- [ ] `StubDbInfo` 未カバーメソッド群 (L42-80) にクラスJavadoc or メソッドコメントを追加する
+- [ ] `TestCoreReaderAdapter` `HeaderCollector` L433-447 / `BodyLineCollector` L525-539 の抽象メソッド実装にコメントを追加する
+- [ ] self-check（OK/NG per completion criterion、checks/task-8.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- 各箇所にコメントが追加されており、読み手がなぜそのコードが存在するか理解できる
+- コードロジックは一切変更されていない（コメント追加のみ）
+- `mvn test` が全テスト PASS する
+
+---
+
 ### #5: Adapter 群追加（4件＋テスト3件＋データ）
 
 **Purpose**: 本体現ブランチ `convert-testdata-excel-to-text` の Adapter 群をコンバーターリポジトリへ受け入れる。パッケージプライベートアクセスのため、本体と同一パッケージ（`nablarch.test.core.reader` / `nablarch.test.core.file`）に配置する。
@@ -154,47 +233,3 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 # State
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
-
-- **Status**: paused
-- **Date**: 2026-06-23
-- **Last completed**: カバレッジ計測（mvn jacoco offline instrumentation → 277テスト全PASS、C0 96.6% / C1 91.3%）と未カバー箇所のNTF仕様観点分類
-- **Next**: 分類1のコード削除 → 分類2のテスト追加 → 分類3のコメント追加（各1タスク）
-- **Notes**: |
-
-    ## カバレッジ計測手順（再現用）
-
-    ```
-    JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 \
-      mvn clean jacoco:instrument test jacoco:restore-instrumented-classes jacoco:report \
-      -Djacoco.dataFile=/home/tie303177/work/nablarch/nablarch-testing-converter/jacoco.exec
-    ```
-    - jacoco.exec はプロジェクトルート（target/ ではない）
-    - レポート: target/site/jacoco/jacoco.csv
-
-    ## 未カバー箇所の分類
-
-    ### 分類1: NTF仕様外のコード → 削除
-
-    | 箇所 | 理由 |
-    |---|---|
-    | `XlsFormatReader#stripQuotes` L455: `if (value == null) return null;` | 全呼び出し元（L150, L182, L332, L408）がnull非通過を保証。到達不能デッドコード |
-    | `YamlFormatWriter#emitBlock` L141: `throw new IllegalArgumentException("unsupported block")` | `TestDataBlock` は sealed（permits ColumnRowDataBlock/FileDataBlock/MessageDataBlock）、全具象サブクラスを網羅済みのため到達不能 |
-
-    ### 分類2: NTF仕様内 → テスト追加
-
-    | 箇所 | 理由 |
-    |---|---|
-    | `XlsFormatReader#normalizeDirectiveValue` L394/L408/L422: record-separator の CRLF/LF/CR 各シンボル変換 | DR-09/DR-10 仕様（record-separator のシンボル ⇔ 実改行文字変換）。仕様上正規の変換パスだがテスト未整備 |
-    | `XlsFormatReader#readMessageBlock` L224: `message == null → return null` | MESSAGE ブロック不在（Excel に対象 ID が存在しない）の正常系。仕様内だが未テスト |
-
-    ### 分類3: Java言語仕様上必要な実装 → コメント追加
-
-    | 箇所 | 理由 |
-    |---|---|
-    | `TestDataConverter` L34-35 / `ConverterPathResolver` L25-26 | ユーティリティクラスのプライベートコンストラクタ（`AssertionError`）。Java のインスタンス化防止イディオム |
-    | `ConverterFileFilter` L38-39 / L71-72 / L96-97 | `Files.walk` の `IOException` → `UncheckedIOException` ラップ。Java 検査例外の処理義務 |
-    | `YamlTestDataValidator#loadSchema` L250-255 | `getResourceAsStream` の `null` ガード・`IOException` catch。クラスパスリソースロードの Java イディオム |
-    | `YamlTestDataValidator` L141-142 | V-SCH スキーマ検証中の `RuntimeException` catch。networknt ライブラリの予期せぬ例外を検証エラーへ変換する防御コード |
-    | `XlsFormatReader#toRecordLayouts` L307 / `requireLine` L354 | 器↔生行の内部一貫性ガード（`IllegalStateException`）。2系統の読み込み経路が一致することを表明する番人コード |
-    | `StubDbInfo` 未カバーメソッド群 (L42-80) | `DbInfo` インターフェース実装義務。DB 書き込み経路専用で読み込み経路から呼ばれない（クラス Javadoc に番人コードとして説明済み） |
-    | `TestCoreReaderAdapter` `HeaderCollector` L433-447 / `BodyLineCollector` L525-539 | `TestDataParsingTemplate` の抽象メソッド実装義務（`onReadLine`, `onTargetTypeFound`, `isTargetType`, `shouldStopOnNextOne`）。両クラスは `parse(String id)` をオーバーライドするため基底の `doParse()` から呼ばれない |
