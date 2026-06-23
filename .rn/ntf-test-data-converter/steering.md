@@ -154,3 +154,47 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 # State
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
+
+- **Status**: paused
+- **Date**: 2026-06-23
+- **Last completed**: カバレッジ計測（mvn jacoco offline instrumentation → 277テスト全PASS、C0 96.6% / C1 91.3%）と未カバー箇所のNTF仕様観点分類
+- **Next**: 分類1のコード削除 → 分類2のテスト追加 → 分類3のコメント追加（各1タスク）
+- **Notes**: |
+
+    ## カバレッジ計測手順（再現用）
+
+    ```
+    JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 \
+      mvn clean jacoco:instrument test jacoco:restore-instrumented-classes jacoco:report \
+      -Djacoco.dataFile=/home/tie303177/work/nablarch/nablarch-testing-converter/jacoco.exec
+    ```
+    - jacoco.exec はプロジェクトルート（target/ ではない）
+    - レポート: target/site/jacoco/jacoco.csv
+
+    ## 未カバー箇所の分類
+
+    ### 分類1: NTF仕様外のコード → 削除
+
+    | 箇所 | 理由 |
+    |---|---|
+    | `XlsFormatReader#stripQuotes` L455: `if (value == null) return null;` | 全呼び出し元（L150, L182, L332, L408）がnull非通過を保証。到達不能デッドコード |
+    | `YamlFormatWriter#emitBlock` L141: `throw new IllegalArgumentException("unsupported block")` | `TestDataBlock` は sealed（permits ColumnRowDataBlock/FileDataBlock/MessageDataBlock）、全具象サブクラスを網羅済みのため到達不能 |
+
+    ### 分類2: NTF仕様内 → テスト追加
+
+    | 箇所 | 理由 |
+    |---|---|
+    | `XlsFormatReader#normalizeDirectiveValue` L394/L408/L422: record-separator の CRLF/LF/CR 各シンボル変換 | DR-09/DR-10 仕様（record-separator のシンボル ⇔ 実改行文字変換）。仕様上正規の変換パスだがテスト未整備 |
+    | `XlsFormatReader#readMessageBlock` L224: `message == null → return null` | MESSAGE ブロック不在（Excel に対象 ID が存在しない）の正常系。仕様内だが未テスト |
+
+    ### 分類3: Java言語仕様上必要な実装 → コメント追加
+
+    | 箇所 | 理由 |
+    |---|---|
+    | `TestDataConverter` L34-35 / `ConverterPathResolver` L25-26 | ユーティリティクラスのプライベートコンストラクタ（`AssertionError`）。Java のインスタンス化防止イディオム |
+    | `ConverterFileFilter` L38-39 / L71-72 / L96-97 | `Files.walk` の `IOException` → `UncheckedIOException` ラップ。Java 検査例外の処理義務 |
+    | `YamlTestDataValidator#loadSchema` L250-255 | `getResourceAsStream` の `null` ガード・`IOException` catch。クラスパスリソースロードの Java イディオム |
+    | `YamlTestDataValidator` L141-142 | V-SCH スキーマ検証中の `RuntimeException` catch。networknt ライブラリの予期せぬ例外を検証エラーへ変換する防御コード |
+    | `XlsFormatReader#toRecordLayouts` L307 / `requireLine` L354 | 器↔生行の内部一貫性ガード（`IllegalStateException`）。2系統の読み込み経路が一致することを表明する番人コード |
+    | `StubDbInfo` 未カバーメソッド群 (L42-80) | `DbInfo` インターフェース実装義務。DB 書き込み経路専用で読み込み経路から呼ばれない（クラス Javadoc に番人コードとして説明済み） |
+    | `TestCoreReaderAdapter` `HeaderCollector` L433-447 / `BodyLineCollector` L525-539 | `TestDataParsingTemplate` の抽象メソッド実装義務（`onReadLine`, `onTargetTypeFound`, `isTargetType`, `shouldStopOnNextOne`）。両クラスは `parse(String id)` をオーバーライドするため基底の `doParse()` から呼ばれない |
