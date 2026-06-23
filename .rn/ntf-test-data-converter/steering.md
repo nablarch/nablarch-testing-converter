@@ -98,28 +98,26 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
-### #6: 分類1 — 到達不能デッドコード削除（2箇所）
+### #6: 分類1 再分析 → 削除対象なしを確認
 
-**Purpose**: カバレッジ計測で検出した到達不能デッドコード2箇所を削除し、コードの正確性を高める。
+**Purpose**: 当初「到達不能デッドコード」と分類した2箇所を再検証し、削除対象がないことをコードレビューで確認する。
 
 **Prerequisites**: #5
 
 **Steps**:
 
-- [ ] `XlsFormatReader#stripQuotes` L455 の `if (value == null) return null;` を削除する（全呼び出し元がnull非通過を保証）
-- [ ] `YamlFormatWriter#emitBlock` の `throw new IllegalArgumentException("unsupported block")` を削除する（sealed class で全具象サブクラス網羅済み）
-- [ ] `mvn test` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-6.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
-- [ ] user review
+- [x] `XlsFormatReader#stripQuotes` null ガード（L455）: `valueCells.get(i)`（L332）が null を返しうる（Excel 空白セル）ため load-bearing。削除不可。
+- [x] `YamlFormatWriter#emitBlock` else-throw（L141）: `instanceof` チェーンはコンパイラが網羅性を保証しない。else-throw は sealed 階層変更時のランタイム安全網として維持が正しい。
+- [x] self-check（OK/NG per completion criterion、checks/task-6.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review ✓
 
 **Completion criteria**:
 
-- `XlsFormatReader#stripQuotes` の `if (value == null) return null;` が削除されている
-- `YamlFormatWriter#emitBlock` の `throw new IllegalArgumentException("unsupported block")` が削除されている
-- `mvn test` が全テスト PASS する
+- 2箇所とも削除対象でないことが根拠付きで確認されている
+- ソースコードへの変更はゼロ
 
 ---
 
@@ -160,6 +158,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - [ ] `ConverterFileFilter` L38-39 / L71-72 / L96-97 の `UncheckedIOException` ラップにコメントを追加する
 - [ ] `YamlTestDataValidator#loadSchema` L250-255 の null ガード・`IOException` catch にコメントを追加する
 - [ ] `YamlTestDataValidator` L141-142 の `RuntimeException` catch にコメントを追加する
+- [ ] `XlsFormatReader#stripQuotes` L454-456 の null ガードにコメントを追加する（L332 呼び出し元が Excel 空白セルで null を渡しうるため load-bearing）
+- [ ] `YamlFormatWriter#emitBlock` L140-142 の else-throw にコメントを追加する（instanceof チェーンはコンパイラ網羅保証なし。sealed 階層変更時の安全網）
 - [ ] `XlsFormatReader#toRecordLayouts` L307 / `requireLine` L354 の `IllegalStateException` にコメントを追加する
 - [ ] `StubDbInfo` 未カバーメソッド群 (L42-80) にクラスJavadoc or メソッドコメントを追加する
 - [ ] `TestCoreReaderAdapter` `HeaderCollector` L433-447 / `BodyLineCollector` L525-539 の抽象メソッド実装にコメントを追加する
