@@ -24,6 +24,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 実装の変更は一切しない。package/import の機械的調整と pom 設定のみ許可
 - 本体・yaml には書き込まない
 - `mvn test` が通らず実装変更が要ると判断したら止めてユーザーに確認する
+- タスク完了後は即 push し、PR を作成してユーザーがコードを PR 上で確認できるようにする
 
 # Tasks
 
@@ -105,15 +106,15 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] 本体現ブランチから src/main 4件（TestCoreFileAdapter, YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo）をコピー配置
-- [ ] 本体現ブランチから src/test 3件＋データディレクトリをコピー配置
-- [ ] `mvn test` で全 PASS を確認（失敗は配置・依存で解決。実装変更不可）
-- [ ] 全追加ファイルを本体現ブランチと diff し package/import 以外の差分ゼロを確認
-- [ ] self-check（OK/NG per completion criterion、checks/task-5.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
-- [ ] user review
+- [x] 本体現ブランチから src/main 4件（TestCoreFileAdapter, YamlTestCoreAdapter, TestCoreReaderAdapter, StubDbInfo）をコピー配置
+- [x] 本体現ブランチから src/test 3件＋データディレクトリをコピー配置
+- [x] `mvn test` で全 PASS を確認（失敗は配置・依存で解決。実装変更不可）
+- [x] 全追加ファイルを本体現ブランチと diff し package/import 以外の差分ゼロを確認
+- [x] self-check（OK/NG per completion criterion、checks/task-5.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review
 
 **Completion criteria**:
 
@@ -133,12 +134,12 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `mvn test` を実行し結果を確認する
-- [ ] 失敗があれば pom 依存・リソース配置で解決する（コード変更不可）
-- [ ] 全移動ファイルを本体現ブランチと 1件ずつ diff し package/import 以外の差分がないことを確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-4.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] user review
+- [x] `mvn test` を実行し結果を確認する
+- [x] 失敗があれば pom 依存・リソース配置で解決する（コード変更不可）
+- [x] 全移動ファイルを本体現ブランチと 1件ずつ diff し package/import 以外の差分がないことを確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-4.md に記録）
+- [x] QA expert review（subagent）
+- [x] user review
 
 **Completion criteria**:
 
