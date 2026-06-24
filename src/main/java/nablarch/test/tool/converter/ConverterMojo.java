@@ -19,7 +19,7 @@ import org.apache.maven.plugins.annotations.Parameter;
  *
  * @author kiyobot
  */
-@Mojo(name = "convert")
+@Mojo(name = "convert", requiresProject = false)
 public class ConverterMojo extends AbstractMojo {
 
     /** 変換元形式識別子（{@code "xls"} または {@code "yaml"}） */
