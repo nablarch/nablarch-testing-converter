@@ -250,10 +250,82 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #10: 分類C — NTF仕様パス テスト追加（8箇所）
+
+**Purpose**: JaCoCo 計測で未カバーだった NTF 仕様内コードパス8箇所にテストを追加し、カバレッジを向上させる。
+
+**Prerequisites**: #9
+
+**Steps**:
+
+- [ ] `normalizeDirectiveValue` NONE シンボル（record-separator 空文字 → "NONE"）のテスト追加
+- [ ] `normalizeDirectiveValue` 未知値フォールスルー（CRLF/LF/CR/NONE 以外）のテスト追加
+- [ ] `normalizeDirectiveValue` → `stripQuotes`（クォート記法のディレクティブ値）のテスト追加
+- [ ] `YamlFormatWriter#isNeedsQuoting` 制御文字ブランチのテスト追加
+- [ ] `YamlFormatWriter` 非整形 groupId（`[xxx]` 形式でない場合）のテスト追加
+- [ ] `YamlFormatReader` ディレクティブ null 値のテスト追加
+- [ ] `excludeSheet` / `XlsFormatHandler` 除外シート指定のテスト追加
+- [ ] `FragmentView.getTypes()` null ブランチ（可変長ファイル断片）のテスト追加
+- [ ] `mvn test` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-10.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- 8箇所すべてのコードパスをカバーするテストが存在する
+- `mvn test` が全テスト PASS する
+- テスト以外のコードロジックは一切変更されていない
+
+---
+
 # Decisions
 
-<!-- 必要に応じて記入 -->
+## JaCoCo カバレッジ取得手順（設定変更不要）
+
+親 POM に Offline Instrumentation 設定済み。以下のコマンドで取得できる：
+
+```sh
+# 1. 計測・テスト実行
+mvn clean jacoco:instrument test jacoco:restore-instrumented-classes
+
+# 2. レポート生成（exec はプロジェクトルートに出力される）
+mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
+```
+
+- `jacoco.exec` の出力先はプロジェクトルート（`${user.dir}/jacoco.exec`）
+- `target/site/jacoco/` に HTML レポートが生成される
+- `pom.xml` への追記・`argLine` 変更は不要
 
 # State
 
 (written by /rn:bb, read and reset to this placeholder by /rn:hi)
+
+- **Status**: paused
+- **Date**: 2026-06-24
+- **Last completed**: task #10 のテスト追加（287 PASS）・ユーザーレビュー中断
+- **Next**: task #10 を仕切り直し — カバレッジのためのテスト3件削除、NTF仕様テスト4件のみ残す、その後カバレッジ計測して残課題を確認
+- **Notes**: |
+
+    ## task #10 の現状
+
+    ユーザーから「カバレッジのためのテスト追加はダメ」と指摘あり。
+    以下3件は coverage-only と判定済み → 削除が必要：
+    - `serialize_keyContainingControlChar_isQuoted`（YamlFormatWriterTest）— 制御文字キーは NTF で発生しない
+    - `readFile_directiveWithNullValue_preservesNullInDirectives`（YamlFormatReaderTest）— reflection で到達不能状態を強制
+    - `fragmentViewGetTypesReturnsNullWhenTypesNotSet`（TestCoreFileAdapterTest）— getTypes() は converter から呼ばれない
+
+    以下4件は NTF仕様テストとして正当 → 残す：
+    - `readNormalizesRecordSeparatorEmptyValueToNoneSymbol`
+    - `readPassesThroughUnknownRecordSeparatorValue`
+    - `readStripsQuotesFromQuotedGenericDirectiveValue`
+    - `skipsExcludedSheetsFromXlsBook`
+
+    ## 再開後の手順
+    1. coverage-only テスト3件を削除してコミット・push
+    2. JaCoCo でカバレッジ計測（上記 Decisions の手順で）
+    3. 「コメントあり箇所を除いてC0/C1 100%か」を確認
+    4. 残課題があればユーザーに相談
+    5. task #10 を steering で整理（NTF仕様テスト4件のみに絞った形に更新）
