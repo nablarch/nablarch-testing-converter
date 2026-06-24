@@ -208,6 +208,51 @@ public final class ConversionRequest {
         }
 
         /**
+         * 取り込み対象を絞る glob パターンをリストでまとめて追加する。
+         *
+         * <p>{@code null} を渡した場合は何もしない。</p>
+         *
+         * @param patterns glob パターンのリスト
+         * @return 自身
+         */
+        public Builder includes(List<String> patterns) {
+            if (patterns != null) {
+                patterns.forEach(this::include);
+            }
+            return this;
+        }
+
+        /**
+         * 除外する glob パターンをリストでまとめて追加する。
+         *
+         * <p>{@code null} を渡した場合は何もしない。</p>
+         *
+         * @param patterns glob パターンのリスト
+         * @return 自身
+         */
+        public Builder excludes(List<String> patterns) {
+            if (patterns != null) {
+                patterns.forEach(this::exclude);
+            }
+            return this;
+        }
+
+        /**
+         * 除外するシート名をリストでまとめて追加する。
+         *
+         * <p>{@code null} を渡した場合は何もしない。</p>
+         *
+         * @param sheetNames 除外するシート名のリスト
+         * @return 自身
+         */
+        public Builder excludeSheets(List<String> sheetNames) {
+            if (sheetNames != null) {
+                sheetNames.forEach(this::excludeSheet);
+            }
+            return this;
+        }
+
+        /**
          * リクエストを生成する。
          *
          * @return 不変リクエスト

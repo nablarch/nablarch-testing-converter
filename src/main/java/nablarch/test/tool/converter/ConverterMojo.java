@@ -77,21 +77,9 @@ public class ConverterMojo extends AbstractMojo {
                 .outputPath(output.toPath())
                 .overwrite(overwrite);
 
-        if (includes != null) {
-            for (String pattern : includes) {
-                builder.include(pattern);
-            }
-        }
-        if (excludes != null) {
-            for (String pattern : excludes) {
-                builder.exclude(pattern);
-            }
-        }
-        if (excludeSheets != null) {
-            for (String sheet : excludeSheets) {
-                builder.excludeSheet(sheet);
-            }
-        }
+        builder.includes(includes)
+               .excludes(excludes)
+               .excludeSheets(excludeSheets);
 
         try {
             int count = TestDataConverter.convert(builder.build());
