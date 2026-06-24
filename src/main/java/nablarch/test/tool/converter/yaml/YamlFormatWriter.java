@@ -75,7 +75,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             Path file = Paths.get(basePath, section.getName() + YAML_EXTENSION);
             try {
                 Path parent = file.getParent();
-                // Paths.get がルートパス直下（例: "/foo.yaml"）を返した場合 getParent() は null になるため、null チェックが必須。
+                // basePath が空文字列の場合など、親ディレクトリを持たない相対パス（例: "foo.yaml"）が生成されると getParent() は null を返すため、null チェックが必須。
                 if (parent != null) {
                     Files.createDirectories(parent);
                 }
