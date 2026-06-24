@@ -352,11 +352,22 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: paused
 - **Date**: 2026-06-24
-- **Last completed**: task #12 — ConverterMojo TDD実装・3専門家レビュー PASS・mvn test 289件全 PASS
+- **Last completed**: task #12 — ConverterMojo TDD実装・3専門家レビュー PASS・動作確認済み
 - **Next**: task #10・#11・#12 のユーザーレビュー（まとめて）
 - **Notes**: |
 
     ## ユーザーレビュー待ちタスク（2026-06-24）
     - task #10: coverage-only テスト3件削除（PR: https://github.com/nablarch/nablarch-testing-converter/pull/1）
-    - task #11: pom.xml maven-plugin 化
-    - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java）
+    - task #11: pom.xml maven-plugin 化（packaging・maven-plugin-api 3.5.2/annotations 3.9.0・maven-plugin-plugin 3.9.0）
+    - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java、289件全 PASS）
+
+    ## 動作確認済み（2026-06-24）
+    - `mvn clean install -DskipTests` で ~/.m2 にインストール済み（JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 必要）
+    - `mvn com.nablarch.framework:nablarch-testing-converter:1.0.0-SNAPSHOT:convert -Dnablarch-testing-converter.from=xls -Dnablarch-testing-converter.to=yaml -D...input=... -D...output=...` で XLS→YAML 変換動作確認済み
+    - `@Mojo(requiresProject = false)` 追加済み（POM なしディレクトリから起動可能）
+    - goalPrefix は `nablarch-testing-converter`
+
+    ## 再開後の手順
+    1. PR（https://github.com/nablarch/nablarch-testing-converter/pull/1）でユーザーレビューを受ける
+    2. task #10・#11・#12 それぞれ承認後にチェックオフ＆completion marker コミット・push
+    3. 全タスク完了後 Acceptance criteria を実行
