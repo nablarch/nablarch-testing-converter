@@ -1,5 +1,7 @@
 package nablarch.test.tool.converter;
 
+import java.io.File;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 import org.apache.maven.plugin.AbstractMojo;
@@ -30,11 +32,11 @@ public class ConverterMojo extends AbstractMojo {
 
     /** 入力ディレクトリ */
     @Parameter(property = "nablarch-testing-converter.input", required = true)
-    private java.io.File input;
+    private File input;
 
     /** 出力ディレクトリ */
     @Parameter(property = "nablarch-testing-converter.output", required = true)
-    private java.io.File output;
+    private File output;
 
     /** 出力先が既存の場合に上書きするか（省略時は {@code false}） */
     @Parameter(property = "nablarch-testing-converter.overwrite", defaultValue = "false")
@@ -94,7 +96,7 @@ public class ConverterMojo extends AbstractMojo {
         try {
             int count = TestDataConverter.convert(builder.build());
             getLog().info("Converted " + count + " file(s).");
-        } catch (ConverterException e) {
+        } catch (ConverterException | UncheckedIOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
     }

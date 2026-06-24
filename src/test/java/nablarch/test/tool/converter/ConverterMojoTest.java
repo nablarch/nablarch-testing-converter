@@ -189,10 +189,10 @@ public class ConverterMojoTest {
         inject(mojo, "excludes", Collections.emptyList());
         inject(mojo, "excludeSheets", Arrays.asList("skip"));
 
-        // When / Then: 例外なし
+        // When
         mojo.execute();
 
-        // data シートが出力され、skip シートは除外される
+        // Then
         assertThat(Files.exists(out.resolve("Book/data.yaml")), is(true));
         assertThat(Files.exists(out.resolve("Book/skip.yaml")), is(false));
     }
@@ -210,19 +210,20 @@ public class ConverterMojoTest {
      */
     @Test
     public void throwsMojoExecutionExceptionForInvalidFromFormat() throws Exception {
+        // Given
         ConverterMojo mojo = new ConverterMojo();
         inject(mojo, "from", "invalid");
         inject(mojo, "to", "yaml");
         inject(mojo, "input", in.toFile());
         inject(mojo, "output", out.toFile());
 
+        // When / Then
         try {
             mojo.execute();
             fail("should throw MojoExecutionException");
         } catch (MojoExecutionException e) {
-            // DataFormat.fromArgument が "unknown data format: invalid" のメッセージで
-            // IllegalArgumentException をスローすることを確認する
-            assertThat(e.getMessage() != null, is(true));
+            assertThat(e.getCause(), instanceOf(IllegalArgumentException.class));
+            assertThat(e.getMessage(), is("unknown data format: invalid"));
         }
     }
 
@@ -235,12 +236,14 @@ public class ConverterMojoTest {
      */
     @Test
     public void throwsMojoExecutionExceptionWhenInputMissing() throws Exception {
+        // Given
         ConverterMojo mojo = new ConverterMojo();
         inject(mojo, "from", "xls");
         inject(mojo, "to", "yaml");
         inject(mojo, "input", new File(in.toFile(), "nope"));
         inject(mojo, "output", out.toFile());
 
+        // When / Then
         try {
             mojo.execute();
             fail("should throw MojoExecutionException");
@@ -271,6 +274,7 @@ public class ConverterMojoTest {
         inject(mojo, "output", out.toFile());
         // overwrite はデフォルト false
 
+        // When / Then
         try {
             mojo.execute();
             fail("should throw MojoExecutionException");
