@@ -284,12 +284,12 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `<packaging>maven-plugin</packaging>` を追加する
-- [ ] `org.apache.maven:maven-plugin-api`・`org.apache.maven.plugin-tools:maven-plugin-annotations`（scope=provided）を依存追加する。バージョンは親 POM（nablarch-parent 6u3）で管理されているか確認し、無ければ明示する。
-- [ ] `maven-plugin-plugin`（goalPrefix: `nablarch-testing-converter`）を build/plugins に追加する
-- [ ] `mvn -DskipTests package` で通ることを確認する（プラグイン記述子生成の成否確認）
-- [ ] self-check（OK/NG per completion criterion、checks/task-11.md に記録）
-- [ ] QA expert review（subagent）
+- [x] `<packaging>maven-plugin</packaging>` を追加する
+- [x] `org.apache.maven:maven-plugin-api`・`org.apache.maven.plugin-tools:maven-plugin-annotations`（scope=provided）を依存追加する。バージョンは親 POM（nablarch-parent 6u3）で管理されているか確認し、無ければ明示する。
+- [x] `maven-plugin-plugin`（goalPrefix: `nablarch-testing-converter`）を build/plugins に追加する
+- [x] `mvn -DskipTests package` で通ることを確認する（プラグイン記述子生成の成否確認）
+- [x] self-check（OK/NG per completion criterion、checks/task-11.md に記録）
+- [x] QA expert review（subagent）
 - [ ] user review
 
 **Completion criteria**:
@@ -311,6 +311,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 - [ ] `ConverterMojoTest` を作成し RED を確認する（正常系・委譲 / 全パラメータ反映 / 不正形式 / 入力不在 / 上書き衝突 の5観点）
 - [ ] `ConverterMojo` を実装し GREEN にする（`@Mojo(name = "convert")`・Builder 組み立て・`ConverterException` → `MojoExecutionException` 変換）
+- [ ] pom.xml の `<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>` を削除し、`mvn -DskipTests package` でプラグイン記述子に `convert` goal が登録されることを確認する
 - [ ] `mvn test` で全テスト PASS（既存テストのリグレッションゼロ）を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-12.md に記録）
 - [ ] QA expert review（subagent）
