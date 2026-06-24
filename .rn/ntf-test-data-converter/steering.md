@@ -276,6 +276,59 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #11: pom.xml プラグイン化
+
+**Purpose**: converter の pom.xml を `maven-plugin` packaging に変更し、ConverterMojo のビルド基盤を整える。
+
+**Prerequisites**: #10
+
+**Steps**:
+
+- [ ] `<packaging>maven-plugin</packaging>` を追加する
+- [ ] `org.apache.maven:maven-plugin-api`・`org.apache.maven.plugin-tools:maven-plugin-annotations`（scope=provided）を依存追加する。バージョンは親 POM（nablarch-parent 6u3）で管理されているか確認し、無ければ明示する。
+- [ ] `maven-plugin-plugin`（goalPrefix: `nablarch-testing-converter`）を build/plugins に追加する
+- [ ] `mvn -DskipTests package` で通ることを確認する（プラグイン記述子生成の成否確認）
+- [ ] self-check（OK/NG per completion criterion、checks/task-11.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `<packaging>maven-plugin</packaging>` が pom.xml に存在する
+- `maven-plugin-api`・`maven-plugin-annotations`（scope=provided）が依存に存在する
+- `maven-plugin-plugin`（goalPrefix: `nablarch-testing-converter`）が build/plugins に存在する
+- `mvn -DskipTests package` が通る（プラグイン記述子が生成される）
+
+---
+
+### #12: ConverterMojo TDD実装
+
+**Purpose**: `ConverterMojo`（Maven プラグイン `convert` goal）を TDD で実装する。テストを先に書いて RED を確認してから実装して GREEN にする。変換ロジックには一切手を入れず、Mojo は薄いラッパーに徹する。
+
+**Prerequisites**: #11
+
+**Steps**:
+
+- [ ] `ConverterMojoTest` を作成し RED を確認する（正常系・委譲 / 全パラメータ反映 / 不正形式 / 入力不在 / 上書き衝突 の5観点）
+- [ ] `ConverterMojo` を実装し GREEN にする（`@Mojo(name = "convert")`・Builder 組み立て・`ConverterException` → `MojoExecutionException` 変換）
+- [ ] `mvn test` で全テスト PASS（既存テストのリグレッションゼロ）を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-12.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `src/main/java/nablarch/test/tool/converter/ConverterMojo.java` が存在する
+- `src/test/java/nablarch/test/tool/converter/ConverterMojoTest.java` が存在する
+- テストが5観点（正常系委譲・全パラメータ反映・不正形式・入力不在・上書き衝突）をカバーする
+- `mvn test` が全テスト PASS する（既存テストのリグレッションゼロ）
+- `ConverterException` → `MojoExecutionException` 変換が実装されている
+- `DataFormat.fromArgument` の不正値時の挙動がテストで固定されている
+
+---
+
 # Decisions
 
 ## JaCoCo カバレッジ取得手順（設定変更不要）
@@ -299,7 +352,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - **Status**: paused
 - **Date**: 2026-06-24
 - **Last completed**: task #10 — coverage-only テスト3件削除・3専門家レビュー PASS・mvn test 284件全 PASS
-- **Next**: task #10 ユーザーレビュー承認 → チェックオフ → 次タスク
+- **Next**: task #10 ユーザーレビュー承認 → チェックオフ → task #11（pom プラグイン化）
 - **Notes**: |
 
     ## task #10 の現状
@@ -318,4 +371,4 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
     ## 再開後の手順
     1. ユーザーに PR 確認・承認を求める（https://github.com/nablarch/nablarch-testing-converter/pull/1）
     2. 承認後、task #10 をチェックオフして completion marker コミット・push
-    3. 次タスクへ進む（全タスク完了であれば Acceptance criteria を提案）
+    3. task #11（pom プラグイン化）→ task #12（ConverterMojo TDD実装）へ進む
