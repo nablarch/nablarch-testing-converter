@@ -352,20 +352,21 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: paused
 - **Date**: 2026-06-24
-- **Last completed**: task #12 — ConverterMojo TDD実装・3専門家レビュー PASS・動作確認済み
-- **Next**: task #10・#11・#12 のユーザーレビュー（まとめて）
+- **Last completed**: README追記・log.properties追加（task #12 ユーザーレビュー中）
+- **Next**: task #10・#11・#12 のユーザーレビュー承認待ち → チェックオフ → Acceptance criteria
 - **Notes**: |
 
     ## ユーザーレビュー待ちタスク（2026-06-24）
     - task #10: coverage-only テスト3件削除（PR: https://github.com/nablarch/nablarch-testing-converter/pull/1）
-    - task #11: pom.xml maven-plugin 化（packaging・maven-plugin-api 3.5.2/annotations 3.9.0・maven-plugin-plugin 3.9.0）
+    - task #11: pom.xml maven-plugin 化
     - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java、289件全 PASS）
 
-    ## 動作確認済み（2026-06-24）
-    - `mvn clean install -DskipTests` で ~/.m2 にインストール済み（JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 必要）
-    - `mvn com.nablarch.framework:nablarch-testing-converter:1.0.0-SNAPSHOT:convert -Dnablarch-testing-converter.from=xls -Dnablarch-testing-converter.to=yaml -D...input=... -D...output=...` で XLS→YAML 変換動作確認済み
-    - `@Mojo(requiresProject = false)` 追加済み（POM なしディレクトリから起動可能）
-    - goalPrefix は `nablarch-testing-converter`
+    ## このセッションで追加した修正（task #12 ユーザーFBより）
+    - `src/main/resources/log.properties` を追加（Maven プラグイン実行時の ExceptionInInitializerError 修正）
+      - 原因：プラグイン自身のクラスパスに log.properties が必要。呼び出し元プロジェクトの src/test/resources は見えない
+      - NTF本体の書き方に倣い StandardOutputLogWriter・INFO レベルのシンプル構成
+    - README.md に使い方を追記（Maven プラグイン・Java API 両方）
+    - ブランチ: ntf-test-data-converter、push 済み
 
     ## 再開後の手順
     1. PR（https://github.com/nablarch/nablarch-testing-converter/pull/1）でユーザーレビューを受ける
