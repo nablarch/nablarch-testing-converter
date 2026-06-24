@@ -349,26 +349,12 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
+- **Status**: in-progress
 - **Date**: 2026-06-24
-- **Last completed**: task #10 — coverage-only テスト3件削除・3専門家レビュー PASS・mvn test 284件全 PASS
-- **Next**: task #10 ユーザーレビュー承認 → チェックオフ → task #11（pom プラグイン化）
+- **Last completed**: task #10 — coverage-only テスト3件削除・3専門家レビュー PASS・mvn test 284件全 PASS（ユーザーレビュー後回し）
+- **Next**: task #11（pom プラグイン化）
 - **Notes**: |
 
-    ## task #10 の現状
-
-    coverage-only テスト3件（`serialize_keyContainingControlChar_isQuoted`・`readFile_directiveWithNullValue_preservesNullInDirectives`・`fragmentViewGetTypesReturnsNullWhenTypesNotSet`）を削除済み（commit f76cfbf）。
-
-    NTF仕様テスト4件は残存：
-    - `readNormalizesRecordSeparatorEmptyValueToNoneSymbol`
-    - `readPassesThroughUnknownRecordSeparatorValue`
-    - `readStripsQuotesFromQuotedGenericDirectiveValue`
-    - `skipsExcludedSheetsFromXlsBook`
-
-    nablarch-testing-yaml SNAPSHOT がスキーマバリデーションを追加し、テストデータ YAML が非適合だったエラー13件はユーザー側で yaml を修正・mvn install して解消済み。
-    `mvn test` は現在 284件全 PASS。
-
-    ## 再開後の手順
-    1. ユーザーに PR 確認・承認を求める（https://github.com/nablarch/nablarch-testing-converter/pull/1）
-    2. 承認後、task #10 をチェックオフして completion marker コミット・push
-    3. task #11（pom プラグイン化）→ task #12（ConverterMojo TDD実装）へ進む
+    ## ユーザー指示（2026-06-24）
+    task #10 のユーザーレビューは最後にまとめて行う。
+    task #11 → #12（ConverterMojo TDD実装）を先に進める。
