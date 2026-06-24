@@ -269,12 +269,12 @@ public class YamlTestDataValidator {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> castList(Object obj) {
+    private static List<Object> castList(Object obj) {
         return (obj instanceof List) ? (List<Object>) obj : Collections.emptyList();
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> castMap(Object obj) {
+    private static Map<String, Object> castMap(Object obj) {
         return (obj instanceof Map) ? (Map<String, Object>) obj : Collections.emptyMap();
     }
 }
