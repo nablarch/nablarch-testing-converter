@@ -117,7 +117,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                         blocks.add(block);
                     }
                 }
-            } else if (type.isSendSyncType()) {
+            } else if (XlsDataTypeUtil.isSendSyncType(type)) {
                 if (processed.add(batchKey(type, header.getGroupId()))) {
                     blocks.addAll(readSendSyncBlocks(basePath, resourceName, header.getGroupId(), type));
                 }

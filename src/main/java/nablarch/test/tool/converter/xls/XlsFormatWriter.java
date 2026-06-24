@@ -223,7 +223,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         l.add(RowKind.HEADER, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         appendKeyValueRows(l, block.getFwHeaderFields());
-        boolean sendSync = block.getDataType().isSendSyncType();
+        boolean sendSync = XlsDataTypeUtil.isSendSyncType(block.getDataType());
         // 本文は固定長（長さ行を持つ）。送信系はデータ行の列 0 に no（連番）を置く。
         appendRecords(l, block.getRecords(), true, sendSync, block.getIdentifier());
         return l;
