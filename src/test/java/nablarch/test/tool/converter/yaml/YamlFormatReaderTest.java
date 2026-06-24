@@ -593,13 +593,11 @@ public class YamlFormatReaderTest {
     // toStringDirectives — null 値
     // ------------------------------------------------------------------------
 
-    /**
-     * Given: setup_files エントリの directives に null 値を持つ FixedLengthFile を返すアダプタ
-     *        （リフレクションで {@code DataFile.directives} に null 値エントリを挿入）。
-     * When : {@code read}。
-     * Then : {@code toStringDirectives} の {@code value == null ? null} 分岐が通り、
-     *        null ディレクティブ値が null のまま FileDataBlock のディレクティブに保持される。
-     */
+    // Given: FixedLengthFile を組み立て、DataFile.directives に null 値を直接挿入
+    // （リフレクションで {@code DataFile.directives} に null 値エントリを挿入）。
+    // When : {@code read}。
+    // Then : {@code toStringDirectives} の {@code value == null ? null} 分岐が通り、
+    //        null ディレクティブ値が null のまま FileDataBlock のディレクティブに保持される。
     @Test
     public void readFile_directiveWithNullValue_preservesNullInDirectives() throws Exception {
         // Given: FixedLengthFile を組み立て、DataFile.directives に null 値を直接挿入

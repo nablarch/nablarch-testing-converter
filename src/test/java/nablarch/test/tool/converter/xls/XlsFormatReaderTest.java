@@ -864,7 +864,8 @@ public class XlsFormatReaderTest {
     // ------------------------------------------------------------------ normalizeDirectiveValue / record-separator
 
     /**
-     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値として空文字を設定した行。
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値として {@code "NONE"} シンボルを設定した行
+     *        （本体の {@code LineSeparator.evaluate} が空文字列へ変換する）。
      * When : {@code read}。
      * Then : 本体が空文字をそのまま保持し、{@code normalizeDirectiveValue} が {@code "NONE"} シンボルへ
      *        変換して FileDataBlock のディレクティブへ返す（仕様 DR-09 の NONE シンボル逆正規化）。
