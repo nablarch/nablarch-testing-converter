@@ -117,7 +117,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                         blocks.add(block);
                     }
                 }
-            } else if (isSendSyncType(type)) {
+            } else if (type.isSendSyncType()) {
                 if (processed.add(batchKey(type, header.getGroupId()))) {
                     blocks.addAll(readSendSyncBlocks(basePath, resourceName, header.getGroupId(), type));
                 }
@@ -516,19 +516,6 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private static boolean isFixed(DataType type) {
         return type == DataType.SETUP_FIXED || type == DataType.EXPECTED_FIXED;
-    }
-
-    /**
-     * 送信同期メッセージ（要求/応答電文 4 種）のデータタイプか判定する。
-     *
-     * @param type データタイプ
-     * @return 送信系なら真
-     */
-    private static boolean isSendSyncType(DataType type) {
-        return type == DataType.EXPECTED_REQUEST_HEADER_MESSAGES
-                || type == DataType.EXPECTED_REQUEST_BODY_MESSAGES
-                || type == DataType.RESPONSE_HEADER_MESSAGES
-                || type == DataType.RESPONSE_BODY_MESSAGES;
     }
 
     /**

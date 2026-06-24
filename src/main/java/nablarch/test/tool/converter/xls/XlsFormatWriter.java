@@ -223,7 +223,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         l.add(RowKind.HEADER, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         appendKeyValueRows(l, block.getFwHeaderFields());
-        boolean sendSync = isSendSync(block.getDataType());
+        boolean sendSync = block.getDataType().isSendSyncType();
         // 本文は固定長（長さ行を持つ）。送信系はデータ行の列 0 に no（連番）を置く。
         appendRecords(l, block.getRecords(), true, sendSync, block.getIdentifier());
         return l;
@@ -407,19 +407,6 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private static String nullToEmpty(String value) {
         return value == null ? "" : value;
-    }
-
-    /**
-     * 送信系（要求/応答電文 4 種）のデータタイプか判定する。
-     *
-     * @param type データタイプ
-     * @return 送信系なら真
-     */
-    private static boolean isSendSync(DataType type) {
-        return type == DataType.EXPECTED_REQUEST_HEADER_MESSAGES
-                || type == DataType.EXPECTED_REQUEST_BODY_MESSAGES
-                || type == DataType.RESPONSE_HEADER_MESSAGES
-                || type == DataType.RESPONSE_BODY_MESSAGES;
     }
 
 }
