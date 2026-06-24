@@ -309,14 +309,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `ConverterMojoTest` を作成し RED を確認する（正常系・委譲 / 全パラメータ反映 / 不正形式 / 入力不在 / 上書き衝突 の5観点）
-- [ ] `ConverterMojo` を実装し GREEN にする（`@Mojo(name = "convert")`・Builder 組み立て・`ConverterException` → `MojoExecutionException` 変換）
-- [ ] pom.xml の `<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>` を削除し、`mvn -DskipTests package` でプラグイン記述子に `convert` goal が登録されることを確認する
-- [ ] `mvn test` で全テスト PASS（既存テストのリグレッションゼロ）を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-12.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
+- [x] `ConverterMojoTest` を作成し RED を確認する（正常系・委譲 / 全パラメータ反映 / 不正形式 / 入力不在 / 上書き衝突 の5観点）
+- [x] `ConverterMojo` を実装し GREEN にする（`@Mojo(name = "convert")`・Builder 組み立て・`ConverterException` → `MojoExecutionException` 変換）
+- [x] pom.xml の `<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>` を削除し、`mvn -DskipTests package` でプラグイン記述子に `convert` goal が登録されることを確認する
+- [x] `mvn test` で全テスト PASS（既存テストのリグレッションゼロ）を確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-12.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
 - [ ] user review
 
 **Completion criteria**:
@@ -350,12 +350,13 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: in-progress
+- **Status**: paused
 - **Date**: 2026-06-24
-- **Last completed**: task #10 — coverage-only テスト3件削除・3専門家レビュー PASS・mvn test 284件全 PASS（ユーザーレビュー後回し）
-- **Next**: task #11（pom プラグイン化）
+- **Last completed**: task #12 — ConverterMojo TDD実装・3専門家レビュー PASS・mvn test 289件全 PASS
+- **Next**: task #10・#11・#12 のユーザーレビュー（まとめて）
 - **Notes**: |
 
-    ## ユーザー指示（2026-06-24）
-    task #10 のユーザーレビューは最後にまとめて行う。
-    task #11 → #12（ConverterMojo TDD実装）を先に進める。
+    ## ユーザーレビュー待ちタスク（2026-06-24）
+    - task #10: coverage-only テスト3件削除（PR: https://github.com/nablarch/nablarch-testing-converter/pull/1）
+    - task #11: pom.xml maven-plugin 化
+    - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java）
