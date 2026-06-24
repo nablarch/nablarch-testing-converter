@@ -14,7 +14,7 @@ Maven プラグインとして CLI から実行する方法と、Java API から
 <plugin>
   <groupId>com.nablarch.framework</groupId>
   <artifactId>nablarch-testing-converter</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>VERSION</version>
 </plugin>
 ```
 
@@ -23,7 +23,7 @@ Maven プラグインとして CLI から実行する方法と、Java API から
 ### 実行コマンド
 
 ```
-mvn com.nablarch.framework:nablarch-testing-converter:1.0.0-SNAPSHOT:convert \
+mvn com.nablarch.framework:nablarch-testing-converter:VERSION:convert \
   -Dnablarch-testing-converter.from=xls \
   -Dnablarch-testing-converter.to=yaml \
   -Dnablarch-testing-converter.input=src/test/java/com/example/batch/ \
@@ -46,7 +46,7 @@ mvn com.nablarch.framework:nablarch-testing-converter:1.0.0-SNAPSHOT:convert \
 <plugin>
   <groupId>com.nablarch.framework</groupId>
   <artifactId>nablarch-testing-converter</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>VERSION</version>
   <configuration>
     <excludeSheets>
       <excludeSheet>abnormal_case</excludeSheet>
