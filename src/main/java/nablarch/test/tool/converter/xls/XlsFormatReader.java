@@ -291,55 +291,121 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private List<RecordLayout> toRecordLayouts(FileView view, List<List<String>> bodyLines, boolean fixed) {
         List<RecordLayout> records = new ArrayList<>();
-        int idx = 0;
-        boolean first = true;
-        for (FragmentView fragment : view.getFragments()) {
+        List<FragmentView> fragments = view.getFragments();
+        if (fragments.isEmpty()) {
+            return records;
+        }
+        int idx = skipToFirstNameRow(bodyLines, fragments.get(0).getNames());
+        for (FragmentView fragment : fragments) {
             List<String> names = fragment.getNames();
-            // 名前行を特定する。最初の断片はフィールド名一致まで読み飛ばし（ディレクティブ/FW ヘッダ行を除外）、
-            // 以降は直前の値行の直後がそのまま次の名前行。
-            if (first) {
-                while (idx < bodyLines.size() && !tail(bodyLines.get(idx)).equals(names)) {
-                    idx++;
-                }
-                first = false;
-            }
-            // 器（断片構造）を権威とし、生行がそれと一致することを各断片の名前行で検証する。
-            // 一致しなければ器↔生行の対応が破綻している＝前提崩れ。誤った原文を静かに充填せず
-            // 即座に失敗させる（StubDbInfo の番人コードと同じ思想。設計書 §共通）。
-            // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
-            if (idx >= bodyLines.size() || !tail(bodyLines.get(idx)).equals(names)) {
-                throw new IllegalStateException(
-                        "器の断片構造と生行が不整合です。名前行 names=" + names + " が生行に見つかりません。");
-            }
+            idx = verifyNameRow(bodyLines, idx, names);
             String recordType = bodyLines.get(idx).get(0);
             idx++;
-            List<String> originalTypes = tail(requireLine(bodyLines, idx, names, "型行"));
-            idx++;
-            List<String> originalLengths = null;
-            if (fixed) {
-                originalLengths = tail(requireLine(bodyLines, idx, names, "長さ行"));
-                idx++;
-            }
-            List<FieldDef> fields = new ArrayList<>(names.size());
-            for (int i = 0; i < names.size(); i++) {
-                String type = i < originalTypes.size() ? originalTypes.get(i) : null;
-                String length = originalLengths != null && i < originalLengths.size() ? originalLengths.get(i) : null;
-                fields.add(new FieldDef(names.get(i), type, length));
-            }
-            List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
-            for (int v = 0; v < fragment.getValues().size(); v++) {
-                List<String> valueCells = tail(requireLine(bodyLines, idx, names, "値行"));
-                idx++;
-                List<String> row = new ArrayList<>(names.size());
-                for (int i = 0; i < names.size(); i++) {
-                    String cellValue = i < valueCells.size() ? valueCells.get(i) : "";
-                    row.add(stripQuotes(cellValue));
-                }
-                rows.add(row);
-            }
-            records.add(new RecordLayout(recordType, fields, rows));
+            idx = readFieldDefs(bodyLines, idx, names, fixed, records, recordType, fragment);
         }
         return records;
+    }
+
+    /**
+     * 最初の断片の名前行が現れる位置まで生行を読み飛ばす（ディレクティブ行・FW ヘッダ行を除外）。
+     *
+     * @param bodyLines 生のボディ行
+     * @param firstNames 最初の断片のフィールド名リスト
+     * @return 名前行のインデックス（一致する行の位置）
+     */
+    private int skipToFirstNameRow(List<List<String>> bodyLines, List<String> firstNames) {
+        int idx = 0;
+        while (idx < bodyLines.size() && !tail(bodyLines.get(idx)).equals(firstNames)) {
+            idx++;
+        }
+        return idx;
+    }
+
+    /**
+     * 器（断片構造）の名前行が生行の {@code idx} 位置に一致することを検証し、{@code idx} をそのまま返す。
+     * <p>
+     * 一致しなければ器↔生行の対応が破綻している＝前提崩れ。誤った原文を静かに充填せず
+     * 即座に失敗させる（設計書 §共通「内部整合性ガード」）。
+     * </p>
+     *
+     * @param bodyLines 生のボディ行
+     * @param idx       検証する位置
+     * @param names     対象断片のフィールド名（診断・一致判定に使用）
+     * @return 検証済みの {@code idx}（名前行位置）
+     * @throws IllegalStateException 名前行が生行に見つからない場合
+     */
+    private int verifyNameRow(List<List<String>> bodyLines, int idx, List<String> names) {
+        // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
+        if (idx >= bodyLines.size() || !tail(bodyLines.get(idx)).equals(names)) {
+            throw new IllegalStateException(
+                    "器の断片構造と生行が不整合です。名前行 names=" + names + " が生行に見つかりません。");
+        }
+        return idx;
+    }
+
+    /**
+     * 型行・長さ行（固定長のみ）を読んで {@link FieldDef} リストを組み立て、続けてデータ行も読んで
+     * {@link RecordLayout} を {@code records} に追加する。
+     * <p>
+     * このメソッドは名前行の次の行（{@code idx}）から始まり、型行・長さ行・全値行を消費した後の
+     * 次インデックスを返す。
+     * </p>
+     *
+     * @param bodyLines  生のボディ行
+     * @param idx        型行の開始インデックス（名前行の次）
+     * @param names      対象断片のフィールド名
+     * @param fixed      固定長（長さ行を持つ）なら真
+     * @param records    組み立て結果の追加先
+     * @param recordType レコード種別（名前行の先頭セル）
+     * @param fragment   対象断片（値行数の取得に使用）
+     * @return 次の断片の名前行インデックス
+     */
+    private int readFieldDefs(List<List<String>> bodyLines, int idx, List<String> names,
+            boolean fixed, List<RecordLayout> records, String recordType, FragmentView fragment) {
+        List<String> originalTypes = tail(requireLine(bodyLines, idx, names, "型行"));
+        idx++;
+        List<String> originalLengths = null;
+        if (fixed) {
+            originalLengths = tail(requireLine(bodyLines, idx, names, "長さ行"));
+            idx++;
+        }
+        List<FieldDef> fields = new ArrayList<>(names.size());
+        for (int i = 0; i < names.size(); i++) {
+            String type = i < originalTypes.size() ? originalTypes.get(i) : null;
+            String length = originalLengths != null && i < originalLengths.size() ? originalLengths.get(i) : null;
+            fields.add(new FieldDef(names.get(i), type, length));
+        }
+        idx = readDataRows(bodyLines, idx, names, fragment, records, recordType, fields);
+        return idx;
+    }
+
+    /**
+     * 断片の値行をすべて読み込んで {@link RecordLayout} を {@code records} に追加する。
+     *
+     * @param bodyLines  生のボディ行
+     * @param idx        最初の値行のインデックス
+     * @param names      対象断片のフィールド名（診断用）
+     * @param fragment   対象断片（値行数の取得に使用）
+     * @param records    組み立て結果の追加先
+     * @param recordType レコード種別
+     * @param fields     フィールド定義リスト
+     * @return 全値行を消費した後の次インデックス
+     */
+    private int readDataRows(List<List<String>> bodyLines, int idx, List<String> names,
+            FragmentView fragment, List<RecordLayout> records, String recordType, List<FieldDef> fields) {
+        List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
+        for (int v = 0; v < fragment.getValues().size(); v++) {
+            List<String> valueCells = tail(requireLine(bodyLines, idx, names, "値行"));
+            idx++;
+            List<String> row = new ArrayList<>(names.size());
+            for (int i = 0; i < names.size(); i++) {
+                String cellValue = i < valueCells.size() ? valueCells.get(i) : "";
+                row.add(stripQuotes(cellValue));
+            }
+            rows.add(row);
+        }
+        records.add(new RecordLayout(recordType, fields, rows));
+        return idx;
     }
 
     /**
