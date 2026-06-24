@@ -20,7 +20,7 @@ final class WidthTracker {
     private static final int WIDTH_UNIT = 256;
 
     /** 列番号 → 最大文字数。 */
-    private final Map<Integer, Integer> maxChars = new HashMap<Integer, Integer>();
+    private final Map<Integer, Integer> maxChars = new HashMap<>();
 
     /**
      * 1 セルの文字数を観測する。

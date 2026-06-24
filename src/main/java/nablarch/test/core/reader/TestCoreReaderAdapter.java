@@ -314,7 +314,7 @@ public class TestCoreReaderAdapter {
     private static final class HeaderCollector extends TestDataParsingTemplate<List<BlockHeader>> {
 
         /** 収集したヘッダ（記述順） */
-        private final List<BlockHeader> headers = new ArrayList<BlockHeader>();
+        private final List<BlockHeader> headers = new ArrayList<>();
 
         /**
          * コンストラクタ。
@@ -394,7 +394,7 @@ public class TestCoreReaderAdapter {
         private final String targetIdentifier;
 
         /** 収集した生のボディ行（記述順） */
-        private final List<List<String>> bodyLines = new ArrayList<List<String>>();
+        private final List<List<String>> bodyLines = new ArrayList<>();
 
         /** 対象ブロックを検出して収集中か */
         private boolean collecting = false;

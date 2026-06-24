@@ -12,13 +12,13 @@ import java.util.Set;
 final class BlockLayout {
 
     /** 行（記述順）。 */
-    private final List<List<String>> rows = new ArrayList<List<String>>();
+    private final List<List<String>> rows = new ArrayList<>();
 
     /** 各行の種別（{@link #rows} と同順）。 */
-    private final List<RowKind> kinds = new ArrayList<RowKind>();
+    private final List<RowKind> kinds = new ArrayList<>();
 
     /** マーカーカラムの列番号。 */
-    private final Set<Integer> markerColumns = new HashSet<Integer>();
+    private final Set<Integer> markerColumns = new HashSet<>();
 
     /** ブロック最大幅（列数）。 */
     private int width = 0;

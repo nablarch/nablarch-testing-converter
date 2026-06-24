@@ -93,7 +93,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @return YAML テキスト（ブロックが無ければ空文字）
      */
     String serialize(TestDataSection section) {
-        Map<String, List<TestDataBlock>> bySection = new LinkedHashMap<String, List<TestDataBlock>>();
+        Map<String, List<TestDataBlock>> bySection = new LinkedHashMap<>();
         for (TestDataBlock block : section.getBlocks()) {
             String key = sectionKey(block.getDataType());
             bySection.computeIfAbsent(key, k -> new ArrayList<>()).add(block);

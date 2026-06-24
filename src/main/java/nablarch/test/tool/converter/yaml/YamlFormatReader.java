@@ -86,7 +86,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     @Override
     public TestDataContainer read(String basePath, String resourceName) {
         Map<String, Object> yaml = adapter.loadRawMap(basePath, resourceName);
-        List<TestDataBlock> blocks = new ArrayList<TestDataBlock>();
+        List<TestDataBlock> blocks = new ArrayList<>();
         for (String key : yaml.keySet()) {
             addBlocksForSection(basePath, resourceName, yaml, key, blocks);
         }
@@ -156,9 +156,9 @@ public class YamlFormatReader implements TestDataFormatReader {
             List<TableData> tables = adapter.readTables(basePath, resourceName, formattedGroup, type);
             for (TableData table : tables) {
                 String[] columns = table.getColumnNames();
-                List<List<String>> rows = new ArrayList<List<String>>(table.size());
+                List<List<String>> rows = new ArrayList<>(table.size());
                 for (int r = 0; r < table.size(); r++) {
-                    List<String> row = new ArrayList<String>(columns.length);
+                    List<String> row = new ArrayList<>(columns.length);
                     for (String column : columns) {
                         Object value = table.getValue(r, column);
                         row.add(value == null ? null : value.toString());
@@ -191,9 +191,9 @@ public class YamlFormatReader implements TestDataFormatReader {
             String id = YamlSection.toStr(entry.get(YamlSection.FIELD_ID));
             List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, id);
             List<String> orderedColumns = nonMarkerColumns(entry);
-            List<List<String>> rows = new ArrayList<List<String>>(mapRows.size());
+            List<List<String>> rows = new ArrayList<>(mapRows.size());
             for (Map<String, String> mapRow : mapRows) {
-                List<String> row = new ArrayList<String>(orderedColumns.size());
+                List<String> row = new ArrayList<>(orderedColumns.size());
                 for (String column : orderedColumns) {
                     row.add(mapRow.get(column));
                 }
@@ -263,7 +263,7 @@ public class YamlFormatReader implements TestDataFormatReader {
             FileView view = TestCoreFileAdapter.read(content.getBody());
             blocks.add(new MessageDataBlock(DataType.MESSAGE, "", id,
                     toStringDirectives(view.getDirectives()),
-                    new LinkedHashMap<String, String>(content.getFwHeader()),
+                    new LinkedHashMap<>(content.getFwHeader()),
                     toRecordLayouts(view, recordsWithoutFwHeader(entry))));
         }
     }
@@ -297,7 +297,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 FileView view = TestCoreFileAdapter.read(body);
                 blocks.add(new MessageDataBlock(type, formattedGroup, body.getPath(),
                         toStringDirectives(view.getDirectives()),
-                        new LinkedHashMap<String, String>(),
+                        new LinkedHashMap<>(),
                         toRecordLayouts(view, recordsWithoutFwHeader(entry))));
             }
         }
@@ -330,16 +330,16 @@ public class YamlFormatReader implements TestDataFormatReader {
                     "器の断片構造と原文レコードが不整合です。fragments=" + fragments.size()
                             + ", records=" + alignedRecords.size());
         }
-        List<RecordLayout> records = new ArrayList<RecordLayout>(fragments.size());
+        List<RecordLayout> records = new ArrayList<>(fragments.size());
         for (int i = 0; i < fragments.size(); i++) {
             FragmentView fragment = fragments.get(i);
             Map<String, Object> record = alignedRecords.get(i);
             String recordType = YamlSection.toStr(record.get(YamlSection.FIELD_RECORD_TYPE));
             List<FieldDef> fields = toFieldDefs(record);
             List<String> names = fragment.getNames();
-            List<List<String>> rows = new ArrayList<List<String>>(fragment.getValues().size());
+            List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
             for (Map<String, String> valueMap : fragment.getValues()) {
-                List<String> row = new ArrayList<String>(names.size());
+                List<String> row = new ArrayList<>(names.size());
                 for (String name : names) {
                     row.add(valueMap.get(name));
                 }
@@ -358,7 +358,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     private static List<FieldDef> toFieldDefs(Map<String, Object> record) {
         List<Object> fieldList = YamlSection.getList(record, YamlSection.FIELD_FIELDS);
-        List<FieldDef> fields = new ArrayList<FieldDef>(fieldList.size());
+        List<FieldDef> fields = new ArrayList<>(fieldList.size());
         for (Object fieldObj : fieldList) {
             Map<String, Object> field = YamlSection.castMap(fieldObj);
             fields.add(new FieldDef(
@@ -376,7 +376,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @return レコード Map のリスト
      */
     private static List<Map<String, Object>> records(Map<String, Object> entry) {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (Object recordObj : YamlSection.getList(entry, YamlSection.FIELD_RECORDS)) {
             result.add(YamlSection.castMap(recordObj));
         }
@@ -391,7 +391,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @return FW_HEADER を除いたレコード Map のリスト
      */
     private static List<Map<String, Object>> recordsWithoutFwHeader(Map<String, Object> entry) {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (Object recordObj : YamlSection.getList(entry, YamlSection.FIELD_RECORDS)) {
             Map<String, Object> record = YamlSection.castMap(recordObj);
             if (YamlSection.FW_HEADER_RECORD_TYPE.equals(YamlSection.toStr(record.get(YamlSection.FIELD_RECORD_TYPE)))) {
@@ -414,7 +414,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @return 整形済みグループ ID のリスト
      */
     private static List<String> formattedGroupsInOrder(Map<String, Object> yaml, String sectionKey) {
-        List<String> groups = new ArrayList<String>();
+        List<String> groups = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             String group = formatGroup(YamlSection.castMap(entryObj));
             if (!groups.contains(group)) {
@@ -432,7 +432,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @return 生グループ ID のリスト
      */
     private static List<String> rawGroupsInOrder(Map<String, Object> yaml, String sectionKey) {
-        List<String> groups = new ArrayList<String>();
+        List<String> groups = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             String group = YamlSection.toStr(YamlSection.castMap(entryObj).get(YamlSection.FIELD_GROUP_ID));
             if (group != null && !groups.contains(group)) {
@@ -452,7 +452,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     private static List<Map<String, Object>> entriesForFormattedGroup(Map<String, Object> yaml, String sectionKey,
                                                                       String formattedGroup) {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
             if (formatGroup(entry).equals(formattedGroup)) {
@@ -472,7 +472,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     private static List<Map<String, Object>> entriesForRawGroup(Map<String, Object> yaml, String sectionKey,
                                                                 String rawGroup) {
-        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> result = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
             if (rawGroup.equals(YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID)))) {
@@ -501,7 +501,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @return 非マーカーカラム名（記述順）
      */
     private static List<String> nonMarkerColumns(Map<String, Object> entry) {
-        List<String> columns = new ArrayList<String>();
+        List<String> columns = new ArrayList<>();
         for (String column : YamlSection.resolveColumns(YamlSection.getList(entry, YamlSection.FIELD_ROWS))) {
             if (!YamlSection.isMarker(column)) {
                 columns.add(column);

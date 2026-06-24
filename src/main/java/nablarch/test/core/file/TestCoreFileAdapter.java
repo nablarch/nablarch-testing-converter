@@ -39,7 +39,7 @@ public final class TestCoreFileAdapter {
      * @return ファイルビュー
      */
     public static FileView read(DataFile file) {
-        List<FragmentView> fragments = new ArrayList<FragmentView>(file.all.size());
+        List<FragmentView> fragments = new ArrayList<>(file.all.size());
         for (DataFileFragment fragment : file.all) {
             fragments.add(new FragmentView(
                     copyOrNull(fragment.names),
@@ -48,7 +48,7 @@ public final class TestCoreFileAdapter {
                     copyValues(fragment.values)));
         }
         return new FileView(file.getPath(),
-                new LinkedHashMap<String, Object>(file.directives),
+                new LinkedHashMap<>(file.directives),
                 fragments);
     }
 
@@ -59,7 +59,7 @@ public final class TestCoreFileAdapter {
      * @return コピー（{@code null} なら {@code null}）
      */
     private static List<String> copyOrNull(List<String> list) {
-        return list == null ? null : new ArrayList<String>(list);
+        return list == null ? null : new ArrayList<>(list);
     }
 
     /**
@@ -69,9 +69,9 @@ public final class TestCoreFileAdapter {
      * @return コピー
      */
     private static List<Map<String, String>> copyValues(List<Map<String, String>> values) {
-        List<Map<String, String>> copy = new ArrayList<Map<String, String>>(values.size());
+        List<Map<String, String>> copy = new ArrayList<>(values.size());
         for (Map<String, String> row : values) {
-            copy.add(new LinkedHashMap<String, String>(row));
+            copy.add(new LinkedHashMap<>(row));
         }
         return copy;
     }

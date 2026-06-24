@@ -183,7 +183,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         BlockLayout l = new BlockLayout();
         l.add(RowKind.HEADER, Arrays.asList(marker(block)));
         List<String> columns = block.getColumnNames();
-        l.add(RowKind.HEADER, new ArrayList<String>(columns));
+        l.add(RowKind.HEADER, new ArrayList<>(columns));
         for (int c = 0; c < columns.size(); c++) {
             // カラム名が null の場合は isMarkerColumn 内で null チェックして false を返す。null カラムは非マーカーとして扱う。
             if (isMarkerColumn(columns.get(c))) {
@@ -270,14 +270,14 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     private void appendRecord(BlockLayout l, RecordLayout record, boolean fixed, boolean sendSync) {
         List<FieldDef> fields = record.getFields();
 
-        List<String> nameRow = new ArrayList<String>();
+        List<String> nameRow = new ArrayList<>();
         nameRow.add(nullToEmpty(record.getRecordType()));
         for (FieldDef field : fields) {
             nameRow.add(field.getName());
         }
         l.add(RowKind.HEADER, nameRow);
 
-        List<String> typeRow = new ArrayList<String>();
+        List<String> typeRow = new ArrayList<>();
         typeRow.add("");
         for (FieldDef field : fields) {
             typeRow.add(nullToEmpty(field.getType()));
@@ -285,7 +285,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         l.add(RowKind.HEADER, typeRow);
 
         if (fixed) {
-            List<String> lengthRow = new ArrayList<String>();
+            List<String> lengthRow = new ArrayList<>();
             lengthRow.add("");
             for (FieldDef field : fields) {
                 lengthRow.add(nullToEmpty(field.getLength()));
@@ -295,7 +295,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
         int seq = 1;
         for (List<String> values : record.getRows()) {
-            List<String> dataRow = new ArrayList<String>();
+            List<String> dataRow = new ArrayList<>();
             dataRow.add(sendSync ? String.valueOf(seq++) : "");
             for (String value : values) {
                 dataRow.add(nullToLiteral(value));
@@ -382,7 +382,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @return 版面用の文字列リスト
      */
     private static List<String> literals(List<String> row) {
-        List<String> result = new ArrayList<String>(row.size());
+        List<String> result = new ArrayList<>(row.size());
         for (String value : row) {
             result.add(nullToLiteral(value));
         }

@@ -19,7 +19,7 @@ final class Styles {
     private final ExcelFormatConfig config;
 
     /** 構成キー → スタイル。 */
-    private final Map<String, CellStyle> cache = new HashMap<String, CellStyle>();
+    private final Map<String, CellStyle> cache = new HashMap<>();
 
     /**
      * コンストラクタ。

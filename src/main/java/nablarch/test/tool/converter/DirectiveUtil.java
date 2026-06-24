@@ -34,7 +34,7 @@ public final class DirectiveUtil {
      */
     public static Map<String, String> toStringDirectives(
             Map<String, Object> directives, ValueMapper valueMapper) {
-        Map<String, String> result = new LinkedHashMap<String, String>();
+        Map<String, String> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : directives.entrySet()) {
             Object value = entry.getValue();
             result.put(entry.getKey(),

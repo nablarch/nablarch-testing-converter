@@ -95,8 +95,8 @@ public class XlsFormatReader implements TestDataFormatReader {
     @Override
     public TestDataContainer read(String basePath, String resourceName) {
         List<BlockHeader> headers = adapter.readHeaders(basePath, resourceName);
-        List<TestDataBlock> blocks = new ArrayList<TestDataBlock>();
-        Set<String> processed = new HashSet<String>();
+        List<TestDataBlock> blocks = new ArrayList<>();
+        Set<String> processed = new HashSet<>();
         for (BlockHeader header : headers) {
             DataType type = header.getType();
             if (isTableType(type)) {
@@ -139,13 +139,13 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private List<TestDataBlock> readTableBlocks(String basePath, String resourceName, String groupId, DataType type) {
         List<TableData> tables = adapter.readTables(basePath, resourceName, groupId, type);
-        List<TestDataBlock> result = new ArrayList<TestDataBlock>();
+        List<TestDataBlock> result = new ArrayList<>();
         for (TableData table : tables) {
             String[] columns = table.getColumnNames();
             List<String> columnNames = Arrays.asList(columns);
-            List<List<String>> rows = new ArrayList<List<String>>();
+            List<List<String>> rows = new ArrayList<>();
             for (int r = 0; r < table.size(); r++) {
-                List<String> row = new ArrayList<String>(columns.length);
+                List<String> row = new ArrayList<>(columns.length);
                 for (String column : columns) {
                     Object value = table.getValue(r, column);
                     row.add(value == null ? null : stripQuotes(value.toString()));
@@ -167,7 +167,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private TestDataBlock readListMapBlock(String basePath, String resourceName, BlockHeader header) {
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
-        List<String> columnNames = new ArrayList<String>();
+        List<String> columnNames = new ArrayList<>();
         for (Map<String, String> mapRow : mapRows) {
             for (String key : mapRow.keySet()) {
                 if (!columnNames.contains(key)) {
@@ -175,9 +175,9 @@ public class XlsFormatReader implements TestDataFormatReader {
                 }
             }
         }
-        List<List<String>> rows = new ArrayList<List<String>>();
+        List<List<String>> rows = new ArrayList<>();
         for (Map<String, String> mapRow : mapRows) {
-            List<String> row = new ArrayList<String>(columnNames.size());
+            List<String> row = new ArrayList<>(columnNames.size());
             for (String column : columnNames) {
                 String value = mapRow.get(column);
                 row.add(value == null ? null : stripQuotes(value));
@@ -199,7 +199,7 @@ public class XlsFormatReader implements TestDataFormatReader {
     private List<TestDataBlock> readFileBlocks(String basePath, String resourceName, String groupId, DataType type) {
         List<? extends DataFile> files = adapter.readFiles(basePath, resourceName, groupId, type);
         FileDataBlock.FileType fileType = isFixed(type) ? FileDataBlock.FileType.FIXED : FileDataBlock.FileType.VARIABLE;
-        List<TestDataBlock> result = new ArrayList<TestDataBlock>();
+        List<TestDataBlock> result = new ArrayList<>();
         for (DataFile file : files) {
             FileView view = TestCoreFileAdapter.read(file);
             List<List<String>> bodyLines =
@@ -235,7 +235,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                         DataType.MESSAGE);
         // FW ヘッダ値は本体 MessageParser が生文字列として返すため、QuotationTrimmer 記法は使われない。
         // stripQuotes は適用しない。
-        Map<String, String> fwHeaderFields = new LinkedHashMap<String, String>(message.getFwHeader());
+        Map<String, String> fwHeaderFields = new LinkedHashMap<>(message.getFwHeader());
         return new MessageDataBlock(DataType.MESSAGE, header.getGroupId(), header.getIdentifier(),
                 toStringDirectives(view.getDirectives()), fwHeaderFields,
                 toRecordLayouts(view, bodyLines, true));
@@ -260,7 +260,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private List<TestDataBlock> readSendSyncBlocks(String basePath, String resourceName, String groupId, DataType type) {
         List<FixedLengthFile> bodies = adapter.readSendSyncMessages(basePath, resourceName, groupId, type);
-        List<TestDataBlock> result = new ArrayList<TestDataBlock>();
+        List<TestDataBlock> result = new ArrayList<>();
         for (FixedLengthFile body : bodies) {
             String identifier = body.getPath();
             FileView view = TestCoreFileAdapter.read(body);
@@ -268,7 +268,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                     adapter.readBlockBodyLines(basePath, resourceName, groupId, identifier, type);
             result.add(new MessageDataBlock(type, groupId, identifier,
                     toStringDirectives(view.getDirectives()),
-                    new LinkedHashMap<String, String>(),
+                    new LinkedHashMap<>(),
                     toRecordLayouts(view, bodyLines, true)));
         }
         return result;
@@ -290,7 +290,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return レコードレイアウト群
      */
     private List<RecordLayout> toRecordLayouts(FileView view, List<List<String>> bodyLines, boolean fixed) {
-        List<RecordLayout> records = new ArrayList<RecordLayout>();
+        List<RecordLayout> records = new ArrayList<>();
         int idx = 0;
         boolean first = true;
         for (FragmentView fragment : view.getFragments()) {
@@ -320,17 +320,17 @@ public class XlsFormatReader implements TestDataFormatReader {
                 originalLengths = tail(requireLine(bodyLines, idx, names, "長さ行"));
                 idx++;
             }
-            List<FieldDef> fields = new ArrayList<FieldDef>(names.size());
+            List<FieldDef> fields = new ArrayList<>(names.size());
             for (int i = 0; i < names.size(); i++) {
                 String type = i < originalTypes.size() ? originalTypes.get(i) : null;
                 String length = originalLengths != null && i < originalLengths.size() ? originalLengths.get(i) : null;
                 fields.add(new FieldDef(names.get(i), type, length));
             }
-            List<List<String>> rows = new ArrayList<List<String>>(fragment.getValues().size());
+            List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
             for (int v = 0; v < fragment.getValues().size(); v++) {
                 List<String> valueCells = tail(requireLine(bodyLines, idx, names, "値行"));
                 idx++;
-                List<String> row = new ArrayList<String>(names.size());
+                List<String> row = new ArrayList<>(names.size());
                 for (int i = 0; i < names.size(); i++) {
                     String cellValue = i < valueCells.size() ? valueCells.get(i) : "";
                     row.add(stripQuotes(cellValue));
