@@ -626,6 +626,83 @@ public class XlsFormatReaderTest {
         assertThat(identifiers, hasItem("RM21AA0104_02"));
     }
 
+    // ---------------------------------------------- record-separator symbol conversion
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値 {@code CRLF} を設定した行。
+     * When : {@code read}。
+     * Then : 本体が {@code CRLF} を実改行文字（{@code \r\n}）へ変換し、{@code normalizeDirectiveValue} が
+     *        逆正規化して {@code "CRLF"} シンボルを FileDataBlock のディレクティブへ返す。
+     */
+    @Test
+    public void readNormalizesRecordSeparatorCrlfSymbol() {
+        // Given
+        String resource = "book/readNormalizesRecordSeparatorCrlfSymbol";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        lines.add(row("record-separator", "CRLF"));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("record-separator"), is("CRLF"));
+    }
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値 {@code LF} を設定した行。
+     * When : {@code read}。
+     * Then : 本体が {@code LF} を実改行文字（{@code \n}）へ変換し、{@code normalizeDirectiveValue} が
+     *        逆正規化して {@code "LF"} シンボルを FileDataBlock のディレクティブへ返す。
+     */
+    @Test
+    public void readNormalizesRecordSeparatorLfSymbol() {
+        // Given
+        String resource = "book/readNormalizesRecordSeparatorLfSymbol";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        lines.add(row("record-separator", "LF"));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("record-separator"), is("LF"));
+    }
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値 {@code CR} を設定した行。
+     * When : {@code read}。
+     * Then : 本体が {@code CR} を実改行文字（{@code \r}）へ変換し、{@code normalizeDirectiveValue} が
+     *        逆正規化して {@code "CR"} シンボルを FileDataBlock のディレクティブへ返す。
+     */
+    @Test
+    public void readNormalizesRecordSeparatorCrSymbol() {
+        // Given
+        String resource = "book/readNormalizesRecordSeparatorCrSymbol";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        lines.add(row("record-separator", "CR"));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("record-separator"), is("CR"));
+    }
+
     // ------------------------------------------------------------------ wiring / robustness
 
     /**

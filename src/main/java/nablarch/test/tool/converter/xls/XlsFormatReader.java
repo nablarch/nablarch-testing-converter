@@ -221,6 +221,8 @@ public class XlsFormatReader implements TestDataFormatReader {
     private TestDataBlock readMessageBlock(String basePath, String resourceName, BlockHeader header) {
         MessageData message = adapter.readMessage(basePath, resourceName, header.getIdentifier());
         if (message == null) {
+            // ヘッダスキャンで MESSAGE= マーカーを検出したが、本体パーサが同 ID のデータを見つけられない場合。
+            // 本体の MessageParser が空結果を返したとき adapter.readMessage は null を返す（正常系）。
             return null;
         }
         FixedLengthFile body = message.getBody();

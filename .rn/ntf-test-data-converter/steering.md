@@ -129,14 +129,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `XlsFormatReader#normalizeDirectiveValue`: record-separator の CRLF/LF/CR シンボル変換（L394/L408/L422）のテストを追加する
-- [ ] `XlsFormatReader#readMessageBlock`: `message == null → return null` パス（MESSAGE ブロック不在）のテストを追加する
-- [ ] `mvn test` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-7.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
-- [ ] user review
+- [x] `XlsFormatReader#normalizeDirectiveValue`: record-separator の CRLF/LF/CR シンボル変換（L394/L408/L422）のテストを追加する
+- [x] `XlsFormatReader#readMessageBlock`: `message == null → return null` パス（MESSAGE ブロック不在）のテストを追加する
+- [x] `mvn test` で全 PASS を確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-7.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review ✓
 
 **Completion criteria**:
 
