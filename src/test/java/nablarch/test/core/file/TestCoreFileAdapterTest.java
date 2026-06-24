@@ -9,8 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import nablarch.test.core.file.TestCoreFileAdapter.FileView;
-import nablarch.test.core.file.TestCoreFileAdapter.FragmentView;
 
 import org.junit.Test;
 
