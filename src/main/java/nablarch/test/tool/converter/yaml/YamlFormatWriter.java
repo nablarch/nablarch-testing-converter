@@ -151,7 +151,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param block テーブルブロック
      */
     private void emitTable(StringBuilder sb, TableDataBlock block) {
-        Seq entry = new Seq(sb, 1);
+        YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("table", block.getIdentifier());
         emitMapRows(sb, entry, block.getColumnNames(), block.getRows());
@@ -164,7 +164,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param block LIST_MAP ブロック
      */
     private void emitListMap(StringBuilder sb, ListMapBlock block) {
-        Seq entry = new Seq(sb, 1);
+        YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("id", block.getIdentifier());
         emitMapRows(sb, entry, block.getColumnNames(), block.getRows());
@@ -177,7 +177,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param block ファイルブロック
      */
     private void emitFile(StringBuilder sb, FileDataBlock block) {
-        Seq entry = new Seq(sb, 1);
+        YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("path", block.getIdentifier());
         entry.prop("type", block.getFileType() == FileDataBlock.FileType.FIXED ? "fixed" : "variable");
@@ -196,7 +196,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param block メッセージブロック
      */
     private void emitMessage(StringBuilder sb, MessageDataBlock block) {
-        Seq entry = new Seq(sb, 1);
+        YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("id", block.getIdentifier());
         emitMap(sb, entry, "directives", block.getDirectives());
@@ -214,7 +214,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param entry   エントリ
      * @param groupId 整形済みグループ ID
      */
-    private static void emitGroupId(Seq entry, String groupId) {
+    private static void emitGroupId(YamlSeq entry, String groupId) {
         String raw = rawGroup(groupId);
         if (raw != null) {
             entry.prop("group_id", raw);
@@ -229,7 +229,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param columns カラム名（記述順）
      * @param rows    行（カラムと同順）
      */
-    private void emitMapRows(StringBuilder sb, Seq parent, List<String> columns, List<List<String>> rows) {
+    private void emitMapRows(StringBuilder sb, YamlSeq parent, List<String> columns, List<List<String>> rows) {
         if (rows.isEmpty()) {
             parent.line(key("rows") + ": []");
             return;
@@ -237,7 +237,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header("rows");
         int rowLevel = parent.childLevel();
         for (List<String> row : rows) {
-            Seq item = new Seq(sb, rowLevel);
+            YamlSeq item = new YamlSeq(sb, rowLevel);
             if (columns.isEmpty()) {
                 item.line("{}");
                 continue;
@@ -255,14 +255,14 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param parent  親エントリ
      * @param records レコードレイアウト群
      */
-    private void emitRecords(StringBuilder sb, Seq parent, List<RecordLayout> records) {
+    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records) {
         if (records.isEmpty()) {
             return;
         }
         parent.header("records");
         int recordLevel = parent.childLevel();
         for (RecordLayout record : records) {
-            Seq item = new Seq(sb, recordLevel);
+            YamlSeq item = new YamlSeq(sb, recordLevel);
             if (record.getRecordType() != null) {
                 item.prop("record_type", record.getRecordType());
             }
@@ -279,7 +279,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param keyName キー名
      * @param map     マップ（記述順）
      */
-    private void emitMap(StringBuilder sb, Seq parent, String keyName, Map<String, String> map) {
+    private void emitMap(StringBuilder sb, YamlSeq parent, String keyName, Map<String, String> map) {
         if (map.isEmpty()) {
             return;
         }
@@ -301,7 +301,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param renderer 各要素のフロー記法レンダラ
      * @param <T>      要素型
      */
-    private <T> void emitFlowList(StringBuilder sb, Seq parent, String keyName, List<T> items,
+    private <T> void emitFlowList(StringBuilder sb, YamlSeq parent, String keyName, List<T> items,
                                   Function<T, String> renderer) {
         if (items.isEmpty()) {
             parent.line(key(keyName) + ": []");
@@ -310,7 +310,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header(keyName);
         int itemLevel = parent.childLevel();
         for (T item : items) {
-            new Seq(sb, itemLevel).line(renderer.apply(item));
+            new YamlSeq(sb, itemLevel).line(renderer.apply(item));
         }
     }
 
@@ -360,7 +360,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param value 値（{@code null} 可）
      * @return YAML スカラ文字列
      */
-    private static String q(String value) {
+    static String q(String value) {
         if (value == null) {
             return "null";
         }
@@ -374,7 +374,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param k キー
      * @return キー文字列
      */
-    private static String key(String k) {
+    static String key(String k) {
         return isPlainSafeKey(k) ? k : q(k);
     }
 
@@ -403,7 +403,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param level レベル
      * @return インデント文字列
      */
-    private static String ind(int level) {
+    static String ind(int level) {
         StringBuilder b = new StringBuilder(level * 2);
         for (int i = 0; i < level; i++) {
             b.append("  ");
@@ -455,77 +455,4 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         }
     }
 
-    /**
-     * YAML のシーケンス項目（マップ）を「先頭プロパティを {@code - } 行に載せ、以降を字下げ」して出力する補助。
-     * <p>
-     * 1 項目は自身のレベル {@code level} を持ち、{@code - } は {@code ind(level)} に、各プロパティの内容は
-     * {@code ind(level+1)} に揃う。
-     * </p>
-     */
-    private static final class Seq {
-
-        /** 出力先。 */
-        private final StringBuilder sb;
-
-        /** 項目のレベル（{@code - } の字下げ）。 */
-        private final int level;
-
-        /** 先頭行（{@code - } を載せる行）が未出力なら真。 */
-        private boolean dashPending = true;
-
-        /**
-         * @param sb    出力先
-         * @param level 項目のレベル
-         */
-        Seq(StringBuilder sb, int level) {
-            this.sb = sb;
-            this.level = level;
-        }
-
-        /**
-         * {@code key: value} のプロパティ行を出力する。
-         *
-         * @param k キー
-         * @param v 値（クォートして出力。{@code null} は {@code null}）
-         */
-        void prop(String k, String v) {
-            line(key(k) + ": " + q(v));
-        }
-
-        /**
-         * {@code key:}（値は後続の字下げで続く）のヘッダ行を出力する。
-         *
-         * @param k キー
-         */
-        void header(String k) {
-            line(key(k) + ":");
-        }
-
-        /**
-         * この項目のプロパティ配下に置く子シーケンス（{@code - } 行）のレベルを返す。
-         * <p>
-         * プロパティ本体は {@code level + 1} に出るので、その子シーケンス項目の {@code - } は
-         * さらに 1 段下げて {@code level + 2} に揃える。
-         * </p>
-         *
-         * @return 子シーケンスのレベル
-         */
-        int childLevel() {
-            return level + 2;
-        }
-
-        /**
-         * 1 行を出力する。先頭行なら {@code - } を載せ、以降は {@code ind(level+1)} に揃える。
-         *
-         * @param content 行の内容
-         */
-        void line(String content) {
-            if (dashPending) {
-                sb.append(ind(level)).append("- ").append(content).append('\n');
-                dashPending = false;
-            } else {
-                sb.append(ind(level + 1)).append(content).append('\n');
-            }
-        }
-    }
 }
