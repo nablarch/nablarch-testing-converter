@@ -96,12 +96,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         Map<String, List<TestDataBlock>> bySection = new LinkedHashMap<String, List<TestDataBlock>>();
         for (TestDataBlock block : section.getBlocks()) {
             String key = sectionKey(block.getDataType());
-            List<TestDataBlock> list = bySection.get(key);
-            if (list == null) {
-                list = new ArrayList<TestDataBlock>();
-                bySection.put(key, list);
-            }
-            list.add(block);
+            bySection.computeIfAbsent(key, k -> new ArrayList<>()).add(block);
         }
 
         StringBuilder sb = new StringBuilder();
