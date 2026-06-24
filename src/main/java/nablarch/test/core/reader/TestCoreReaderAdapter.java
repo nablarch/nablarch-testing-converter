@@ -427,6 +427,8 @@ public class TestCoreReaderAdapter {
             }
         }
 
+        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
+        // TestDataParsingTemplate の契約上、実装は必須。
         @Override
         void onReadLine(List<String> line) {
             // ブロック本体は解析しない
@@ -519,6 +521,8 @@ public class TestCoreReaderAdapter {
             }
         }
 
+        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
+        // TestDataParsingTemplate の契約上、実装は必須。
         @Override
         void onReadLine(List<String> line) {
             // parse を上書きしているため未使用

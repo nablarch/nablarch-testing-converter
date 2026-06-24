@@ -38,6 +38,7 @@ final class StubDbInfo implements DbInfo {
         return Types.VARCHAR;
     }
 
+    // 以下のメソッドは DbInfo インタフェース契約を満たすためのみ存在し、読み込み経路からは呼ばれない。
     @Override
     public String[] getPrimaryKeys(String tabName) {
         throw notOnReadPath("getPrimaryKeys");

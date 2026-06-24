@@ -69,6 +69,7 @@ public final class ConverterFileFilter {
                 .map(Path::getParent)
                 .forEach(dirs::add);
         } catch (IOException e) {
+            // Files.walk はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
             throw new UncheckedIOException("failed to scan input directory: " + inputRoot, e);
         }
         return dirs.stream()
@@ -94,6 +95,7 @@ public final class ConverterFileFilter {
                        .sorted()
                        .collect(Collectors.toList());
         } catch (IOException e) {
+            // Files.walk はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
             throw new UncheckedIOException("failed to scan input directory: " + inputRoot, e);
         }
     }

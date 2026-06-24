@@ -305,6 +305,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             // 器（断片構造）を権威とし、生行がそれと一致することを各断片の名前行で検証する。
             // 一致しなければ器↔生行の対応が破綻している＝前提崩れ。誤った原文を静かに充填せず
             // 即座に失敗させる（StubDbInfo の番人コードと同じ思想。設計書 §共通）。
+            // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
             if (idx >= bodyLines.size() || !tail(bodyLines.get(idx)).equals(names)) {
                 throw new IllegalStateException(
                         "器の断片構造と生行が不整合です。名前行 names=" + names + " が生行に見つかりません。");
@@ -352,6 +353,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @throws IllegalStateException 当該位置に生行が存在しない場合
      */
     private static List<String> requireLine(List<List<String>> bodyLines, int idx, List<String> names, String rowKind) {
+        // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
         if (idx >= bodyLines.size()) {
             throw new IllegalStateException(
                     "器の断片構造と生行が不整合です。断片 names=" + names + " の" + rowKind + "が生行に存在しません。");
@@ -453,6 +455,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return 前後ダブルクォートを除去した文字列（長さ1以下または非クォートはそのまま）
      */
     private static String stripQuotes(String value) {
+        // toRecordLayouts の valueCells.get(i) は Excel の空白セルに対して null を返すため、このガードは必須。
         if (value == null) {
             return null;
         }

@@ -139,6 +139,7 @@ public class YamlTestDataValidator {
                         "[V-SCH] スキーマ非適合: " + schemaError.getMessage()));
             }
         } catch (RuntimeException e) {
+            // networknt バリデータは不正入力に対して非チェック例外を送出することがある。リンタ自身が停止しないよう検証エラーに変換する。
             errors.add(new ValidationError(filePath, "", "[V-SCH] スキーマ検証エラー: " + e.getMessage()));
         }
 
@@ -246,12 +247,14 @@ public class YamlTestDataValidator {
 
     private Schema loadSchema() {
         try (InputStream in = getClass().getResourceAsStream(SCHEMA_RESOURCE)) {
+            // null はスキーマリソースがクラスパス上に存在しないことを意味する（配置ミス・ビルド漏れ等）。
             if (in == null) {
                 throw new IllegalStateException("スキーマリソースが見つかりません: " + SCHEMA_RESOURCE);
             }
             SchemaRegistry registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
             return registry.getSchema(in, InputFormat.JSON);
         } catch (IOException e) {
+            // InputStream 操作が宣言するチェック例外。try-with-resources の close でも発生しうる。
             throw new IllegalStateException("スキーマのロードに失敗しました: " + SCHEMA_RESOURCE, e);
         }
     }
