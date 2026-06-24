@@ -474,7 +474,7 @@ public class TestCoreReaderAdapterTest {
     /**
      * Given: FW 制御ヘッダ（{@code ${...}}を含む）を持つ MESSAGE ブロック。
      * When : {@code readMessage} を呼ぶ。
-     * Then : {@link TestCoreReaderAdapter.MessageData}が返り、FW ヘッダ値が記法のまま（未加工）。
+     * Then : {@link MessageData}が返り、FW ヘッダ値が記法のまま（未加工）。
      */
     @Test
     public void readMessageReturnsRawMessagePool() {
@@ -489,7 +489,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        TestCoreReaderAdapter.MessageData message = adapter.readMessage(DIR, resource, "msg1");
+        MessageData message = adapter.readMessage(DIR, resource, "msg1");
 
         // Then
         assertNotNull(message);
@@ -517,7 +517,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        TestCoreReaderAdapter.MessageData message = adapter.readMessage(DIR, resource, "missing");
+        MessageData message = adapter.readMessage(DIR, resource, "missing");
 
         // Then
         assertThat(message, is(nullValue()));
@@ -644,7 +644,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TestCoreReaderAdapter.BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(4));
@@ -677,7 +677,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TestCoreReaderAdapter.BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(1));
@@ -707,7 +707,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TestCoreReaderAdapter.BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(2));
@@ -731,7 +731,7 @@ public class TestCoreReaderAdapterTest {
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TestCoreReaderAdapter.BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.isEmpty(), is(true));
