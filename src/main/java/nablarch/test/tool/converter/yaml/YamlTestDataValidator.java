@@ -1,9 +1,10 @@
 package nablarch.test.tool.converter.yaml;
 
 import com.networknt.schema.InputFormat;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SpecificationVersion;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
 import org.snakeyaml.engine.v2.api.Load;
 import org.snakeyaml.engine.v2.api.LoadSettings;
 import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
@@ -50,6 +51,19 @@ import java.util.Set;
 public class YamlTestDataValidator {
 
     private static final String SCHEMA_RESOURCE = "/nablarch/test/ntf-testdata-yaml-schema.json";
+
+    private static final JsonSchema JSON_SCHEMA;
+
+    static {
+        try (InputStream in = YamlTestDataValidator.class.getResourceAsStream(SCHEMA_RESOURCE)) {
+            if (in == null) {
+                throw new IllegalStateException("スキーマリソースが見つかりません: " + SCHEMA_RESOURCE);
+            }
+            JSON_SCHEMA = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012).getSchema(in);
+        } catch (IOException e) {
+            throw new IllegalStateException("スキーマのロードに失敗しました: " + SCHEMA_RESOURCE, e);
+        }
+    }
 
     /**
      * 既知のディレクティブ名。{@code directives:} のキー検証（V-DKEY）と、{@code fw_header:} への
@@ -100,16 +114,14 @@ public class YamlTestDataValidator {
         }
         Arrays.sort(yamlFiles, Comparator.comparing(File::getName));
 
-        Schema schema = loadSchema();
-
         List<ValidationError> errors = new ArrayList<>();
         for (File yamlFile : yamlFiles) {
-            errors.addAll(validateFile(yamlFile, schema));
+            errors.addAll(validateFile(yamlFile, JSON_SCHEMA));
         }
         return errors;
     }
 
-    private List<ValidationError> validateFile(File yamlFile, Schema schema) {
+    private List<ValidationError> validateFile(File yamlFile, JsonSchema schema) {
         String filePath = yamlFile.getAbsolutePath();
         List<ValidationError> errors = new ArrayList<>();
 
@@ -132,8 +144,7 @@ public class YamlTestDataValidator {
 
         // V-SCH: スキーマ適合検証（解析済みのため安全。parser 差異による例外も握って報告に変える）
         try {
-            // com.networknt.schema.Error は java.lang.Error と衝突するため FQCN で参照する
-            for (com.networknt.schema.Error schemaError : schema.validate(yamlText, InputFormat.YAML)) {
+            for (ValidationMessage schemaError : schema.validate(yamlText, InputFormat.YAML)) {
                 errors.add(new ValidationError(filePath,
                         schemaError.getInstanceLocation().toString(),
                         "[V-SCH] スキーマ非適合: " + schemaError.getMessage()));
@@ -243,20 +254,6 @@ public class YamlTestDataValidator {
             }
         }
         return errors;
-    }
-
-    private Schema loadSchema() {
-        try (InputStream in = getClass().getResourceAsStream(SCHEMA_RESOURCE)) {
-            // null はスキーマリソースがクラスパス上に存在しないことを意味する（配置ミス・ビルド漏れ等）。
-            if (in == null) {
-                throw new IllegalStateException("スキーマリソースが見つかりません: " + SCHEMA_RESOURCE);
-            }
-            SchemaRegistry registry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
-            return registry.getSchema(in, InputFormat.JSON);
-        } catch (IOException e) {
-            // InputStream 操作が宣言するチェック例外。try-with-resources の close でも発生しうる。
-            throw new IllegalStateException("スキーマのロードに失敗しました: " + SCHEMA_RESOURCE, e);
-        }
     }
 
     /**
