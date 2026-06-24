@@ -224,6 +224,32 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 全移動ファイルが本体現ブランチと package/import を除いて完全一致する（diff 結果がゼロ）
 - 本体・yaml リポジトリに変更が加えられていない
 
+### #9: 分類B — Java イディオム コメント追加（4箇所）
+
+**Purpose**: カバレッジ未到達だが Java イディオム/防御的コードとして正当な4箇所にコメントを追加し、読み手の混乱を防ぐ。
+
+**Prerequisites**: #8
+
+**Steps**:
+
+- [x] `XlsFormatWriter`/`YamlFormatWriter` の `parent != null` ガードにコメント追加
+- [x] `XlsFormatWriter`/`YamlFormatWriter` の `isMarkerColumn` null チェックにコメント追加
+- [x] `DataFormat` switch の `default: throw IllegalStateException` にコメント追加
+- [x] `YamlFormatHandler` の `catch (IOException e)` → UncheckedIOException にコメント追加
+- [x] self-check（OK/NG per completion criterion、checks/task-9.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent）
+- [x] software-engineering expert review（subagent）
+- [x] user review
+
+**Completion criteria**:
+
+- 各箇所にコメントが追加されており、読み手がなぜそのコードが存在するか理解できる
+- コードロジックは一切変更されていない（コメント追加のみ）
+- `mvn test` が全テスト PASS する
+
+---
+
 # Decisions
 
 <!-- 必要に応じて記入 -->
