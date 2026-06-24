@@ -22,6 +22,7 @@ import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.core.util.interpreter.InterpretationContext;
 import nablarch.test.core.util.interpreter.QuotationTrimmer;
+import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
@@ -368,19 +369,21 @@ public class XlsFormatReader implements TestDataFormatReader {
      * {@code HashMap} 由来で記述順を保たない。Excel 経路（判断 A）はこの器固有挙動を受容し、
      * 値は {@link Object#toString()} で文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）
      * null のまま保持し、文字列 {@code "null"} へ化けさせない。
+     * Excel 経路固有の逆正規化（{@link #normalizeDirectiveValue}）を {@link DirectiveUtil#toStringDirectives}
+     * の {@code valueMapper} として差し込む。
      * </p>
      *
      * @param directives 本体ディレクティブ
      * @return 文字列ディレクティブ
      */
     private Map<String, String> toStringDirectives(Map<String, Object> directives) {
-        Map<String, String> result = new LinkedHashMap<String, String>();
-        for (Map.Entry<String, Object> entry : directives.entrySet()) {
-            Object value = entry.getValue();
-            result.put(entry.getKey(),
-                       value == null ? null : normalizeDirectiveValue(entry.getKey(), value.toString()));
-        }
-        return result;
+        return DirectiveUtil.toStringDirectives(directives,
+                new DirectiveUtil.ValueMapper() {
+                    @Override
+                    public String map(String key, String value) {
+                        return normalizeDirectiveValue(key, value);
+                    }
+                });
     }
 
     /**

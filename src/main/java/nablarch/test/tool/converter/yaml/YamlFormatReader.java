@@ -17,6 +17,7 @@ import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.YamlTestCoreAdapter;
 import nablarch.test.core.reader.yaml.YamlMessageBuilder.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
+import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
@@ -533,18 +534,20 @@ public class YamlFormatReader implements TestDataFormatReader {
      * 本体器のディレクティブ値は型変換済み（{@code Charset}・整数等）で、順序も {@code HashMap} 由来で
      * 記述順を保たない。YAML 経路も Excel 経路と対称にこの器固有挙動を受容し、値は {@link Object#toString()} で
      * 文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）null のまま保持する。
+     * 逆正規化は不要のため {@code valueMapper} には素通し（{@code value} をそのまま返す）を渡す。
      * </p>
      *
      * @param directives 本体ディレクティブ
      * @return 文字列ディレクティブ
      */
     private static Map<String, String> toStringDirectives(Map<String, Object> directives) {
-        Map<String, String> result = new LinkedHashMap<String, String>();
-        for (Map.Entry<String, Object> entry : directives.entrySet()) {
-            Object value = entry.getValue();
-            result.put(entry.getKey(), value == null ? null : value.toString());
-        }
-        return result;
+        return DirectiveUtil.toStringDirectives(directives,
+                new DirectiveUtil.ValueMapper() {
+                    @Override
+                    public String map(String key, String value) {
+                        return value;
+                    }
+                });
     }
 
     /**
