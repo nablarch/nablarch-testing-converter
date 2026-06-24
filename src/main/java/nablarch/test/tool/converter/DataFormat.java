@@ -44,6 +44,7 @@ public enum DataFormat {
             case YAML:
                 return new YamlFormatHandler();
             default:
+                // 将来 enum 値が追加された際にハンドラ未実装を即座に検出するための安全網。switch は網羅性をコンパイル時に保証しないため必須。
                 throw new IllegalStateException("no handler for format: " + this);
         }
     }

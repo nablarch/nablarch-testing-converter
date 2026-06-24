@@ -104,6 +104,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         Path file = Paths.get(basePath, container.getName() + EXTENSION);
         try {
             Path parent = file.getParent();
+            // Paths.get がルートパス直下（例: "/foo.xlsx"）を返した場合 getParent() は null になるため、null チェックが必須。
             if (parent != null) {
                 Files.createDirectories(parent);
             }
@@ -188,6 +189,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         List<String> columns = block.getColumnNames();
         l.add(RowKind.HEADER, new ArrayList<String>(columns));
         for (int c = 0; c < columns.size(); c++) {
+            // カラム名が null の場合は isMarkerColumn 内で null チェックして false を返す。null カラムは非マーカーとして扱う。
             if (isMarkerColumn(columns.get(c))) {
                 l.markMarkerColumn(c);
             }

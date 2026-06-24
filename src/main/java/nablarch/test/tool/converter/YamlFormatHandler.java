@@ -83,6 +83,7 @@ final class YamlFormatHandler implements FormatHandler {
                 }
             }
         } catch (IOException e) {
+            // Files.newDirectoryStream が宣言するチェック例外。呼び出し元は IOException を受け取れないため UncheckedIOException でラップする。
             throw new UncheckedIOException("failed to list YAML files: " + yamlDir, e);
         }
         return new ArrayList<>(byName.values());
