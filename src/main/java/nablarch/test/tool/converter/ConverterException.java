@@ -10,7 +10,7 @@ package nablarch.test.tool.converter;
  *
  * @author kiyobot
  */
-public class ConverterException extends RuntimeException {
+public final class ConverterException extends RuntimeException {
 
     /**
      * メッセージを指定して例外を生成する。
