@@ -1,8 +1,8 @@
 # nablarch-testing-converter
 
-Nablarch テストデータを XLS ↔ YAML 間で変換するツール。
+Nablarch テストデータを XLS ↔ YAML 間で変換するツールです。
 
-Maven プラグインとして CLI から実行する方法と、Java API から直接呼び出す方法の2通りで使用できる。
+Maven プラグインとして CLI から実行する方法と、Java API から直接呼び出す方法の2通りで使用できます。
 
 ---
 
@@ -18,7 +18,7 @@ Maven プラグインとして CLI から実行する方法と、Java API から
 </plugin>
 ```
 
-> プロジェクト外から実行する場合（POM なしディレクトリ）も動作する。
+> プロジェクト外から実行する場合（POM なしディレクトリ）も動作します。
 
 ### 実行コマンド
 
@@ -40,7 +40,7 @@ mvn com.nablarch.framework:nablarch-testing-converter:1.0.0-SNAPSHOT:convert \
 | `nablarch-testing-converter.output` | ○ | — | 出力ディレクトリ |
 | `nablarch-testing-converter.overwrite` | — | `false` | `true` にすると既存ファイルを上書きする |
 
-`includes` / `excludes`（glob パターン）・`excludeSheets`（シート名）は pom.xml の `<configuration>` ブロックで指定する。
+`includes` / `excludes`（glob パターン）・`excludeSheets`（シート名）は pom.xml の `<configuration>` ブロックで指定します。
 
 ```xml
 <plugin>
