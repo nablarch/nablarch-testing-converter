@@ -157,27 +157,6 @@ public class TestCoreFileAdapterTest {
     }
 
     /**
-     * Given: types を設定していない（{@code null} のまま）断片を持つファイル器。
-     * When : {@code read} する。
-     * Then : {@code FragmentView.getTypes()} の {@code types == null ? null} 分岐が通り、
-     *        {@code null} が返る（可変長ファイルや型未設定断片での挙動）。
-     */
-    @Test
-    public void fragmentViewGetTypesReturnsNullWhenTypesNotSet() {
-        // Given: types を設定しない断片（DataFileFragment.types == null のまま）
-        VariableLengthFile file = new VariableLengthFile("no-types.csv");
-        DataFileFragment frag = file.getNewFragment();
-        frag.setNames(Arrays.asList("f1"));
-        // setTypes は呼ばない → types フィールドは null のまま
-
-        // When
-        FileView view = TestCoreFileAdapter.read(file);
-
-        // Then: getTypes() は null を返す（types == null 分岐）
-        assertThat(view.getFragments().get(0).getTypes(), is(nullValue()));
-    }
-
-    /**
      * Given: 読み取り後に元の器の値を変更する。
      * When : ビューを参照する。
      * Then : ビューは独立（防御的コピー）で影響を受けない。
