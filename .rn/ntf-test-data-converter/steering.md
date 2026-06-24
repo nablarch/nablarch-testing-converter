@@ -250,22 +250,16 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
-### #10: 分類C — NTF仕様パス テスト追加（8箇所）
+### #10: 分類C — NTF仕様パス テスト追加（4箇所）
 
-**Purpose**: JaCoCo 計測で未カバーだった NTF 仕様内コードパス8箇所にテストを追加し、カバレッジを向上させる。
+**Purpose**: JaCoCo 計測で未カバーだった NTF 仕様内コードパス4箇所にテストを追加し、カバレッジを向上させる。coverage-only テスト（NTF では発生しない入力・到達不能状態の強制・converter から呼ばれないメソッド）は削除する。
 
 **Prerequisites**: #9
 
 **Steps**:
 
-- [ ] `normalizeDirectiveValue` NONE シンボル（record-separator 空文字 → "NONE"）のテスト追加
-- [ ] `normalizeDirectiveValue` 未知値フォールスルー（CRLF/LF/CR/NONE 以外）のテスト追加
-- [ ] `normalizeDirectiveValue` → `stripQuotes`（クォート記法のディレクティブ値）のテスト追加
-- [ ] `YamlFormatWriter#isNeedsQuoting` 制御文字ブランチのテスト追加
-- [ ] `YamlFormatWriter` 非整形 groupId（`[xxx]` 形式でない場合）のテスト追加
-- [ ] `YamlFormatReader` ディレクティブ null 値のテスト追加
-- [ ] `excludeSheet` / `XlsFormatHandler` 除外シート指定のテスト追加
-- [ ] `FragmentView.getTypes()` null ブランチ（可変長ファイル断片）のテスト追加
+- [ ] coverage-only テスト3件を削除する（`serialize_keyContainingControlChar_isQuoted`・`readFile_directiveWithNullValue_preservesNullInDirectives`・`fragmentViewGetTypesReturnsNullWhenTypesNotSet`）
+- [ ] NTF仕様テスト4件が残っていることを確認する（`readNormalizesRecordSeparatorEmptyValueToNoneSymbol`・`readPassesThroughUnknownRecordSeparatorValue`・`readStripsQuotesFromQuotedGenericDirectiveValue`・`skipsExcludedSheetsFromXlsBook`）
 - [ ] `mvn test` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-10.md に記録）
 - [ ] QA expert review（subagent）
@@ -275,7 +269,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Completion criteria**:
 
-- 8箇所すべてのコードパスをカバーするテストが存在する
+- coverage-only テスト3件（`serialize_keyContainingControlChar_isQuoted`・`readFile_directiveWithNullValue_preservesNullInDirectives`・`fragmentViewGetTypesReturnsNullWhenTypesNotSet`）が削除されている
+- NTF仕様テスト4件（`readNormalizesRecordSeparatorEmptyValueToNoneSymbol`・`readPassesThroughUnknownRecordSeparatorValue`・`readStripsQuotesFromQuotedGenericDirectiveValue`・`skipsExcludedSheetsFromXlsBook`）が存在する
 - `mvn test` が全テスト PASS する
 - テスト以外のコードロジックは一切変更されていない
 
@@ -301,31 +296,26 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-(written by /rn:bb, read and reset to this placeholder by /rn:hi)
-
 - **Status**: paused
 - **Date**: 2026-06-24
-- **Last completed**: task #10 のテスト追加（287 PASS）・ユーザーレビュー中断
-- **Next**: task #10 を仕切り直し — カバレッジのためのテスト3件削除、NTF仕様テスト4件のみ残す、その後カバレッジ計測して残課題を確認
+- **Last completed**: task #10 — coverage-only テスト3件削除・3専門家レビュー PASS・mvn test 284件全 PASS
+- **Next**: task #10 ユーザーレビュー承認 → チェックオフ → 次タスク
 - **Notes**: |
 
     ## task #10 の現状
 
-    ユーザーから「カバレッジのためのテスト追加はダメ」と指摘あり。
-    以下3件は coverage-only と判定済み → 削除が必要：
-    - `serialize_keyContainingControlChar_isQuoted`（YamlFormatWriterTest）— 制御文字キーは NTF で発生しない
-    - `readFile_directiveWithNullValue_preservesNullInDirectives`（YamlFormatReaderTest）— reflection で到達不能状態を強制
-    - `fragmentViewGetTypesReturnsNullWhenTypesNotSet`（TestCoreFileAdapterTest）— getTypes() は converter から呼ばれない
+    coverage-only テスト3件（`serialize_keyContainingControlChar_isQuoted`・`readFile_directiveWithNullValue_preservesNullInDirectives`・`fragmentViewGetTypesReturnsNullWhenTypesNotSet`）を削除済み（commit f76cfbf）。
 
-    以下4件は NTF仕様テストとして正当 → 残す：
+    NTF仕様テスト4件は残存：
     - `readNormalizesRecordSeparatorEmptyValueToNoneSymbol`
     - `readPassesThroughUnknownRecordSeparatorValue`
     - `readStripsQuotesFromQuotedGenericDirectiveValue`
     - `skipsExcludedSheetsFromXlsBook`
 
+    nablarch-testing-yaml SNAPSHOT がスキーマバリデーションを追加し、テストデータ YAML が非適合だったエラー13件はユーザー側で yaml を修正・mvn install して解消済み。
+    `mvn test` は現在 284件全 PASS。
+
     ## 再開後の手順
-    1. coverage-only テスト3件を削除してコミット・push
-    2. JaCoCo でカバレッジ計測（上記 Decisions の手順で）
-    3. 「コメントあり箇所を除いてC0/C1 100%か」を確認
-    4. 残課題があればユーザーに相談
-    5. task #10 を steering で整理（NTF仕様テスト4件のみに絞った形に更新）
+    1. ユーザーに PR 確認・承認を求める（https://github.com/nablarch/nablarch-testing-converter/pull/1）
+    2. 承認後、task #10 をチェックオフして completion marker コミット・push
+    3. 次タスクへ進む（全タスク完了であれば Acceptance criteria を提案）
