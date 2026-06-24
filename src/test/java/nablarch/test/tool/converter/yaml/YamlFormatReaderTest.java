@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import nablarch.test.core.file.DataFile;
+import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.YamlTestCoreAdapter;
 import nablarch.test.tool.converter.model.FieldDef;
@@ -585,5 +587,63 @@ public class YamlFormatReaderTest {
     /** 文字列リスト用の {@code list}（型推論補助）。 */
     private static List<String> list(String... values) {
         return new ArrayList<String>(Arrays.asList(values));
+    }
+
+    // ------------------------------------------------------------------------
+    // toStringDirectives — null 値
+    // ------------------------------------------------------------------------
+
+    /**
+     * Given: setup_files エントリの directives に null 値を持つ FixedLengthFile を返すアダプタ
+     *        （リフレクションで {@code DataFile.directives} に null 値エントリを挿入）。
+     * When : {@code read}。
+     * Then : {@code toStringDirectives} の {@code value == null ? null} 分岐が通り、
+     *        null ディレクティブ値が null のまま FileDataBlock のディレクティブに保持される。
+     */
+    @Test
+    public void readFile_directiveWithNullValue_preservesNullInDirectives() throws Exception {
+        // Given: FixedLengthFile を組み立て、DataFile.directives に null 値を直接挿入
+        final FixedLengthFile fileWithNullDirective = new FixedLengthFile("f.dat");
+        nablarch.test.core.file.DataFileFragment frag = fileWithNullDirective.getNewFragment();
+        frag.setNames(Arrays.asList("f1"));
+        frag.setTypes(Arrays.asList("半角英字"));
+        frag.setLengths(Arrays.asList("1"));
+        frag.addValue(Arrays.asList("v"));
+        // DataFile.directives は package-private の Map<String, Object>。
+        // リフレクションで null 値エントリを追加し toStringDirectives の null 分岐を強制的に通す。
+        Field directivesField = nablarch.test.core.file.DataFile.class.getDeclaredField("directives");
+        directivesField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> directivesMap = (Map<String, Object>) directivesField.get(fileWithNullDirective);
+        directivesMap.put("nullable-custom-directive", null);
+
+        // Map から組み立てた固定ファイルエントリ（原文用）
+        final Map<String, Object> yaml = map(
+                "setup_files", list(
+                        map("path", "f.dat", "type", "fixed",
+                                "records", list(map("record_type", "r",
+                                        "fields", list(field("f1", "半角英字", "1")),
+                                        "rows", list(list("v")))))));
+        // アダプタを差し替え：loadRawMap は yaml、readFiles は null 値 directive 入りの FixedLengthFile を返す
+        YamlTestCoreAdapter adapter = new YamlTestCoreAdapter() {
+            @Override
+            public Map<String, Object> loadRawMap(String path, String resource) {
+                return yaml;
+            }
+
+            @Override
+            public List<DataFile> readFiles(String path, String resource, String groupId, DataType type) {
+                List<DataFile> files = new ArrayList<DataFile>();
+                files.add(fileWithNullDirective);
+                return files;
+            }
+        };
+
+        // When
+        TestDataContainer container = new YamlFormatReader(adapter).read(DIR, RESOURCE);
+
+        // Then: null ディレクティブ値は null のまま（文字列 "null" に化けない）
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat(block.getDirectives().get("nullable-custom-directive"), is(nullValue()));
     }
 }

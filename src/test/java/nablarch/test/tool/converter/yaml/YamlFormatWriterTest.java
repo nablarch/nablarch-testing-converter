@@ -501,6 +501,43 @@ public class YamlFormatWriterTest {
         }
     }
 
+    /**
+     * Given: directives キーに制御文字（0x01）を含む MessageDataBlock。
+     * When : {@code serialize}。
+     * Then : {@code isPlainSafeKey} が {@code c < 0x20} 分岐でクォート必要と判定し、
+     *        キーがダブルクォートで囲まれて出力される。
+     */
+    @Test
+    public void serialize_keyContainingControlChar_isQuoted() {
+        // Given: キーに制御文字 0x01 を含む（c < 0x20 分岐をカバー）
+        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "M",
+                directives("keyx", "v"), fwHeader(), Collections.<RecordLayout>emptyList());
+
+        // When / Then: 制御文字を含むキーはクォートされる
+        String yaml = serialize(block);
+        assertTrue(yaml.contains("\"key\\x01x\": \"v\"\n"));
+    }
+
+    /**
+     * Given: {@code [xxx]} 形式でない素のグループ ID を持つ TableDataBlock。
+     * When : {@code serialize}。
+     * Then : {@code rawGroup} の {@code [xxx]} 形式でないフォールスルー経路が通り、
+     *        グループ ID がそのまま {@code group_id} に出力される。
+     */
+    @Test
+    public void serialize_groupIdWithoutBrackets_isUsedAsRawGroupId() {
+        // Given: 整形されていない素のグループ ID（[...] 形式でない）
+        TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "plainGroup", "T",
+                list("C"), rows(row("1")));
+
+        // When
+        String yaml = serialize(block);
+
+        // Then: rawGroup が "[xxx]" 形式でないため groupId をそのまま返し、出力に現れる
+        assertTrue(yaml.contains("  - group_id: \"plainGroup\"\n"));
+        assertTrue(yaml.contains("    table: \"T\"\n"));
+    }
+
     @Test
     public void write_ioError_throwsUncheckedIOException() throws Exception {
         // Given: 親に通常ファイルが居座る出力先（ディレクトリ作成不可）

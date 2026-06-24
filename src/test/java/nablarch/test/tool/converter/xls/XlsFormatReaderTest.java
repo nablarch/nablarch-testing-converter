@@ -860,4 +860,86 @@ public class XlsFormatReaderTest {
         assertThat(kinds, hasItem((Class<?>) ListMapBlock.class));
         assertThat(kinds, hasItem((Class<?>) MessageDataBlock.class));
     }
+
+    // ------------------------------------------------------------------ normalizeDirectiveValue / record-separator
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値として空文字を設定した行。
+     * When : {@code read}。
+     * Then : 本体が空文字をそのまま保持し、{@code normalizeDirectiveValue} が {@code "NONE"} シンボルへ
+     *        変換して FileDataBlock のディレクティブへ返す（仕様 DR-09 の NONE シンボル逆正規化）。
+     */
+    @Test
+    public void readNormalizesRecordSeparatorEmptyValueToNoneSymbol() {
+        // Given
+        String resource = "book/readNormalizesRecordSeparatorEmptyValueToNoneSymbol";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        lines.add(row("record-separator", "NONE"));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then: 本体は "NONE" を空文字列に変換し、normalizeDirectiveValue が "NONE" へ逆正規化する
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("record-separator"), is("NONE"));
+    }
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに {@code record-separator} ディレクティブ値として
+     *        CRLF/LF/CR/NONE のいずれでもないカスタム文字列を設定した行。
+     * When : {@code read}。
+     * Then : {@code normalizeDirectiveValue} がシンボル変換せずその値をそのまま返す
+     *        （record-separator ブロックのフォールスルー経路）。
+     */
+    @Test
+    public void readPassesThroughUnknownRecordSeparatorValue() {
+        // Given: "|" は CRLF/LF/CR/NONE のいずれでもないカスタム区切り文字
+        String resource = "book/readPassesThroughUnknownRecordSeparatorValue";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        // 本体の LineSeparator.evaluate がシンボル変換しない値を渡す。
+        // "|" は本体器がそのまま保持するため normalizeDirectiveValue のフォールスルーに到達する。
+        lines.add(row("record-separator", "|"));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then: 変換されずそのまま保持される
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("record-separator"), is("|"));
+    }
+
+    /**
+     * Given: SETUP_VARIABLE ブロックに非 record-separator・非 field-separator のディレクティブとして
+     *        ダブルクォートで囲まれた値（{@code "foo"}）を設定した行。
+     * When : {@code read}。
+     * Then : {@code normalizeDirectiveValue} が QuotationTrimmer 記法と判定し、
+     *        {@code stripQuotes} を適用してクォートを除去した {@code foo} を返す。
+     */
+    @Test
+    public void readStripsQuotesFromQuotedGenericDirectiveValue() {
+        // Given: quoting-delimiter ディレクティブの値が Excel 引用符記法 '"foo"'（長さ5 > 2）
+        String resource = "book/readStripsQuotesFromQuotedGenericDirectiveValue";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_VARIABLE=out.csv"));
+        // quoting-delimiter の値を '"foo"'（前後 " で囲まれた長さ5の文字列）とする
+        lines.add(row("quoting-delimiter", "\"foo\""));
+        lines.add(row("data", "f1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "val"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then: '"foo"' から前後クォートが除去されて 'foo' になる
+        FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(file.getDirectives().get("quoting-delimiter"), is("foo"));
+    }
 }

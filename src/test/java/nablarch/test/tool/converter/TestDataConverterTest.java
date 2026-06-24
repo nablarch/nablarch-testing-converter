@@ -397,4 +397,35 @@ public class TestDataConverterTest {
         // Then
         assertThat(count, is(0));
     }
+
+    /**
+     * Given: 2 シート（data/skip）を持つ Excel ブック・excludeSheet=skip の変換リクエスト。
+     * When : XLS→YAML 変換。
+     * Then : excludeSheets に含まれるシート（skip）は変換されず、data シートのみが出力される
+     *        （{@code XlsFormatHandler} の {@code excludeSheets.contains(sheetName)} 分岐カバー）。
+     */
+    @Test
+    public void skipsExcludedSheetsFromXlsBook() {
+        // Given: 2 セクション（data/skip）を持つコンテナを Excel として書き出す
+        TableDataBlock table = sampleTable("USERS");
+        TestDataSection dataSection = new TestDataSection("data",
+                Collections.<TestDataBlock>singletonList(table));
+        TestDataSection skipSection = new TestDataSection("skip",
+                Collections.<TestDataBlock>singletonList(sampleTable("SKIP_TABLE")));
+        TestDataContainer container = new TestDataContainer("BookExclude",
+                Arrays.asList(dataSection, skipSection));
+        new XlsFormatWriter().write(container, in.toString());
+
+        // When: シート "skip" を除外して変換
+        int count = TestDataConverter.convert(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(in).outputPath(out)
+                .excludeSheet("skip")
+                .build());
+
+        // Then: 変換成功・data シートは YAML として出力、skip シートは生成されない
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("BookExclude/data.yaml")), is(true));
+        assertThat(Files.exists(out.resolve("BookExclude/skip.yaml")), is(false));
+    }
 }
