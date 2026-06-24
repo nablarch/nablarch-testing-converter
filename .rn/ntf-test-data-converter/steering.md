@@ -352,7 +352,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: paused
 - **Date**: 2026-06-24
-- **Last completed**: README追記・log.properties追加（task #12 ユーザーレビュー中）
+- **Last completed**: json-schema-validator 依存バージョン修正・YamlTestDataValidator API 移行・エキスパートレビュー対応
 - **Next**: task #10・#11・#12 のユーザーレビュー承認待ち → チェックオフ → Acceptance criteria
 - **Notes**: |
 
@@ -361,12 +361,15 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
     - task #11: pom.xml maven-plugin 化
     - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java、289件全 PASS）
 
-    ## このセッションで追加した修正（task #12 ユーザーFBより）
-    - `src/main/resources/log.properties` を追加（Maven プラグイン実行時の ExceptionInInitializerError 修正）
-      - 原因：プラグイン自身のクラスパスに log.properties が必要。呼び出し元プロジェクトの src/test/resources は見えない
-      - NTF本体の書き方に倣い StandardOutputLogWriter・INFO レベルのシンプル構成
-    - README.md に使い方を追記（Maven プラグイン・Java API 両方）
-    - ブランチ: ntf-test-data-converter、push 済み
+    ## このセッションで実施した修正（nablarch-testing-yaml の依存変更への追従）
+    - nablarch-testing-yaml が json-schema-validator を 1.5.9（Jackson 2.x）に下げたため、
+      このプロジェクトでもテストが全滅（NoClassDefFoundError: com/fasterxml/jackson/...）
+    - 修正内容:
+      1. pom.xml: json-schema-validator 3.0.2 → 1.5.9
+      2. YamlTestDataValidator: Schema/SchemaRegistry/SpecificationVersion → JsonSchema/JsonSchemaFactory/SpecVersion に移行
+      3. JSON_SCHEMA を static final フィールドにキャッシュ（エキスパートレビュー Finding 1 対応）
+    - 289件全 PASS 確認済み
+    - ブランチ: ntf-test-data-converter、未 push（push はユーザー確認後）
 
     ## 再開後の手順
     1. PR（https://github.com/nablarch/nablarch-testing-converter/pull/1）でユーザーレビューを受ける
