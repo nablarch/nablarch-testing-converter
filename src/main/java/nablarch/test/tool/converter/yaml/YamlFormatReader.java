@@ -334,7 +334,7 @@ public class YamlFormatReader implements TestDataFormatReader {
         for (int i = 0; i < fragments.size(); i++) {
             FragmentView fragment = fragments.get(i);
             Map<String, Object> record = alignedRecords.get(i);
-            String recordType = YamlSection.toStr(record.get(YamlSection.FIELD_RECORD_TYPE));
+            String recordType = normalizeRecordType(YamlSection.toStr(record.get(YamlSection.FIELD_RECORD_TYPE)));
             List<FieldDef> fields = toFieldDefs(record);
             List<String> names = fragment.getNames();
             List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
@@ -356,6 +356,14 @@ public class YamlFormatReader implements TestDataFormatReader {
      * @param record 原文レコード Map
      * @return フィールド定義群（記述順）
      */
+    /** "Default" は NTF 仕様に存在しない値（Excelでは空欄）のため null に正規化する。 */
+    private static String normalizeRecordType(String recordType) {
+        if ("Default".equals(recordType) || "default".equals(recordType)) {
+            return null;
+        }
+        return recordType;
+    }
+
     private static List<FieldDef> toFieldDefs(Map<String, Object> record) {
         List<Object> fieldList = YamlSection.getList(record, YamlSection.FIELD_FIELDS);
         List<FieldDef> fields = new ArrayList<>(fieldList.size());

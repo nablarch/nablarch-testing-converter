@@ -260,6 +260,24 @@ public class YamlFormatReaderTest {
         assertThat(block.getRecords().get(0).getRecordType(), is(nullValue()));
     }
 
+    @Test
+    public void readFile_recordTypeDefault_normalizedToNull() {
+        // Given: record_type が "Default"（NTF仕様に存在しない値）
+        Map<String, Object> yaml = map(
+                "setup_files", list(
+                        map("path", "f.csv", "type", "variable",
+                                "records", list(map("record_type", "Default",
+                                        "fields", list(field("f1", "半角英字", null)),
+                                        "rows", list(list("v")))))));
+
+        // When
+        TestDataContainer container = reader(yaml).read(DIR, RESOURCE);
+
+        // Then: "Default" は中間モデルでは null に正規化される
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat(block.getRecords().get(0).getRecordType(), is(nullValue()));
+    }
+
     // ------------------------------------------------------------------------
     // MESSAGE
     // ------------------------------------------------------------------------
