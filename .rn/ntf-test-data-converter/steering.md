@@ -369,23 +369,5 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-06-25
-- **Last completed**: `record_type "Default"` を null に正規化（YamlFormatReader）、ディレクティブ行の3列目以降罫線なし（XlsFormatWriter）— commit d2810a5 push 済み
-- **Next**: task #10 ユーザーレビュー（PR: https://github.com/nablarch/nablarch-testing-converter/pull/1）→ 承認後チェックオフ → Acceptance criteria
-- **Notes**: |
+<!-- rn:state -->
 
-  ## タスク外で実施した修正（d2810a5）
-  - `YamlFormatReader.normalizeRecordType`: `"Default"` / `"default"` → null（NTF仕様にない値。Excelでは0列目空欄が正）
-  - `XlsFormatWriter.render`: DIRECTIVE行の c >= 2 はスタイル未適用（罫線・背景なし）
-  - テスト追加: `readFile_recordTypeDefault_normalizedToNull`
-
-  ## task #10 ユーザーレビュー待ち
-  - coverage-only テスト3件削除（f76cfbf）
-  - NTF仕様テスト4件残存確認済み
-  - PR: https://github.com/nablarch/nablarch-testing-converter/pull/1
-
-  ## 再開後の手順
-  1. task #10 ユーザーレビューを受ける
-  2. 承認後 task #10 をチェックオフして completion marker コミット・push
-  3. Acceptance criteria を実行
