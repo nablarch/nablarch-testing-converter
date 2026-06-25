@@ -13,7 +13,7 @@ import nablarch.test.core.reader.yaml.InterpreterResolver;
 import nablarch.test.core.reader.yaml.YamlFileBuilder;
 import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.core.reader.yaml.YamlMessageBuilder;
-import nablarch.test.core.reader.yaml.YamlMessageBuilder.MessageContent;
+import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
 import nablarch.test.core.reader.yaml.YamlTableDataBuilder;
 

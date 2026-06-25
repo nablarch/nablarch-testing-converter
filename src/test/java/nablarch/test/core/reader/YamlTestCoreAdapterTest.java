@@ -20,7 +20,7 @@ import nablarch.test.core.file.FragmentView;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.file.VariableLengthFile;
 import nablarch.test.core.reader.yaml.YamlLoader;
-import nablarch.test.core.reader.yaml.YamlMessageBuilder.MessageContent;
+import nablarch.test.core.reader.yaml.MessageContent;
 
 import org.junit.After;
 import org.junit.Test;

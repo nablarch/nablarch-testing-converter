@@ -15,7 +15,7 @@ import nablarch.test.core.file.FragmentView;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.YamlTestCoreAdapter;
-import nablarch.test.core.reader.yaml.YamlMessageBuilder.MessageContent;
+import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;

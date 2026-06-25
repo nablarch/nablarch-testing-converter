@@ -323,7 +323,7 @@ public class YamlFormatReaderTest {
             }
 
             @Override
-            public nablarch.test.core.reader.yaml.YamlMessageBuilder.MessageContent readMessage(
+            public nablarch.test.core.reader.yaml.MessageContent readMessage(
                     String path, String resource, String id) {
                 return null;
             }
