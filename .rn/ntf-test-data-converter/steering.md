@@ -359,25 +359,40 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 # State
 
 - **Status**: paused
-- **Date**: 2026-06-24
-- **Last completed**: json-schema-validator 依存バージョン修正・YamlTestDataValidator API 移行・エキスパートレビュー対応
+- **Date**: 2026-06-25
+- **Last completed**: リファクタリング12項目（内部クラス切り出し・重複除去・diamond 統一など）＋ nablarch-testing-yaml 更新追従（MessageContent トップレベル昇格への import 修正）、289件全 PASS
 - **Next**: task #10・#11・#12 のユーザーレビュー承認待ち → チェックオフ → Acceptance criteria
 - **Notes**: |
 
-    ## ユーザーレビュー待ちタスク（2026-06-24）
-    - task #10: coverage-only テスト3件削除（PR: https://github.com/nablarch/nablarch-testing-converter/pull/1）
+    ## ユーザーレビュー待ちタスク
+    - task #10: coverage-only テスト3件削除
     - task #11: pom.xml maven-plugin 化
-    - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java、289件全 PASS）
+    - task #12: ConverterMojo TDD実装（ConverterMojo.java + ConverterMojoTest.java）
+    - PR: https://github.com/nablarch/nablarch-testing-converter/pull/1
 
-    ## このセッションで実施した修正（nablarch-testing-yaml の依存変更への追従）
-    - nablarch-testing-yaml が json-schema-validator を 1.5.9（Jackson 2.x）に下げたため、
-      このプロジェクトでもテストが全滅（NoClassDefFoundError: com/fasterxml/jackson/...）
-    - 修正内容:
-      1. pom.xml: json-schema-validator 3.0.2 → 1.5.9
-      2. YamlTestDataValidator: Schema/SchemaRegistry/SpecificationVersion → JsonSchema/JsonSchemaFactory/SpecVersion に移行
-      3. JSON_SCHEMA を static final フィールドにキャッシュ（エキスパートレビュー Finding 1 対応）
-    - 289件全 PASS 確認済み
-    - ブランチ: ntf-test-data-converter、未 push（push はユーザー確認後）
+    ## 再開後の手順
+    1. PR でユーザーレビューを受ける（task #10・#11・#12 それぞれ）
+    2. 承認後、各タスクをチェックオフして completion marker コミット・push
+    3. 全タスク完了後 Acceptance criteria を実行
+
+    ## このセッションで実施した内容
+    ### リファクタリング（観点2パッケージ移動を除く全項目、289件 PASS）
+    1. ConverterException に final
+    2. YamlFormatWriter.Seq → YamlSeq として別ファイルへ
+    3. XlsFormatWriter ネスト5クラスを別ファイルへ（640行→約280行）
+    4. TestCoreReaderAdapter.BlockHeader/MessageData をトップレベルへ
+    5. TestCoreFileAdapter.FileView/FragmentView をトップレベルへ
+    6. isSendSyncType を XlsDataTypeUtil に集約（重複除去）
+    7. toStringDirectives の重複を DirectiveUtil に抽出
+    8. YamlFormatWriter.serialize を computeIfAbsent に置換
+    9. diamond 演算子を全体統一（54箇所）
+    10. ConverterMojo include/exclude ループをリスト一括設定メソッドに
+    11. XlsFormatReader.toRecordLayouts を4フェーズメソッドに分割
+    12. YamlTestDataValidator.castList/castMap を static 化
+
+    ### nablarch-testing-yaml 更新追従
+    - MessageContent が YamlMessageBuilder 内部クラス → トップレベルクラスに昇格
+    - 影響3ファイルの import を修正（YamlTestCoreAdapter, YamlFormatReader, YamlTestCoreAdapterTest, YamlFormatReaderTest）
 
     ## 再開後の手順
     1. PR（https://github.com/nablarch/nablarch-testing-converter/pull/1）でユーザーレビューを受ける
