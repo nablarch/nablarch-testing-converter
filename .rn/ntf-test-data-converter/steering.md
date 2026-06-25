@@ -332,6 +332,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 # Decisions
 
+## ビルド環境
+
+- Java: OpenJDK 17 (Temurin-17.0.19)
+- Maven: 3.9.9
+- コンパイル・テスト・インストールはすべて Java 17 で実施する
+- 通常のテスト実行コマンド: `mvn clean test -Djacoco.skip=true`
+  （JaCoCo の offline instrumentation が `mvn test` 単体だと失敗するため `-Djacoco.skip=true` が必要）
+
 ## JaCoCo カバレッジ取得手順（設定変更不要）
 
 親 POM に Offline Instrumentation 設定済み。以下のコマンドで取得できる：
