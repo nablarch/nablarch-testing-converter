@@ -47,6 +47,14 @@ final class Styles {
         CellStyle style = cache.get(key);
         if (style == null) {
             style = workbook.createCellStyle();
+            // 内部グリッド線（全辺）
+            if (config.isDrawCellBorder()) {
+                style.setBorderTop(CellStyle.BORDER_THIN);
+                style.setBorderBottom(CellStyle.BORDER_THIN);
+                style.setBorderLeft(CellStyle.BORDER_THIN);
+                style.setBorderRight(CellStyle.BORDER_THIN);
+            }
+            // 外枠罫線（ブロック外周の辺のみ上書き。内部グリッド線 OFF でも外枠は引ける）
             if (config.isDrawBlockBorder()) {
                 if (top) {
                     style.setBorderTop(CellStyle.BORDER_THIN);

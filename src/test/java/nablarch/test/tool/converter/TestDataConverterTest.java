@@ -10,10 +10,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -382,6 +387,55 @@ public class TestDataConverterTest {
         } catch (ConverterException e) {
             assertThat(e.getMessage().startsWith("input directory not found:"), is(true));
         }
+    }
+
+    /**
+     * Given: setup_files／expected_files ブロックを含む YAML コンテナ。
+     * When : YAML→XLS 変換。
+     * Then : Excel が生成され、読み戻すと固定長／可変長ブロックが再現される。
+     *
+     * <p>このテストは nablarch-core-dataformat（scope=test）が実行時クラスパスに存在することを前提とする。
+     * 利用 PJ では nablarch-core-dataformat への依存を持つため問題ない。</p>
+     */
+    @Test
+    public void convertsYamlWithFilesToXls() {
+        // Given: fixed setup_files ブロック
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("file-type", "Fixed");
+        directives.put("text-encoding", "UTF-8");
+        List<FieldDef> fields = Collections.singletonList(new FieldDef("f1", "半角英字", "5"));
+        RecordLayout record = new RecordLayout("data", fields,
+                Collections.singletonList(Collections.singletonList("hello")));
+        FileDataBlock setupFile = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat",
+                FileDataBlock.FileType.FIXED, directives, Collections.singletonList(record));
+
+        // Given: variable expected_files ブロック
+        List<FieldDef> outFields = Collections.singletonList(new FieldDef("c1", "半角英字", null));
+        RecordLayout outRecord = new RecordLayout(null, outFields,
+                Collections.singletonList(Collections.singletonList("world")));
+        FileDataBlock expectedFile = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
+                FileDataBlock.FileType.VARIABLE, Collections.<String, String>emptyMap(),
+                Collections.singletonList(outRecord));
+
+        TestDataSection section = new TestDataSection("withFiles",
+                Arrays.<TestDataBlock>asList(setupFile, expectedFile));
+        TestDataContainer container = new TestDataContainer("FileBook",
+                Collections.singletonList(section));
+        writeYaml(container, in.resolve("FileBook"));
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.YAML, DataFormat.XLS, in, out);
+
+        // Then: Excel が生成され、読み戻すとファイルブロックが FileDataBlock として復元される
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("FileBook.xlsx")), is(true));
+        TestDataContainer read = new XlsFormatReader().read(out.toString(), "FileBook/withFiles");
+        List<TestDataBlock> blocks = read.getSections().get(0).getBlocks();
+        assertThat(blocks.size(), is(2));
+        assertThat(blocks.get(0), org.hamcrest.CoreMatchers.instanceOf(FileDataBlock.class));
+        assertThat(blocks.get(1), org.hamcrest.CoreMatchers.instanceOf(FileDataBlock.class));
+        assertThat(((FileDataBlock) blocks.get(0)).getFileType(), is(FileDataBlock.FileType.FIXED));
+        assertThat(((FileDataBlock) blocks.get(1)).getFileType(), is(FileDataBlock.FileType.VARIABLE));
     }
 
     /**

@@ -433,7 +433,7 @@ public class XlsFormatWriterTest {
     /**
      * Given: 既定設定。
      * When : build。
-     * Then : 識別行・ヘッダ行に背景色、データ行は背景色なし。
+     * Then : 識別行は色なし、列名行に背景色、データ行は背景色なし。
      */
     @Test
     public void appliesHeaderBackgroundColor() {
@@ -446,7 +446,9 @@ public class XlsFormatWriterTest {
 
         // Then
         short header = ExcelFormatConfig.defaults().getHeaderColorIndex();
-        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getFillForegroundColor(), is(header));
+        // 識別行（row 0）は色なし
+        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
+        // 列名行（row 1）に背景色
         assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(header));
         // データ行は背景色なし
         assertThat(sheet.getRow(2).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
@@ -467,16 +469,18 @@ public class XlsFormatWriterTest {
         Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
 
         // Then
-        // 左上セル：上辺・左辺に罫線
-        CellStyle topLeft = sheet.getRow(0).getCell(0).getCellStyle();
+        // row 0 は識別行（META）なので罫線なし
+        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
+        // 列名行（row 1）が外枠上辺の先頭：上辺・左辺に罫線
+        CellStyle topLeft = sheet.getRow(1).getCell(0).getCellStyle();
         assertThat(topLeft.getBorderTop(), is(CellStyle.BORDER_THIN));
         assertThat(topLeft.getBorderLeft(), is(CellStyle.BORDER_THIN));
-        // 右下セル：下辺・右辺に罫線
+        // 右下セル（row 2 = データ行）：下辺・右辺に罫線
         CellStyle bottomRight = sheet.getRow(2).getCell(1).getCellStyle();
         assertThat(bottomRight.getBorderBottom(), is(CellStyle.BORDER_THIN));
         assertThat(bottomRight.getBorderRight(), is(CellStyle.BORDER_THIN));
-        // 内側（上辺）には外枠罫線が無い
-        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
+        // 内側（データ行の上辺）にも内部グリッド線が引かれる（drawCellBorder=true がデフォルト）
+        assertThat(sheet.getRow(2).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_THIN));
     }
 
     /**
@@ -533,6 +537,7 @@ public class XlsFormatWriterTest {
         ExcelFormatConfig config = ExcelFormatConfig.defaults()
                 .withBlankRowsBetweenBlocks(0)
                 .withBlockBorder(false)
+                .withCellBorder(false)
                 .withAutoColumnWidth(false)
                 .withHeaderColor(customHeader);
         TableDataBlock t1 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T1",
@@ -549,8 +554,8 @@ public class XlsFormatWriterTest {
         assertThat(cell(sheet, 3, 0), is("SETUP_TABLE=T2"));
         // 罫線なし
         assertThat(sheet.getRow(0).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
-        // 背景色は上書き値
-        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getFillForegroundColor(), is(customHeader));
+        // 列名行（row 1）の背景色は上書き値（識別行 row 0 は色なし）
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(customHeader));
         // 自動列幅なし → 自動調整時の幅（最長 "SETUP_TABLE=T2" 14 文字＝(14+2)*256）にはならない
         assertThat(sheet.getColumnWidth(0), is(not((14 + 2) * 256)));
     }

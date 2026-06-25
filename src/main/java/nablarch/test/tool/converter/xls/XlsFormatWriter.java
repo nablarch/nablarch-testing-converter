@@ -124,6 +124,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         Styles styles = new Styles(workbook, config);
         for (TestDataSection section : container.getSections()) {
             Sheet sheet = workbook.createSheet(section.getName());
+            sheet.setDisplayGridlines(config.isDisplayGridlines());
             writeSection(sheet, section, styles);
         }
         return workbook;
@@ -137,7 +138,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param styles  セルスタイルキャッシュ
      */
     private void writeSection(Sheet sheet, TestDataSection section, Styles styles) {
-        WidthTracker widths = new WidthTracker();
+        WidthTracker widths = new WidthTracker(config.getMaxColumnWidthChars());
         int rowNum = 0;
         boolean first = true;
         for (TestDataBlock block : section.getBlocks()) {
@@ -181,7 +182,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private BlockLayout layoutColumnRow(ColumnRowDataBlock block) {
         BlockLayout l = new BlockLayout();
-        l.add(RowKind.HEADER, Arrays.asList(marker(block)));
+        l.add(RowKind.META, Arrays.asList(marker(block)));
         List<String> columns = block.getColumnNames();
         l.add(RowKind.HEADER, new ArrayList<>(columns));
         for (int c = 0; c < columns.size(); c++) {
@@ -204,7 +205,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private BlockLayout layoutFile(FileDataBlock block) {
         BlockLayout l = new BlockLayout();
-        l.add(RowKind.HEADER, Arrays.asList(marker(block)));
+        l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         boolean fixed = block.getFileType() == FileDataBlock.FileType.FIXED;
         appendRecords(l, block.getRecords(), fixed, false, block.getIdentifier());
@@ -220,7 +221,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private BlockLayout layoutMessage(MessageDataBlock block) {
         BlockLayout l = new BlockLayout();
-        l.add(RowKind.HEADER, Arrays.asList(marker(block)));
+        l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         appendKeyValueRows(l, block.getFwHeaderFields());
         boolean sendSync = XlsDataTypeUtil.isSendSyncType(block.getDataType());
@@ -312,7 +313,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private void appendKeyValueRows(BlockLayout l, Map<String, String> map) {
         for (Map.Entry<String, String> entry : map.entrySet()) {
-            l.add(RowKind.META, Arrays.asList(entry.getKey(), nullToEmpty(entry.getValue())));
+            l.add(RowKind.DIRECTIVE, Arrays.asList(entry.getKey(), nullToEmpty(entry.getValue())));
         }
     }
 
@@ -333,17 +334,46 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     private int render(Sheet sheet, int startRow, BlockLayout layout, Styles styles, WidthTracker widths) {
         int width = layout.width();
         int rowCount = layout.size();
+        // 外枠罫線の上辺・下辺は HEADER/DIRECTIVE/DATA 行の中での最初・最後で引く
+        int firstBorderRow = -1;
+        int lastBorderRow = -1;
+        for (int r = 0; r < rowCount; r++) {
+            if (layout.kind(r) != RowKind.META) {
+                if (firstBorderRow < 0) {
+                    firstBorderRow = r;
+                }
+                lastBorderRow = r;
+            }
+        }
         for (int r = 0; r < rowCount; r++) {
             Row row = sheet.createRow(startRow + r);
             List<String> cells = layout.row(r);
-            boolean header = layout.kind(r) == RowKind.HEADER;
+            RowKind kind = layout.kind(r);
+            // META 行（識別行・ディレクティブ等）は罫線なし・背景色なし、ブロック幅まで矩形整形
+            if (kind == RowKind.META) {
+                for (int c = 0; c < width; c++) {
+                    String value = c < cells.size() ? cells.get(c) : "";
+                    row.createCell(c).setCellValue(value);
+                    widths.observe(c, value.length());
+                }
+                continue;
+            }
+            boolean header = kind == RowKind.HEADER;
+            boolean directive = kind == RowKind.DIRECTIVE;
             for (int c = 0; c < width; c++) {
                 String value = c < cells.size() ? cells.get(c) : "";
                 Cell cell = row.createCell(c);
                 cell.setCellValue(value);
-                Fill fill = layout.isMarkerColumn(c) ? Fill.MARKER
-                        : (header ? Fill.HEADER : Fill.NONE);
-                cell.setCellStyle(styles.get(r == 0, r == rowCount - 1, c == 0, c == width - 1, fill));
+                Fill fill;
+                if (directive) {
+                    // ディレクティブ行：左列（キー）にヘッダ色、右列（値）は背景なし
+                    fill = c == 0 ? Fill.HEADER : Fill.NONE;
+                } else {
+                    fill = layout.isMarkerColumn(c) ? Fill.MARKER
+                            : (header ? Fill.HEADER : Fill.NONE);
+                }
+                cell.setCellStyle(styles.get(r == firstBorderRow, r == lastBorderRow,
+                        c == 0, c == width - 1, fill));
                 widths.observe(c, value.length());
             }
         }
