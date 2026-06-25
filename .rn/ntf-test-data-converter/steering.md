@@ -371,7 +371,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: paused
 - **Date**: 2026-06-25
-- **Last completed**: PR タイトル・本文を更新（「feat: nablarch-testingからXLS→YAML変換ツールを切り出しMavenプラグイン化」）
+- **Last completed**: Excel出力品質改善（内部グリッド線・目盛り線OFF・列幅上限・識別行スタイル・ディレクティブ行スタイル）をコミット
 - **Next**: task #10・#11・#12 のユーザーレビュー承認待ち → チェックオフ → Acceptance criteria
 - **Notes**: |
 
@@ -385,3 +385,11 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
     1. PR でユーザーレビューを受ける（task #10・#11・#12 それぞれ）
     2. 承認後、各タスクをチェックオフして completion marker コミット・push
     3. 全タスク完了後 Acceptance criteria を実行
+
+    ## 本セッションで追加した機能（タスク外）
+    - ExcelFormatConfig: drawCellBorder / displayGridlines / maxColumnWidthChars 追加
+      - デフォルト: 内部グリッド線ON / 目盛り線OFF / 列幅上限20文字
+    - RowKind.DIRECTIVE 追加: ディレクティブ行はキー列に背景色・値列は無色・罫線あり
+    - 識別行（SETUP_TABLE= 等）はMETA扱い: テキストのみ・罫線なし・背景色なし
+    - SampleConversionTest 追加: サンプルPJのYAML→Excel変換回帰テスト
+    - .output/ を .gitignore に追加（テスト実行時の目視確認用出力先）
