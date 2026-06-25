@@ -334,11 +334,22 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ## ビルド環境
 
-- Java: OpenJDK 17 (Temurin-17.0.19)
+- Java: OpenJDK 17 (Temurin-17.0.19) — `/usr/lib/jvm/temurin-17-jdk-amd64`
 - Maven: 3.9.9
 - コンパイル・テスト・インストールはすべて Java 17 で実施する
-- 通常のテスト実行コマンド: `mvn clean test -Djacoco.skip=true`
-  （JaCoCo の offline instrumentation が `mvn test` 単体だと失敗するため `-Djacoco.skip=true` が必要）
+- `JAVA_HOME` が環境変数に設定されていないため、明示が必要:
+  ```sh
+  JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn ...
+  ```
+- 通常のテスト実行コマンド:
+  ```sh
+  JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
+  ```
+  （JaCoCo の offline instrumentation が `-Djacoco.skip=true` なしだと失敗するため）
+- install コマンド:
+  ```sh
+  JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true
+  ```
 
 ## JaCoCo カバレッジ取得手順（設定変更不要）
 
