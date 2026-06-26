@@ -65,7 +65,7 @@ public final class TestDataConverter {
     public static int convert(ConversionRequest request) {
         FormatHandler source = request.getSourceFormat().handler();
         FormatHandler target = request.getTargetFormat().handler();
-        TestDataFormatWriter writer = target.createWriter();
+        TestDataFormatWriter writer = target.createWriter(request);
 
         int converted = 0;
         for (Path src : source.findSources(request)) {

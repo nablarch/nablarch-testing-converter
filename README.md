@@ -66,7 +66,10 @@ mvn com.nablarch.framework:nablarch-testing-converter:VERSION:convert \
 ## Excel 出力の整形設定
 
 `yaml → xls` 変換時の Excel 出力は `ExcelFormatConfig` で細かく制御できます。
-Java API から `XlsFormatWriter` を直接使う場合のみ有効です（Maven プラグイン経由では既定値が使われます）。
+Maven プラグインの `<configuration>` ブロックで指定する方法と、Java API から直接指定する方法の両方に対応しています。
+
+色名は Apache POI の `IndexedColors` 列挙定数名（例: `AQUA`、`YELLOW`、`LIME`、`PALE_BLUE`）で指定します。
+有効な値の一覧は [Apache POI の IndexedColors Javadoc](https://poi.apache.org/apidocs/dev/org/apache/poi/ss/usermodel/IndexedColors.html) を参照してください。
 
 ### 既定値
 
@@ -83,9 +86,29 @@ Java API から `XlsFormatWriter` を直接使う場合のみ有効です（Mave
 | 目盛り線 | OFF | シートの薄いグリッド（Excel デフォルト）の表示 |
 | ブロック間空行 | 1 行 | データブロック間に挿入する空行数 |
 
-### 設定方法
+### Maven プラグインで設定する
 
-`ExcelFormatConfig.defaults()` をベースに `with*` メソッドで差し替えたコピーを作り、`XlsFormatWriter` に渡します。
+pom.xml の `<configuration>` ブロックに `<xlsOutput>` を追加します。省略したフィールドは既定値が使われます。
+
+```xml
+<plugin>
+  <groupId>com.nablarch.framework</groupId>
+  <artifactId>nablarch-testing-converter</artifactId>
+  <version>VERSION</version>
+  <configuration>
+    <xlsOutput>
+      <setupHeaderColor>AQUA</setupHeaderColor>
+      <expectedHeaderColor>YELLOW</expectedHeaderColor>
+      <drawCellBorder>false</drawCellBorder>
+      <blankRowsBetweenBlocks>2</blankRowsBetweenBlocks>
+    </xlsOutput>
+  </configuration>
+</plugin>
+```
+
+### Java API で設定する
+
+`ExcelFormatConfig.defaults()` をベースに `with*` メソッドで差し替えたコピーを作り、`ConversionRequest.Builder` または `XlsFormatWriter` に渡します。
 
 ```java
 import nablarch.test.tool.converter.xls.ExcelFormatConfig;
@@ -100,8 +123,6 @@ ExcelFormatConfig config = ExcelFormatConfig.defaults()
 
 XlsFormatWriter writer = new XlsFormatWriter(config);
 ```
-
-`IndexedColors` の値は [Apache POI の IndexedColors Javadoc](https://poi.apache.org/apidocs/dev/org/apache/poi/ss/usermodel/IndexedColors.html) を参照してください。
 
 ---
 

@@ -22,6 +22,8 @@ import nablarch.test.tool.converter.model.TestDataSection;
 import nablarch.test.tool.converter.xls.XlsFormatWriter;
 import nablarch.test.tool.converter.yaml.YamlFormatReader;
 
+import nablarch.test.tool.converter.xls.ExcelFormatConfig;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.junit.After;
 import org.junit.Before;
@@ -281,5 +283,62 @@ public class ConverterMojoTest {
         } catch (MojoExecutionException e) {
             assertThat(e.getCause(), instanceOf(ConverterException.class));
         }
+    }
+
+    // ---- テスト: xlsOutput 設定 ----
+
+    /**
+     * Given: xlsOutput を省略する（xls→yaml 変換）。
+     * When : execute() を呼ぶ。
+     * Then : ExcelFormatConfig.defaults() が使われ、変換が正常に完了する。
+     */
+    @Test
+    public void xlsOutputOmitted_usesDefaultConfig() throws Exception {
+        // Given: 入力 Excel を作成
+        TableDataBlock table = sampleTable("USERS");
+        writeXls(oneTable("BookD", "data", table), in);
+
+        ConverterMojo mojo = new ConverterMojo();
+        inject(mojo, "from", "xls");
+        inject(mojo, "to", "yaml");
+        inject(mojo, "input", in.toFile());
+        inject(mojo, "output", out.toFile());
+        // xlsOutput は注入しない（null のまま → defaults が使われる）
+
+        // When
+        mojo.execute();
+
+        // Then
+        assertThat(java.nio.file.Files.exists(out.resolve("BookD/data.yaml")), is(true));
+    }
+
+    /**
+     * Given: xlsOutput に setupHeaderColor=AQUA を指定する。
+     * When : execute() を呼ぶ（xls→yaml 変換。xlsOutput は xls 出力時に適用されるが変換自体は正常完了）。
+     * Then : 変換が正常に完了し、xlsOutput.toExcelFormatConfig() が AQUA のインデックスを返す。
+     */
+    @Test
+    public void xlsOutputWithColor_appliesColorToConfig() throws Exception {
+        // Given: 入力 Excel を作成
+        TableDataBlock table = sampleTable("USERS");
+        writeXls(oneTable("BookE", "data", table), in);
+
+        XlsOutputConfig xlsOutput = new XlsOutputConfig();
+        xlsOutput.setSetupHeaderColor("AQUA");
+
+        ConverterMojo mojo = new ConverterMojo();
+        inject(mojo, "from", "xls");
+        inject(mojo, "to", "yaml");
+        inject(mojo, "input", in.toFile());
+        inject(mojo, "output", out.toFile());
+        inject(mojo, "xlsOutput", xlsOutput);
+
+        // When
+        mojo.execute();
+
+        // Then: 変換が成功し、XlsOutputConfig が AQUA を ExcelFormatConfig に反映する
+        assertThat(java.nio.file.Files.exists(out.resolve("BookE/data.yaml")), is(true));
+        ExcelFormatConfig config = xlsOutput.toExcelFormatConfig();
+        assertThat(config.getSetupHeaderColorIndex(), is(IndexedColors.AQUA.getIndex()));
     }
 }

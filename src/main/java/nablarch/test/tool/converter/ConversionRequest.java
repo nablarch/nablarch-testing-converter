@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import nablarch.test.tool.converter.xls.ExcelFormatConfig;
+
 /**
  * 1 回の変換の意図を表す不変リクエスト。
  *
@@ -46,6 +48,9 @@ public final class ConversionRequest {
     /** 変換対象から除外するシート名（異常系データ等・中間モデル化できないもの）。 */
     private final List<String> excludeSheets;
 
+    /** Excel 出力整形設定（非 null、既定値は {@link ExcelFormatConfig#defaults()}）。 */
+    private final ExcelFormatConfig excelFormatConfig;
+
     /**
      * {@link Builder} から生成する。
      *
@@ -60,6 +65,7 @@ public final class ConversionRequest {
         this.includes = Collections.unmodifiableList(new ArrayList<>(builder.includes));
         this.excludes = Collections.unmodifiableList(new ArrayList<>(builder.excludes));
         this.excludeSheets = Collections.unmodifiableList(new ArrayList<>(builder.excludeSheets));
+        this.excelFormatConfig = builder.excelFormatConfig != null ? builder.excelFormatConfig : ExcelFormatConfig.defaults();
     }
 
     /** @return 変換元形式 */
@@ -102,6 +108,11 @@ public final class ConversionRequest {
         return excludeSheets;
     }
 
+    /** @return Excel 出力整形設定 */
+    public ExcelFormatConfig getExcelFormatConfig() {
+        return excelFormatConfig;
+    }
+
     /**
      * {@link ConversionRequest} のビルダ。
      *
@@ -118,6 +129,7 @@ public final class ConversionRequest {
         private final List<String> includes = new ArrayList<>();
         private final List<String> excludes = new ArrayList<>();
         private final List<String> excludeSheets = new ArrayList<>();
+        private ExcelFormatConfig excelFormatConfig;
 
         /**
          * 変換元形式を設定する。
@@ -249,6 +261,17 @@ public final class ConversionRequest {
             if (sheetNames != null) {
                 sheetNames.forEach(this::excludeSheet);
             }
+            return this;
+        }
+
+        /**
+         * Excel 出力整形設定を設定する。
+         *
+         * @param config Excel 出力整形設定
+         * @return 自身
+         */
+        public Builder excelFormatConfig(ExcelFormatConfig config) {
+            this.excelFormatConfig = config;
             return this;
         }
 

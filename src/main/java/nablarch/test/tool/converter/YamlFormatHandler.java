@@ -49,7 +49,7 @@ final class YamlFormatHandler implements FormatHandler {
     }
 
     @Override
-    public TestDataFormatWriter createWriter() {
+    public TestDataFormatWriter createWriter(ConversionRequest request) {
         return new YamlFormatWriter();
     }
 

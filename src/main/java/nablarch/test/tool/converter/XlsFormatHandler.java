@@ -50,8 +50,8 @@ final class XlsFormatHandler implements FormatHandler {
     }
 
     @Override
-    public TestDataFormatWriter createWriter() {
-        return new XlsFormatWriter();
+    public TestDataFormatWriter createWriter(ConversionRequest request) {
+        return new XlsFormatWriter(request.getExcelFormatConfig());
     }
 
     @Override

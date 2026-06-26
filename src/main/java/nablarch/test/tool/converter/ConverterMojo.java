@@ -54,6 +54,10 @@ public class ConverterMojo extends AbstractMojo {
     @Parameter
     private List<String> excludeSheets;
 
+    /** Excel 出力整形設定（省略時は既定値） */
+    @Parameter
+    private XlsOutputConfig xlsOutput;
+
     /**
      * 変換を実行する。
      *
@@ -80,6 +84,10 @@ public class ConverterMojo extends AbstractMojo {
         builder.includes(includes)
                .excludes(excludes)
                .excludeSheets(excludeSheets);
+
+        if (xlsOutput != null) {
+            builder.excelFormatConfig(xlsOutput.toExcelFormatConfig());
+        }
 
         try {
             int count = TestDataConverter.convert(builder.build());

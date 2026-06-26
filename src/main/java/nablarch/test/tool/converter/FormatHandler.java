@@ -49,9 +49,10 @@ interface FormatHandler {
     /**
      * 本形式を変換先とする Writer を生成する。
      *
+     * @param request 変換リクエスト
      * @return Writer
      */
-    TestDataFormatWriter createWriter();
+    TestDataFormatWriter createWriter(ConversionRequest request);
 
     /**
      * 1 つの読込対象に対応する出力先ディレクトリを解決する。
