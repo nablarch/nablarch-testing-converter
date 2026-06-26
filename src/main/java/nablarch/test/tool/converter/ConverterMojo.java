@@ -86,7 +86,11 @@ public class ConverterMojo extends AbstractMojo {
                .excludeSheets(excludeSheets);
 
         if (xlsOutput != null) {
-            builder.excelFormatConfig(xlsOutput.toExcelFormatConfig());
+            try {
+                builder.excelFormatConfig(xlsOutput.toExcelFormatConfig());
+            } catch (IllegalArgumentException e) {
+                throw new MojoExecutionException("Invalid <xlsOutput> configuration: " + e.getMessage(), e);
+            }
         }
 
         try {

@@ -341,4 +341,33 @@ public class ConverterMojoTest {
         ExcelFormatConfig config = xlsOutput.toExcelFormatConfig();
         assertThat(config.getSetupHeaderColorIndex(), is(IndexedColors.AQUA.getIndex()));
     }
+
+    /**
+     * Given: xlsOutput に無効なカラー名（"NOT_A_COLOR"）を指定する。
+     * When : execute() を呼ぶ。
+     * Then : MojoExecutionException がスローされ、メッセージに "Invalid" が含まれ、
+     *        原因が IllegalArgumentException である。
+     */
+    @Test
+    public void xlsOutputWithInvalidColor_throwsMojoExecutionException() throws Exception {
+        // Given
+        XlsOutputConfig xlsOutput = new XlsOutputConfig();
+        xlsOutput.setSetupHeaderColor("NOT_A_COLOR");
+
+        ConverterMojo mojo = new ConverterMojo();
+        inject(mojo, "from", "xls");
+        inject(mojo, "to", "yaml");
+        inject(mojo, "input", in.toFile());
+        inject(mojo, "output", out.toFile());
+        inject(mojo, "xlsOutput", xlsOutput);
+
+        // When / Then
+        try {
+            mojo.execute();
+            fail("should throw MojoExecutionException");
+        } catch (MojoExecutionException e) {
+            assertThat(e.getCause(), instanceOf(IllegalArgumentException.class));
+            assertThat(e.getMessage().contains("Invalid"), is(true));
+        }
+    }
 }
