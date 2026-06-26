@@ -43,7 +43,7 @@ final class Styles {
      * @return セルスタイル
      */
     CellStyle get(boolean top, boolean bottom, boolean left, boolean right, Fill fill) {
-        String key = (top ? 1 : 0) + "" + (bottom ? 1 : 0) + (left ? 1 : 0) + (right ? 1 : 0) + fill;
+        String key = (top ? 1 : 0) + "" + (bottom ? 1 : 0) + (left ? 1 : 0) + (right ? 1 : 0) + "|" + fill;
         CellStyle style = cache.get(key);
         if (style == null) {
             style = workbook.createCellStyle();
