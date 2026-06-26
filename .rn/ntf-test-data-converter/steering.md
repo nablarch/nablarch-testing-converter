@@ -369,5 +369,34 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-<!-- rn:state -->
+- **Status**: paused
+- **Date**: 2026-06-26
+- **Last completed**: XlsOutputConfig POJO 実装（Maven `<xlsOutput>` 設定）— commit 6da3ae1 push 済み
+- **Next**: task #10 の改善とエキスパートレビュー実施
+- **Notes**: |
+
+  ## 再開後にやること
+
+  ### 1. 改善：不正な色名のエラーハンドリング
+  - `ConverterMojo.execute()` の `try-catch` は `ConverterException | UncheckedIOException` のみ捕捉
+  - `XlsOutputConfig.toExcelFormatConfig()` が投げる `IllegalArgumentException` がそのまま Maven に伝播しスタックトレースになる
+  - `MojoExecutionException` でラップして分かりやすいエラーメッセージにする
+
+  ### 2. 改善：TDD 逆順問題
+  - 現状は実装 → テストの順。RED を確認していない
+  - 再実装は不要だが、次回追加するテストは RED → GREEN の順で書く
+
+  ### 3. エキスパートレビュー（task-workflow.md の Verify フェーズ）
+  対象コミット範囲: faccf3a（META行空セル修正）〜 6da3ae1（XlsOutputConfig）
+  - QA エキスパートレビュー
+  - Language エキスパートレビュー
+  - Software-engineering エキスパートレビュー
+  - 指摘があれば修正 → task #10 ユーザーレビュー → チェックオフ → Acceptance criteria
+
+  ## 今回追加した変更の概要（task #10 スコープ外のバグ修正・機能追加）
+  - faccf3a: META行の余分な空セル除去（Excel テキストオーバーフロー問題）
+  - d53315f: DIRECTIVE行3列目以降の不要なセル生成を除去
+  - 330c58c: ブロック種別ごとのヘッダ色分け（testShots/SETUP/EXPECTED/その他の4色）
+  - fd6e42f: README に Excel 出力整形設定セクション追加
+  - 6da3ae1: XlsOutputConfig POJO — Maven `<xlsOutput>` から整形設定を変更できるように
 
