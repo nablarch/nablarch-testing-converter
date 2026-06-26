@@ -362,14 +362,13 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             boolean header = kind == RowKind.HEADER;
             boolean directive = kind == RowKind.DIRECTIVE;
             for (int c = 0; c < width; c++) {
+                // ディレクティブ行の3列目以降（キー・値以外）はセル不要
+                if (directive && c >= 2) {
+                    continue;
+                }
                 String value = c < cells.size() ? cells.get(c) : "";
                 Cell cell = row.createCell(c);
                 cell.setCellValue(value);
-                // ディレクティブ行の3列目以降（キー・値以外）は罫線なし・背景なし
-                if (directive && c >= 2) {
-                    widths.observe(c, value.length());
-                    continue;
-                }
                 Fill fill;
                 if (directive) {
                     // ディレクティブ行：左列（キー）にヘッダ色、右列（値）は背景なし

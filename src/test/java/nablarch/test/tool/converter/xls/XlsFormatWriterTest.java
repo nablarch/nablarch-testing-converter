@@ -392,8 +392,7 @@ public class XlsFormatWriterTest {
 
         // Then
         assertThat(cell(sheet, 0, 0), is("MESSAGE=msg1"));
-        // FW ヘッダ行はブロック幅（3）へ矩形整形され、末尾に空セルが補填される（読み戻し時に trim される）
-        assertThat(line(sheet, 1), is(Arrays.asList("requestId", "${rid}", "")));
+        assertThat(line(sheet, 1), is(Arrays.asList("requestId", "${rid}")));
         assertThat(line(sheet, 2), is(Arrays.asList("data", "body1", "body2")));
         assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字", "半角英字")));
         assertThat(line(sheet, 4), is(Arrays.asList("", "10", "5")));
