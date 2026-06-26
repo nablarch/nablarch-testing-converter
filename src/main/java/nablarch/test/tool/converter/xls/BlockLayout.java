@@ -32,6 +32,9 @@ final class BlockLayout {
     /** ブロックの識別子。 */
     private final String identifier;
 
+    /** {@link DataType#LIST_MAP} ブロックのうち testShots グループに属する識別子。 */
+    static final String TEST_SHOTS_IDENTIFIER = "testShots";
+
     /**
      * コンストラクタ。
      *
@@ -118,7 +121,7 @@ final class BlockLayout {
      * @return グループ別ヘッダ背景色
      */
     Fill headerFill() {
-        if (dataType == DataType.LIST_MAP && "testShots".equals(identifier)) {
+        if (dataType == DataType.LIST_MAP && TEST_SHOTS_IDENTIFIER.equals(identifier)) {
             return Fill.HEADER_TEST_SHOTS;
         }
         switch (dataType) {

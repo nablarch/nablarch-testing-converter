@@ -146,6 +146,24 @@ public class XlsFormatWriterTest {
     }
 
     /**
+     * Given: 1カラムテーブル（META行の値は1セル）。
+     * When : build。
+     * Then : META行（row 0）は値を持つセルのみ生成される（空の末尾セルは作られない）。
+     */
+    @Test
+    public void metaRowContainsOnlyValueCells() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "ONE_COL",
+                row("A"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then: META行（row 0）は1セルのみ（ブロック幅分に矩形整形されない）
+        assertThat((int) sheet.getRow(0).getLastCellNum(), is(1));
+    }
+
+    /**
      * Given: グループ ID 付き EXPECTED_TABLE。
      * When : build。
      * Then : 識別セルが {@code TYPE[group]=id}。
@@ -529,8 +547,8 @@ public class XlsFormatWriterTest {
         Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
 
         // Then: FW ヘッダ行（row 1）の左列はその他グループ色
-        short color = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
-        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(color));
+        short expected = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
     }
 
     /**
@@ -548,10 +566,10 @@ public class XlsFormatWriterTest {
         Sheet sheet = onlySheet(build(container("book", "sheet", listMap)), "sheet");
 
         // Then
-        short otherColor = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
-        short testShotsColor = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
-        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(otherColor));
-        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(not(testShotsColor)));
+        short expected = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        short notExpected = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(not(notExpected)));
     }
 
     /**
@@ -561,7 +579,7 @@ public class XlsFormatWriterTest {
      */
     @Test
     public void eachGroupHasDistinctDefaultColor() {
-        // Given / When: 既定値の 4 色を取得
+        // Given: 既定値の 4 色を取得
         ExcelFormatConfig defaults = ExcelFormatConfig.defaults();
         short testShots = defaults.getTestShotsHeaderColorIndex();
         short setup = defaults.getSetupHeaderColorIndex();

@@ -1,7 +1,7 @@
 package nablarch.test.tool.converter;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -19,12 +19,14 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
+import nablarch.test.tool.converter.xls.ExcelFormatConfig;
 import nablarch.test.tool.converter.xls.XlsFormatWriter;
 import nablarch.test.tool.converter.yaml.YamlFormatReader;
 
-import nablarch.test.tool.converter.xls.ExcelFormatConfig;
 import org.apache.poi.ss.usermodel.IndexedColors;
+
 import org.apache.maven.plugin.MojoExecutionException;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -325,6 +327,7 @@ public class ConverterMojoTest {
 
         XlsOutputConfig xlsOutput = new XlsOutputConfig();
         xlsOutput.setSetupHeaderColor("AQUA");
+        ExcelFormatConfig expectedConfig = xlsOutput.toExcelFormatConfig();
 
         ConverterMojo mojo = new ConverterMojo();
         inject(mojo, "from", "xls");
@@ -338,8 +341,7 @@ public class ConverterMojoTest {
 
         // Then: 変換が成功し、XlsOutputConfig が AQUA を ExcelFormatConfig に反映する
         assertThat(java.nio.file.Files.exists(out.resolve("BookE/data.yaml")), is(true));
-        ExcelFormatConfig config = xlsOutput.toExcelFormatConfig();
-        assertThat(config.getSetupHeaderColorIndex(), is(IndexedColors.AQUA.getIndex()));
+        assertThat(expectedConfig.getSetupHeaderColorIndex(), is(IndexedColors.AQUA.getIndex()));
     }
 
     /**
@@ -350,7 +352,7 @@ public class ConverterMojoTest {
      */
     @Test
     public void xlsOutputWithInvalidColor_throwsMojoExecutionException() throws Exception {
-        // Given
+        // Given: 無効なカラー名を持つ xlsOutput を設定
         XlsOutputConfig xlsOutput = new XlsOutputConfig();
         xlsOutput.setSetupHeaderColor("NOT_A_COLOR");
 

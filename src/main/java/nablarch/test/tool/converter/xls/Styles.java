@@ -84,10 +84,12 @@ final class Styles {
                     case HEADER_OTHER:
                         color = config.getOtherHeaderColorIndex();
                         break;
-                    default:
-                        // MARKER
+                    case MARKER:
                         color = config.getMarkerColumnColorIndex();
                         break;
+                    default:
+                        // unreachable — new Fill constants must be handled here
+                        throw new IllegalStateException("Unhandled Fill: " + fill);
                 }
                 style.setFillForegroundColor(color);
                 style.setFillPattern(CellStyle.SOLID_FOREGROUND);

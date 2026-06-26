@@ -50,6 +50,7 @@ final class YamlFormatHandler implements FormatHandler {
 
     @Override
     public TestDataFormatWriter createWriter(ConversionRequest request) {
+        // request is intentionally unused — YAML output has no format-specific config
         return new YamlFormatWriter();
     }
 
