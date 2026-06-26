@@ -18,17 +18,26 @@ import org.apache.poi.ss.usermodel.IndexedColors;
  * </p>
  *
  * <p>
- * 背景色は POI のインデックスカラー（{@link IndexedColors#getIndex()}）で保持する。既定は識別行・各種
- * ヘッダ行に淡い青（{@link IndexedColors#PALE_BLUE}）、マーカーカラムに淡い橙
- * （{@link IndexedColors#LIGHT_ORANGE}）を当て、データ行と視覚的に区別する。
+ * ヘッダ背景色はブロック種別グループごとに 4 種類を持つ（{@link Fill} の HEADER_TEST_SHOTS /
+ * HEADER_SETUP / HEADER_EXPECTED / HEADER_OTHER に対応）。マーカーカラムは別途 1 色。
+ * 色はいずれも POI のインデックスカラー（{@link IndexedColors#getIndex()}）で保持する。
  * </p>
  *
  * @author kiyobot
  */
 public final class ExcelFormatConfig {
 
-    /** データタイプ識別行・各種ヘッダ行の背景色（POI インデックスカラー）。 */
-    private final short headerColorIndex;
+    /** testShots グループヘッダ行の背景色（POI インデックスカラー）。 */
+    private final short testShotsHeaderColorIndex;
+
+    /** SETUP 系グループヘッダ行の背景色（POI インデックスカラー）。 */
+    private final short setupHeaderColorIndex;
+
+    /** EXPECTED 系グループヘッダ行の背景色（POI インデックスカラー）。 */
+    private final short expectedHeaderColorIndex;
+
+    /** その他グループヘッダ行の背景色（POI インデックスカラー）。 */
+    private final short otherHeaderColorIndex;
 
     /** マーカーカラムの背景色（POI インデックスカラー）。 */
     private final short markerColumnColorIndex;
@@ -54,17 +63,22 @@ public final class ExcelFormatConfig {
     /**
      * コンストラクタ。
      *
-     * @param headerColorIndex       識別行・ヘッダ行の背景色（POI インデックスカラー）
-     * @param markerColumnColorIndex マーカーカラムの背景色（POI インデックスカラー）
-     * @param autoColumnWidth        列幅を自動調整するか
-     * @param maxColumnWidthChars    自動調整時の列幅上限（文字数、1 以上）
-     * @param drawBlockBorder        ブロック外枠に罫線を引くか
-     * @param drawCellBorder         セル間の内部グリッド線を引くか
-     * @param displayGridlines       シートの目盛り線を表示するか
-     * @param blankRowsBetweenBlocks ブロック間の空行数（0 以上）
+     * @param testShotsHeaderColorIndex testShots グループヘッダ行の背景色（POI インデックスカラー）
+     * @param setupHeaderColorIndex     SETUP 系グループヘッダ行の背景色（POI インデックスカラー）
+     * @param expectedHeaderColorIndex  EXPECTED 系グループヘッダ行の背景色（POI インデックスカラー）
+     * @param otherHeaderColorIndex     その他グループヘッダ行の背景色（POI インデックスカラー）
+     * @param markerColumnColorIndex    マーカーカラムの背景色（POI インデックスカラー）
+     * @param autoColumnWidth           列幅を自動調整するか
+     * @param maxColumnWidthChars       自動調整時の列幅上限（文字数、1 以上）
+     * @param drawBlockBorder           ブロック外枠に罫線を引くか
+     * @param drawCellBorder            セル間の内部グリッド線を引くか
+     * @param displayGridlines          シートの目盛り線を表示するか
+     * @param blankRowsBetweenBlocks    ブロック間の空行数（0 以上）
      * @throws IllegalArgumentException 空行数が負、または列幅上限が 1 未満の場合
      */
-    public ExcelFormatConfig(short headerColorIndex, short markerColumnColorIndex,
+    public ExcelFormatConfig(short testShotsHeaderColorIndex, short setupHeaderColorIndex,
+                             short expectedHeaderColorIndex, short otherHeaderColorIndex,
+                             short markerColumnColorIndex,
                              boolean autoColumnWidth, int maxColumnWidthChars,
                              boolean drawBlockBorder, boolean drawCellBorder,
                              boolean displayGridlines, int blankRowsBetweenBlocks) {
@@ -76,7 +90,10 @@ public final class ExcelFormatConfig {
             throw new IllegalArgumentException(
                     "maxColumnWidthChars must be positive. but was [" + maxColumnWidthChars + "]");
         }
-        this.headerColorIndex = headerColorIndex;
+        this.testShotsHeaderColorIndex = testShotsHeaderColorIndex;
+        this.setupHeaderColorIndex = setupHeaderColorIndex;
+        this.expectedHeaderColorIndex = expectedHeaderColorIndex;
+        this.otherHeaderColorIndex = otherHeaderColorIndex;
         this.markerColumnColorIndex = markerColumnColorIndex;
         this.autoColumnWidth = autoColumnWidth;
         this.maxColumnWidthChars = maxColumnWidthChars;
@@ -90,8 +107,11 @@ public final class ExcelFormatConfig {
      * 見やすい既定値の設定を返す。
      *
      * <ul>
-     *   <li>ヘッダ背景色: 淡い青</li>
-     *   <li>マーカー背景色: 淡い橙</li>
+     *   <li>testShots ヘッダ背景色: ライム（{@link IndexedColors#LIME}）</li>
+     *   <li>SETUP 系ヘッダ背景色: 淡い青（{@link IndexedColors#PALE_BLUE}）</li>
+     *   <li>EXPECTED 系ヘッダ背景色: 淡い黄（{@link IndexedColors#LIGHT_YELLOW}）</li>
+     *   <li>その他ヘッダ背景色: ラベンダー（{@link IndexedColors#LAVENDER}）</li>
+     *   <li>マーカー背景色: 淡い橙（{@link IndexedColors#LIGHT_ORANGE}）</li>
      *   <li>列幅自動調整: ON（上限 20 文字）</li>
      *   <li>外枠罫線: あり</li>
      *   <li>内部グリッド線: あり</li>
@@ -103,7 +123,10 @@ public final class ExcelFormatConfig {
      */
     public static ExcelFormatConfig defaults() {
         return new ExcelFormatConfig(
+                IndexedColors.LIME.getIndex(),
                 IndexedColors.PALE_BLUE.getIndex(),
+                IndexedColors.LIGHT_YELLOW.getIndex(),
+                IndexedColors.LAVENDER.getIndex(),
                 IndexedColors.LIGHT_ORANGE.getIndex(),
                 true, 20,
                 true, true,
@@ -111,14 +134,54 @@ public final class ExcelFormatConfig {
     }
 
     /**
-     * 識別行・ヘッダ行の背景色を差し替えたコピーを返す。
+     * testShots グループヘッダ行の背景色を差し替えたコピーを返す。
      *
      * @param colorIndex 背景色（POI インデックスカラー）
      * @return 差し替え済みコピー
      */
-    public ExcelFormatConfig withHeaderColor(short colorIndex) {
-        return new ExcelFormatConfig(colorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+    public ExcelFormatConfig withTestShotsHeaderColor(short colorIndex) {
+        return new ExcelFormatConfig(colorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
+                drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
+    }
+
+    /**
+     * SETUP 系グループヘッダ行の背景色を差し替えたコピーを返す。
+     *
+     * @param colorIndex 背景色（POI インデックスカラー）
+     * @return 差し替え済みコピー
+     */
+    public ExcelFormatConfig withSetupHeaderColor(short colorIndex) {
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, colorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
+                drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
+    }
+
+    /**
+     * EXPECTED 系グループヘッダ行の背景色を差し替えたコピーを返す。
+     *
+     * @param colorIndex 背景色（POI インデックスカラー）
+     * @return 差し替え済みコピー
+     */
+    public ExcelFormatConfig withExpectedHeaderColor(short colorIndex) {
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                colorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
+                drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
+    }
+
+    /**
+     * その他グループヘッダ行の背景色を差し替えたコピーを返す。
+     *
+     * @param colorIndex 背景色（POI インデックスカラー）
+     * @return 差し替え済みコピー
+     */
+    public ExcelFormatConfig withOtherHeaderColor(short colorIndex) {
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, colorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -129,8 +192,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withMarkerColumnColor(short colorIndex) {
-        return new ExcelFormatConfig(headerColorIndex, colorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                colorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -141,8 +205,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withAutoColumnWidth(boolean autoColumnWidth) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -153,8 +218,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withMaxColumnWidthChars(int maxColumnWidthChars) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -165,8 +231,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withBlockBorder(boolean drawBlockBorder) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -177,8 +244,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withCellBorder(boolean drawCellBorder) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -189,8 +257,9 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withDisplayGridlines(boolean displayGridlines) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
@@ -201,14 +270,30 @@ public final class ExcelFormatConfig {
      * @return 差し替え済みコピー
      */
     public ExcelFormatConfig withBlankRowsBetweenBlocks(int blankRowsBetweenBlocks) {
-        return new ExcelFormatConfig(headerColorIndex, markerColumnColorIndex,
-                autoColumnWidth, maxColumnWidthChars,
+        return new ExcelFormatConfig(testShotsHeaderColorIndex, setupHeaderColorIndex,
+                expectedHeaderColorIndex, otherHeaderColorIndex,
+                markerColumnColorIndex, autoColumnWidth, maxColumnWidthChars,
                 drawBlockBorder, drawCellBorder, displayGridlines, blankRowsBetweenBlocks);
     }
 
-    /** @return 識別行・ヘッダ行の背景色（POI インデックスカラー） */
-    public short getHeaderColorIndex() {
-        return headerColorIndex;
+    /** @return testShots グループヘッダ行の背景色（POI インデックスカラー） */
+    public short getTestShotsHeaderColorIndex() {
+        return testShotsHeaderColorIndex;
+    }
+
+    /** @return SETUP 系グループヘッダ行の背景色（POI インデックスカラー） */
+    public short getSetupHeaderColorIndex() {
+        return setupHeaderColorIndex;
+    }
+
+    /** @return EXPECTED 系グループヘッダ行の背景色（POI インデックスカラー） */
+    public short getExpectedHeaderColorIndex() {
+        return expectedHeaderColorIndex;
+    }
+
+    /** @return その他グループヘッダ行の背景色（POI インデックスカラー） */
+    public short getOtherHeaderColorIndex() {
+        return otherHeaderColorIndex;
     }
 
     /** @return マーカーカラムの背景色（POI インデックスカラー） */

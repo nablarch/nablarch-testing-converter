@@ -444,13 +444,137 @@ public class XlsFormatWriterTest {
         Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
 
         // Then
-        short header = ExcelFormatConfig.defaults().getHeaderColorIndex();
+        // SETUP_TABLE_DATA は setupHeaderColorIndex を使う
+        short header = ExcelFormatConfig.defaults().getSetupHeaderColorIndex();
         // 識別行（row 0）は色なし
         assertThat(sheet.getRow(0).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
         // 列名行（row 1）に背景色
         assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(header));
         // データ行は背景色なし
         assertThat(sheet.getRow(2).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
+    }
+
+    /**
+     * Given: testShots 識別子の LIST_MAP。
+     * When : build（既定設定）。
+     * Then : 列名行に testShots グループの背景色（LIME）が付く。
+     */
+    @Test
+    public void appliesTestShotsHeaderColor() {
+        // Given
+        ListMapBlock testShots = new ListMapBlock("", "testShots",
+                row("no", "description"), Collections.singletonList(row("1", "test")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", testShots)), "sheet");
+
+        // Then
+        short expected = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+    }
+
+    /**
+     * Given: SETUP_TABLE_DATA ブロック。
+     * When : build（既定設定）。
+     * Then : 列名行に SETUP 系グループの背景色（PALE_BLUE）が付く。
+     */
+    @Test
+    public void appliesSetupHeaderColor() {
+        // Given
+        TableDataBlock setup = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", setup)), "sheet");
+
+        // Then
+        short expected = ExcelFormatConfig.defaults().getSetupHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+    }
+
+    /**
+     * Given: EXPECTED_TABLE_DATA ブロック。
+     * When : build（既定設定）。
+     * Then : 列名行に EXPECTED 系グループの背景色（LIGHT_YELLOW）が付く。
+     */
+    @Test
+    public void appliesExpectedHeaderColor() {
+        // Given
+        TableDataBlock expected = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", expected)), "sheet");
+
+        // Then
+        short color = ExcelFormatConfig.defaults().getExpectedHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(color));
+    }
+
+    /**
+     * Given: MESSAGE ブロック（その他グループ）。
+     * When : build（既定設定）。
+     * Then : FW ヘッダ行（ディレクティブ）の左列にその他グループの背景色（LAVENDER）が付く。
+     */
+    @Test
+    public void appliesOtherHeaderColorForMessage() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
+                Collections.singletonList(row("hello")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg",
+                map(), map("requestId", "R01"), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
+
+        // Then: FW ヘッダ行（row 1）の左列はその他グループ色
+        short color = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(color));
+    }
+
+    /**
+     * Given: 非 testShots 識別子の LIST_MAP（その他グループ）。
+     * When : build（既定設定）。
+     * Then : 列名行にその他グループの背景色（LAVENDER）が付き、testShots 色と異なる。
+     */
+    @Test
+    public void appliesOtherHeaderColorForNonTestShotsListMap() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "result",
+                row("ID"), Collections.singletonList(row("1")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", listMap)), "sheet");
+
+        // Then
+        short otherColor = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        short testShotsColor = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(otherColor));
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(not(testShotsColor)));
+    }
+
+    /**
+     * Given: 4 グループのブロック。
+     * When : build（既定設定）。
+     * Then : 各ブロックの列名行に異なるグループ色が付く（4 色が相互に異なる）。
+     */
+    @Test
+    public void eachGroupHasDistinctDefaultColor() {
+        // Given / When: 既定値の 4 色を取得
+        ExcelFormatConfig defaults = ExcelFormatConfig.defaults();
+        short testShots = defaults.getTestShotsHeaderColorIndex();
+        short setup = defaults.getSetupHeaderColorIndex();
+        short exp = defaults.getExpectedHeaderColorIndex();
+        short other = defaults.getOtherHeaderColorIndex();
+
+        // Then: 4 色はすべて異なる
+        assertThat(testShots, is(not(setup)));
+        assertThat(testShots, is(not(exp)));
+        assertThat(testShots, is(not(other)));
+        assertThat(setup, is(not(exp)));
+        assertThat(setup, is(not(other)));
+        assertThat(exp, is(not(other)));
     }
 
     /**
@@ -532,13 +656,13 @@ public class XlsFormatWriterTest {
     @Test
     public void honorsConfigOverrides() {
         // Given
-        short customHeader = org.apache.poi.ss.usermodel.IndexedColors.LIGHT_GREEN.getIndex();
+        short customSetupHeader = org.apache.poi.ss.usermodel.IndexedColors.LIGHT_GREEN.getIndex();
         ExcelFormatConfig config = ExcelFormatConfig.defaults()
                 .withBlankRowsBetweenBlocks(0)
                 .withBlockBorder(false)
                 .withCellBorder(false)
                 .withAutoColumnWidth(false)
-                .withHeaderColor(customHeader);
+                .withSetupHeaderColor(customSetupHeader);
         TableDataBlock t1 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T1",
                 row("C"), Collections.singletonList(row("v")));
         TableDataBlock t2 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T2",
@@ -554,7 +678,7 @@ public class XlsFormatWriterTest {
         // 罫線なし
         assertThat(sheet.getRow(0).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
         // 列名行（row 1）の背景色は上書き値（識別行 row 0 は色なし）
-        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(customHeader));
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(customSetupHeader));
         // 自動列幅なし → 自動調整時の幅（最長 "SETUP_TABLE=T2" 14 文字＝(14+2)*256）にはならない
         assertThat(sheet.getColumnWidth(0), is(not((14 + 2) * 256)));
     }

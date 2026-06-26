@@ -181,7 +181,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @return 版面
      */
     private BlockLayout layoutColumnRow(ColumnRowDataBlock block) {
-        BlockLayout l = new BlockLayout();
+        BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         List<String> columns = block.getColumnNames();
         l.add(RowKind.HEADER, new ArrayList<>(columns));
@@ -204,7 +204,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @return 版面
      */
     private BlockLayout layoutFile(FileDataBlock block) {
-        BlockLayout l = new BlockLayout();
+        BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         boolean fixed = block.getFileType() == FileDataBlock.FileType.FIXED;
@@ -220,7 +220,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @return 版面
      */
     private BlockLayout layoutMessage(MessageDataBlock block) {
-        BlockLayout l = new BlockLayout();
+        BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());
         appendKeyValueRows(l, block.getFwHeaderFields());
@@ -372,10 +372,10 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                 Fill fill;
                 if (directive) {
                     // ディレクティブ行：左列（キー）にヘッダ色、右列（値）は背景なし
-                    fill = c == 0 ? Fill.HEADER : Fill.NONE;
+                    fill = c == 0 ? layout.headerFill() : Fill.NONE;
                 } else {
                     fill = layout.isMarkerColumn(c) ? Fill.MARKER
-                            : (header ? Fill.HEADER : Fill.NONE);
+                            : (header ? layout.headerFill() : Fill.NONE);
                 }
                 cell.setCellStyle(styles.get(r == firstBorderRow, r == lastBorderRow,
                         c == 0, c == width - 1, fill));

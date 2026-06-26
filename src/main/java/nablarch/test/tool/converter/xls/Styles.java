@@ -70,9 +70,25 @@ final class Styles {
                 }
             }
             if (fill != Fill.NONE) {
-                short color = fill == Fill.HEADER
-                        ? config.getHeaderColorIndex()
-                        : config.getMarkerColumnColorIndex();
+                short color;
+                switch (fill) {
+                    case HEADER_TEST_SHOTS:
+                        color = config.getTestShotsHeaderColorIndex();
+                        break;
+                    case HEADER_SETUP:
+                        color = config.getSetupHeaderColorIndex();
+                        break;
+                    case HEADER_EXPECTED:
+                        color = config.getExpectedHeaderColorIndex();
+                        break;
+                    case HEADER_OTHER:
+                        color = config.getOtherHeaderColorIndex();
+                        break;
+                    default:
+                        // MARKER
+                        color = config.getMarkerColumnColorIndex();
+                        break;
+                }
                 style.setFillForegroundColor(color);
                 style.setFillPattern(CellStyle.SOLID_FOREGROUND);
             }
