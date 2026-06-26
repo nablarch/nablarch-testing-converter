@@ -349,10 +349,11 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             Row row = sheet.createRow(startRow + r);
             List<String> cells = layout.row(r);
             RowKind kind = layout.kind(r);
-            // META 行（識別行・ディレクティブ等）は罫線なし・背景色なし、ブロック幅まで矩形整形
+            // META 行（識別行）は罫線なし・背景色なし。空セルを作ると隣列へのテキストオーバーフローが
+            // Excel に塞がれるため、値を持つセルのみ作成する。
             if (kind == RowKind.META) {
-                for (int c = 0; c < width; c++) {
-                    String value = c < cells.size() ? cells.get(c) : "";
+                for (int c = 0; c < cells.size(); c++) {
+                    String value = cells.get(c);
                     row.createCell(c).setCellValue(value);
                     widths.observe(c, value.length());
                 }
