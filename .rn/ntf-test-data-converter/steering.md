@@ -370,28 +370,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 # State
 
 - **Status**: paused
-- **Date**: 2026-06-26
+- **Date**: 2026-07-10
 - **Last completed**: task #10 の3専門家レビュー全 PASS・fixes 適用完了 — commits bfd8284/9584811/0ce4e04 push 済み
 - **Next**: task #10 ユーザーレビュー承認待ち → チェックオフ → Acceptance criteria 実行
-- **Notes**: |
-
-  ## 再開後にやること
-
-  ### 1. ユーザーレビュー承認の確認
-  - PR: https://github.com/nablarch/nablarch-testing-converter/pull/1
-  - ユーザーが承認済みか確認する
-  - 承認済みなら task #10 の「user review」をチェックオフし、`docs: complete task #10 — …` コミットを push する
-
-  ### 2. Acceptance criteria の実行
-  task #10 完了後、すべてのタスクが完了するため steering.md の Acceptance criteria を確認・実行する:
-  - `mvn test` 全 PASS（現状 308 tests, 0 failures）
-  - 全移動ファイルが本体現ブランチと package/import を除いて完全一致
-  - pom.xml の依存確認
-  - 本体・yaml に一切書き込んでいないことを確認
-  - ブランチが push 済み（済み）
-
-  ## task #10 で適用した追加変更（scope 拡張）
-  - bfd8284: XlsOutputConfig の不正色名 → MojoExecutionException ラップ
-  - 9584811: Styles default-throw, cache key "|" separator, testShots 定数, GWT/import 修正, 境界値テスト3件追加
-  - 0ce4e04: Styles cache key セパレータ追加漏れ修正
+- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 で task #10 のユーザーレビュー承認待ち。承認後、task #10 チェックオフ → Acceptance criteria（mvn test 全 PASS・差分ゼロ・依存確認）を実行してセッションを閉じる。
 
