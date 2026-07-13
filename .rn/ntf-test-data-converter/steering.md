@@ -457,9 +457,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-07-13
+- **Last completed**: task #15 — LIST_MAP 列順保持修正、312 tests PASS、nablarch-example-batch 12 tests PASS
+- **Next**: セッション終了（全タスク完了）
+- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — task #15 完了済み。ユーザーレビュー待ち。`checks/` および `h2/` がプロジェクトルートにアンコミットで残存（ユーザー判断待ち）。
 
