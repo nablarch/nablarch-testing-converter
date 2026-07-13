@@ -170,6 +170,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         // adapter.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
         // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
         List<String> columnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
+        // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> rows = new ArrayList<>();
         for (Map<String, String> mapRow : mapRows) {

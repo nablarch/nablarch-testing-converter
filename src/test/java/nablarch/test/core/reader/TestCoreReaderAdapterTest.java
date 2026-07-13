@@ -332,6 +332,59 @@ public class TestCoreReaderAdapterTest {
         assertThat(r.get("NAME"), is(""));
     }
 
+    // ------------------------------------------------------------------ readListMapColumnNames
+
+    /**
+     * Given: アルファベット逆順（Z, A, M）のカラム名を持つ LIST_MAP ブロック。
+     * When : {@code readListMapColumnNames} を呼ぶ。
+     * Then : Excel の記述順（Z, A, M）でカラム名が返る（アルファベット順にならない）。
+     */
+    @Test
+    public void readListMapColumnNames_returnsColumnsInDeclarationOrder() {
+        // Given
+        String resource = "readListMapColumnNames_returnsColumnsInDeclarationOrder";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=ordered"));
+        lines.add(row("Z", "A", "M"));
+        lines.add(row("z1", "a1", "m1"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        List<String> columnNames = adapter.readListMapColumnNames(DIR, resource, "ordered");
+
+        // Then: 記述順（Z, A, M）で返り、アルファベット順（A, M, Z）にならない
+        assertThat(columnNames.size(), is(3));
+        assertThat(columnNames.get(0), is("Z"));
+        assertThat(columnNames.get(1), is("A"));
+        assertThat(columnNames.get(2), is("M"));
+    }
+
+    /**
+     * Given: 指定した id に対応する LIST_MAP ブロックが存在しないリソース。
+     * When : {@code readListMapColumnNames} を呼ぶ。
+     * Then : 空リストが返る。
+     */
+    @Test
+    public void readListMapColumnNames_returnsEmptyWhenBlockAbsent() {
+        // Given
+        String resource = "readListMapColumnNames_returnsEmptyWhenBlockAbsent";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=present"));
+        lines.add(row("COL"));
+        lines.add(row("v"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        List<String> columnNames = adapter.readListMapColumnNames(DIR, resource, "absent");
+
+        // Then
+        assertThat(columnNames.isEmpty(), is(true));
+    }
+
     // ------------------------------------------------------------------ readFiles
 
     /**
