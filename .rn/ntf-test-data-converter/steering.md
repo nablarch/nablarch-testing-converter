@@ -347,7 +347,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - [x] QA expert review（subagent）
 - [x] language expert review（subagent — N/A: pom.xml only change, no prose/naming to review）
 - [x] software-engineering expert review（subagent）
-- [ ] user review
+- [x] user review
 
 **Completion criteria**:
 
@@ -373,7 +373,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - [x] README の手順に誤りがあれば pom.xml または README を修正する（`overwrite=true` 追記 — commit d1b8d7f）
 - [x] self-check（OK/NG per completion criterion、checks/task-14.md に記録）
 - [x] QA expert review（subagent）
-- [ ] user review
+- [x] user review
 
 **Completion criteria**:
 
