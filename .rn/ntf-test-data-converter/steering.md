@@ -338,15 +338,15 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `src/main/java` 配下が参照するライブラリ一覧を洗い出す（import 解析）
-- [ ] pom.xml の全依存と scope を照合し、test スコープで compile スコープが必要なものを特定する
-- [ ] `nablarch-core-dataformat` の `<scope>test</scope>` を削除する（compile スコープへ昇格）
-- [ ] 他に修正が必要な依存があれば修正する
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` でビルドが通ることを確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-13.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] language expert review（subagent）
-- [ ] software-engineering expert review（subagent）
+- [x] `src/main/java` 配下が参照するライブラリ一覧を洗い出す（import 解析）
+- [x] pom.xml の全依存と scope を照合し、test スコープで compile スコープが必要なものを特定する
+- [x] `nablarch-core-dataformat` の `<scope>test</scope>` を削除する（compile スコープへ昇格）
+- [x] 他に修正が必要な依存があれば修正する（なし）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` でビルドが通ることを確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-13.md に記録）
+- [x] QA expert review（subagent）
+- [x] language expert review（subagent — N/A: pom.xml only change, no prose/naming to review）
+- [x] software-engineering expert review（subagent）
 - [ ] user review
 
 **Completion criteria**:
