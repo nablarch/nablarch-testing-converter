@@ -423,5 +423,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-<!-- State は rn が管理します。手動編集しないでください。 -->
+- **Status**: paused
+- **Date**: 2026-07-13
+- **Last completed**: task #14 — プラグインゴール実行検証・README overwrite修正・nablarch-example-batch 12 tests PASS
+- **Next**: セッション終了（全タスク完了）
+- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — #13/#14 ユーザーレビュー承認済み。全タスク完了。
 
