@@ -394,16 +394,16 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `nablarch-testing` 本体（`convert-testdata-excel-to-text` ブランチ）の関連クラス（`HeaderLine`, `ListMapParser`, `TestCoreReaderAdapter`）を読み、`getEffectiveColumnNames()` が公開されているかを確認する
-- [ ] `getMapExcludingMarkerColumns()` の TreeMap を変更する方針 vs 本体を変更せず converter 側で列順を取得する方針の影響範囲を調査し、採用方針を決定する
-- [ ] 採用方針に従い実装する（`XlsFormatReader#readListMapBlock` の列順取得ロジックを修正）
-- [ ] `nablarch-example-batch` の Excel → YAML → Excel ラウンドトリップで列順が保持されることを確認する
-- [ ] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-15.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
-- [ ] Design expert review（subagent — 構造/アプローチを変更するため）
+- [x] `nablarch-testing` 本体（`convert-testdata-excel-to-text` ブランチ）の関連クラス（`HeaderLine`, `ListMapParser`, `TestCoreReaderAdapter`）を読み、`getEffectiveColumnNames()` が公開されているかを確認する
+- [x] `getMapExcludingMarkerColumns()` の TreeMap を変更する方針 vs 本体を変更せず converter 側で列順を取得する方針の影響範囲を調査し、採用方針を決定する
+- [x] 採用方針に従い実装する（`XlsFormatReader#readListMapBlock` の列順取得ロジックを修正）
+- [x] `nablarch-example-batch` の Excel → YAML → Excel ラウンドトリップで列順が保持されることを確認する
+- [x] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-15.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, coding）
+- [x] Verification expert review（subagent, test）
+- [x] Design expert review（subagent — 構造/アプローチを変更するため）
 
 **Completion criteria**:
 
