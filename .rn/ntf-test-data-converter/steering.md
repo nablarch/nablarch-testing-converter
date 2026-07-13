@@ -1,3 +1,5 @@
+Rn version: 0.8.0
+
 # Goal
 
 nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツール（src/main 28件）と形式間変換テスト（src/test 21件）を nablarch-testing-converter リポジトリへ切り出し、`mvn test` 全 PASS・実装無改変を確認する。
@@ -384,6 +386,38 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #15: LIST_MAP 列順保持修正
+
+**Purpose**: Excel → YAML 変換時に LIST_MAP ブロックの列順がアルファベット順になる不具合を修正する。`nablarch-testing` 本体の `HeaderLine#getEffectiveColumnNames()` が持つ順序付き列名リストを converter 側へ届け、Excel の記述順を保持する。
+
+**Prerequisites**: #14
+
+**Steps**:
+
+- [ ] `nablarch-testing` 本体（`convert-testdata-excel-to-text` ブランチ）の関連クラス（`HeaderLine`, `ListMapParser`, `TestCoreReaderAdapter`）を読み、`getEffectiveColumnNames()` が公開されているかを確認する
+- [ ] `getMapExcludingMarkerColumns()` の TreeMap を変更する方針 vs 本体を変更せず converter 側で列順を取得する方針の影響範囲を調査し、採用方針を決定する
+- [ ] 採用方針に従い実装する（`XlsFormatReader#readListMapBlock` の列順取得ロジックを修正）
+- [ ] `nablarch-example-batch` の Excel → YAML → Excel ラウンドトリップで列順が保持されることを確認する
+- [ ] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-15.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+- [ ] Design expert review（subagent — 構造/アプローチを変更するため）
+
+**Completion criteria**:
+
+- `nablarch-example-batch` の `ImportZipCodeFileActionRequestTest` を Excel → YAML 変換すると、`testShots` の列順が元のExcel（`no, description, expectedStatusCode, setUpTable, expectedTable, setUpFile, expectedLog, diConfig, requestPath, userId`）と一致する
+- YAML → Excel で戻したExcelの `testShots` 列順が元のExcelと一致する
+- LIST_MAP 以外のブロック（SETUP_TABLE / EXPECTED_TABLE / SETUP_VARIABLE / EXPECTED_VARIABLE）の列順が変換前後で保持される（デグレなし）
+- マーカーカラム（`[no]` 等）が変換後のYAML / Excelに含まれない（除外が機能している）
+- `nablarch-example-batch` の `mvn test` が全テスト PASS する（テスト件数を報告する）
+- 本体（`nablarch-testing`）を変更した場合は本体のテストがすべて PASS する
+- 採用した方針（本体を変更したか否か）と理由が checks/task-15.md に記録されている
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
 # Decisions
 
 ## ビルド環境
@@ -423,9 +457,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-07-13
-- **Last completed**: task #14 — プラグインゴール実行検証・README overwrite修正・nablarch-example-batch 12 tests PASS
-- **Next**: セッション終了（全タスク完了）
-- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — #13/#14 ユーザーレビュー承認済み。全タスク完了。
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
 
