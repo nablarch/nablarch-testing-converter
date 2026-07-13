@@ -265,7 +265,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - [x] QA expert review（subagent）
 - [x] language expert review（subagent）
 - [x] software-engineering expert review（subagent）
-- [ ] user review
+- [x] user review（ARGUMENTS による次タスク指示をもって承認とみなす）
 
 **Completion criteria**:
 
@@ -330,6 +330,60 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #13: pom.xml 依存スコープ修正
+
+**Purpose**: `nablarch-core-dataformat` が `<scope>test</scope>` になっているためプラグイン実行時にクラスが見つからない不具合を修正する。あわせて本体コード（src/main）が参照する全依存のスコープを棚卸しする。
+
+**Prerequisites**: #12
+
+**Steps**:
+
+- [ ] `src/main/java` 配下が参照するライブラリ一覧を洗い出す（import 解析）
+- [ ] pom.xml の全依存と scope を照合し、test スコープで compile スコープが必要なものを特定する
+- [ ] `nablarch-core-dataformat` の `<scope>test</scope>` を削除する（compile スコープへ昇格）
+- [ ] 他に修正が必要な依存があれば修正する
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` でビルドが通ることを確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-13.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] language expert review（subagent）
+- [ ] software-engineering expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `nablarch-core-dataformat` が compile スコープになっている（`<scope>test</scope>` が削除されている）
+- 本体コード（src/main）が参照する依存がすべて compile スコープになっている（棚卸し結果の報告）
+- `mvn clean install` が通る
+
+---
+
+### #14: プラグインゴール実行検証
+
+**Purpose**: ローカルインストール後に nablarch-example-batch で実際にプラグインゴールを実行し、xls→yaml・yaml→xls の両方向で変換が成功し、変換後 YAML でテストが通ることを確認する。
+
+**Prerequisites**: #13
+
+**Steps**:
+
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` で converter をローカルインストールする
+- [ ] `nablarch-example-batch` を適切なディレクトリにクローンする（まだ存在しない場合）
+- [ ] README のコマンド（xls→yaml）でプラグインゴールを実行し成功を確認する
+- [ ] README のコマンド（yaml→xls）でプラグインゴールを実行し成功を確認する
+- [ ] 変換後 YAML で `nablarch-example-batch` の `mvn test` を実行し全テスト PASS を確認する
+- [ ] README の手順に誤りがあれば pom.xml または README を修正する
+- [ ] self-check（OK/NG per completion criterion、checks/task-14.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] user review
+
+**Completion criteria**:
+
+- `xls→yaml` 変換がプラグインゴール経由で成功し、YAML ファイルが生成されている
+- `yaml→xls` 変換がプラグインゴール経由で成功し、XLSX ファイルが生成されている
+- 変換後 YAML で `nablarch-example-batch` の `mvn test` が全テスト PASS する（テスト件数を報告）
+- README に記載のコマンドがそのとおりに動作する（動作しない箇所は修正済み）
+
+---
+
 # Decisions
 
 ## ビルド環境
@@ -369,9 +423,5 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-07-10
-- **Last completed**: task #10 の3専門家レビュー全 PASS・fixes 適用完了 — commits bfd8284/9584811/0ce4e04 push 済み
-- **Next**: task #10 ユーザーレビュー承認待ち → チェックオフ → Acceptance criteria 実行
-- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 で task #10 のユーザーレビュー承認待ち。承認後、task #10 チェックオフ → Acceptance criteria（mvn test 全 PASS・差分ゼロ・依存確認）を実行してセッションを閉じる。
+<!-- State は rn が管理します。手動編集しないでください。 -->
 
