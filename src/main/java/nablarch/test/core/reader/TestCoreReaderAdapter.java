@@ -1,6 +1,7 @@
 package nablarch.test.core.reader;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +100,34 @@ public class TestCoreReaderAdapter {
         ListMapParser parser = new ListMapParser(reader, EMPTY_INTERPRETERS);
         parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
         return parser.getResult();
+    }
+
+    /**
+     * LIST_MAP ブロックのカラム名を Excel 記述順（マーカーカラム除外済み）で取得する。
+     * <p>
+     * {@link ListMapParser} が返す {@code Map<String, String>} は {@link HeaderLine#getMapExcludingMarkerColumns}
+     * の TreeMap 由来のためアルファベット順になる。本メソッドは {@link #readBlockBodyLines} で取り出した
+     * 生ヘッダ行から {@link HeaderLine} を直接構築し、{@link HeaderLine#getEffectiveColumnNames()} で
+     * Excel 記述順（マーカーカラム除外済み）のカラム名列を返す。
+     * </p>
+     * <p>
+     * 対象ブロックが存在しない（生行が空）場合は空リストを返す。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       識別子（{@code =}以降の識別子）
+     * @return Excel 記述順のカラム名一覧（マーカーカラム除外済み）
+     */
+    public List<String> readListMapColumnNames(String path, String resource, String id) {
+        // readBlockBodyLines は マーカー行を除いたボディ行を返す。
+        // LIST_MAP ブロックでは 1 行目がヘッダ行（カラム名行）、2 行目以降がデータ行。
+        List<List<String>> bodyLines = readBlockBodyLines(path, resource, "", id, DataType.LIST_MAP);
+        if (bodyLines.isEmpty()) {
+            return Collections.emptyList();
+        }
+        HeaderLine header = new HeaderLine(bodyLines.get(0));
+        return Arrays.asList(header.getEffectiveColumnNames());
     }
 
     /**

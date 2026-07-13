@@ -280,6 +280,57 @@ public class XlsFormatReaderTest {
     // ------------------------------------------------------------------ list_map
 
     /**
+     * Given: アルファベット逆順（Z, A, M）の列名を持つ LIST_MAP ブロック。
+     * When : {@code read}。
+     * Then : ListMapBlock の列順が Excel 記述順（Z, A, M）のまま保持される（アルファベット順にならない）。
+     */
+    @Test
+    public void readListMapPreservesColumnOrder() {
+        // Given: 列順は Z, A, M（アルファベット順なら A, M, Z になるはず）
+        String resource = "book/readListMapPreservesColumnOrder";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=ordered"));
+        lines.add(row("Z", "A", "M"));
+        lines.add(row("z1", "a1", "m1"));
+        lines.add(row("z2", "a2", "m2"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then: 列順が Excel 記述順（Z, A, M）のまま保持される
+        ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(listMap.getColumnNames(), is(Arrays.asList("Z", "A", "M")));
+        // 各行の値も Z→A→M 順に並ぶ
+        assertThat(listMap.getRows().get(0), is(Arrays.asList("z1", "a1", "m1")));
+        assertThat(listMap.getRows().get(1), is(Arrays.asList("z2", "a2", "m2")));
+    }
+
+    /**
+     * Given: マーカーカラム（{@code [no]}）を含む LIST_MAP ブロック。
+     * When : {@code read}。
+     * Then : マーカーカラムが列名・行データから除外され、通常列のみが記述順で保持される。
+     */
+    @Test
+    public void readListMapExcludesMarkerColumns() {
+        // Given: [no] はマーカーカラム、description/status は通常列
+        String resource = "book/readListMapExcludesMarkerColumns";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=testShots"));
+        lines.add(row("[no]", "description", "status"));
+        lines.add(row("1", "first case", "200"));
+        lines.add(row("2", "second case", "400"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then: マーカーカラム [no] は除外され、通常列のみ記述順で保持される
+        ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(listMap.getColumnNames(), is(Arrays.asList("description", "status")));
+        assertThat(listMap.getRows().get(0), is(Arrays.asList("first case", "200")));
+        assertThat(listMap.getRows().get(1), is(Arrays.asList("second case", "400")));
+    }
+
+    /**
      * Given: {@code ${...}}・空文字を含む LIST_MAP ブロック。
      * When : {@code read}。
      * Then : ListMapBlock に写され、IN 値が記法のまま、列順が保たれる。

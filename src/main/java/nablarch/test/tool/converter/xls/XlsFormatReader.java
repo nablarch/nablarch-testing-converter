@@ -166,15 +166,11 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return LIST_MAP ブロック
      */
     private TestDataBlock readListMapBlock(String basePath, String resourceName, BlockHeader header) {
+        // 列順は adapter.readListMapColumnNames() から取得する。
+        // adapter.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
+        // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
+        List<String> columnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
-        List<String> columnNames = new ArrayList<>();
-        for (Map<String, String> mapRow : mapRows) {
-            for (String key : mapRow.keySet()) {
-                if (!columnNames.contains(key)) {
-                    columnNames.add(key);
-                }
-            }
-        }
         List<List<String>> rows = new ArrayList<>();
         for (Map<String, String> mapRow : mapRows) {
             List<String> row = new ArrayList<>(columnNames.size());
