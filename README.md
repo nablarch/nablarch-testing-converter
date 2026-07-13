@@ -33,7 +33,8 @@ mvn com.nablarch.framework:nablarch-testing-converter:VERSION:convert \
   -Dnablarch-testing-converter.from=xls \
   -Dnablarch-testing-converter.to=yaml \
   -Dnablarch-testing-converter.input=src/test/java/com/example/batch/ \
-  -Dnablarch-testing-converter.output=src/test/java/com/example/batch/
+  -Dnablarch-testing-converter.output=src/test/java/com/example/batch/ \
+  -Dnablarch-testing-converter.overwrite=true
 ```
 
 ### パラメータ一覧
