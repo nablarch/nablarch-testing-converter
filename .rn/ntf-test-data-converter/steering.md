@@ -365,14 +365,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` で converter をローカルインストールする
-- [ ] `nablarch-example-batch` を適切なディレクトリにクローンする（まだ存在しない場合）
-- [ ] README のコマンド（xls→yaml）でプラグインゴールを実行し成功を確認する
-- [ ] README のコマンド（yaml→xls）でプラグインゴールを実行し成功を確認する
-- [ ] 変換後 YAML で `nablarch-example-batch` の `mvn test` を実行し全テスト PASS を確認する
-- [ ] README の手順に誤りがあれば pom.xml または README を修正する
-- [ ] self-check（OK/NG per completion criterion、checks/task-14.md に記録）
-- [ ] QA expert review（subagent）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true` で converter をローカルインストールする
+- [x] `nablarch-example-batch` を適切なディレクトリにクローンする（まだ存在しない場合）
+- [x] README のコマンド（xls→yaml）でプラグインゴールを実行し成功を確認する
+- [x] README のコマンド（yaml→xls）でプラグインゴールを実行し成功を確認する
+- [x] 変換後 YAML で `nablarch-example-batch` の `mvn test` を実行し全テスト PASS を確認する（12 tests, 0 failures）
+- [x] README の手順に誤りがあれば pom.xml または README を修正する（`overwrite=true` 追記 — commit d1b8d7f）
+- [x] self-check（OK/NG per completion criterion、checks/task-14.md に記録）
+- [x] QA expert review（subagent）
 - [ ] user review
 
 **Completion criteria**:
