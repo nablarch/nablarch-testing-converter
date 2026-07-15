@@ -386,6 +386,36 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### #16: 重複カラム名 WARN ログ対応
+
+**Purpose**: Excel のヘッダ行に重複カラム名が存在する場合、変換を止めずに後勝ちで続行し、WARN ログで重複を通知する。LIST_MAP ブロックと TABLE 系ブロック（SETUP_TABLE / EXPECTED_TABLE / EXPECTED_COMPLETED）が対象。README にも動作を追記する。
+
+**Prerequisites**: #15
+
+**Steps**:
+
+- [ ] 影響範囲を確認する（LIST_MAP と TABLE 系の両方に重複カラム問題が存在することを自分で確認する）
+- [ ] `XlsFormatReader#readListMapBlock` に重複検出ロジックを追加し、重複があれば後勝ちで列名を正規化し WARN ログを出す（`java.util.logging.Logger` を使用）
+- [ ] `XlsFormatReader#readTableBlocks` に同様の重複検出・WARN ロジックを追加する
+- [ ] 重複カラム名を含む Excel テストデータ（または相当するテストフィクスチャ）を作成し、WARN ログが出ることを確認するテストを追加する
+- [ ] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [ ] README に「重複カラム名があった場合の動作」セクションを追記する
+- [ ] self-check（OK/NG per completion criterion、checks/task-16.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- LIST_MAP ブロックのヘッダ行に重複カラム名がある場合、変換が続行され WARN ログが出力される（ファイル名・シート名・重複カラム名・採用値を含む）
+- TABLE 系ブロック（SETUP_TABLE / EXPECTED_TABLE / EXPECTED_COMPLETED）のヘッダ行に重複カラム名がある場合も同様に WARN ログが出力される
+- 後勝ち（後方の列の値を採用）で上書きされる（NTF 実行時の TreeMap.put() と同じ挙動）
+- 重複カラムを含むテストデータで WARN が出ることを確認するテストが存在する
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+- README に重複カラム名があった場合の動作が明記されている
+
+---
+
 ### #15: LIST_MAP 列順保持修正
 
 **Purpose**: Excel → YAML 変換時に LIST_MAP ブロックの列順がアルファベット順になる不具合を修正する。`nablarch-testing` 本体の `HeaderLine#getEffectiveColumnNames()` が持つ順序付き列名リストを converter 側へ届け、Excel の記述順を保持する。
@@ -457,9 +487,5 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-07-13
-- **Last completed**: task #15 — LIST_MAP 列順保持修正、312 tests PASS、nablarch-example-batch 12 tests PASS
-- **Next**: セッション終了（全タスク完了）
-- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — task #15 完了済み。ユーザーレビュー待ち。`checks/` および `h2/` がプロジェクトルートにアンコミットで残存（ユーザー判断待ち）。
+<!-- State section — filled and cleared by rn:up/rn:sv; do not edit by hand -->
 
