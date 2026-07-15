@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
@@ -65,6 +66,9 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * @author kiyobot
  */
 public class XlsFormatReader implements TestDataFormatReader {
+
+    /** ロガー */
+    private static final Logger LOGGER = Logger.getLogger(XlsFormatReader.class.getName());
 
     /** 本体再利用のためのアダプタ */
     private final TestCoreReaderAdapter adapter;
@@ -142,11 +146,12 @@ public class XlsFormatReader implements TestDataFormatReader {
         List<TestDataBlock> result = new ArrayList<>();
         for (TableData table : tables) {
             String[] columns = table.getColumnNames();
-            List<String> columnNames = Arrays.asList(columns);
+            List<String> columnNames = deduplicateColumnNames(
+                    Arrays.asList(columns), resourceName, table.getTableName());
             List<List<String>> rows = new ArrayList<>();
             for (int r = 0; r < table.size(); r++) {
-                List<String> row = new ArrayList<>(columns.length);
-                for (String column : columns) {
+                List<String> row = new ArrayList<>(columnNames.size());
+                for (String column : columnNames) {
                     Object value = table.getValue(r, column);
                     row.add(value == null ? null : stripQuotes(value.toString()));
                 }
@@ -169,7 +174,8 @@ public class XlsFormatReader implements TestDataFormatReader {
         // 列順は adapter.readListMapColumnNames() から取得する。
         // adapter.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
         // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
-        List<String> columnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
+        List<String> rawColumnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
+        List<String> columnNames = deduplicateColumnNames(rawColumnNames, resourceName, header.getIdentifier());
         // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> rows = new ArrayList<>();
@@ -526,6 +532,43 @@ public class XlsFormatReader implements TestDataFormatReader {
             return null;
         }
         return new InterpretationContext(value, QUOTATION_TRIMMER).invokeNext();
+    }
+
+    /**
+     * カラム名リストから重複を除去し（後勝ち）、重複があれば WARN ログを出力する。
+     * <p>
+     * ヘッダ行に同名カラムが複数存在する場合、最後の出現位置のみを有効とする（後勝ち）。
+     * 重複が検出されると、ファイル名・シート名・ブロック識別子・重複カラム名を含む WARN ログを出力する。
+     * </p>
+     *
+     * @param columnNames  元のカラム名リスト（重複を含む可能性あり）
+     * @param resourceName リソース名（{@code "ブック名/シート名"} 形式）
+     * @param blockId      ブロック識別子（テーブル名・LIST_MAP 識別子等）
+     * @return 重複を除去したカラム名リスト（後勝ち・元の順序を保持）
+     */
+    private List<String> deduplicateColumnNames(List<String> columnNames, String resourceName, String blockId) {
+        // 各カラム名の最後の出現インデックスを記録
+        Map<String, Integer> lastIndex = new LinkedHashMap<>();
+        for (int i = 0; i < columnNames.size(); i++) {
+            lastIndex.put(columnNames.get(i), i);
+        }
+        // 重複チェック：最後の出現でない位置は除外、初回重複検出時に WARN を出す
+        Set<String> warned = new HashSet<>();
+        List<String> result = new ArrayList<>(lastIndex.size());
+        for (int i = 0; i < columnNames.size(); i++) {
+            String name = columnNames.get(i);
+            if (lastIndex.get(name) != i) {
+                // この位置は後方に同名カラムが存在するため除外（後勝ち）
+                if (warned.add(name)) {
+                    LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
+                            + "\" のブロック \"" + blockId
+                            + "\" に重複カラム名 \"" + name + "\" があります。後方の列の値を採用します。");
+                }
+            } else {
+                result.add(name);
+            }
+        }
+        return result;
     }
 
     /**

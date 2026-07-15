@@ -1,5 +1,6 @@
 package nablarch.test.tool.converter.xls;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -12,6 +13,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.core.reader.TestDataReader;
@@ -846,6 +851,168 @@ public class XlsFormatReaderTest {
         assertThat(container.getName(), is("MyBook"));
         assertThat(container.getSections().size(), is(1));
         assertThat(container.getSections().get(0).getName(), is("MySheet"));
+    }
+
+    // ------------------------------------------------------------------ duplicate column names
+
+    /**
+     * WARN ログを収集するためのハンドラ。
+     */
+    private static final class CapturingHandler extends Handler {
+        final List<String> messages = new ArrayList<String>();
+
+        @Override
+        public void publish(LogRecord record) {
+            if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+                messages.add(record.getMessage());
+            }
+        }
+
+        @Override
+        public void flush() { /* no-op */ }
+
+        @Override
+        public void close() { /* no-op */ }
+    }
+
+    /**
+     * Given: LIST_MAP ブロックのヘッダ行に重複カラム名（COL_A が 2 回）が存在する。
+     * When : {@code read}。
+     * Then : 変換が続行され、重複カラムは後勝ちで 1 件のみに絞られ、WARN ログが出力される。
+     *        WARN ログにはブック名・シート名・ブロック識別子・重複カラム名が含まれる。
+     */
+    @Test
+    public void readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins() {
+        // Given
+        String resource = "dupBook/dupSheet";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=dupMap"));
+        lines.add(row("COL_A", "COL_B", "COL_A"));  // COL_A が 2 回（重複）
+        lines.add(row("first", "b1", "last"));        // 後勝ち: COL_A = "last"
+
+        CapturingHandler handler = new CapturingHandler();
+        Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
+        logger.addHandler(handler);
+        logger.setLevel(Level.WARNING);
+        try {
+            // When
+            TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+            // Then: 変換が続行される
+            ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+            // 重複が除去され COL_A は 1 件のみ（後勝ち = 後方の列）
+            assertThat(listMap.getColumnNames(), is(Arrays.asList("COL_B", "COL_A")));
+            // 後勝ちの値（"last"）が採用される
+            assertThat(listMap.getRows().get(0), is(Arrays.asList("b1", "last")));
+            // WARN ログが出ること
+            assertThat(handler.messages.size(), is(1));
+            assertThat(handler.messages.get(0), containsString("dupBook"));
+            assertThat(handler.messages.get(0), containsString("dupSheet"));
+            assertThat(handler.messages.get(0), containsString("dupMap"));
+            assertThat(handler.messages.get(0), containsString("COL_A"));
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    /**
+     * Given: LIST_MAP ブロックのヘッダ行に複数の異なる重複カラム名が存在する。
+     * When : {@code read}。
+     * Then : 各重複カラム名につき 1 件の WARN ログが出力され、後勝ちで絞られる。
+     */
+    @Test
+    public void readListMapWithMultipleDuplicateColumnsEmitsWarnPerName() {
+        // Given
+        String resource = "book/readListMapWithMultipleDuplicateColumnsEmitsWarnPerName";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=mDup"));
+        lines.add(row("A", "B", "A", "C", "B"));  // A が 2 回、B が 2 回
+        lines.add(row("a1", "b1", "a2", "c1", "b2"));
+
+        CapturingHandler handler = new CapturingHandler();
+        Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
+        logger.addHandler(handler);
+        logger.setLevel(Level.WARNING);
+        try {
+            // When
+            TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+            // Then: A(index2), C(index3), B(index4) の順（各名前の最後の出現位置を保持）
+            ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+            assertThat(listMap.getColumnNames(), is(Arrays.asList("A", "C", "B")));
+            // 後勝ちの値（A=a2, C=c1, B=b2）
+            assertThat(listMap.getRows().get(0), is(Arrays.asList("a2", "c1", "b2")));
+            // A と B それぞれ 1 件ずつ = 合計 2 件の WARN
+            assertThat(handler.messages.size(), is(2));
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    /**
+     * Given: SETUP_TABLE ブロックのヘッダ行に重複カラム名（COL_X が 2 回）が存在する。
+     * When : {@code read}。
+     * Then : 変換が続行され、WARN ログが出力され、後勝ちで 1 件に絞られる。
+     */
+    @Test
+    public void readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins() {
+        // Given
+        String resource = "book/readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_TABLE=MY_TABLE"));
+        lines.add(row("COL_X", "COL_Y", "COL_X"));  // COL_X が 2 回
+        lines.add(row("first", "y1", "last"));
+
+        CapturingHandler handler = new CapturingHandler();
+        Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
+        logger.addHandler(handler);
+        logger.setLevel(Level.WARNING);
+        try {
+            // When
+            TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+            // Then: 変換が続行される
+            TableDataBlock table = (TableDataBlock) container.getSections().get(0).getBlocks().get(0);
+            // 重複が除去され COL_X は 1 件のみ（後勝ち）
+            assertThat(table.getColumnNames(), is(Arrays.asList("COL_Y", "COL_X")));
+            // 後勝ちの値（"last"）が採用される
+            assertThat(table.getRows().get(0), is(Arrays.asList("y1", "last")));
+            // WARN ログが出ること
+            assertThat(handler.messages.size(), is(1));
+            assertThat(handler.messages.get(0), containsString("MY_TABLE"));
+            assertThat(handler.messages.get(0), containsString("COL_X"));
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    /**
+     * Given: 重複なしの LIST_MAP ブロック。
+     * When : {@code read}。
+     * Then : WARN ログは出力されない（正常系の非回帰）。
+     */
+    @Test
+    public void readListMapWithoutDuplicatesEmitsNoWarn() {
+        // Given
+        String resource = "book/readListMapWithoutDuplicatesEmitsNoWarn";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=noDup"));
+        lines.add(row("A", "B", "C"));
+        lines.add(row("a", "b", "c"));
+
+        CapturingHandler handler = new CapturingHandler();
+        Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
+        logger.addHandler(handler);
+        logger.setLevel(Level.WARNING);
+        try {
+            // When
+            readerOf(resource, lines).read(DIR, resource);
+
+            // Then: WARN ログは出力されない
+            assertThat(handler.messages.size(), is(0));
+        } finally {
+            logger.removeHandler(handler);
+        }
     }
 
     /**
