@@ -487,5 +487,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-<!-- State section — filled and cleared by rn:up/rn:sv; do not edit by hand -->
+- **Status**: paused
+- **Date**: 2026-07-15
+- **Last completed**: task #16 — 重複カラム名 WARN ログ対応、316 tests PASS、mvn install 済み
+- **Next**: セッション終了（全タスク完了）
+- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — task #16 push 済み。Evaluation sign-off タスクは未定義のままセッション終了。
 
