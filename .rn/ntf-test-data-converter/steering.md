@@ -394,16 +394,16 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 **Steps**:
 
-- [ ] 影響範囲を確認する（LIST_MAP と TABLE 系の両方に重複カラム問題が存在することを自分で確認する）
-- [ ] `XlsFormatReader#readListMapBlock` に重複検出ロジックを追加し、重複があれば後勝ちで列名を正規化し WARN ログを出す（`java.util.logging.Logger` を使用）
-- [ ] `XlsFormatReader#readTableBlocks` に同様の重複検出・WARN ロジックを追加する
-- [ ] 重複カラム名を含む Excel テストデータ（または相当するテストフィクスチャ）を作成し、WARN ログが出ることを確認するテストを追加する
-- [ ] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
-- [ ] README に「重複カラム名があった場合の動作」セクションを追記する
-- [ ] self-check（OK/NG per completion criterion、checks/task-16.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] 影響範囲を確認する（LIST_MAP と TABLE 系の両方に重複カラム問題が存在することを自分で確認する）
+- [x] `XlsFormatReader#readListMapBlock` に重複検出ロジックを追加し、重複があれば後勝ちで列名を正規化し WARN ログを出す（`java.util.logging.Logger` を使用）
+- [x] `XlsFormatReader#readTableBlocks` に同様の重複検出・WARN ロジックを追加する
+- [x] 重複カラム名を含む Excel テストデータ（または相当するテストフィクスチャ）を作成し、WARN ログが出ることを確認するテストを追加する
+- [x] `mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [x] README に「重複カラム名があった場合の動作」セクションを追記する
+- [x] self-check（OK/NG per completion criterion、checks/task-16.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, coding）
+- [x] Verification expert review（subagent, test）
 
 **Completion criteria**:
 
