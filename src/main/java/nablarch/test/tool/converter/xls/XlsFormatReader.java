@@ -3,6 +3,7 @@ package nablarch.test.tool.converter.xls;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -546,9 +547,9 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @param blockId      ブロック識別子（テーブル名・LIST_MAP 識別子等）
      * @return 重複を除去したカラム名リスト（後勝ち・元の順序を保持）
      */
-    private List<String> deduplicateColumnNames(List<String> columnNames, String resourceName, String blockId) {
+    private static List<String> deduplicateColumnNames(List<String> columnNames, String resourceName, String blockId) {
         // 各カラム名の最後の出現インデックスを記録
-        Map<String, Integer> lastIndex = new LinkedHashMap<>();
+        Map<String, Integer> lastIndex = new HashMap<>();
         for (int i = 0; i < columnNames.size(); i++) {
             lastIndex.put(columnNames.get(i), i);
         }
@@ -562,7 +563,8 @@ public class XlsFormatReader implements TestDataFormatReader {
                 if (warned.add(name)) {
                     LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
                             + "\" のブロック \"" + blockId
-                            + "\" に重複カラム名 \"" + name + "\" があります。後方の列の値を採用します。");
+                            + "\" に重複カラム名 \"" + name + "\" があります。"
+                            + (lastIndex.get(name) + 1) + " 列目の値を採用します。");
                 }
             } else {
                 result.add(name);

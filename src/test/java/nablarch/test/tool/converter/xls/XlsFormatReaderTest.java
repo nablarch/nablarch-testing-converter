@@ -893,6 +893,7 @@ public class XlsFormatReaderTest {
         CapturingHandler handler = new CapturingHandler();
         Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
         logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
         logger.setLevel(Level.WARNING);
         try {
             // When
@@ -911,6 +912,7 @@ public class XlsFormatReaderTest {
             assertThat(handler.messages.get(0), containsString("dupMap"));
             assertThat(handler.messages.get(0), containsString("COL_A"));
         } finally {
+            logger.setUseParentHandlers(true);
             logger.removeHandler(handler);
         }
     }
@@ -932,6 +934,7 @@ public class XlsFormatReaderTest {
         CapturingHandler handler = new CapturingHandler();
         Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
         logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
         logger.setLevel(Level.WARNING);
         try {
             // When
@@ -944,7 +947,12 @@ public class XlsFormatReaderTest {
             assertThat(listMap.getRows().get(0), is(Arrays.asList("a2", "c1", "b2")));
             // A と B それぞれ 1 件ずつ = 合計 2 件の WARN
             assertThat(handler.messages.size(), is(2));
+            // Both A and B must appear across the warnings (order may vary)
+            String allWarnings = handler.messages.get(0) + handler.messages.get(1);
+            assertThat(allWarnings, containsString("\"A\""));
+            assertThat(allWarnings, containsString("\"B\""));
         } finally {
+            logger.setUseParentHandlers(true);
             logger.removeHandler(handler);
         }
     }
@@ -966,6 +974,7 @@ public class XlsFormatReaderTest {
         CapturingHandler handler = new CapturingHandler();
         Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
         logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
         logger.setLevel(Level.WARNING);
         try {
             // When
@@ -979,9 +988,13 @@ public class XlsFormatReaderTest {
             assertThat(table.getRows().get(0), is(Arrays.asList("y1", "last")));
             // WARN ログが出ること
             assertThat(handler.messages.size(), is(1));
+            assertThat(handler.messages.get(0), containsString("book"));
+            assertThat(handler.messages.get(0), containsString("readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins"));
             assertThat(handler.messages.get(0), containsString("MY_TABLE"));
             assertThat(handler.messages.get(0), containsString("COL_X"));
+            assertThat(handler.messages.get(0), containsString("3 列目"));
         } finally {
+            logger.setUseParentHandlers(true);
             logger.removeHandler(handler);
         }
     }
@@ -1003,6 +1016,7 @@ public class XlsFormatReaderTest {
         CapturingHandler handler = new CapturingHandler();
         Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
         logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
         logger.setLevel(Level.WARNING);
         try {
             // When
@@ -1011,6 +1025,7 @@ public class XlsFormatReaderTest {
             // Then: WARN ログは出力されない
             assertThat(handler.messages.size(), is(0));
         } finally {
+            logger.setUseParentHandlers(true);
             logger.removeHandler(handler);
         }
     }
