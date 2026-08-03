@@ -32,7 +32,7 @@ import nablarch.test.core.reader.yaml.YamlTableDataBuilder;
  * <p>
  * あわせて {@link #loadRawMap}（{@link YamlLoader#load} の透過）を備える。Excel が器の正規化を生行から
  * 復元するのに対し、YAML は器が正規化する値（カラム名の大文字化・長さ省略 {@code -}・型表記）の原文を
- * この順序保持 Map から復元する（設計書 §共通「器が正規化する値の原文復元」＝Excel=生行／YAML=YamlLoader Map）。
+ * この順序保持 Map から復元する。
  * </p>
  *
  * @author kiyobot

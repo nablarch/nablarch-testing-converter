@@ -45,7 +45,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * 各ブロックは「{@code adapter.read*} が返す本体器（構造の権威）」と「同じ Map から取る原文」を
  * 突き合わせて組み立てる。Excel 経路（{@code XlsFormatReader}）が器の正規化を<b>生行</b>から復元するのに対し、
  * YAML 経路は器が正規化する値（カラム名の大文字化・長さ省略・型表記）の原文を<b>{@code loadRawMap} の Map</b>から
- * 復元する（設計書 §共通「器が正規化する値の原文復元」＝Excel=生行／YAML=YamlLoader Map）。
+ * 復元する。
  * </p>
  *
  * <p>
@@ -316,7 +316,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * </p>
      * <p>
      * 器の断片数と原文レコード数が一致しない（対応が破綻している）場合は、誤った原文を静かに充填せず
-     * 即座に失敗させる（設計書 §共通の fail-fast 思想）。
+     * 即座に失敗させる。
      * </p>
      *
      * @param view           器のビュー

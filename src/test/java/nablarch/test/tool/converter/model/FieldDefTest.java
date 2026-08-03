@@ -15,7 +15,7 @@ public class FieldDefTest {
 
     @Test
     public void 名称型長さを記法のまま保持する() {
-        // Given: 日本語型名称（設計書 §5）と固定長
+        // Given: 日本語型名称と固定長
         // When
         FieldDef sut = new FieldDef("emp_name", "半角英字", "10");
 

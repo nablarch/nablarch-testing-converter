@@ -23,8 +23,7 @@ import nablarch.test.core.util.interpreter.TestDataInterpreter;
  * 本体の各 Parser は取り出し口（{@code getResult}）や一部コンストラクタが
  * パッケージプライベートで、変換ツールのパッケージから直接呼べない。本クラスを
  * 本体 Parser と同一パッケージ（{@code nablarch.test.core.reader}）に 1 枚だけ
- * 相乗りさせ、この可視性の壁を越える。相乗りの影響は本クラスに局所化される
- * （設計書 判断 A）。
+ * 相乗りさせ、この可視性の壁を越える。相乗りの影響は本クラスに局所化される。
  * </p>
  * <p>
  * 配線は常に<b>空の interpreters</b>で行うため、{@code ${...}} 等の特殊記法・補完・
@@ -167,7 +166,7 @@ public class TestCoreReaderAdapter {
      * 併せ持つ{@link MessageData}を返す。本文の{@link FixedLengthFile}は本体
      * {@link MessageParser#getDelegate()}（同一パッケージからのみ可視）から取り出す。
      * これは{@link MessagePool#getSource()}が protected で変換ツールのパッケージから
-     * 読めないための相乗りであり、相乗りの影響は本アダプタに局所化される（設計書 §共通）。
+     * 読めないための相乗りであり、相乗りの影響は本アダプタに局所化される。
      * 対象が存在しない場合は{@code null}を返す（本体{@link MessageParser}の挙動を踏襲）。
      * </p>
      *

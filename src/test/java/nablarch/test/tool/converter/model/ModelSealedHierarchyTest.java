@@ -10,11 +10,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * 中間モデルの継承・sealed 関係（設計書 §3 クラス図）が崩れていないことを検証する。
+ * 中間モデルの継承・sealed 関係が崩れていないことを検証する。
  *
  * <p>
  * sealed 階層は変換ツールの Reader/Writer が網羅的に分岐（switch パターン）する前提のため、
- * permits の集合が設計図と一致することを保証する。
+ * permits の集合を固定して保証する。
  * </p>
  */
 public class ModelSealedHierarchyTest {
@@ -48,7 +48,7 @@ public class ModelSealedHierarchyTest {
     }
 
     @Test
-    public void 継承関係が設計図どおりである() {
+    public void 継承関係が正しい() {
         // Given: (セットアップなし)
         // When / Then
         assertThat(TestDataBlock.class.isAssignableFrom(ColumnRowDataBlock.class), is(true));

@@ -38,7 +38,7 @@ import org.junit.rules.TemporaryFolder;
  * {@link YamlFormatWriter} のテストクラス。
  *
  * <p>
- * 中間モデル → YAML テキストの直列化（{@code serialize}）を中心に検証する。設計書 OUT 方針＝全値ダブル
+ * 中間モデル → YAML テキストの直列化（{@code serialize}）を中心に検証する。全値ダブル
  * クォート・{@code null} はアンクォート・キーは原則無クォートを、種別ごと（テーブル／LIST_MAP／ファイル／
  * メッセージ／送信系）の出力で確認する。加えてクォート/エスケープのエッジ、{@code write} のファイル出力、
  * および実 {@link YamlFormatReader} で読み戻して同値になる往復（記法対称）を検証する。

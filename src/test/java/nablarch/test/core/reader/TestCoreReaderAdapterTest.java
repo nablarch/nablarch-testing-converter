@@ -399,7 +399,7 @@ public class TestCoreReaderAdapterTest {
         List<List<String>> lines = new ArrayList<List<String>>();
         lines.add(row("SETUP_FIXED=test.dat"));
         lines.add(row("data", "field1", "field2"));     // フィールド名行
-        lines.add(row("", "半角英字", "半角英字"));        // 型（設計書記法）
+        lines.add(row("", "半角英字", "半角英字"));        // 型（NTF が受け付ける型名称）
         lines.add(row("", "10", "5"));                   // 長さ
         lines.add(row("", "${value}", "abc"));           // データ行
 

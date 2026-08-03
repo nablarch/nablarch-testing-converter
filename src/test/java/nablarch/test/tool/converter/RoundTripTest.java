@@ -44,7 +44,7 @@ import org.junit.rules.TemporaryFolder;
  * NTF 仕様上の意味が不変であることを検証する。
  * </p>
  *
- * <p><b>可逆性の対象外（設計書 §可逆性）:</b>
+ * <p><b>可逆性の対象外:</b>
  * Excel の色・書式・結合セル・コメント、YAML のコメントはいずれも中間モデルに乗らない。
  * 往復後の Excel は {@link nablarch.test.tool.converter.xls.ExcelFormatConfig} デフォルト整形が付く。
  * また Excel 経路では {@code null}（中間モデルの null セル）をリテラル文字列 {@code "null"} として

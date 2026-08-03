@@ -33,7 +33,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * 中間モデル（{@link TestDataContainer}）を YAML へ書き出す OUT ライタ。
  *
  * <p>
- * {@link YamlFormatReader} と<b>記法対称</b>に直列化する。設計書 OUT 方針に従い、値はすべて
+ * {@link YamlFormatReader} と<b>記法対称</b>に直列化する。値はすべて
  * ダブルクォートで囲む（数値・null・前後空白を文字列として保つため）。ただし {@code null}（記述省略でなく
  * 明示的な NULL）はアンクォートの {@code null} とする。{@code ""}・{@code ${...}} は記法のまま保持する。
  * キーは原則クォートしない（YAML 特殊文字を含む場合のみクォートする）。

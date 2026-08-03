@@ -53,7 +53,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * テスト実行に必要な正規化を器に施す（長さ省略 {@code -} の実バイト長化・型記法のフレームワーク表記化・
  * レコード種別の private 化）。作成者が記述した原文が要るため、これら正規化される箇所だけ
  * {@link TestCoreReaderAdapter#readBlockBodyLines(String, String, String, String, DataType) 生行}から
- * 原文を復元する（設計書 §共通「器が正規化する値の原文復元」）。生行は器（{@link FragmentView}）を
+ * 原文を復元する。生行は器（{@link FragmentView}）を
  * 権威に断片数・フィールド数・値行数を決め、本体パーサと同形に走査して原文を充填する。
  * </p>
  *
@@ -329,7 +329,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * 器（断片構造）の名前行が生行の {@code idx} 位置に一致することを検証し、{@code idx} をそのまま返す。
      * <p>
      * 一致しなければ器↔生行の対応が破綻している＝前提崩れ。誤った原文を静かに充填せず
-     * 即座に失敗させる（設計書 §共通「内部整合性ガード」）。
+     * 即座に失敗させる。
      * </p>
      *
      * @param bodyLines 生のボディ行
