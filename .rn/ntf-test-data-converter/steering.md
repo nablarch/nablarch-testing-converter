@@ -493,14 +493,14 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] 全 19 件（分類 A）の括弧ごと削除を実施する
-- [ ] `grep -rn "設計書\|解説書\|設計図\|仕様書\|§[0-9]" src --include=*.java` がゼロになることを確認する
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn javadoc:javadoc` で警告数が増えていないことを確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-17.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, writing）
-- [ ] Verification expert review（subagent, fact-check）
+- [x] 全 19 件（分類 A）の括弧ごと削除を実施する
+- [x] `grep -rn "設計書\|解説書\|設計図\|仕様書\|§[0-9]" src --include=*.java` がゼロになることを確認する
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn javadoc:javadoc` で警告数が増えていないことを確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-17.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, writing）
+- [x] Verification expert review（subagent, fact-check）
 
 **Completion criteria**:
 
