@@ -14,7 +14,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  *
  * <p>
  * sealed 階層は変換ツールの Reader/Writer が網羅的に分岐（switch パターン）する前提のため、
- * permits の集合を固定して保証する。
+ * permits の集合が想定どおりであることを保証する。
  * </p>
  */
 public class ModelSealedHierarchyTest {

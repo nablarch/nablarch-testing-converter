@@ -436,7 +436,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * 本体ディレクティブ（{@code Map<String, Object>}）を文字列ディレクティブへ写す。
      * <p>
      * 本体器のディレクティブ値は型変換済み（{@code Charset}・enum・整数等）で、順序も
-     * {@code HashMap} 由来で記述順を保たない。Excel 経路（判断 A）はこの器固有挙動を受容し、
+     * {@code HashMap} 由来で記述順を保たない。Excel 経路はこの器固有挙動を受容し、
      * 値は {@link Object#toString()} で文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）
      * null のまま保持し、文字列 {@code "null"} へ化けさせない。
      * Excel 経路固有の逆正規化（{@link #normalizeDirectiveValue}）を {@link DirectiveUtil#toStringDirectives}
