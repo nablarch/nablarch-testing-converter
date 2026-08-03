@@ -485,11 +485,33 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - `target/site/jacoco/` に HTML レポートが生成される
 - `pom.xml` への追記・`argLine` 変更は不要
 
+### #17: Javadoc からの外部文書参照の除去（全 19 件）
+
+**Purpose**: Javadoc・コメントを自己完結させる。読者がリポジトリ外を参照しなくても内容が分かる状態にする。
+
+**Prerequisites**: #16
+
+**Steps**:
+
+- [ ] 全 19 件（分類 A）の括弧ごと削除を実施する
+- [ ] `grep -rn "設計書\|解説書\|設計図\|仕様書\|§[0-9]" src --include=*.java` がゼロになることを確認する
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全テスト PASS を確認する
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn javadoc:javadoc` で警告数が増えていないことを確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-17.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, writing）
+- [ ] Verification expert review（subagent, fact-check）
+
+**Completion criteria**:
+
+- `grep -rn "設計書\|解説書\|設計図\|仕様書\|§[0-9]" src --include=*.java` の出力がゼロ
+- 分類 A 19 件すべてで括弧ごと削除のみ実施（ロジック・アサーション内容は無変更）
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+- `mvn javadoc:javadoc` が通り、警告数が作業前から増えていない
+
+---
+
 # State
 
-- **Status**: paused
-- **Date**: 2026-07-15
-- **Last completed**: README 後方互換説明追記（重複カラム WARN セクション）
-- **Next**: セッション終了（全タスク完了）
-- **Notes**: PR https://github.com/nablarch/nablarch-testing-converter/pull/1 — task #16 + README 修正 push 済み。
+<!-- {{status: active | paused}} | {{last-completed: #N description}} | {{next: #N description}} | {{notes: ...}} -->
 
