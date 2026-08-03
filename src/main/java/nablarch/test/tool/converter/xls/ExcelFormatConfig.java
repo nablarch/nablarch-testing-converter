@@ -6,7 +6,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
  * {@link XlsFormatWriter} の整形設定。
  *
  * <p>
- * Excel OUT は人が見て編集する前提のため、行種別ごとの装飾やレイアウトで読みやすく整える
+ * Excel OUT は人が見て編集する前提のため、行種別ごとの装飾やレイアウトで読みやすく整える。
  * 整形は NTF 仕様上の意味を持たず、読み戻し（{@link XlsFormatReader}）は
  * 装飾を無視するため、整形の有無・配色は往復の可逆性に影響しない。
  * </p>
