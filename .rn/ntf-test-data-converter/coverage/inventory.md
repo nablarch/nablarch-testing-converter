@@ -528,7 +528,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 
 **軸C（#18 §1.2 から状態が変わったものだけ。根拠は `coverage/issues.md` の課題 ID）**
 
-| 要素 | #18 の判定 | #20 後 | 担保テストメソッド／根拠 |
+| 要素 | #18 の判定 | #21 後 | 担保テストメソッド／根拠 |
 |---|---|---|---|
 | C-06 `groupId` 省略(`""`) | 🔺（`RoundTripTest` のみ） | ✅ | `readsSetupTableBlockFromRealBook`, `readsListMapBlockFromRealBook`, `readsMessageBlockFromRealBook` |
 | C-08 `columnNames` 空 | ❌ | ✅ | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`, `readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`（`issues.md` XLS-08） |
@@ -575,10 +575,11 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | F1-03 未知のデータタイプ名 | ✅（**#21**。#18 は 🔺） | `ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook`／`readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` | 例外にならず継続。未知名はブロックごと消える（**XLS-10**）。既知名＋余分な文字はグループ ID になる（**XLS-11**） |
 | F1-04 マーカーカラム欠落 | ✅（**#21**） | `readsMarkerColumnWithoutBracketsAsOrdinaryDataColumnInRealBook`／`dropsFirstFieldWhenSendSyncMetaColumnIsMissingInRealBook` | 例外にならず継続。角括弧なしの列はデータ列になる。送信同期のメタ列欠落は先頭フィールドと値を落とす（**XLS-13**） |
 | F1-05 カラム名重複 | ✅（**#21** で実 `.xlsx` 経路も） | `deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook`／`deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook`（**#21**）。#16 の `XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` ほか 3 件は **Fake リーダ経路** | 後勝ちで除去＋WARN ログ 1 件（ブック名・シート名・ブロック識別子・カラム名・採用列番号を含む）。実 `.xlsx` 経路でも Fake 経路と同じ結果になることを実測 |
-| F1-06 行と列の数の不一致 | ✅（**#21**） | `padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook`／`padsShortValueRowAndDropsCellsBeyondNameRowInFixedFileInRealBook`／`failsWhenLengthRowIsShorterThanNameRowInRealBook`／`failsWhenNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenTypeRowIsShorterThanNameRowInRealBook`／`failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook` | **値行**の不足は空文字埋め・超過は切り捨て（例外にならない。**XLS-12**）。**名前行・型行・長さ行**の不整合は本体パーサが例外で弾く |
+| F1-06 行と列の数の不一致 | ✅（**#21**） | `padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook`／`padsShortValueRowAndDropsCellsBeyondNameRowInFixedFileInRealBook`／`failsWhenLengthRowIsShorterThanNameRowInRealBook`／`failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenTypeRowIsShorterThanNameRowInRealBook`／`failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook` | **値行**の不足は空文字埋め・超過は切り捨て（例外にならない。**XLS-12**）。**名前行・型行・長さ行**の不整合は本体パーサが例外で弾く |
 | （軸F の要素ではない補足） | — | `absorbsSecondNameRowAsDataRowInMessageBodyInRealBook` | `MESSAGE` 本文に 2 つ目のレコードレイアウトを書くと、名前行・型行・長さ行がすべて 1 つ目の値行として吸収される（**XLS-15**。E-3(複数) がメッセージ系で到達不能である根拠） |
 
-- 末尾 3 メソッド（`failsWhenNameRowHasOnlyRecordTypeCell...`／`failsWhenTypeRowIsShorterThanNameRow...`／
+- 末尾 4 メソッド（`failsWhenFixedFileNameRowHasOnlyRecordTypeCell...`／`failsWhenMessageNameRowHasOnlyRecordTypeCell...`／
+  `failsWhenTypeRowIsShorterThanNameRow...`／
   `failsWhenTypeCellIsBlankInMiddleOfTypeRow...`）は、軸C の **C-17／C-20 が到達不能である根拠**を
   実行可能にするテストでもある（`issues.md` の「到達不能」表が参照している）。
 
@@ -616,7 +617,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | C | C-09 rows 空／C-12 FileDataBlock.records 空／C-15 MessageDataBlock.records 空／C-18 RecordLayout.rows 空 | 要追加 | **担保済み（#21）** — `XlsFormatReaderRealFileTest#readsEmptyRowsFromTableWithoutDataRowsInRealBook`／`#readsEmptyRowsFromListMapWithoutDataRowsInRealBook`（C-09 は 2 経路）／`#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook`（C-12）／`#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`（C-15）／`#readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook`（C-18）。いずれも例外にならず空コレクションになることを実測して固定した | 4 |
 | C | C-11 FileDataBlock.directives 空／C-13 MessageDataBlock.directives 空 | 要追加 | **到達不能** — 本体 `DataFile` コンストラクタ L92 が `file-type` を必ず注入する（`issues.md` **XLS-07**）。根拠は `#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`／`#readsAllFourSendSyncMessageTypesFromRealBook` がテストで示す | 2 |
 | C | C-16 recordType 省略(`null`) | 要追加 | **到達不能** — 実 `.xlsx` 経路では空セルが `""` として読まれる（`issues.md` **XLS-06**）。根拠は `#readsOmittedRecordTypeAsEmptyStringFromRealBook` | 1 |
-| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗する（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenNameRowHasOnlyRecordTypeCellInRealBook` がテストで示す。**#20 の当初分類では #21 送りにしていたが誤り**（軸E の 0 件ではない）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
+| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗する（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook` と `#failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook` がテストで示す。**#20 の当初分類では #21 送りにしていたが誤り**（軸E の 0 件ではない）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
 | C | C-20 FieldDef.type 省略(`null`) | 要追加 | **到達不能** — 型の欠落を本体パーサが 2 通りの機構で弾く（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenTypeRowIsShorterThanNameRowInRealBook`（機構①）／`#failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook`（機構②）がテストで示す | 1 |
 | C | C-02 sections 空 — `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
 | D | D1-01〜D1-17 全 17 ケース | 要追加 | **担保済み（#19）** — `XlsFormatReaderCellTypeTest` 19 件（17 ケース＋空白セル＋行途中の不在セル）。Excel 保存物との突き合わせは `XlsReferenceFixtureTest` 2 件（`issues.md` XLS-01〜XLS-05） | 17 |

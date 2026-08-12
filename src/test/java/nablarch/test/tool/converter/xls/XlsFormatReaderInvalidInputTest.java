@@ -88,9 +88,16 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>例外メッセージのアサートについて。</b>環境依存の要素（一時ディレクトリの絶対パス、{@code HashMap}
- * 由来で並び順が変わるマッピング表）を含むメッセージは変わらない部分文字列だけを {@code containsString} で
- * 突き合わせ、環境に依存しない固定文言は完全一致で突き合わせる。
+ * <b>例外メッセージのアサートについて。</b>次の 3 類型で使い分ける。
+ * </p>
+ * <ul>
+ *   <li>環境依存の要素（一時ディレクトリの絶対パス、{@code HashMap} 由来で並び順が変わるマッピング表）を
+ *       含むもの — 変わらない部分文字列だけを {@code containsString} で突き合わせる。</li>
+ *   <li>本体パーサが自身の内部表現を {@code toString()} でダンプして後続させるもの — 決定的ではあるが
+ *       本体の実装詳細に追随したくないため、先頭の診断文だけを {@code containsString} で突き合わせる。</li>
+ *   <li>環境にも本体の内部表現にも依存しない固定文言 — 完全一致で突き合わせる。</li>
+ * </ul>
+ * <p>
  * </p>
  *
  * <p>
@@ -244,16 +251,6 @@ public class XlsFormatReaderInvalidInputTest {
     private static List<TestDataBlock> blocksOf(TestDataContainer container) {
         assertThat("セクション数", container.getSections().size(), is(1));
         return container.getSections().get(0).getBlocks();
-    }
-
-    /**
-     * 指定のブックを読み、唯一のセクションのブロック一覧を返す。
-     *
-     * @param bookName ブック名
-     * @return ブロック一覧
-     */
-    private List<TestDataBlock> blocks(String bookName) {
-        return blocksOf(read(bookName));
     }
 
     /**

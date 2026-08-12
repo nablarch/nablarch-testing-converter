@@ -97,8 +97,9 @@ import org.junit.rules.TemporaryFolder;
  *     <td>フィールドを 0 件にするには名前行を 1 列（レコード種別セルのみ）にするしかないが、本体
  *         {@code DataFileParser} が「{@code directive or data names row must have two columns at least.}」で
  *         弾く（{@code issues.md} の「到達不能」表）。根拠は
- *         {@code XlsFormatReaderInvalidInputTest#failsWhenNameRowHasOnlyRecordTypeCellInRealBook} が
- *         テストで示す。</td>
+ *         {@code XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook}
+ *         と {@code #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} がテストで示す
+ *         （固定長とメッセージは経路が別のため 2 メソッドに分かれている）。</td>
  *   </tr>
  *   <tr>
  *     <td>C-20 {@code FieldDef.type} 省略（{@code null}）</td><td>到達不能</td>
