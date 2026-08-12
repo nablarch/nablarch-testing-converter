@@ -10,10 +10,16 @@
 
 | 記号 | 意味 |
 |---|---|
-| 影響度 高 | 実プロジェクトの Excel テストデータに実在するパターンで、変換結果が黙って変わる |
+| 影響度 高 | 変換結果が入力と一致せず、値が化ける・行が消えるなど**データが黙って変わる**。`nablarch-example-web`（サンプルアプリ）の 6 ファイルでの発現有無は影響度の根拠にしない（対象PJの実データでの発現は未知） |
 | 影響度 中 | 変換結果が入力と一致しないが、`nablarch-example-web`（サンプルアプリ）の 6 ファイルでは発現を確認していない（対象PJの実データに無いことは意味しない） |
 | 影響度 低 | 記録のみ。仕様として受容できると判断した |
 | 未確認 | 挙動を確認・固定できなかったもの |
+
+**「影響度 高」の定義を訂正した（2026-08-12・ユーザー指摘による訂正）。** 当初は「実プロジェクトの Excel
+テストデータに実在するパターンで」としていたが、`nablarch-example-web` は**サンプルアプリであって対象PJの
+実データではない**（同じ誤りを「影響度 中」の定義では既に訂正済み）。実在するかどうかは影響度の根拠に
+できないため、定義から外して「影響度 中」と同じ言い回しに揃えた。XLS-05 は「高」だが `nablarch-example-web`
+での発現は確認していない。
 
 ### 並び順の原則（2026-08-12・ユーザー指摘による訂正）
 
@@ -44,7 +50,7 @@ XLS-05（全カラムが空のデータ行が消える）は行が消えても�
 |---|---|
 | `SETUP_TABLE=T`／カラム行 `A`,`B`／データ行 `x1`,`y1`／データ行 `""`,`""`／データ行 `x3`,`y3` | 行が **2 件**（`[x1, y1]`, `[x3, y3]`）。空のデータ行は消える |
 
-- 原因: `PoiXlsReader#readLine`（L83-99）が `isBlankLine`（L136-143）で
+- 原因: `PoiXlsReader#readLine`（L83-98）が `isBlankLine`（L140-147）で
   「全要素が空文字の行」を読み飛ばす。ブロック区切りとしての空行と、
   **全カラムが空のデータ行**が区別されない。
   **後続の XLS-01〜XLS-03 とは別件である**（セル書式の但し書きとは無関係で、行の読み飛ばしが原因）。
@@ -267,6 +273,29 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 
 ## #20 辺① 軸A・B・C（実ファイル経由）で記録した課題
 
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない** XLS-08 を本節の先頭に置く。課題 ID は発見順のまま
+振り直していない（XLS-08 は 2026-08-12 の修正ラウンドで追加したもの）。
+
+### XLS-08 マーカー列だけのブロックは「セル 0 個の行」になり、書き戻すと行が消える（影響度 低・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `SETUP_TABLE=T`／カラム行 `[no]` のみ／データ行 `1`, `2` | `columnNames=[]`、`rows=[[], []]`（セルを 1 つも持たない行が 2 件） | `XlsFormatReaderRealFileTest#readsEmptyColumnNamesFromMarkerOnlyTableInRealBook` |
+| `LIST_MAP=lm`／カラム行 `[no]` のみ／データ行 `1` | `columnNames=[]`、`rows=[[]]` | `#readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook` |
+
+- 原因: マーカー列（`[no]`）は本体 `HeaderLine#getEffectiveColumnNames()` が有効カラム名から除外する
+  （steering #15 の意図した除外）。一方、データ行の件数はそのまま数えられるため、
+  「列 0 個 × 行 N 件」という中間モデルになる。
+- 実測（プローブ実行・2026-08-12）: 上表のとおり。テーブル系・LIST_MAP の両経路で同じ結果になる。
+- **往復が安定しない**: この中間モデルを `XlsFormatWriter` で Excel へ書き戻し、もう一度読むと
+  `rows=[]`（0 件）になる。書き出された行が全カラム空になり、XLS-05 のとおり `PoiXlsReader` に
+  読み飛ばされるためである（プローブで実測）。YAML へ書くと `rows: [- {}]`（キーを持たない行）になる。
+- 影響: 失われるのは「セルを 1 つも持たない行」であり、**値としての情報は失われない**。
+  行数だけが変わる。したがって影響度は「低」とする。ただし変換前後でモデルが変わることに
+  警告は一切出ないため、**検出はできない**（本節の先頭に置く理由）。
+- 判断: XLS-05（全カラムが空のデータ行が黙って消える）の派生であり、単独で修正すべきものではない。
+  XLS-05 の対応を検討する際に、この派生ケースも併せて判断すること。修正はこの作業では行わない。
+
 ### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中）
 
 | 入力 | 中間モデルへ入る値 | 担保テスト |
@@ -276,11 +305,14 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 - 中間モデル `RecordLayout` の Javadoc（L26/L36）は省略時の表現を **`null`** と定めており、
   YAML 経路（辺②）は実際に `null` を入れる
   （`YamlFormatReaderTest#readFile_recordTypeOmitted_keepsNullRecordType`）。
-- Excel 経路は `XlsFormatReader#toRecordLayouts` L305 が生行の先頭セルをそのまま採る。
-  空セルは `PoiXlsReader` が `""` を返すため、`null` にはならない。
+- Excel 経路は `XlsFormatReader#toRecordLayouts` L306（`String recordType = bodyLines.get(idx).get(0);`）が
+  生行の先頭セルをそのまま採る。空セルは `PoiXlsReader` が `""` を返すため、`null` にはならない。
+  **当初 L305 と記載していたのは誤り（L305 は `verifyNameRow` の呼び出し行）。2026-08-12・レビュー指摘により訂正。**
 - 影響: `YamlFormatWriter` L261-263 は `recordType != null` のときだけ `record_type` を書き出すため、
   **Excel 由来の「レコード種別省略」は `record_type: ""` として YAML に現れる**（YAML 由来の省略はキー自体が無い）。
-  プローブで実測した変換後 YAML:
+  プローブで実測した変換後 YAML（`s.yaml` の**全文**。当初この節に載せていたスニペットは
+  `record_type: ""` の行で切り詰められており実測と一致しなかった。2026-08-12・レビュー指摘により
+  プローブを実行し直して差し替えた）:
 
   ```yaml
   setup_files:
@@ -290,7 +322,14 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
         file-type: "Fixed"
       records:
         - record_type: ""
+          fields:
+            - {name: "f1", type: "半角英字", length: "3"}
+          rows:
+            - ["abc"]
   ```
+
+  入力は `SETUP_FIXED=f.dat` ／ 名前行 `[空白セル], f1` ／ 型行 `[空白], 半角英字` ／ 長さ行 `[空白], 3` ／
+  値行 `[空白], abc`。
 
 - Excel へ書き戻す際は `XlsFormatWriter` L275 の `nullToEmpty` により元と同じ空セルへ戻るため、
   Excel→YAML→Excel の往復自体は安定する。しかし同じ「省略」が入力形式によって 2 通りに表現され、
@@ -304,7 +343,8 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 |---|---|---|
 | ディレクティブ行を持たない `EXPECTED_FIXED` | `{file-type=Fixed}` | `XlsFormatReaderRealFileTest#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook` |
 | `record-separator` だけを書いた `EXPECTED_VARIABLE` | `{file-type=Variable, record-separator=CRLF, field-separator=,}` | `#readsExpectedVariableFileBlockWithGroupIdFromRealBook` |
-| ディレクティブ行を持たない送信同期メッセージ 4 種 | `{file-type=Fixed}` | `#readsAllFourSendSyncMessageTypesFromRealBook` |
+| `text-encoding` だけを書いた `MESSAGE`（本文は固定長） | `{file-type=Fixed, text-encoding=UTF-8}` | `#readsMessageBlockFromRealBook` |
+| ディレクティブ行を持たない送信同期メッセージ 4 種 | `{file-type=Fixed}` | `#readsAllFourSendSyncMessageTypesFromRealBook`（4 種すべてでループ内アサート） |
 
 - 原因: 本体 `DataFile` のコンストラクタ（L92）が `setDirective("file-type", getFileType())` を必ず実行する。
   可変長は `VariableLengthFile` L29 がさらに `field-separator` の既定値 `,` を設定する。
@@ -314,6 +354,28 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 - 帰結: 辺①では軸C の C-11 `FileDataBlock.directives` 空 と C-13 `MessageDataBlock.directives` 空 は
   **到達不能**である（Excel にディレクティブ行が 1 行も無くても空 Map にならない）。
 
+### XLS-09 `XlsFormatReader#stripQuotes` の `null` ガードのコメントが実挙動と食い違う（影響度 低・記録のみ／`src/main` は無変更）
+
+| 対象 | 内容 |
+|---|---|
+| `XlsFormatReader` L531（`stripQuotes` の直前のコメント） | 「`toRecordLayouts` の `valueCells.get(i)` は Excel の空白セルに対して `null` を返すため、このガードは必須。」 |
+
+- **この記述は誤りである**（2026-08-12・レビュー指摘を受けて該当箇所を読み直して裏を取った）。
+  `PoiXlsReader#readOneLine` L123 は `String cellValue = cell == null ? "" : cell.toString();` であり、
+  Excel の空白セル・不在セルに対して **`""` を返す。`null` は返さない**（XLS-04 で実測済み）。
+  したがって実 `.xlsx` 経路では `valueCells.get(i)` が `null` になることはない。
+- ではどこで `null` が生じるか: テーブル経路（`readTableBlocks`、`table.getValue()` が `null`）と
+  LIST_MAP 経路（`readListMapBlock`、`mapRow.get(column)` が `null`）である。ただし**どちらも
+  呼び出し側で `value == null ? null : stripQuotes(...)` と先に判定している**ため、`null` が
+  `stripQuotes` に渡ることはない。
+- 残る到達経路は、Fake リーダ（`XlsFormatReaderTest` の `FakeTestDataReader`）が canned 行の要素に
+  Java の `null` を直接置いた場合の `toRecordLayouts` 経路だけであり、現行スイートにその入力は無い。
+  実際 #20 の JaCoCo 計測でも `stripQuotes` の `null` ガード（L533）は**未到達**である。
+- 判断: 実挙動としてのガード自体は防御的で害が無い（残してよい）。**コメントの根拠づけだけが誤っている。**
+  `src/main` は本作業では変更しないため記録に留める。修正する場合はコメントを
+  「テーブル／LIST_MAP 経路と対称に `null` を通すための防御的ガード。実 Excel 経路では `null` は生じない」
+  程度に直すのが正しい。
+
 ### 課題としないと判断した観測結果（#20）
 
 | 観測 | 判断 |
@@ -322,6 +384,8 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 | 可変長ファイルの `FieldDef.length` が `null` | 妥当（長さ行を持たないため。`FieldDef` Javadoc L25/L43 どおり） |
 | マーカー行の無いシートがブロック 0 件のセクションになる | 妥当 |
 | Excel 記述順の列名が LIST_MAP でアルファベット順にならない | 妥当（steering #15 の修正どおり） |
+| 長さ省略記法 `-` が実 `.xlsx` 経路でも原文 `"-"` のまま入る（器は実バイト長 `4` へ正規化している） | 妥当（原文復元ロジックの意図どおり。`XlsFormatReaderRealFileTest#readsOmittedFieldLengthNotationFromRealBook` で固定。2026-08-12 の修正ラウンドで追加） |
+| 送信同期メッセージの `RecordLayout.recordType` が名前行の先頭セル＝メタ列ヘッダ `no` になる | 妥当（2026-08-12 の修正ラウンドで実測して判断）。送信同期の名前行の先頭セルは本来レコード種別ではないが、`toRecordLayouts` L306 が一律に先頭セルを採るため `"no"` が入る。この値は `XlsFormatWriter` L275 が名前行の先頭セルへ書き戻すのに使われ、実 `.xlsx` → 中間モデル → 実 `.xlsx` → 中間モデルで `"no"` のまま安定することをプローブで実測した（`null` だとメタ列ヘッダが失われて往復が壊れる）。すなわち本経路では load-bearing である。既存テスト `XlsFormatReaderTest#readPreservesErrorModeRowInSendSyncMessage` の判定（良性）と一致する。YAML には `record_type: "no"` が出る |
 
 ### 到達不能と判定した軸要素（#20 で新たに判明したもの）
 
@@ -329,6 +393,7 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 
 | 軸要素 | 根拠 |
 |---|---|
-| C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | XLS-07（器が `file-type` を必ず注入する） |
+| C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | XLS-07（器が `file-type` を必ず注入する）。担保テストは C-11 が `XlsFormatReaderRealFileTest#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`、C-13 が `#readsAllFourSendSyncMessageTypesFromRealBook`（ディレクティブ行を 1 行も持たない送信同期 4 種すべてについて、ループ内で `getDirectives()` の内容と件数をアサートする） |
 | C-16 `RecordLayout.recordType` 省略（`null`） | XLS-06（実 `.xlsx` 経路では `""` になる） |
-| C-20 `FieldDef.type` 省略（`null`） | 型行が名前行より短い、または型セルが空だと本体パーサが `DataFileFragment#assertSameSizeAsNames`（L342 ← `setTypes` L203）で `IllegalArgumentException` を投げ、`TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する（プローブで実測）。器が成立する入力では型が常に全フィールドぶん揃うため、`XlsFormatReader#readFieldDefs` L378 の `null` フォールバックには到達しない。例外そのものは軸F の F1-06（行と列の数の不一致）としてタスク #21 が扱う |
+| C-17 `RecordLayout.fields` 空 | **2026-08-12・レビュー指摘により調査して追加**（当初は「軸E の 0 件と重なる」として #21 送りに分類していたが、実測すると到達不能だった）。フィールドを 0 件にするには名前行をレコード種別セル 1 列だけにするしかないが、本体 `DataFileParser` L234 が `IllegalStateException: directive or data names row must have two columns at least. [data]` で弾く。仮に名前行を空にできたとしても `DataFileFragment#setNames`（L190）の `assertNotNullOrEmpty`（L326）が `names must not be null or empty.` で弾く。いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。`SETUP_FIXED`／`MESSAGE` の双方でプローブ実測した。例外そのものは軸F の F1-06 としてタスク #21 が扱う |
+| C-20 `FieldDef.type` 省略（`null`） | 型が欠ける入力は本体パーサが弾く。**機構は欠け方で 2 通りに分かれる（2026-08-12・レビュー指摘によりプローブを実行し直して訂正。当初は両方を `assertSameSizeAsNames` 由来と書いていたが誤り）**。<br>① 型行が名前行より短い（型セルが**末尾**で空の場合も、空白セルは行の使用範囲から外れるため同じ経路になる）→ `DataFileFragment#assertSameSizeAsNames`（宣言 L339。`throw` は L342。呼び出しは `setTypes` L203）が `IllegalArgumentException: field name size is 2. but types size is 1. FixedLengthFileFragment{...}`。<br>② 型セルが**中間位置**で空 → 要素数は一致するので `assertSameSizeAsNames` は通り、`setTypes` L206 の `convertToFrameworkExpression` → `BasicDataTypeMapping` L69 が `IllegalArgumentException: can't convert value []. convert table ={半角カナ=X, ...}`。<br>いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。器が成立する入力では型が常に全フィールドぶん揃うため、`XlsFormatReader#readFieldDefs` L378 の `null` フォールバックには到達しない。例外そのものは軸F の F1-06（行と列の数の不一致）としてタスク #21 が扱う |

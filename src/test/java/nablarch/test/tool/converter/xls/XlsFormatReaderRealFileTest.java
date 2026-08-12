@@ -2,8 +2,10 @@ package nablarch.test.tool.converter.xls;
 
 import static nablarch.test.tool.converter.xls.XlsFixture.blank;
 import static nablarch.test.tool.converter.xls.XlsFixture.text;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -11,11 +13,14 @@ import static org.junit.Assert.assertTrue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -36,8 +41,10 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * {@code XlsFormatReaderTest}（既存 33 件）は内部 Fake リーダに {@code List<List<String>>} の canned 行を
  * 与えるため、実セル → 文字列行の区間を通らない。本クラスは {@link XlsFixture} が POI で組み立てた
- * 実 {@code .xlsx} を本番配線の {@link XlsFormatReader}（{@code PoiXlsReader}）へ食わせる。既存 33 件とは
- * 入力経路が異なるため流用せず組み直している。
+ * 実 {@code .xlsx} を本番配線の {@link XlsFormatReader}（{@code PoiXlsReader}）へ食わせる。
+ * Excel 上の記法と入力値は既存 33 件（および `RoundTripTest`）を参考にしており、混在シート・送信同期の
+ * 入力はほぼそのまま移植したものである。組み直したのは<b>入力経路</b>（実 {@code .xlsx} → 本番配線）と
+ * アサーション対象であって、記法そのものではない。
  * </p>
  *
  * <p>
@@ -52,16 +59,62 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 本クラスが扱わない軸要素と理由:
+ * <b>本クラスが扱わない軸要素と理由（本表がその唯一の索引である）:</b>
  * </p>
- * <ul>
- *   <li>A-01 {@code DEFAULT} — {@code TestCoreReaderAdapter} L362 が {@code DEFAULT} と判定した行を
- *       {@code continue} でスキップするため、リーダ経路では {@code DEFAULT} のブロックが生成されない。</li>
- *   <li>C-02 {@code sections} の「空」「複数」— {@link XlsFormatReader#read} L133 が
- *       {@code Collections.singletonList(section)} を返すため常に 1 件。</li>
- *   <li>コレクションが 0 件になるケース（C-08／C-09／C-12／C-15／C-17／C-18 の「空」）— 軸E「0 件」と
- *       重なるためタスク #21 が扱う。</li>
- * </ul>
+ * <table border="1">
+ *   <caption>実 {@code .xlsx} 経路で到達不能／本タスクの範囲外の軸要素</caption>
+ *   <tr><th>軸要素</th><th>扱い</th><th>理由</th></tr>
+ *   <tr>
+ *     <td>A-01 {@code DEFAULT}</td><td>到達不能</td>
+ *     <td>{@link TestCoreReaderAdapter} の {@code HeaderCollector} が {@code DEFAULT} と判定した行を
+ *         {@code continue} でスキップするため、ヘッダ一覧に {@code DEFAULT} のブロックが載らない。
+ *         {@link XlsFormatReader#read} はヘッダ一覧の各要素しか見ないため、リーダ経路では
+ *         {@code DEFAULT} のブロックが生成されない。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-02 {@code sections} の「空」「複数」</td><td>到達不能</td>
+ *     <td>{@link XlsFormatReader#read} は必ず {@code Collections.singletonList(section)} を返すため
+ *         常に 1 件。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-11 {@code FileDataBlock.directives} 空 ／ C-13 {@code MessageDataBlock.directives} 空</td>
+ *     <td>到達不能</td>
+ *     <td>本体 {@code DataFile} のコンストラクタが必ず {@code setDirective("file-type", getFileType())}
+ *         を実行するため、Excel にディレクティブ行が 1 行も無くても空 Map にならない（{@code issues.md}
+ *         XLS-07）。根拠は {@link #readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook}
+ *         （C-11）と {@link #readsAllFourSendSyncMessageTypesFromRealBook}（C-13）がテストで示す。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-16 {@code RecordLayout.recordType} 省略（{@code null}）</td><td>到達不能</td>
+ *     <td>空セルは {@code PoiXlsReader} が {@code ""} を返すため {@code null} にならない
+ *         （{@code issues.md} XLS-06）。根拠は
+ *         {@link #readsOmittedRecordTypeAsEmptyStringFromRealBook} がテストで示す。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-17 {@code RecordLayout.fields} 空</td><td>到達不能</td>
+ *     <td>フィールドを 0 件にするには名前行を 1 列（レコード種別セルのみ）にするしかないが、本体
+ *         {@code DataFileParser} が「{@code directive or data names row must have two columns at least.}」で
+ *         弾く（{@code issues.md} の「到達不能」表。実測済み）。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-20 {@code FieldDef.type} 省略（{@code null}）</td><td>到達不能</td>
+ *     <td>型行が名前行より短いと {@code DataFileFragment#assertSameSizeAsNames} が、型セルが中間位置で
+ *         空だと {@code BasicDataTypeMapping#convertToFrameworkExpression} が、それぞれ
+ *         {@code IllegalArgumentException} を投げる（{@code issues.md} の「到達不能」表）。</td>
+ *   </tr>
+ *   <tr>
+ *     <td>C-09 {@code rows} 空 ／ C-12・C-15 {@code records} 空 ／ C-18 {@code rows} 空</td>
+ *     <td>タスク #21</td>
+ *     <td>いずれもコレクションが 0 件になるケースであり、軸E の E-2（ブロック内行数 0）・
+ *         E-3（ファイル内レコードレイアウト数 0）と同じ入力になる。</td>
+ *   </tr>
+ * </table>
+ *
+ * <p>
+ * なお C-08 {@code columnNames} 空は #21 送りではなく<b>本クラスで担保する</b>
+ * （{@link #readsEmptyColumnNamesFromMarkerOnlyTableInRealBook} ほか）。マーカー列だけのテーブルで
+ * 到達でき、軸E の 4 観点（E-1〜E-4）に対応する要素を持たないためである。
+ * </p>
  *
  * @author kiyobot
  */
@@ -96,7 +149,7 @@ public class XlsFormatReaderRealFileTest {
     }
 
     /**
-     * フィクスチャの出力先ディレクトリ。
+     * フィクスチャ {@code .xlsx} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
      *
      * @return ディレクトリ
      */
@@ -121,7 +174,7 @@ public class XlsFormatReaderRealFileTest {
      * @return 中間モデル
      */
     private TestDataContainer read(String bookName, String sheetName) {
-        return new XlsFormatReader().read(folder.getRoot().toString(), bookName + "/" + sheetName);
+        return new XlsFormatReader().read(dir().toString(), bookName + "/" + sheetName);
     }
 
     /**
@@ -131,19 +184,28 @@ public class XlsFormatReaderRealFileTest {
      */
     private List<TestDataBlock> blocks() {
         TestDataContainer container = read();
-        assertThat(container.getSections().size(), is(1));
+        assertThat("セクション数", container.getSections().size(), is(1));
         return container.getSections().get(0).getBlocks();
     }
 
     /**
-     * 既定のブック／シートを読み、唯一のブロックを返す。
+     * 既定のブック／シートを読み、唯一のブロックが期待する実装クラスであることを確かめて返す。
      *
-     * @return ブロック
+     * <p>
+     * 素キャスト（失敗時に {@code ClassCastException} しか出ない）を避け、どのクラスが来たかが
+     * 失敗メッセージに出るようにするためのヘルパ。
+     * </p>
+     *
+     * @param <T>      期待する実装クラス
+     * @param expected 期待する実装クラス
+     * @return 唯一のブロック
      */
-    private TestDataBlock onlyBlock() {
+    private <T extends TestDataBlock> T onlyBlock(Class<T> expected) {
         List<TestDataBlock> blocks = blocks();
-        assertThat(blocks.size(), is(1));
-        return blocks.get(0);
+        assertThat("ブロック数", blocks.size(), is(1));
+        TestDataBlock block = blocks.get(0);
+        assertThat("唯一のブロックの実装クラス", block, is(instanceOf(expected)));
+        return expected.cast(block);
     }
 
     /**
@@ -180,11 +242,9 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TestDataBlock block = onlyBlock();
+        TableDataBlock table = onlyBlock(TableDataBlock.class);
 
         // Then
-        assertThat(block, is(instanceOf(TableDataBlock.class)));
-        TableDataBlock table = (TableDataBlock) block;
         assertThat(table.getDataType(), is(DataType.SETUP_TABLE_DATA));
         assertThat(table.getGroupId(), is(""));
         assertThat(table.getIdentifier(), is("USERS"));
@@ -210,7 +270,7 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TableDataBlock table = (TableDataBlock) onlyBlock();
+        TableDataBlock table = onlyBlock(TableDataBlock.class);
 
         // Then
         assertThat(table.getDataType(), is(DataType.EXPECTED_TABLE_DATA));
@@ -236,7 +296,7 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TableDataBlock table = (TableDataBlock) onlyBlock();
+        TableDataBlock table = onlyBlock(TableDataBlock.class);
 
         // Then
         assertThat(table.getDataType(), is(DataType.EXPECTED_COMPLETED));
@@ -260,16 +320,76 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TestDataBlock block = onlyBlock();
+        ListMapBlock listMap = onlyBlock(ListMapBlock.class);
 
         // Then
-        assertThat(block, is(instanceOf(ListMapBlock.class)));
-        ListMapBlock listMap = (ListMapBlock) block;
         assertThat(listMap.getDataType(), is(DataType.LIST_MAP));
         assertThat(listMap.getGroupId(), is(""));
         assertThat(listMap.getIdentifier(), is("testShots"));
         assertThat(listMap.getColumnNames(), is(Arrays.asList("Z", "A", "M")));
         assertThat(listMap.getRows(), is(Arrays.asList(Arrays.asList("z1", "a1", "m1"))));
+    }
+
+    // ------------------------------------------------------------------ 軸C columnNames 空
+
+    /**
+     * Given: マーカー列 {@code [no]} だけを持つ（データ列が 1 つも無い）{@code SETUP_TABLE} の実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : マーカー列は本体 {@code HeaderLine#getEffectiveColumnNames()} が除外するため列名は 0 件になる。
+     *        行は 0 件にはならず、<b>セルを 1 つも持たない行</b>がデータ行の件数ぶん入る。
+     *
+     * <p>
+     * 担保する軸要素: C-08（空）。#18 の棚卸しでは「軸E の 0 件と重なる」として #21 送りに分類されていたが、
+     * 軸E の 4 観点（E-1 セクション内ブロック数／E-2 ブロック内行数／E-3 ファイル内レコードレイアウト数／
+     * E-4 コンテナ内セクション数）に「列名 0 件」に対応する要素は無い。本クラスで担保する。
+     * </p>
+     *
+     * <p>
+     * {@code rows} が空リストではなく「セル 0 個の行が 1 件」になる点は実測どおりに固定した。
+     * この中間モデルを書き戻すと当該行は失われる（往復非安定）ため、課題として
+     * {@code coverage/issues.md} の XLS-08 に記録した（修正はしない）。
+     * </p>
+     */
+    @Test
+    public void readsEmptyColumnNamesFromMarkerOnlyTableInRealBook() {
+        // Given
+        book().row(text("SETUP_TABLE=T"))
+                .row(text("[no]"))
+                .row(text("1"))
+                .row(text("2"))
+                .writeTo(dir());
+
+        // When
+        TableDataBlock table = onlyBlock(TableDataBlock.class);
+
+        // Then
+        assertThat("マーカー列は有効カラム名から除外される", table.getColumnNames(), is(Collections.<String>emptyList()));
+        assertThat("データ行 2 件ぶん、セル 0 個の行が入る（XLS-08）",
+                table.getRows(), is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+    }
+
+    /**
+     * Given: マーカー列 {@code [no]} だけを持つ {@code LIST_MAP} の実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : テーブル系と同じく列名 0 件・セル 0 個の行 1 件になる（経路が別なので個別に固定する）。
+     *
+     * <p>担保する軸要素: C-08（空。{@link ListMapBlock} 側の経路）。</p>
+     */
+    @Test
+    public void readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook() {
+        // Given
+        book().row(text("LIST_MAP=lm"))
+                .row(text("[no]"))
+                .row(text("1"))
+                .writeTo(dir());
+
+        // When
+        ListMapBlock listMap = onlyBlock(ListMapBlock.class);
+
+        // Then
+        assertThat("マーカー列は有効カラム名から除外される", listMap.getColumnNames(), is(Collections.<String>emptyList()));
+        assertThat("データ行 1 件ぶん、セル 0 個の行が入る（XLS-08）",
+                listMap.getRows(), is(Arrays.asList(Collections.<String>emptyList())));
     }
 
     // ------------------------------------------------------------------ 軸A ファイル系
@@ -299,20 +419,18 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TestDataBlock block = onlyBlock();
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
 
         // Then
-        assertThat(block, is(instanceOf(FileDataBlock.class)));
-        FileDataBlock file = (FileDataBlock) block;
         assertThat(file.getDataType(), is(DataType.SETUP_FIXED));
         assertThat(file.getIdentifier(), is("test.dat"));
         assertThat(file.getFileType(), is(FileDataBlock.FileType.FIXED));
         assertThat(file.getDirectives().get("text-encoding"), is("UTF-8"));
         // Excel に書いていない file-type が器の既定値として現れる（issues.md XLS-07）。
         assertThat(file.getDirectives().get("file-type"), is("Fixed"));
-        assertThat(file.getDirectives().size(), is(2));
+        assertDirectiveCount(file.getDirectives(), 2);
 
-        assertThat(file.getRecords().size(), is(1));
+        assertThat("レコードレイアウト数", file.getRecords().size(), is(1));
         RecordLayout record = file.getRecords().get(0);
         assertThat(record.getRecordType(), is("data"));
         assertThat(fieldNames(record), is(Arrays.asList("field1", "field2")));
@@ -324,6 +442,45 @@ public class XlsFormatReaderRealFileTest {
     }
 
     /**
+     * Given: 長さ行に省略記法 {@code -} を含む {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : 器は {@code -} を実バイト長（この入力なら {@code 4}）へ正規化するが、中間モデルには
+     *        <b>生行の原文 {@code "-"}</b> が入る。
+     *
+     * <p>
+     * 担保する軸要素: C-21（値あり・省略記法 {@code -}）。原文復元ロジック
+     * （{@link XlsFormatReader} が生行から型・長さ・レコード種別を取り直す経路）は
+     * {@code -} のケースこそが要であり、それを実 {@code .xlsx} 入力で通す唯一のテストである
+     * （Fake リーダ経路の {@code XlsFormatReaderTest#readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines}
+     * と同じ入力を実ファイル経路で通し直したもの）。
+     * </p>
+     */
+    @Test
+    public void readsOmittedFieldLengthNotationFromRealBook() {
+        // Given: f1 の長さは省略記法 "-"（値 "abcd" から器が 4 を導出する）
+        book().row(text("SETUP_FIXED=om.dat"))
+                .row(text("text-encoding"), text("UTF-8"))
+                .row(text("rt"), text("f1"), text("f2"))
+                .row(blank(), text("半角英字"), text("半角英字"))
+                .row(blank(), text("-"), text("5"))
+                .row(blank(), text("abcd"), text("xy"))
+                .writeTo(dir());
+
+        // When
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
+
+        // Then
+        RecordLayout record = file.getRecords().get(0);
+        assertThat(record.getRecordType(), is("rt"));
+        assertThat(fieldNames(record), is(Arrays.asList("f1", "f2")));
+        assertThat("長さ省略記法は原文のまま（器が上書きする実バイト長 \"4\" ではない）",
+                record.getFields().get(0).getLength(), is("-"));
+        assertThat(record.getFields().get(1).getLength(), is("5"));
+        assertThat(record.getFields().get(0).getType(), is("半角英字"));
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abcd", "xy"))));
+    }
+
+    /**
      * Given: ディレクティブ行を 1 行も持たない {@code EXPECTED_FIXED} ブロックの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : データタイプ {@code EXPECTED_FIXED} の {@link FileDataBlock} が生成される。
@@ -331,29 +488,31 @@ public class XlsFormatReaderRealFileTest {
      *
      * <p>
      * 担保する軸要素: A-07／C-11（非空。「空 Map」が到達不能であることの根拠でもある。
-     * 本体 {@code DataFile} のコンストラクタ L92 が {@code setDirective("file-type", getFileType())} を
-     * 必ず実行するため、Excel 由来のディレクティブ行が 0 行でも空 Map にならない）。
+     * 本体 {@code DataFile} のコンストラクタが必ず {@code setDirective("file-type", getFileType())} を
+     * 実行するため、Excel 由来のディレクティブ行が 0 行でも空 Map にならない）。
      * </p>
      */
     @Test
     public void readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook() {
-        // Given
+        // Given: 名前行は「レコード種別 rec ＋ フィールド名 f1」（[g1] 等のグループ ID とは無関係）
         book().row(text("EXPECTED_FIXED=expected.dat"))
-                .row(text("rec"), text("g1"))
+                .row(text("rec"), text("f1"))
                 .row(blank(), text("半角英字"))
                 .row(blank(), text("3"))
                 .row(blank(), text("xyz"))
                 .writeTo(dir());
 
         // When
-        FileDataBlock file = (FileDataBlock) onlyBlock();
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
 
         // Then
         assertThat(file.getDataType(), is(DataType.EXPECTED_FIXED));
         assertThat(file.getIdentifier(), is("expected.dat"));
         assertThat(file.getFileType(), is(FileDataBlock.FileType.FIXED));
         assertThat(file.getDirectives().get("file-type"), is("Fixed"));
-        assertThat(file.getDirectives().size(), is(1));
+        assertDirectiveCount(file.getDirectives(), 1);
+        assertThat(file.getRecords().get(0).getRecordType(), is("rec"));
+        assertThat(fieldNames(file.getRecords().get(0)), is(Arrays.asList("f1")));
         assertThat(file.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("xyz"))));
     }
 
@@ -375,7 +534,7 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        FileDataBlock file = (FileDataBlock) onlyBlock();
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
 
         // Then
         assertThat(file.getDataType(), is(DataType.SETUP_VARIABLE));
@@ -408,7 +567,7 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        FileDataBlock file = (FileDataBlock) onlyBlock();
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
 
         // Then
         assertThat(file.getDataType(), is(DataType.EXPECTED_VARIABLE));
@@ -419,7 +578,7 @@ public class XlsFormatReaderRealFileTest {
         // Excel に書いていない file-type / field-separator が器の既定値として現れる（issues.md XLS-07）。
         assertThat(file.getDirectives().get("file-type"), is("Variable"));
         assertThat(file.getDirectives().get("field-separator"), is(","));
-        assertThat(file.getDirectives().size(), is(3));
+        assertDirectiveCount(file.getDirectives(), 3);
     }
 
     // ------------------------------------------------------------------ 軸A メッセージ系
@@ -428,6 +587,8 @@ public class XlsFormatReaderRealFileTest {
      * Given: ディレクティブ行・FW 制御ヘッダ行・本文を持つ {@code MESSAGE} ブロックの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@link MessageDataBlock} が生成され、ディレクティブ・FW ヘッダ・本文レコードが入る。
+     *        ディレクティブには Excel に書いた {@code text-encoding} に加え、器が注入する
+     *        {@code file-type} が現れる（本文は固定長ファイルとして読まれるため）。
      *
      * <p>
      * 担保する軸要素: A-10／B-4／C-13（非空）／C-14（非空）／C-15（非空）／C-16（値あり）／
@@ -447,19 +608,20 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        TestDataBlock block = onlyBlock();
+        MessageDataBlock message = onlyBlock(MessageDataBlock.class);
 
         // Then
-        assertThat(block, is(instanceOf(MessageDataBlock.class)));
-        MessageDataBlock message = (MessageDataBlock) block;
         assertThat(message.getDataType(), is(DataType.MESSAGE));
         assertThat(message.getGroupId(), is(""));
         assertThat(message.getIdentifier(), is("msg1"));
         assertThat(message.getDirectives().get("text-encoding"), is("UTF-8"));
+        // Excel に書いていない file-type が器の既定値として現れる（issues.md XLS-07）。
+        assertThat(message.getDirectives().get("file-type"), is("Fixed"));
+        assertDirectiveCount(message.getDirectives(), 2);
         assertThat(message.getFwHeaderFields().get("requestId"), is("R1"));
-        assertThat(message.getFwHeaderFields().size(), is(1));
+        assertThat("FW 制御ヘッダの件数", message.getFwHeaderFields().size(), is(1));
 
-        assertThat(message.getRecords().size(), is(1));
+        assertThat("レコードレイアウト数", message.getRecords().size(), is(1));
         RecordLayout record = message.getRecords().get(0);
         assertThat(record.getRecordType(), is("data"));
         assertThat(fieldNames(record), is(Arrays.asList("body1", "body2")));
@@ -470,33 +632,52 @@ public class XlsFormatReaderRealFileTest {
 
     /**
      * Given: 送信同期メッセージ 4 種（要求ヘッダ／要求本文／応答ヘッダ／応答本文）を持つ実 {@code .xlsx}。
+     *        識別子は 4 種それぞれ別（{@code RM01}〜{@code RM04}）にしてブロックの取り違えを検出可能にする。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 4 種すべてが {@link MessageDataBlock} として生成され、データタイプとグループ ID が入る。
-     *        送信系に FW 制御ヘッダは無く、{@code fwHeaderFields} は空 Map になる。
+     * Then : 4 種すべてが {@link MessageDataBlock} として生成され、データタイプ・グループ ID・識別子が
+     *        1 対 1 で対応する。送信系に FW 制御ヘッダは無く {@code fwHeaderFields} は空 Map になるが、
+     *        ディレクティブ行が 1 行も無くても {@code directives} は空にならず {@code {file-type=Fixed}} になる。
+     *        要求ヘッダ 1 種については {@link #readsMessageBlockFromRealBook} と同水準まで内容を固定する。
      *
-     * <p>担保する軸要素: A-11／A-12／A-13／A-14／C-14（空）。</p>
+     * <p>担保する軸要素: A-11／A-12／A-13／A-14／C-06（値あり）／C-07／C-13（非空）／C-14（空）／
+     * C-15（非空）／C-16（値あり）／C-17（非空）／C-18（非空）／C-19／C-20（値あり）／C-21（値あり）。</p>
+     *
+     * <p>
+     * この経路（{@code XlsFormatReader#readSendSyncBlocks}）は識別子に本体器の {@code DataFile#getPath()}
+     * を使う独自経路であり、テーブル系・ファイル系とは別に固定する必要がある。
+     * </p>
+     *
+     * <p>
+     * <b>レコード種別が {@code "no"} になる点について。</b>送信同期の名前行の先頭セルはレコード種別では
+     * なくメタ列ヘッダ {@code no} だが、原文復元は名前行の先頭セルを一律にレコード種別として採るため
+     * {@code "no"} が入る（実測）。これは課題として記録していない。この値は Excel へ書き戻す際に
+     * メタ列ヘッダ {@code no} を再生するのに使われ、実 {@code .xlsx} → 中間モデル → 実 {@code .xlsx} →
+     * 中間モデルで安定することをプローブで確認した（{@code null} だとヘッダが失われて往復が壊れる）。
+     * すなわち本経路では load-bearing であり、既存テスト
+     * {@code XlsFormatReaderTest#readPreservesErrorModeRowInSendSyncMessage} の判定（良性）と一致する。
+     * </p>
      */
     @Test
     public void readsAllFourSendSyncMessageTypesFromRealBook() {
         // Given
         book().row(text("EXPECTED_REQUEST_HEADER_MESSAGES[case1]=RM01"))
                 .row(text("no"), text("requestId"))
-                .row(blank(), text("半角"))
+                .row(blank(), text("半角英字"))
                 .row(blank(), text("20"))
                 .row(text("1"), text("RM01"))
-                .row(text("EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM01"))
+                .row(text("EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM02"))
                 .row(text("no"), text("userId"))
-                .row(blank(), text("半角"))
+                .row(blank(), text("半角英字"))
                 .row(blank(), text("10"))
                 .row(text("1"), text("user01"))
-                .row(text("RESPONSE_HEADER_MESSAGES[res_case1]=RM01"))
+                .row(text("RESPONSE_HEADER_MESSAGES[res_case1]=RM03"))
                 .row(text("no"), text("requestId"))
-                .row(blank(), text("半角"))
+                .row(blank(), text("半角英字"))
                 .row(blank(), text("20"))
-                .row(text("1"), text("RM01"))
-                .row(text("RESPONSE_BODY_MESSAGES[res_case1]=RM01"))
+                .row(text("1"), text("RM03"))
+                .row(text("RESPONSE_BODY_MESSAGES[res_case1]=RM04"))
                 .row(text("no"), text("failureCode"))
-                .row(blank(), text("半角"))
+                .row(blank(), text("半角英字"))
                 .row(blank(), text("20"))
                 .row(text("1"), text("0"))
                 .writeTo(dir());
@@ -505,19 +686,40 @@ public class XlsFormatReaderRealFileTest {
         List<TestDataBlock> blocks = blocks();
 
         // Then
-        assertThat(blocks.size(), is(4));
-        Map<DataType, String> typeToGroup = new HashMap<>();
+        assertThat("送信同期ブロック数", blocks.size(), is(4));
+        Map<DataType, MessageDataBlock> byType = new EnumMap<>(DataType.class);
         for (TestDataBlock block : blocks) {
-            assertThat(block, is(instanceOf(MessageDataBlock.class)));
+            assertThat("送信同期ブロックの実装クラス", block, is(instanceOf(MessageDataBlock.class)));
             MessageDataBlock message = (MessageDataBlock) block;
-            typeToGroup.put(message.getDataType(), message.getGroupId());
+            byType.put(message.getDataType(), message);
             // 送信系に FW 制御ヘッダは無い
-            assertTrue(message.getFwHeaderFields().isEmpty());
+            assertTrue("送信同期 " + message.getDataType() + " の FW 制御ヘッダは空のはず",
+                    message.getFwHeaderFields().isEmpty());
+            // ディレクティブ行を 1 行も書いていないが、器が注入する file-type だけは必ず現れる
+            // （issues.md XLS-07。C-13「MessageDataBlock.directives 空」が到達不能である根拠）。
+            assertThat("送信同期 " + message.getDataType() + " の file-type",
+                    message.getDirectives().get("file-type"), is("Fixed"));
+            assertDirectiveCount(message.getDirectives(), 1);
         }
-        assertThat(typeToGroup.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), is("[case1]"));
-        assertThat(typeToGroup.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), is("[case1]"));
-        assertThat(typeToGroup.get(DataType.RESPONSE_HEADER_MESSAGES), is("[res_case1]"));
-        assertThat(typeToGroup.get(DataType.RESPONSE_BODY_MESSAGES), is("[res_case1]"));
+        assertThat("4 種すべてが揃うこと", byType.size(), is(4));
+
+        assertBlock(byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), "[case1]", "RM01");
+        assertBlock(byType.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), "[case1]", "RM02");
+        assertBlock(byType.get(DataType.RESPONSE_HEADER_MESSAGES), "[res_case1]", "RM03");
+        assertBlock(byType.get(DataType.RESPONSE_BODY_MESSAGES), "[res_case1]", "RM04");
+
+        // 要求ヘッダ 1 種は MESSAGE と同水準（レコード種別／フィールド／値行）まで固定する。
+        MessageDataBlock requestHeader = byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+        assertThat("要求ヘッダのレコードレイアウト数", requestHeader.getRecords().size(), is(1));
+        RecordLayout record = requestHeader.getRecords().get(0);
+        // 名前行の先頭セル（メタ列ヘッダ no）がレコード種別として入る（上記 Javadoc 参照）
+        assertThat(record.getRecordType(), is("no"));
+        // no 列（メタ情報）はフィールドから脱落する
+        assertThat(fieldNames(record), is(Arrays.asList("requestId")));
+        assertThat(record.getFields().get(0).getType(), is("半角英字"));
+        assertThat(record.getFields().get(0).getLength(), is("20"));
+        // 値行も no 列の値（"1"）が脱落する
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("RM01"))));
     }
 
     // ------------------------------------------------------------------ 軸B
@@ -525,9 +727,15 @@ public class XlsFormatReaderRealFileTest {
     /**
      * Given: テーブル・LIST_MAP・固定長ファイル・MESSAGE が 1 シートに混在する実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : {@code TestDataBlock} の具象 4 種が 1 セクションに揃う。
+     * Then : {@code TestDataBlock} の具象 4 種が 1 セクションに揃い、各ブロックが自分の識別子を持つ。
      *
-     * <p>担保する軸要素: B-1／B-2／B-3／B-4（実ファイル経由での生成）／C-04（非空）。</p>
+     * <p>担保する軸要素: B-1／B-2／B-3／B-4（実ファイル経由での生成）／C-04（非空）／C-07。</p>
+     *
+     * <p>
+     * {@link XlsFormatReader#read} は (データタイプ, グループ) 単位で本体 API を一括呼び出しし、
+     * 同じキーの 2 回目以降を重複排除する非自明な処理をしている。識別子まで突き合わせることで、
+     * ブロックの取り違え・取りこぼしを検出できるようにする。
+     * </p>
      */
     @Test
     public void readsFourBlockImplementationsFromOneRealSheet() {
@@ -556,14 +764,20 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         List<Class<?>> kinds = new ArrayList<>();
+        Map<Class<?>, String> identifiers = new HashMap<>();
         for (TestDataBlock block : blocks) {
             kinds.add(block.getClass());
+            identifiers.put(block.getClass(), block.getIdentifier());
         }
-        assertThat(kinds.size(), is(4));
-        assertTrue(kinds.contains(TableDataBlock.class));
-        assertTrue(kinds.contains(ListMapBlock.class));
-        assertTrue(kinds.contains(FileDataBlock.class));
-        assertTrue(kinds.contains(MessageDataBlock.class));
+        assertThat("1 シートから生成されたブロック数", kinds.size(), is(4));
+        assertThat(kinds, hasItem((Class<?>) TableDataBlock.class));
+        assertThat(kinds, hasItem((Class<?>) ListMapBlock.class));
+        assertThat(kinds, hasItem((Class<?>) FileDataBlock.class));
+        assertThat(kinds, hasItem((Class<?>) MessageDataBlock.class));
+        assertThat("TableDataBlock の識別子", identifiers.get(TableDataBlock.class), is("T"));
+        assertThat("ListMapBlock の識別子", identifiers.get(ListMapBlock.class), is("lm"));
+        assertThat("FileDataBlock の識別子", identifiers.get(FileDataBlock.class), is("f.dat"));
+        assertThat("MessageDataBlock の識別子", identifiers.get(MessageDataBlock.class), is("m"));
     }
 
     // ------------------------------------------------------------------ 軸C コンテナ・セクション
@@ -589,7 +803,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat(container.getName(), is("MyBook"));
-        assertThat(container.getSections().size(), is(1));
+        assertThat("セクション数", container.getSections().size(), is(1));
         assertThat(container.getSections().get(0).getName(), is("MySheet"));
     }
 
@@ -609,8 +823,9 @@ public class XlsFormatReaderRealFileTest {
         TestDataContainer container = read();
 
         // Then
-        assertThat(container.getSections().size(), is(1));
-        assertTrue(container.getSections().get(0).getBlocks().isEmpty());
+        assertThat("セクション数", container.getSections().size(), is(1));
+        assertTrue("マーカー行が無いシートのブロック一覧は空のはず",
+                container.getSections().get(0).getBlocks().isEmpty());
     }
 
     // ------------------------------------------------------------------ 軸C レコード種別の省略
@@ -639,11 +854,47 @@ public class XlsFormatReaderRealFileTest {
                 .writeTo(dir());
 
         // When
-        FileDataBlock file = (FileDataBlock) onlyBlock();
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
 
         // Then
         RecordLayout record = file.getRecords().get(0);
         assertThat(record.getRecordType(), is(""));
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abc"))));
+    }
+
+    // ------------------------------------------------------------------ assertion helpers
+
+    /**
+     * ディレクティブの件数を完全一致でアサートする（余計なディレクティブが混入しないことの担保）。
+     *
+     * <p>
+     * <b>グローバル状態への依存に注意。</b>本体 {@code DataFile} のコンストラクタは
+     * {@code prepareDefaultDirectives} で {@code SystemRepository} から既定ディレクティブを取り込む。
+     * 本リポジトリの {@code src/test/resources/unit-test.xml} には {@code defaultDirectives}
+     * （{@code text-encoding=Windows-31J}）・{@code fixedLengthDirectives}・{@code variableLengthDirectives}
+     * が定義済みであり、将来どれかのテストが {@code SystemRepository} をこの設定で初期化したまま
+     * 本クラスを実行すると、注入されるディレクティブが増えて<b>本クラスの件数アサートが一斉に落ちる</b>。
+     * その場合は本メソッドが原因の入口である（本クラスのバグでも {@link XlsFormatReader} の退行でもない）。
+     * 件数アサート自体は「Excel に書いていないディレクティブが混入しないこと」の担保なので維持する。
+     * </p>
+     *
+     * @param directives 実際のディレクティブ
+     * @param expected   期待件数
+     */
+    private static void assertDirectiveCount(Map<String, String> directives, int expected) {
+        assertThat("ディレクティブの件数（実際の内容: " + directives + "）", directives.size(), is(expected));
+    }
+
+    /**
+     * ブロックのグループ ID と識別子をアサートする。
+     *
+     * @param block      対象ブロック（{@code null} なら該当データタイプのブロックが無い）
+     * @param groupId    期待するグループ ID
+     * @param identifier 期待する識別子
+     */
+    private static void assertBlock(MessageDataBlock block, String groupId, String identifier) {
+        assertThat("識別子 " + identifier + " のブロックが生成されていること", block, is(notNullValue()));
+        assertThat("グループ ID", block.getGroupId(), is(groupId));
+        assertThat("識別子", block.getIdentifier(), is(identifier));
     }
 }
