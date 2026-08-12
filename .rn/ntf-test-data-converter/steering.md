@@ -20,6 +20,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 4辺それぞれで、軸B（`TestDataBlock` sealed 階層 4種）と軸C（中間モデル全フィールド。省略可能なフィールドは「値あり」「省略」の双方）が非デフォルト値で1回以上 IN／OUT されている。`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す
 - 軸D が4辺すべてでアサートされている（辺① セル種別17ケース／辺③ セル型8ケース（`getCellType()` をアサート）／辺② YAML スカラー10ケース／辺④ YAML 表現9ケース）
 - 4辺それぞれで軸E（0件／1件／複数件）と軸F（異常系）が埋まっている
+- 参照フィクスチャとして同梱した実物 `.xlsx`（Excel 保存物）1本と、POI 生成フィクスチャの読み取り結果が同一であることが確認されている（確認できない場合は差分が `issues.md` に「未確認」として記録されている）
 - 4辺ぶんの軸×要素対応表が成果物として存在し、各要素に担保テストメソッド名が記されている。空欄には理由が書かれている
 - 4辺の担当クラス（`XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラス）の行・分岐カバレッジが計測され、未到達分岐が列挙されている。テスト不要と判断したものには根拠が書かれている
 - 本作業で見つかった現状挙動の課題が、修正されずに課題一覧へ記録されている
@@ -30,7 +31,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 全リポジトリは同じ親ディレクトリに clone 済み
 - nablarch-testing-yaml は構築・公開済み（converter のビルドに必要）
 - 本体は `convert-testdata-excel-to-text` ブランチのまま（移動元）
-- テストデータは静的同梱ではなく変換テストが実行時に一時生成・参照する方式（.xls/.yaml の固定ファイルは不要）
+- テストデータは静的同梱ではなく変換テストが実行時に一時生成・参照する方式（.xls/.yaml の固定ファイルは不要）。**例外**（ユーザー承認済み）: POI 生成物と Excel 保存物の同一性を確認するため、実物 `.xlsx` 1本のみ参照フィクスチャとして同梱してよい
 - YamlModeTestBase や *YamlTest・結合テストは integration 行きであり converter 対象外
 
 # Rules
@@ -506,6 +507,36 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - `target/site/jacoco/` に HTML レポートが生成される
 - `pom.xml` への追記・`argLine` 変更は不要
 
+## フェーズ2 フィクスチャ方針（plan gate 承認時に確定・2026-08-12）
+
+**採用: POI 生成方式 + 実物 `.xlsx` 1本の参照フィクスチャ。**
+
+- 辺①の `.xlsx` フィクスチャはテスト実行時に POI で組み立てる。バイナリの静的同梱はしない。
+- ただし POI 生成物と Excel 保存物の読み取り結果が同一である保証はないため、実物 `.xlsx` を **1本だけ** 参照フィクスチャとして同梱し、同じ読み取り結果になることを確認する（Assumptions の「固定バイナリを同梱しない」に対するユーザー承認済みの例外）。
+- 参照フィクスチャの候補: `nablarch-example-web` の `origin/main`
+  `src/test/java/com/nablarch/example/app/web/action/ClientActionTest.xlsx`。
+  真正な Excel 保存物であることを確認済み（`docProps/app.xml` に
+  `<Application>Microsoft Excel</Application>`・`AppVersion 16.0300`、`docProps/core.xml` の
+  `dcterms:modified` は 2020-06-24）。同ブランチの他 5 ファイルも同様に利用可能。
+- 同一性が確認できない場合は `issues.md` に「未確認」として記録し、差分の内容を残す。
+
+## 軸D（辺① セル種別17ケース）の優先度（ユーザー実測に基づく・2026-08-12）
+
+`nablarch-example-web` の既存 Excel 6ファイルをユーザーが実測した結果:
+
+| セル種別 | 実測件数 |
+|---|---|
+| 文字列セル | 4,705 |
+| 数値セル | 39（実例: 値が数値の `1`、表示形式が `@`（テキスト）） |
+| 日時セル | 0 |
+| 数式セル | 0 |
+| エラーセル | 0 |
+| 真偽値セル | 0 |
+
+- **最優先**: 文字列 ／ 数値（整数・小数・大きい数値）／ 空セル（セル不在・空文字）／ 表示形式 `@` 付き数値セル（ケース#17）
+- **優先度を下げる**: 日付書式 ／ 時刻書式 ／ 日時書式 ／ 数式 ／ 真偽値 ／ エラー値（実データに存在しないため）
+- **ただし 17ケースの省略は不可。** 優先度を下げたケースで挙動が固定できない場合は、テストを落とすのではなく `issues.md` に課題として記録する。
+
 ### #17: Javadoc からの外部文書参照の除去（全 19 件）
 
 **Purpose**: Javadoc・コメントを自己完結させる。読者がリポジトリ外を参照しなくても内容が分かる状態にする。
@@ -542,7 +573,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - [ ] `XlsFormatReaderTest`（33件）・`YamlFormatReaderTest`（20件）・`XlsFormatWriterTest`（40件）・`YamlFormatWriterTest`（33件）の全テストメソッドを列挙する
 - [ ] 軸C の全フィールドを実クラス（`TestDataContainer` / `TestDataSection` / `TestDataBlock` / `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock` / `RecordLayout` / `FieldDef`）から読み取り、省略可能なフィールドを特定する
-- [ ] 軸A の `DataType` 14種を `nablarch.test.core.reader.DataType` の実定義と突き合わせ、14種であることを確認する（差異があれば実定義を正とし記録する）
+- [ ] 軸A の `DataType` 14種を `nablarch.test.core.reader.DataType` の実定義と突き合わせ、14種であることを確認する（ユーザー側でも `DEFAULT` ＋13 の計14種と確認済み。突き合わせは省略せず実施し、差異があれば実定義を正とし記録する）
 - [ ] 各テストメソッドを軸A〜F の要素へ対応付け、`.rn/ntf-test-data-converter/coverage/inventory.md` に4辺ぶんの棚卸し表として記録する
 - [ ] 各辺の空欄（未担保の軸要素）を一覧として同ファイルに明記する
 - [ ] self-check（OK/NG per completion criterion、checks/task-18.md に記録）
@@ -569,9 +600,11 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 **Steps**:
 
 - [ ] POI で `.xlsx` を組み立てるテストフィクスチャヘルパを作る（セル種別・書式・数式・エラー値を指定できること）
-- [ ] 17ケースそれぞれのセルを含む `.xlsx` を生成し、`new XlsFormatReader().read(...)` で読んだ結果を**まず実行して記録する**（期待値を先に決めない）
+- [ ] 実物 `.xlsx` 1本（`nablarch-example-web` `origin/main` の `ClientActionTest.xlsx`）を参照フィクスチャとして `src/test/resources` へ取り込む
+- [ ] 同じシート内容を POI で生成し、参照フィクスチャと `XlsFormatReader` の読み取り結果が一致することを確認する。一致しなければ差分を `issues.md` に「未確認」として記録する
+- [ ] 17ケースそれぞれのセルを含む `.xlsx` を生成し、`new XlsFormatReader().read(...)` で読んだ結果を**まず実行して記録する**（期待値を先に決めない）。着手順は Decisions の優先度に従う（最優先: 文字列／数値／空セル／表示形式 `@` 付き数値）
 - [ ] 記録した現状挙動を `.rn/ntf-test-data-converter/coverage/issues.md` の観点で評価し、仕様として妥当なものはテストで固定する
-- [ ] 妥当でないと判断したものは `issues.md` に課題として記録する（**修正しない**）
+- [ ] 妥当でないと判断したもの・挙動を固定できなかったものは `issues.md` に課題として記録する（**修正しない**）
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-19.md に記録）
 - [ ] QA expert review（subagent）
@@ -582,7 +615,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 **Completion criteria**:
 
 - 実 `.xlsx` ファイルを入力として `XlsFormatReader` を駆動するテストが存在し、`FakeTestDataReader` を経由していない
-- 軸D の17ケース（文字列／整数数値／小数数値／大きい数値／先頭ゼロ文字列／日付書式／時刻書式／日時書式／数式／真偽値／エラー値／セル不在／空文字／前後空白／改行／リテラル `null`／表示形式付き数値）すべてについて、中間モデルへ入る値がアサートされている
+- 実物 `.xlsx`（Excel 保存物）1本が参照フィクスチャとして同梱され、POI 生成物と同じ読み取り結果になることが確認されている（確認できない場合は差分が `issues.md` に「未確認」として記録されている）
+- 軸D の17ケース（文字列／整数数値／小数数値／大きい数値／先頭ゼロ文字列／日付書式／時刻書式／日時書式／数式／真偽値／エラー値／セル不在／空文字／前後空白／改行／リテラル `null`／表示形式付き数値）すべてについて、中間モデルへ入る値がアサートされている（優先度の低いケースも省略しない。挙動を固定できなかったケースは `issues.md` に記録されている）
 - 各ケースの結果が「実行して記録した現状の挙動」であり、実装を期待値に合わせて変更していない（src/main の diff がゼロ）
 - 仕様として不適切と判断した挙動が `issues.md` に記録され、かつ修正されていない
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
@@ -826,9 +860,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
+- **Status**: active
 - **Date**: 2026-08-12
 - **Last completed**: #17 Javadoc からの外部文書参照の除去（全 19 件）
-- **Next**: #18 既存テスト 4辺分の軸棚卸し（ただし plan gate 未承認のため着手不可）
-- **Notes**: フェーズ2（#18–#28、4変換辺を6軸で担保）を steering に追加し push 済み（commit `aecd5d0`、PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1）。**plan gate が未承認** — 再開時はまず計画とフィクスチャ方針をユーザーへ再提示し `/rn:ty` を取ること。承認前に #18 以降へ着手しない。保留中の決定：実 `.xlsx` フィクスチャを「テスト実行時に POI で生成」（推奨）とするか「バイナリを `src/test/resources` へ同梱」とするか。未確定の事実：`nablarch.test.core.reader.DataType` が指示書の言う 14 種かは #18 で実定義と突き合わせる（`FileDataBlock.FileType` は `FIXED`/`VARIABLE` の 2 要素と確認済み）。
+- **Next**: #18 既存テスト 4辺分の軸棚卸し
+- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み。候補 `ClientActionTest.xlsx` は真正な Excel 保存物と確認済み）。`DataType` は 14種（`DEFAULT` ＋13）とユーザー側でも確認済みだが、#18 での実定義突き合わせは予定どおり実施する。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
 
