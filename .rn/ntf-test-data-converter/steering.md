@@ -4,6 +4,8 @@ Rn version: 0.8.0
 
 nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツール（src/main 28件）と形式間変換テスト（src/test 21件）を nablarch-testing-converter リポジトリへ切り出し、`mvn test` 全 PASS・実装無改変を確認する。
 
+（フェーズ2）切り出した converter の4つの変換辺（① Excel→中間モデル／② YAML→中間モデル／③ 中間モデル→Excel／④ 中間モデル→YAML）の変換ルールを、converter 自身のユニットテストで担保する。担保の網羅は主観で判断せず、6軸（A データタイプ／B ブロック実装／C 中間モデル全フィールド／D 値の表現／E 多重度／F 異常系）を4辺それぞれについて埋め、軸×要素対応表とカバレッジ計測で客観的に示す。
+
 # Acceptance criteria
 
 - converter の `mvn test` が全テスト PASS する
@@ -11,6 +13,17 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - pom.xml が yaml・本体・poi 3.8・snakeyaml 3.0.1 の依存を正しく持つ
 - 本体（nablarch-testing）・yaml（nablarch-testing-yaml）に一切書き込んでいない
 - ブランチが push 済み
+
+（フェーズ2）
+
+- 辺①に実 `.xlsx` を入力とするテストが存在し、軸A（`DataType` 14種）すべてが実ファイル経由で1回以上通っている
+- 4辺それぞれで、軸B（`TestDataBlock` sealed 階層 4種）と軸C（中間モデル全フィールド。省略可能なフィールドは「値あり」「省略」の双方）が非デフォルト値で1回以上 IN／OUT されている。`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す
+- 軸D が4辺すべてでアサートされている（辺① セル種別17ケース／辺③ セル型8ケース（`getCellType()` をアサート）／辺② YAML スカラー10ケース／辺④ YAML 表現9ケース）
+- 4辺それぞれで軸E（0件／1件／複数件）と軸F（異常系）が埋まっている
+- 4辺ぶんの軸×要素対応表が成果物として存在し、各要素に担保テストメソッド名が記されている。空欄には理由が書かれている
+- 4辺の担当クラス（`XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラス）の行・分岐カバレッジが計測され、未到達分岐が列挙されている。テスト不要と判断したものには根拠が書かれている
+- 本作業で見つかった現状挙動の課題が、修正されずに課題一覧へ記録されている
+- `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` が全テスト PASS する
 
 # Assumptions
 
@@ -27,6 +40,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 本体・yaml には書き込まない
 - `mvn test` が通らず実装変更が要ると判断したら止めてユーザーに確認する
 - タスク完了後は即 push し、PR を作成してユーザーがコードを PR 上で確認できるようにする
+
+（フェーズ2）
+
+- 期待値を先に決めない。まず現状の挙動を実行して記録し、それが仕様として妥当かを判断してから固定する
+- 本作業で見つかった不具合は、この作業の中では修正しない。`.rn/ntf-test-data-converter/coverage/issues.md` に記録して切り分ける（src/main を変更しない）
+- 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない
+- 既存テストを軸で棚卸ししてから新規テストを足す。棚卸しなしの新規追加はしない
+- 対応表・カバレッジを示さずに「網羅した」と報告しない
 
 # Tasks
 
@@ -508,6 +529,298 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - 分類 A 19 件すべてで括弧ごと削除のみ実施（ロジック・アサーション内容は無変更）
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
 - `mvn javadoc:javadoc` が通り、警告数が作業前から増えていない
+
+---
+
+### #18: 既存テスト 4辺分の軸棚卸し
+
+**Purpose**: 辺①33件・辺②20件・辺③40件・辺④33件の既存テストが、軸A〜F のどの要素を担保しているかを1件ずつ棚卸しし、欠けを可視化する。以降の追加タスクはこの表の空欄だけを埋める。
+
+**Prerequisites**: #17
+
+**Steps**:
+
+- [ ] `XlsFormatReaderTest`（33件）・`YamlFormatReaderTest`（20件）・`XlsFormatWriterTest`（40件）・`YamlFormatWriterTest`（33件）の全テストメソッドを列挙する
+- [ ] 軸C の全フィールドを実クラス（`TestDataContainer` / `TestDataSection` / `TestDataBlock` / `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock` / `RecordLayout` / `FieldDef`）から読み取り、省略可能なフィールドを特定する
+- [ ] 軸A の `DataType` 14種を `nablarch.test.core.reader.DataType` の実定義と突き合わせ、14種であることを確認する（差異があれば実定義を正とし記録する）
+- [ ] 各テストメソッドを軸A〜F の要素へ対応付け、`.rn/ntf-test-data-converter/coverage/inventory.md` に4辺ぶんの棚卸し表として記録する
+- [ ] 各辺の空欄（未担保の軸要素）を一覧として同ファイルに明記する
+- [ ] self-check（OK/NG per completion criterion、checks/task-18.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, writing）
+- [ ] Verification expert review（subagent, fact-check）
+
+**Completion criteria**:
+
+- `.rn/ntf-test-data-converter/coverage/inventory.md` に4辺ぶんの棚卸し表があり、既存126件（33+20+40+33）の全テストメソッド名が漏れなく載っている
+- 軸A の要素が `DataType` の実定義と一致している（14種でない場合はその旨と実際の要素が記録されている）
+- 軸C の対象フィールドが実クラスの定義と一致し、省略可能なフィールドが識別されている
+- 各辺について未担保の軸要素が一覧化されており、以降のタスクが埋めるべき対象が確定している
+- src/main・src/test への変更がゼロ（棚卸しのみ）
+
+---
+
+### #19: 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
+
+**Purpose**: 実 `.xlsx` を入力に `XlsFormatReader` を駆動するテスト基盤を作り、セル種別17ケースが中間モデルへどう入るかを現状の挙動として記録・固定する。`PoiXlsReader` の「実セル → 文字列行」区間を初めて実行させる。
+
+**Prerequisites**: #18
+
+**Steps**:
+
+- [ ] POI で `.xlsx` を組み立てるテストフィクスチャヘルパを作る（セル種別・書式・数式・エラー値を指定できること）
+- [ ] 17ケースそれぞれのセルを含む `.xlsx` を生成し、`new XlsFormatReader().read(...)` で読んだ結果を**まず実行して記録する**（期待値を先に決めない）
+- [ ] 記録した現状挙動を `.rn/ntf-test-data-converter/coverage/issues.md` の観点で評価し、仕様として妥当なものはテストで固定する
+- [ ] 妥当でないと判断したものは `issues.md` に課題として記録する（**修正しない**）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-19.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+- [ ] Design expert review（subagent — フィクスチャ基盤という構造を新設するため）
+
+**Completion criteria**:
+
+- 実 `.xlsx` ファイルを入力として `XlsFormatReader` を駆動するテストが存在し、`FakeTestDataReader` を経由していない
+- 軸D の17ケース（文字列／整数数値／小数数値／大きい数値／先頭ゼロ文字列／日付書式／時刻書式／日時書式／数式／真偽値／エラー値／セル不在／空文字／前後空白／改行／リテラル `null`／表示形式付き数値）すべてについて、中間モデルへ入る値がアサートされている
+- 各ケースの結果が「実行して記録した現状の挙動」であり、実装を期待値に合わせて変更していない（src/main の diff がゼロ）
+- 仕様として不適切と判断した挙動が `issues.md` に記録され、かつ修正されていない
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #20: 辺① 軸A・B・C（実ファイル経由）
+
+**Purpose**: 14の `DataType`、4種のブロック実装、中間モデルの全フィールドが、実 `.xlsx` から中間モデルへ正しく入ることを固定する。既存33件は `FakeTestDataReader` 経由のため流用せず、実ファイル経由で組み直す。
+
+**Prerequisites**: #19
+
+**Steps**:
+
+- [ ] 14の `DataType` それぞれについて、実 `.xlsx` から中間モデルへ入ることをアサートするテストを追加する
+- [ ] 軸B の4種（`TableDataBlock` / `ListMapBlock` / `FileDataBlock` / `MessageDataBlock`）が実ファイル経由で生成されることをアサートする
+- [ ] 軸C の全フィールドを非デフォルト値でアサートする。`groupId` / `identifier` / `fileType` / `directives` / `fwHeaderFields` / `recordType` / `FieldDef.type` / `FieldDef.length` は「値あり」「省略」の双方を通す
+- [ ] `FileDataBlock.fileType` の `FIXED` / `VARIABLE` 両方を通す
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 軸A の14種すべてが、実 `.xlsx` を入力とするテストで1回以上中間モデルへ入っている
+- 軸B の4種すべてが実 `.xlsx` 経由で生成されアサートされている
+- 軸C の全フィールドが非デフォルト値で1回以上アサートされ、省略可能なフィールドは省略時の挙動もアサートされている
+- `fileType` の `FIXED` / `VARIABLE` 双方がアサートされている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #21: 辺① 軸E（多重度）・軸F（異常系）
+
+**Purpose**: 実 `.xlsx` 入力に対する多重度と異常系の挙動を固定する。
+
+**Prerequisites**: #20
+
+**Steps**:
+
+- [ ] 軸E: 1セクションに 0／1／複数ブロック、1ブロックに 0／1／複数行、1ファイルに 0／1／複数レコードレイアウト、1ブックに 1／複数シートのテストを追加する
+- [ ] 軸F: シート不在／ブック破損／未知のデータタイプ名／マーカーカラム欠落／カラム名重複／行と列の数の不一致のテストを追加する（現状の挙動をまず記録してから固定する）
+- [ ] 異常系のうち仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-21.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 軸E の4観点（セクション内ブロック数／ブロック内行数／ファイル内レコードレイアウト数／ブック内シート数）それぞれで 0／1／複数（シートは 1／複数）がアサートされている
+- 軸F の6ケース（シート不在／ブック破損／未知データタイプ名／マーカーカラム欠落／カラム名重複／行列数不一致）すべてで、例外型・メッセージまたは継続時の結果がアサートされている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #22: 辺③ 軸D（セル型8ケース）・軸F（異常系）
+
+**Purpose**: `XlsFormatWriter` が書き出す Excel のセル型を `getCellType()` で検証し、文字列として書かれること・数式解釈されないことを固定する。異常系の挙動も固定する。
+
+**Prerequisites**: #18
+
+**Steps**:
+
+- [ ] 軸D の8ケース（`"100"` ／ `"=1+1"` ／ `"007"` ／ `null` ／ `""` ／改行含む文字列／32767文字超／制御文字含む）を書き出し、読み返して `getCellType()` をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
+- [ ] 軸F: 出力先不在／同名ファイル既存かつ `overwrite=false` ／書き込み権限なし／シート名が Excel 制約違反（31文字超・禁止文字）のテストを追加する
+- [ ] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-22.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 軸D の8ケースすべてで `getCellType()` がアサートされている（`getStringCellValue()` のみのアサートで終わっていない）
+- `"=1+1"` が数式セルとして解釈されないこと、`"100"` が数値セルにならないことがアサートされている
+- 軸F の4ケース（出力先不在／`overwrite=false` 衝突／書き込み権限なし／シート名制約違反）で例外型または結果がアサートされている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #23: 辺③ 軸A・B・C・E の欠け補充
+
+**Purpose**: #18 の棚卸しで空欄となった辺③の軸A・B・C・E の要素をテストで埋める。
+
+**Prerequisites**: #22
+
+**Steps**:
+
+- [ ] #18 の棚卸し表で辺③の空欄となっている軸A・B・C・E の要素を確認する
+- [ ] 空欄の要素それぞれについてテストを追加する（軸C は省略可能フィールドの「値あり」「省略」双方）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-23.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 辺③について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E の 0／1／複数がすべてアサートされている
+- #18 の棚卸し表で辺③に残っていた空欄が、埋まったか理由付きで残されたかのいずれかになっている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #24: 辺② 軸D（YAML スカラー10ケース）・軸A〜F の欠け補充
+
+**Purpose**: YAML のスカラー型が中間モデルへどう入るかを固定し、#18 の棚卸しで空欄となった辺②の軸要素を埋める。
+
+**Prerequisites**: #18
+
+**Steps**:
+
+- [ ] 軸D の10ケース（引用符なし文字列／引用符あり／数値／末尾ゼロ小数／`true`・`TRUE`・`yes`／`null`・`~`・値なし／`"null"`／日付風／複数行 `|`・`>`／先頭ゼロ）を実 YAML フィクスチャで読み、現状の挙動をまず記録してから固定する
+- [ ] 軸F: スキーマ違反／YAML として不正／未知のキー／必須構造の欠落／空ファイルのテストを追加する
+- [ ] #18 の棚卸し表で辺②の空欄となっている軸A・B・C・E の要素を埋める
+- [ ] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-24.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 軸D の10ケースすべてがアサートされ、特に `null` ／ `~` ／値なし の3者が区別されるか否か、`"null"` とリテラル NULL が区別されるか否かが結果として固定されている
+- 軸F の5ケース（スキーマ違反／不正 YAML／未知キー／必須構造欠落／空ファイル）で例外型または結果がアサートされている
+- 辺②について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E が埋まっている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #25: 辺④ 軸D（YAML 表現9ケース）・軸A〜F の欠け補充
+
+**Purpose**: 中間モデルの値が YAML へどう書かれるかを固定し、辺②と対で往復可能性（引用符が落ちて再読込で型が変わらないか）を確認する。#18 の棚卸しで空欄となった辺④の軸要素も埋める。
+
+**Prerequisites**: #24
+
+**Steps**:
+
+- [ ] 軸D の9ケース（`"100"` ／ `"true"` ／ `"null"` ／ `null` ／ `""` ／ `"007"` ／改行含む／`"2026-08-07"` ／コロン・ハイフン・`#` 含む）を書き出し、出力 YAML の記法をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
+- [ ] 各ケースについて、#24 で固定した辺②の読み取り挙動と突き合わせ、文字列が同じ文字列として復元されるか否かを判定し記録する
+- [ ] 軸F: 出力先不在／`overwrite=false` 衝突／書き込み権限なしのテストを追加する
+- [ ] #18 の棚卸し表で辺④の空欄となっている軸A・B・C・E の要素を埋める
+- [ ] 復元できない組み合わせがあれば `issues.md` に課題として記録する（**修正しない**）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-25.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- 軸D の9ケースすべてで出力 YAML の記法（引用符の有無・複数行記法・NULL 表現）がアサートされている
+- 9ケースそれぞれについて、辺④で書き辺②で読んだとき元の文字列が復元されるか否かが判定・記録されている（復元されない場合は課題として記録され、修正されていない）
+- 軸F の3ケース（出力先不在／`overwrite=false` 衝突／書き込み権限なし）で例外型または結果がアサートされている
+- 辺④について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E が埋まっている
+- src/main への変更がゼロ
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する
+
+---
+
+### #26: カバレッジ計測と未到達分岐の列挙
+
+**Purpose**: 4辺の担当クラスの行・分岐カバレッジを JaCoCo で計測し、未到達分岐を列挙して、テスト不要と判断したものに根拠を付ける。
+
+**Prerequisites**: #21, #23, #25
+
+**Steps**:
+
+- [ ] Decisions 記載の手順（`mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` → `mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）でカバレッジを取得する
+- [ ] `XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラスの行・分岐カバレッジ数値を `.rn/ntf-test-data-converter/coverage/coverage-report.md` に記録する
+- [ ] 未到達の分岐を1件ずつ（クラス・メソッド・行番号つきで）列挙する
+- [ ] 各未到達分岐を「テストを足すべき」「テスト不要」に分類し、テスト不要には根拠を書く（Java イディオム／到達不能／NTF 仕様外 など）
+- [ ] self-check（OK/NG per completion criterion、checks/task-26.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, writing）
+- [ ] Verification expert review（subagent, fact-check）
+
+**Completion criteria**:
+
+- `.rn/ntf-test-data-converter/coverage/coverage-report.md` に対象6区分すべての行・分岐カバレッジ数値が記録されている
+- 未到達分岐がクラス・メソッド・行番号つきで漏れなく列挙されている
+- 各未到達分岐が「テストを足すべき」「テスト不要」に分類され、後者には根拠が書かれている
+- 「テストを足すべき」に分類されたものは、追加されたか `issues.md` へ残課題として記録されたかのいずれかになっている
+- src/main への変更がゼロ
+
+---
+
+### #27: 4辺の軸×要素対応表と課題一覧の提出
+
+**Purpose**: 4辺ぶんの軸×要素対応表を、各要素に担保テストメソッド名を記した形で完成させ、本作業で見つかった課題を一覧として確定する。
+
+**Prerequisites**: #26
+
+**Steps**:
+
+- [ ] `.rn/ntf-test-data-converter/coverage/axis-matrix.md` に4辺ぶんの軸×要素対応表を作る。各要素に担保テストメソッド名を記す
+- [ ] 空欄が残る要素には理由を書く
+- [ ] 表に記したテストメソッド名が実在することを、テストソースと突き合わせて確認する
+- [ ] `issues.md` を通読し、#19〜#26 で記録した課題が漏れなく載っていること・いずれも修正されていない（src/main 無変更）ことを確認する
+- [ ] self-check（OK/NG per completion criterion、checks/task-27.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, writing）
+- [ ] Verification expert review（subagent, fact-check）
+
+**Completion criteria**:
+
+- `axis-matrix.md` に辺①〜辺④の4表があり、軸A〜F の全要素が行として存在する
+- 各要素に担保テストメソッド名が記されており、記された全メソッド名がテストソースに実在する
+- 空欄の要素には理由が書かれている
+- `issues.md` に本作業で見つかった課題が一覧化されており、`git diff` 上 src/main への変更がゼロであることが確認されている
+
+---
+
+### #28: Evaluation sign-off
+
+**Purpose**: Acceptance criteria を通しで実行し、その結果をユーザーへ提示して承認を得る。
+
+**Prerequisites**: #27
+
+**Steps**:
+
+- [ ] Acceptance criteria（フェーズ2分を含む全項目）を1件ずつ検証し、結果をまとめる
+- [ ] 結果をユーザーへ提示し、`/rn:ty`（承認）または `/rn:gm`（差し戻し）の判定を受ける
+
+**Completion criteria**:
+
+- Acceptance criteria の実行結果がユーザーに承認されている
 
 ---
 
