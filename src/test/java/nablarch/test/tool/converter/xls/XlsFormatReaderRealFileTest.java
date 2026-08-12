@@ -35,7 +35,9 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * 辺①（Excel→中間モデル）の軸A（{@link DataType} 14 種）・軸B（{@code TestDataBlock} の具象 4 種）・
- * 軸C（中間モデル 21 フィールド）を、<b>実 {@code .xlsx} を入力に</b>固定するテスト。
+ * 軸C（中間モデル 21 フィールド）と、軸E のうち<b>コレクションが 0 件になる多重度</b>
+ * （E-2 ブロック内行数 0 件／E-3 ファイル内レコードレイアウト数 0 件）を、
+ * <b>実 {@code .xlsx} を入力に</b>固定するテスト。
  *
  * <p>
  * {@code XlsFormatReaderTest}（既存 33 件）は内部 Fake リーダに {@code List<List<String>>} の canned 行を
@@ -48,7 +50,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 各テストの Javadoc には、そのテストが担保する軸要素の ID
- * （{@code .rn/ntf-test-data-converter/coverage/inventory.md} の A-01〜A-14／B-1〜B-4／C-01〜C-21）を記す。
+ * （{@code .rn/ntf-test-data-converter/coverage/inventory.md} の A-01〜A-14／B-1〜B-4／C-01〜C-21／E-1〜E-4）を記す。
  * </p>
  *
  * <p>
@@ -62,7 +64,7 @@ import org.junit.rules.TemporaryFolder;
  * {@code coverage/inventory.md} §1.3 と {@code coverage/issues.md} の「到達不能」表にあり、そちらが原本）:</b>
  * </p>
  * <table border="1">
- *   <caption>実 {@code .xlsx} 経路で到達不能／本タスクの範囲外の軸要素</caption>
+ *   <caption>実 {@code .xlsx} 経路で到達不能な軸要素</caption>
  *   <tr><th>軸要素</th><th>扱い</th><th>理由</th></tr>
  *   <tr>
  *     <td>A-01 {@code DEFAULT}</td><td>到達不能</td>
@@ -94,19 +96,22 @@ import org.junit.rules.TemporaryFolder;
  *     <td>C-17 {@code RecordLayout.fields} 空</td><td>到達不能</td>
  *     <td>フィールドを 0 件にするには名前行を 1 列（レコード種別セルのみ）にするしかないが、本体
  *         {@code DataFileParser} が「{@code directive or data names row must have two columns at least.}」で
- *         弾く（{@code issues.md} の「到達不能」表。実測済み）。</td>
+ *         弾く（{@code issues.md} の「到達不能」表）。根拠は
+ *         {@code XlsFormatReaderInvalidInputTest#failsWhenNameRowHasOnlyRecordTypeCellInRealBook} が
+ *         テストで示す。</td>
  *   </tr>
  *   <tr>
  *     <td>C-20 {@code FieldDef.type} 省略（{@code null}）</td><td>到達不能</td>
  *     <td>型行が名前行より短いと {@code DataFileFragment#assertSameSizeAsNames} が、型セルが中間位置で
  *         空だと {@code BasicDataTypeMapping#convertToFrameworkExpression} が、それぞれ
- *         {@code IllegalArgumentException} を投げる（{@code issues.md} の「到達不能」表）。</td>
+ *         {@code IllegalArgumentException} を投げる（{@code issues.md} の「到達不能」表）。根拠は
+ *         {@code XlsFormatReaderInvalidInputTest#failsWhenTypeRowIsShorterThanNameRowInRealBook} と
+ *         {@code #failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook} がテストで示す。</td>
  *   </tr>
  *   <tr>
- *     <td>C-09 {@code rows} 空 ／ C-12・C-15 {@code records} 空 ／ C-18 {@code rows} 空</td>
- *     <td>タスク #21</td>
- *     <td>いずれもコレクションが 0 件になるケースであり、軸E の E-2（ブロック内行数 0）・
- *         E-3（ファイル内レコードレイアウト数 0）と同じ入力になる。</td>
+ *     <td>E-4 コンテナ内セクション数「複数」</td><td>到達不能</td>
+ *     <td>{@link XlsFormatReader#read} は {@code "ブック名/シート名"} の 1 シート単位 API であり、
+ *         必ず 1 セクションだけを返す（C-02 と同じ根拠）。</td>
  *   </tr>
  * </table>
  *
@@ -114,6 +119,11 @@ import org.junit.rules.TemporaryFolder;
  * なお C-08 {@code columnNames} 空は #21 送りではなく<b>本クラスで担保する</b>
  * （{@link #readsEmptyColumnNamesFromMarkerOnlyTableInRealBook} ほか）。マーカー列だけのテーブルで
  * 到達でき、軸E の 4 観点（E-1〜E-4）に対応する要素を持たないためである。
+ * </p>
+ *
+ * <p>
+ * <b>軸F（異常系）は本クラスでは扱わない。</b>{@code XlsFormatReaderInvalidInputTest}（タスク #21）が、
+ * 壊れた入力・欠けた入力に対する例外と継続時の結果を固定する。
  * </p>
  *
  * @author kiyobot
@@ -861,6 +871,217 @@ public class XlsFormatReaderRealFileTest {
         RecordLayout record = file.getRecords().get(0);
         assertThat(record.getRecordType(), is(""));
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abc"))));
+    }
+
+    // ------------------------------------------------------------------ 軸C 空コレクション／軸E 0 件
+
+    /**
+     * Given: カラム行だけを持ち、データ行を 1 行も持たない {@code SETUP_TABLE} ブロックの実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : 列名は入るが行は 0 件になる。例外にはならない。
+     *
+     * <p>担保する軸要素: C-09（空。テーブル経路）／E-2（ブロック内行数 0 件）。</p>
+     */
+    @Test
+    public void readsEmptyRowsFromTableWithoutDataRowsInRealBook() {
+        // Given
+        book().row(text("SETUP_TABLE=T"))
+                .row(text("A"), text("B"))
+                .writeTo(dir());
+
+        // When
+        TableDataBlock table = onlyBlock(TableDataBlock.class);
+
+        // Then
+        assertThat(table.getColumnNames(), is(Arrays.asList("A", "B")));
+        assertThat("データ行を 1 行も持たないテーブルの行",
+                table.getRows(), is(Collections.<List<String>>emptyList()));
+    }
+
+    /**
+     * Given: カラム行だけを持ち、データ行を 1 行も持たない {@code LIST_MAP} ブロックの実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : テーブル経路と同じく列名は入り行は 0 件になる（経路が別なので個別に固定する）。
+     *
+     * <p>担保する軸要素: C-09（空。{@link ListMapBlock} 経路）／E-2（ブロック内行数 0 件）。</p>
+     */
+    @Test
+    public void readsEmptyRowsFromListMapWithoutDataRowsInRealBook() {
+        // Given
+        book().row(text("LIST_MAP=lm"))
+                .row(text("A"), text("B"))
+                .writeTo(dir());
+
+        // When
+        ListMapBlock listMap = onlyBlock(ListMapBlock.class);
+
+        // Then
+        assertThat(listMap.getColumnNames(), is(Arrays.asList("A", "B")));
+        assertThat("データ行を 1 行も持たない LIST_MAP の行",
+                listMap.getRows(), is(Collections.<List<String>>emptyList()));
+    }
+
+    /**
+     * Given: ディレクティブ行だけを持ち、名前行以降（レコードレイアウト）を持たない {@code SETUP_FIXED}
+     *        ブロックの実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : ブロックは生成され、ディレクティブは入るがレコードレイアウトは 0 件になる。例外にはならない。
+     *
+     * <p>担保する軸要素: C-12（空）／E-3（ファイル内レコードレイアウト数 0 件）。</p>
+     */
+    @Test
+    public void readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook() {
+        // Given
+        book().row(text("SETUP_FIXED=f.dat"))
+                .row(text("text-encoding"), text("UTF-8"))
+                .writeTo(dir());
+
+        // When
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
+
+        // Then
+        assertThat(file.getDataType(), is(DataType.SETUP_FIXED));
+        assertThat(file.getIdentifier(), is("f.dat"));
+        assertThat(file.getDirectives().get("text-encoding"), is("UTF-8"));
+        assertThat(file.getDirectives().get("file-type"), is("Fixed"));
+        assertDirectiveCount(file.getDirectives(), 2);
+        assertThat("レコードレイアウトを 1 件も持たないファイルブロックのレコード",
+                file.getRecords(), is(Collections.<RecordLayout>emptyList()));
+    }
+
+    /**
+     * Given: FW 制御ヘッダ行だけを持ち、本文（名前行以降）を持たない {@code MESSAGE} ブロックの
+     *        実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : ブロックは生成され、FW 制御ヘッダは入るがレコードレイアウトは 0 件になる。
+     *
+     * <p>担保する軸要素: C-15（空）／E-3（ファイル内レコードレイアウト数 0 件。{@link MessageDataBlock} 経路）。</p>
+     *
+     * <p>
+     * {@link XlsFormatReader#read} は本体パーサが同 ID のデータを見つけられない場合に {@code MESSAGE}
+     * ブロックを丸ごと落とす（{@code readMessageBlock} が {@code null} を返す）が、本入力では
+     * <b>ブロックは生成されたうえでレコードが 0 件になる</b>ことを実測した。YAML 経路
+     * （{@code YamlFormatReaderTest#readMessage_emptyBody_isStillMapped}）と同じ扱いである。
+     * </p>
+     */
+    @Test
+    public void readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook() {
+        // Given
+        book().row(text("MESSAGE=m"))
+                .row(text("requestId"), text("R1"))
+                .writeTo(dir());
+
+        // When
+        MessageDataBlock message = onlyBlock(MessageDataBlock.class);
+
+        // Then
+        assertThat(message.getDataType(), is(DataType.MESSAGE));
+        assertThat(message.getIdentifier(), is("m"));
+        assertThat(message.getFwHeaderFields().get("requestId"), is("R1"));
+        assertThat("FW 制御ヘッダの件数", message.getFwHeaderFields().size(), is(1));
+        assertThat(message.getDirectives().get("file-type"), is("Fixed"));
+        assertDirectiveCount(message.getDirectives(), 1);
+        assertThat("本文を持たないメッセージブロックのレコード",
+                message.getRecords(), is(Collections.<RecordLayout>emptyList()));
+    }
+
+    /**
+     * Given: 名前行・型行・長さ行を持つが値行を 1 行も持たない {@code SETUP_FIXED} ブロックの
+     *        実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : レコードレイアウトは 1 件生成され、フィールド定義は入るが値行は 0 件になる。
+     *
+     * <p>担保する軸要素: C-18（空）。</p>
+     */
+    @Test
+    public void readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook() {
+        // Given
+        book().row(text("SETUP_FIXED=f.dat"))
+                .row(text("data"), text("f1"))
+                .row(blank(), text("半角英字"))
+                .row(blank(), text("3"))
+                .writeTo(dir());
+
+        // When
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
+
+        // Then
+        assertThat("レコードレイアウト数", file.getRecords().size(), is(1));
+        RecordLayout record = file.getRecords().get(0);
+        assertThat(record.getRecordType(), is("data"));
+        assertThat(fieldNames(record), is(Arrays.asList("f1")));
+        assertThat(record.getFields().get(0).getType(), is("半角英字"));
+        assertThat(record.getFields().get(0).getLength(), is("3"));
+        assertThat("値行を 1 行も持たない断片の行",
+                record.getRows(), is(Collections.<List<String>>emptyList()));
+    }
+
+    // ------------------------------------------------------------------ 軸E 複数（1 ファイルに複数レコードレイアウト）
+
+    /**
+     * Given: 断片（レコードレイアウト）を 2 つ持つ {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
+     *        1 つ目は値行 1 行、2 つ目は値行 2 行とし、2 つ目の長さ行には省略記法 {@code -} を含める。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : レコードレイアウトが 2 件に分かれ、レコード種別・フィールド定義・値行が断片ごとに独立して入る。
+     *
+     * <p>
+     * 担保する軸要素: E-3（ファイル内レコードレイアウト数 複数）／C-12（非空・2 件）／C-18（非空・断片ごとに別）／
+     * C-21（値あり。2 断片目の省略記法 {@code -} も原文のまま）。
+     * </p>
+     *
+     * <p>
+     * {@link XlsFormatReader#toRecordLayouts} は器の断片を権威に生行を走査してインデックスを進めるため、
+     * <b>断片が複数あるときだけ通る経路</b>（断片ループと {@code verifyNameRow} による位置合わせ）を持つ。
+     * この経路を実 {@code .xlsx} で通すのは本テストだけである（Fake リーダ経路には
+     * {@code XlsFormatReaderTest#readRestoresMultipleRecordLayoutsInFixedFile} がある。
+     * <b>入力の論理内容は同テストを参考にしたが、期待値は流用せず実行して観測した結果を固定した</b>）。
+     * </p>
+     *
+     * <p>
+     * なお {@code MESSAGE} 本文では断片を 2 つ以上作れない（2 つ目の名前行が値行として吸収される）。
+     * 根拠と課題は {@code coverage/issues.md} の <b>XLS-15</b> と
+     * {@code XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook} にある。
+     * </p>
+     */
+    @Test
+    public void readsMultipleRecordLayoutsFromOneFixedFileInRealBook() {
+        // Given: 断片1（header, 値行 1 行）＋ 断片2（data, 値行 2 行。長さは省略記法 "-" を含む）
+        book().row(text("SETUP_FIXED=multi.dat"))
+                .row(text("text-encoding"), text("UTF-8"))
+                .row(text("header"), text("h1"), text("h2"))
+                .row(blank(), text("半角英字"), text("半角英字"))
+                .row(blank(), text("5"), text("3"))
+                .row(blank(), text("AAAAA"), text("BBB"))
+                .row(text("data"), text("d1"), text("d2"))
+                .row(blank(), text("半角英字"), text("半角"))
+                .row(blank(), text("-"), text("2"))
+                .row(blank(), text("1"), text("xy"))
+                .row(blank(), text("2"), text("zw"))
+                .writeTo(dir());
+
+        // When
+        FileDataBlock file = onlyBlock(FileDataBlock.class);
+
+        // Then
+        assertThat("レコードレイアウト数", file.getRecords().size(), is(2));
+
+        RecordLayout header = file.getRecords().get(0);
+        assertThat(header.getRecordType(), is("header"));
+        assertThat(fieldNames(header), is(Arrays.asList("h1", "h2")));
+        assertThat(header.getFields().get(0).getType(), is("半角英字"));
+        assertThat(header.getFields().get(0).getLength(), is("5"));
+        assertThat(header.getFields().get(1).getLength(), is("3"));
+        assertThat(header.getRows(), is(Arrays.asList(Arrays.asList("AAAAA", "BBB"))));
+
+        RecordLayout data = file.getRecords().get(1);
+        assertThat(data.getRecordType(), is("data"));
+        assertThat(fieldNames(data), is(Arrays.asList("d1", "d2")));
+        assertThat("2 断片目の型も独立に原文復元される", data.getFields().get(1).getType(), is("半角"));
+        assertThat("2 断片目の長さ省略記法も原文のまま", data.getFields().get(0).getLength(), is("-"));
+        assertThat(data.getFields().get(1).getLength(), is("2"));
+        assertThat(data.getRows(), is(Arrays.asList(
+                Arrays.asList("1", "xy"),
+                Arrays.asList("2", "zw"))));
     }
 
     // ------------------------------------------------------------------ assertion helpers

@@ -395,5 +395,149 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 |---|---|
 | C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | XLS-07（器が `file-type` を必ず注入する）。担保テストは C-11 が `XlsFormatReaderRealFileTest#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`、C-13 が `#readsAllFourSendSyncMessageTypesFromRealBook`（ディレクティブ行を 1 行も持たない送信同期 4 種すべてについて、ループ内で `getDirectives()` の内容と件数をアサートする） |
 | C-16 `RecordLayout.recordType` 省略（`null`） | XLS-06（実 `.xlsx` 経路では `""` になる） |
-| C-17 `RecordLayout.fields` 空 | **2026-08-12・レビュー指摘により調査して追加**（当初は「軸E の 0 件と重なる」として #21 送りに分類していたが、実測すると到達不能だった）。フィールドを 0 件にするには名前行をレコード種別セル 1 列だけにするしかないが、本体 `DataFileParser` L234 が `IllegalStateException: directive or data names row must have two columns at least. [data]` で弾く。仮に名前行を空にできたとしても `DataFileFragment#setNames`（L190）の `assertNotNullOrEmpty`（L326）が `names must not be null or empty.` で弾く。いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。`SETUP_FIXED`／`MESSAGE` の双方でプローブ実測した。例外そのものは軸F の F1-06 としてタスク #21 が扱う |
-| C-20 `FieldDef.type` 省略（`null`） | 型が欠ける入力は本体パーサが弾く。**機構は欠け方で 2 通りに分かれる（2026-08-12・レビュー指摘によりプローブを実行し直して訂正。当初は両方を `assertSameSizeAsNames` 由来と書いていたが誤り）**。<br>① 型行が名前行より短い（型セルが**末尾**で空の場合も、空白セルは行の使用範囲から外れるため同じ経路になる）→ `DataFileFragment#assertSameSizeAsNames`（宣言 L339。`throw` は L342。呼び出しは `setTypes` L203）が `IllegalArgumentException: field name size is 2. but types size is 1. FixedLengthFileFragment{...}`。<br>② 型セルが**中間位置**で空 → 要素数は一致するので `assertSameSizeAsNames` は通り、`setTypes` L206 の `convertToFrameworkExpression` → `BasicDataTypeMapping` L69 が `IllegalArgumentException: can't convert value []. convert table ={半角カナ=X, ...}`。<br>いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。器が成立する入力では型が常に全フィールドぶん揃うため、`XlsFormatReader#readFieldDefs` L378 の `null` フォールバックには到達しない。例外そのものは軸F の F1-06（行と列の数の不一致）としてタスク #21 が扱う |
+| C-17 `RecordLayout.fields` 空 | **2026-08-12・レビュー指摘により調査して追加**（当初は「軸E の 0 件と重なる」として #21 送りに分類していたが、実測すると到達不能だった）。フィールドを 0 件にするには名前行をレコード種別セル 1 列だけにするしかないが、本体 `DataFileParser` L234 が `IllegalStateException: directive or data names row must have two columns at least. [data]` で弾く。仮に名前行を空にできたとしても `DataFileFragment#setNames`（L190）の `assertNotNullOrEmpty`（L326）が `names must not be null or empty.` で弾く。いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。`SETUP_FIXED`／`MESSAGE` の双方で実測した。**根拠テスト（#21 で追加）: `XlsFormatReaderInvalidInputTest#failsWhenNameRowHasOnlyRecordTypeCellInRealBook`**（`SETUP_FIXED`／`MESSAGE` の 2 ブックで例外型とメッセージをアサートする）。例外そのものは軸F の F1-06 としてタスク #21 が扱う |
+| C-20 `FieldDef.type` 省略（`null`） | 型が欠ける入力は本体パーサが弾く。**機構は欠け方で 2 通りに分かれる（2026-08-12・レビュー指摘によりプローブを実行し直して訂正。当初は両方を `assertSameSizeAsNames` 由来と書いていたが誤り）**。<br>① 型行が名前行より短い（型セルが**末尾**で空の場合も、空白セルは行の使用範囲から外れるため同じ経路になる）→ `DataFileFragment#assertSameSizeAsNames`（宣言 L339。`throw` は L342。呼び出しは `setTypes` L203）が `IllegalArgumentException: field name size is 2. but types size is 1. FixedLengthFileFragment{...}`。**根拠テスト（#21 で追加）: `XlsFormatReaderInvalidInputTest#failsWhenTypeRowIsShorterThanNameRowInRealBook`**。<br>② 型セルが**中間位置**で空 → 要素数は一致するので `assertSameSizeAsNames` は通り、`setTypes` L206 の `convertToFrameworkExpression` → `BasicDataTypeMapping` L69 が `IllegalArgumentException: can't convert value []. convert table ={半角カナ=X, ...}`（変換表は `HashMap` 由来で並び順が変わる）。**根拠テスト（#21 で追加）: `XlsFormatReaderInvalidInputTest#failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook`**。<br>いずれも `TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する。器が成立する入力では型が常に全フィールドぶん揃うため、`XlsFormatReader#readFieldDefs` L378 の `null` フォールバックには到達しない。例外そのものは軸F の F1-06（行と列の数の不一致）としてタスク #21 が扱う |
+
+---
+
+## #21 辺① 軸E（多重度）・軸F（異常系）で記録した課題
+
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（XLS-10・XLS-13・XLS-12・XLS-15）を先に置き、
+loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く。課題 ID は発見順のまま振り直していない
+（XLS-15 は E-3(複数) の追加担保を実装する過程で見つけたため最後の ID になっている）。
+
+以下はすべて `XlsFixture` が POI で組み立てた実 `.xlsx` を `new XlsFormatReader().read(...)` に渡して
+実測したものである（プローブ実行 2026-08-12 ＋ 担保テストの実行）。
+
+### XLS-10 未知のデータタイプ名のマーカーは行ごと黙って無視され、ブロックが変換結果から消える（影響度 中・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `UNKNOWN_TYPE=X`／カラム行 `A`／データ行 `a1`／`SETUP_TABLE=T`／カラム行 `B`／データ行 `b1` | ブロックは **1 件**（`SETUP_TABLE=T` だけ）。未知タイプ側はマーカー行もカラム行もデータ行も中間モデルに現れない | `XlsFormatReaderInvalidInputTest#ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook` |
+
+- 原因: `TestCoreReaderAdapter` の `HeaderCollector#parse`（L361-364）が、先頭セルから判定したデータタイプが
+  `DEFAULT`（＝既知のどの名前にも一致しない）の行を `continue` でスキップする。マーカー行として認識されない
+  以上ブロックは 1 件も生成されず、後続行も `BodyLineCollector`（L457-463）が `collecting == false` のまま
+  読み飛ばす。
+- 実測: 上表のとおり。**警告・ログ出力は一切ない**（プローブ実行・テスト実行とも WARN の出力なし）。
+  小文字表記（`setup_table=T`）でも同じくブロック 0 件になることをプローブで確認した
+  （`DataType` の名前照合は大文字完全一致のため）。
+- 影響: マーカーの綴り誤り・大文字小文字の誤りがあると、そのブロックは変換後の YAML に 1 行も出ない。
+  変換結果を見比べない限り気づけない。
+- 判断: **仕様として不適切**（少なくとも「先頭セルが `=` を含みデータタイプ名らしいのに未知」を WARN で
+  報せるべき）。ただし NTF の Excel 形式では任意文字列の先頭セルは正当なデータ行でもあり得るため、
+  検知は発見的（ヒューリスティック）にならざるを得ない。修正はこの作業では行わない。
+
+### XLS-13 送信同期メッセージのメタ列（`no`）欠落で先頭フィールドと値が黙って失われる（影響度 低・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `EXPECTED_REQUEST_HEADER_MESSAGES[case1]=RM01`／名前行 `requestId`, `userId`（本来先頭に置くべき `no` 列が無い）／型行 `[空白]`, `半角英字`／長さ行 `[空白]`, `10`／値行 `RM01`, `user01` | `recordType` ＝ `"requestId"`、`fields` ＝ `[userId]`、`rows` ＝ `[[user01]]`。**先頭フィールド `requestId` と値 `RM01` が消える** | `XlsFormatReaderInvalidInputTest#dropsFirstFieldWhenSendSyncMetaColumnIsMissingInRealBook` |
+
+- 原因: 送信同期・MESSAGE 経路は名前行の先頭セルを一律にレコード種別として扱い（`XlsFormatReader#toRecordLayouts` L306）、
+  値行の先頭セルは本体 `SendSyncMessageParser` L134 の
+  `currentFragment.addValueWithId(temp, temp.remove(NO_COLUMN_NUMBER))`（`NO_COLUMN_NUMBER` は L99 で `0`）が
+  ID として取り除く。メタ列が無い入力でも「先頭列＝メタ列」という前提が変わらないため、実データが 1 列ぶんずれる。
+- 実測: 上表のとおり。例外にならず警告も出ない。
+- 影響: 失われるのはフィールド 1 件とその値であり、変換後の YAML を元の Excel と突き合わせない限り気づけない。
+  ただしメタ列の欠落は NTF の記法違反であり、正しく書かれた入力では起こらない。よって影響度は「低」とする。
+- 判断: 入力が記法違反である以上パーサが救えないことは受け入れるが、**黙って落ちる**点は記録に値する。
+  修正はこの作業では行わない。
+
+### XLS-12 カラム行・名前行より右にはみ出したデータセルが黙って捨てられる（影響度 低・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `SETUP_TABLE=LONG`／カラム行 `C`, `D`／データ行 `c1`, `d1`, `e1` | `rows` ＝ `[[c1, d1]]`。**3 セル目 `e1` は消える** | `XlsFormatReaderInvalidInputTest#padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook` |
+| `SETUP_FIXED=long.dat`／名前行 `data`, `g1`／値行 `[空白]`, `xyz`, `extra` | `rows` ＝ `[[xyz]]`。**3 セル目 `extra` は消える** | `#padsShortValueRowAndDropsCellsBeyondNameRowInFixedFileInRealBook` |
+
+- 原因: `XlsFormatReader#readTableBlocks`（L154-158）・`#readDataRows`（L404-408）は、いずれも**カラム名／
+  フィールド名の件数ぶんだけ**値を取り出す。行の側が長くても余りは参照されない。
+- **反対向き（行が短い）とは非対称である**: 足りないセルは空文字で埋められる
+  （ファイル経路は `XlsFormatReader#readDataRows` L406 の `i < valueCells.size() ? ... : ""`。
+  テーブル経路・LIST_MAP 経路は本体 `HeaderLine#excludeMarkerColumns` L81 の
+  `(i >= line.size()) ? "" : line.get(i)`。`TableDataParser#onReadLine` L98 がこれを呼ぶ）。埋める側は
+  XLS-04（セル不在と空文字が区別されない）と同じ扱いであり受容できるが、**捨てる側は情報が失われる**。
+- 実測: 上表のとおり。例外にならず警告も出ない。
+- 影響: カラム行の書き忘れ（値だけ足した列）があると、その列の値は変換後に存在しない。
+  ただしカラム名が無い値は中間モデルに置き場所が無く、変換ツール単独では救えない。よって影響度は「低」とする。
+- 判断: 少なくとも WARN が要る（カラム行より右に非空セルがある、という検知は容易である）。
+  修正はこの作業では行わない。
+
+### XLS-15 `MESSAGE` 本文の 2 つ目のレコードレイアウトが値行として吸収される（影響度 低・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `MESSAGE=m`／FW ヘッダ行／断片1 名前行 `header`,`h1`・型行・長さ行・値行 `[空白]`,`HH`／断片2 名前行 `data`,`d1`・型行 `[空白]`,`半角英字`・長さ行 `[空白]`,`3`・値行 `[空白]`,`abc` | `records` は **1 件**（`recordType="header"`, `fields=[h1]`）。`rows` ＝ `[[HH], [d1], [半角英字], [3], [abc]]` — **2 つ目の名前行・型行・長さ行がデータ値になる** | `XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook` |
+
+- 原因: 本体 `DataFileParser#onReadingValues`（L193-202）は先頭セルが非空の行を「新しい断片の名前行」として
+  扱うが、`MessageParser` が生成する匿名 `FixedLengthFileParser` はこれを上書きし、
+  空行以外は常に `currentFragment.addValue(tail(line))` とする（`MessageParser` の
+  `createFixedLengthFileParser` 内。送信同期の `no` 列＝先頭セルが非空のデータ行に合わせた仕様）。
+- 実測: 上表のとおり。例外にならず警告も出ない。
+- 帰結: **`MESSAGE`／送信同期系では 1 ブロックにレコードレイアウトを 2 件以上作れない**
+  （軸E の E-3(複数) はメッセージ系では到達不能。ファイル系
+  `XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` で担保する）。
+- 影響: フィールド名・型記法・長さといった構造情報がデータ値として YAML に出る。値そのものは失われないが
+  構造は崩れる。作成者が「メッセージ本文に複数レコードを書ける」と誤解した場合にだけ起こり、
+  正しく書かれた入力では起こらないため影響度は「低」とする。
+- 判断: 本体の仕様（`no` 列との両立）に由来するため変換ツール単独では直せない。**黙って吸収する**点を記録に留める。
+  修正はこの作業では行わない。
+
+### XLS-11 既知のデータタイプ名で始まる未知の名前は、既知タイプ＋グループ ID として解釈される（影響度 低・記録のみ）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `SETUP_TABLEX=T`（`SETUP_TABLE` の綴り誤り） | `dataType` ＝ `SETUP_TABLE_DATA`、`groupId` ＝ `"X"`（角括弧なし）、`identifier` ＝ `"T"` | `XlsFormatReaderInvalidInputTest#readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` |
+
+- 原因: `TestCoreReaderAdapter#markerGroupId`（L282-286）がデータタイプ名の直後から `=` までを無条件に
+  グループ ID として切り出す。正しい記法は `SETUP_TABLE[g1]=T` のように角括弧付きだが、角括弧の有無は
+  検証されない。
+- 影響: 変換後の YAML に作成者が意図しない `group_id: "X"` が出る。値そのものは失われず、
+  Excel へ書き戻せば元の `SETUP_TABLEX=T` に戻る（往復は安定する）。
+- 判断: 受容できる（記録のみ）。ただし XLS-10 と合わせると、「マーカーの綴り誤り」は
+  **消える**（未知の名前）か**別グループになる**（既知名＋余分な文字）かのどちらかで、いずれも警告が無い。
+
+### XLS-14 ブック破損時の例外がどのファイルかを示さない（影響度 低・記録のみ）
+
+| 入力 | 送出される例外 | 担保テスト |
+|---|---|---|
+| 拡張子だけ `.xlsx` で中身が Excel でないファイル | `java.lang.RuntimeException: test data file open failed.`（原因: POI の `IllegalArgumentException: Your InputStream was neither an OLE2 stream, nor an OOXML stream`）。**連鎖するどのメッセージにもファイル名・パスが無い** | `XlsFormatReaderInvalidInputTest#failsWithGenericRuntimeExceptionWhenWorkbookIsBroken` |
+
+- 原因: 本体 `PoiXlsReader#getWorkbook` L191 が `throw new RuntimeException("test data file open failed.", e)`
+  としており、引数の `filePath` をメッセージに載せていない。
+- 比較: シート不在（F1-01）は `PoiXlsReader#open` L75 が
+  `sheet not found. path=[...] sheet=[...]` とパスを載せる。ブック不在は
+  `IllegalArgumentException: resource open failed. url = [file:...]` が連鎖する（プローブ実測）。
+  **破損だけが手掛かりを持たない。**
+- 影響: `TestDataConverter#convert`（L71-76）は入力ディレクトリ配下の全ブックを順に読むが、
+  読み取り例外を包み直さないため、破損ブックが 1 本あっても**どれが壊れているか分からない**。
+  変換は必ず失敗する（loud）ので気づけはする。
+- 判断: 例外型（汎用 `RuntimeException`）とメッセージは本体 `nablarch-testing` 側の実装であり、
+  変換ツールからは変えられない。**変換ツール側で読み取り例外にリソース名を添えて包み直す**のが
+  あるべき姿だが、`src/main` は本作業では変更しない。コーディネータの判断材料として記録する。
+
+### 課題としないと判断した観測結果（#21）
+
+| 観測 | 判断 |
+|---|---|
+| カラム行だけでデータ行が 0 件のテーブル／LIST_MAP が `rows=[]` になる | 妥当（データが無い以上、行も無い） |
+| ディレクティブ行だけの `SETUP_FIXED`、FW ヘッダ行だけの `MESSAGE` がブロックとして生成され `records=[]` になる | 妥当（YAML 経路の `YamlFormatReaderTest#readMessage_emptyBody_isStillMapped` と同じ扱い） |
+| 名前行・型行・長さ行だけで値行が 0 件の断片が `rows=[]` になる | 妥当（フィールド定義だけを持つレコードレイアウトは表現できる） |
+| 固定長ファイルは断片を複数持て、レコード種別・フィールド定義・値行が断片ごとに独立して入る（断片 2 件・3 件の双方で実測） | 妥当（`XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` で固定。2 断片目の長さ省略記法 `-` も原文のまま） |
+| シート不在が `IllegalArgumentException: sheet not found. path=[...] sheet=[...]` になる | 妥当（どのブックのどのシートかが分かる） |
+| データ行がカラム行より短いとき空文字で埋められる | 妥当（XLS-04 のとおり Excel 上で空セルと区別できない） |
+| 型行・長さ行の要素数不一致が例外で弾かれる（`field name size is 2. but types size is 1.` 等） | 妥当（器が組み立たない以上、原文の充填先も決まらない。黙って続けるより良い） |
+| マーカーカラムの角括弧欠落（`[no]` ではなく `no`）で当該列がふつうのデータカラムになる | 妥当（マーカーカラムの判定は「`[` で始まり `]` で終わる」であり記法どおり） |
+
+### 未確認（#21）
+
+- **軸F の「継続する異常系」で警告が出ないことは、ログ出力の有無を目視で確認したにとどまる。**
+  XLS-10／XLS-12／XLS-13／XLS-15 の担保テストはログハンドラを取り付けておらず、「WARN が出ない」ことを
+  アサートしていない（`XlsFormatReaderTest` のカラム名重複テストのようなログ捕捉は行っていない）。
+  課題として記録した挙動そのもの（中間モデルの内容）はアサートしてある。
+- **ブック破損の再現は「Excel でない中身のファイル」1 種類のみ**である。
+  ZIP としては開けるが内部構造が壊れている `.xlsx`（部分破損）の挙動は未確認。
+- **XLS-15 は `MESSAGE` で実測した。**送信同期 4 種でも同じかは未確認
+  （`SendSyncMessageParser` は `MessageParser` を継承し `onReadingValues` をさらに上書きするため
+  同じく断片を増やせないと推定されるが、実行して確かめていない）。
