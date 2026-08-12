@@ -641,17 +641,17 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] 14の `DataType` それぞれについて、実 `.xlsx` から中間モデルへ入ることをアサートするテストを追加する
-- [ ] 軸B の4種（`TableDataBlock` / `ListMapBlock` / `FileDataBlock` / `MessageDataBlock`）が実ファイル経由で生成されることをアサートする
-- [ ] 軸C の全フィールドを非デフォルト値でアサートする。**省略可能なのは実定義上 `groupId` / `recordType` / `FieldDef.type` / `FieldDef.length` の4件のみ**（#18 で確認）。この4件は「値あり」「省略」の双方を通す。`directives` / `fwHeaderFields` は「非空」「空 Map」の双方を通す。`identifier` は必須スカラー、`fileType` は `FIXED`/`VARIABLE` の2値であり「省略」の表現を持たないため双方通しの対象外とする
-- [ ] `FileDataBlock.fileType` の `FIXED` / `VARIABLE` 両方を通す
-- [ ] `DataType.DEFAULT` はリーダ経路では生成されない（`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする）。辺①では「到達不能」として理由付きで空欄に残す
-- [ ] `TestDataContainer.sections` は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため常に1件。「空」「複数」はいずれも到達不能として理由付きで空欄に残す
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] 14の `DataType` それぞれについて、実 `.xlsx` から中間モデルへ入ることをアサートするテストを追加する
+- [x] 軸B の4種（`TableDataBlock` / `ListMapBlock` / `FileDataBlock` / `MessageDataBlock`）が実ファイル経由で生成されることをアサートする
+- [x] 軸C の全フィールドを非デフォルト値でアサートする。**省略可能なのは実定義上 `groupId` / `recordType` / `FieldDef.type` / `FieldDef.length` の4件のみ**（#18 で確認）。この4件は「値あり」「省略」の双方を通す。`directives` / `fwHeaderFields` は「非空」「空 Map」の双方を通す。`identifier` は必須スカラー、`fileType` は `FIXED`/`VARIABLE` の2値であり「省略」の表現を持たないため双方通しの対象外とする
+- [x] `FileDataBlock.fileType` の `FIXED` / `VARIABLE` 両方を通す
+- [x] `DataType.DEFAULT` はリーダ経路では生成されない（`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする）。辺①では「到達不能」として理由付きで空欄に残す
+- [x] `TestDataContainer.sections` は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため常に1件。「空」「複数」はいずれも到達不能として理由付きで空欄に残す
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（354 件 PASS）
+- [x] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
+- [ ] QA expert review（subagent） — ラウンド1 実施済み（FAIL・指摘は `0761b12` で修正済み）。**再レビュー未実施**
+- [ ] Craft expert review（subagent, coding） — ラウンド1 実施済み（FAIL・修正済み）。**再レビュー未実施**
+- [ ] Verification expert review（subagent, test） — ラウンド1 実施済み（PASS・条件付き）。修正が入ったため**再レビュー未実施**
 
 **Completion criteria**:
 
@@ -874,12 +874,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-(written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
-session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
-so only a genuinely suspended session reads `paused`.)
-
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-12
+- **Last completed**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）。#20 は実装・修正ラウンドまで完了しチェックオフ未了
+- **Next**: #20 の3レビュー（QA / Craft coding / Verification test）を `0761b12` に対して**再実行**する。OK が揃えば `checks/task-20.md` の Expert Reviews 節と Overall Verdict を更新してチェックオフ → #21 へ
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1（push 済み）。#20 の成果物は `5509b09`（初回）＋ `0761b12`（レビュー指摘21件の修正、テスト 17 件・全 354 PASS・src/main 無変更）。ラウンド1 の判定は QA=FAIL / Craft=FAIL / Verification=PASS で、指摘・triage・ミューテーション結果は `checks/task-20.md` に記録済み（再レビュー用の入力にはしないこと＝中立フレーミング維持）。**#20 で棚卸しが変わった**: C-08 は #21 送りではなく #20 で担保、C-17 は到達不能、C-11／C-13／C-16／C-20 も到達不能（`inventory.md` §1.3 は `0761b12` で更新済み）。#21 へ送るのは C-09／C-12／C-15／C-18 の「空」4 件。課題は `coverage/issues.md`（XLS-01〜09。XLS-08＝マーカー列のみのブロックが「セル0個の行」になり書き戻すと消える、XLS-09＝`XlsFormatReader` L531 のコメント誤り。いずれも未修正）。**ユーザー指摘による訂正を反映済み**: 課題一覧は影響度ではなく「検出できるか」で並べる（XLS-05 が最上位）、`nablarch-example-web` はサンプルアプリであって対象PJの実データではない（件数0は対象PJに無いことを意味しない）。
