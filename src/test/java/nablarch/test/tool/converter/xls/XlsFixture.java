@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FormulaError;
@@ -32,7 +33,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * </p>
  *
  * <p>
- * 使い方（1 ブック 1 シート・行を上から順に追加する）:
+ * 使い方（{@link #sheet} でシートを開き、{@link #row} で行を上から順に追加する。{@link #sheet} は
+ * 続けて呼べ、呼ぶたびにシートが末尾に追加されて以降の {@link #row} の出力先が切り替わる）:
  * </p>
  * <pre>{@code
  * XlsFixture.book("myBook").sheet("mySheet")
@@ -112,8 +114,12 @@ final class XlsFixture {
      *
      * @param cells 左から順のセル指定（{@link #absent()} の位置にはセルを作らない）
      * @return 自身
+     * @throws IllegalStateException {@link #sheet} を呼ぶ前に呼び出した場合
      */
     XlsFixture row(CellSpec... cells) {
+        if (sheet == null) {
+            throw new IllegalStateException("call sheet() first");
+        }
         Row row = sheet.createRow(nextRow++);
         for (int i = 0; i < cells.length; i++) {
             CellSpec spec = cells[i];
@@ -123,35 +129,6 @@ final class XlsFixture {
             spec.write(this, row.createCell(i));
         }
         return this;
-    }
-
-    /**
-     * 既存シートの内容を複製したフィクスチャを作る。全セルを、元セルの表示文字列
-     * （{@code Cell#toString()}。{@code PoiXlsReader} が読み取る値そのもの）を持つ文字列セルとして作り直す。
-     * 行・列のインデックスと欠落（セル不在・行不在）は元シートのまま保つ。
-     *
-     * @param bookName 複製先のブック名
-     * @param source   複製元シート
-     * @return 自身
-     */
-    static XlsFixture copyOf(String bookName, Sheet source) {
-        XlsFixture fixture = book(bookName).sheet(source.getSheetName());
-        for (int r = 0; r <= source.getLastRowNum(); r++) {
-            Row sourceRow = source.getRow(r);
-            if (sourceRow == null) {
-                continue;
-            }
-            Row targetRow = fixture.sheet.createRow(r);
-            for (int c = 0; c < sourceRow.getLastCellNum(); c++) {
-                Cell sourceCell = sourceRow.getCell(c);
-                if (sourceCell == null) {
-                    continue;
-                }
-                targetRow.createCell(c).setCellValue(sourceCell.toString());
-            }
-        }
-        fixture.nextRow = source.getLastRowNum() + 1;
-        return fixture;
     }
 
     // ------------------------------------------------------------------ 出力
@@ -182,9 +159,11 @@ final class XlsFixture {
      * @return ブック
      */
     static Workbook open(Path file) {
+        // POI 3.8 の WorkbookFactory.create(InputStream) が投げる検査例外は
+        // IOException と InvalidFormatException の 2 つだけ（javap で確認済み）。
         try (InputStream in = Files.newInputStream(file)) {
             return WorkbookFactory.create(in);
-        } catch (Exception e) {
+        } catch (IOException | InvalidFormatException e) {
             throw new IllegalStateException("failed to open workbook: " + file, e);
         }
     }

@@ -9,8 +9,14 @@ import static nablarch.test.tool.converter.xls.XlsFixture.formula;
 import static nablarch.test.tool.converter.xls.XlsFixture.number;
 import static nablarch.test.tool.converter.xls.XlsFixture.text;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -22,12 +28,17 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.FormulaError;
-import org.junit.After;
-import org.junit.Before;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 /**
  * 辺①（Excel→中間モデル）の軸D — セル種別 17 ケースが中間モデルへどう入るかを固定するテスト。
@@ -41,7 +52,9 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * 各ケースは {@code SETUP_TABLE} の 1 データ行（{@code KEY} 列＝ケース識別・{@code V} 列＝検証対象セル）
  * として与える。{@code V} 列だけのシートにすると、空セルのケースで行全体が空行となり
- * {@code PoiXlsReader} に読み飛ばされてしまうため、行を空にしない {@code KEY} 列を必ず置く。
+ * {@code PoiXlsReader} に読み飛ばされてしまうため、行を空にしない {@code KEY} 列を必ず置く
+ * （全カラムが空のデータ行が黙って消えること自体は課題として
+ * {@code .rn/ntf-test-data-converter/coverage/issues.md} の XLS-05 に記録した）。
  * </p>
  *
  * <p>
@@ -50,62 +63,143 @@ import org.junit.rules.TemporaryFolder;
  * 記録してあり、実装（src/main）は変更していない。
  * </p>
  *
- * <p>
- * 日付・時刻・日時セルの文字列化はプラットフォーム既定ロケールに依存する（POI の
- * {@code XSSFCell#toString()} が {@code new SimpleDateFormat("dd-MMM-yyyy")} を使うため）。
- * 値を固定できるようにテスト実行中だけ既定ロケールを {@link Locale#ENGLISH} に固定し、終了時に戻す。
- * ロケール依存であること自体は課題として記録済み。
- * </p>
- *
  * @author kiyobot
  */
 public class XlsFormatReaderCellTypeTest {
 
-    /** フィクスチャ {@code .xlsx} の出力先（テストごとに一意）。 */
+    /** フィクスチャのブック名。 */
+    private static final String BOOK = "cellTypes";
+
+    /** フィクスチャのシート名。 */
+    private static final String SHEET = "s";
+
+    /**
+     * フィクスチャ {@code .xlsx} の出力先。
+     *
+     * <p>
+     * {@link TemporaryFolder} はテストメソッドごとに別ディレクトリを与えるため、全メソッドが同じ
+     * ブック名を使ってもファイルパスは衝突しない。加えて converter 経路は
+     * {@code TestCoreReaderAdapter} の全パーサが {@code parse(..., false)} を渡し
+     * {@code TestDataParsingTemplate} が {@code PoiXlsReader#setUseCache(false)} を呼ぶため、
+     * {@code PoiXlsReader} のブックキャッシュは使われない（同一パスを書き換えて同一 JVM 内で
+     * 2 回読むと新しい内容が読めることをプローブで実測して確認済み）。ブック名を一意化する必要はない。
+     * </p>
+     */
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
-    /** 退避した既定ロケール。 */
-    private Locale originalLocale;
+    /**
+     * {@link EnglishLocale} を付けたテストの実行中だけ、プラットフォーム既定ロケールを
+     * {@link Locale#ENGLISH} に固定する（終了時に元へ戻す）。
+     *
+     * <p>
+     * 日付・時刻・日時セルの文字列化は POI の {@code XSSFCell#toString()} が
+     * {@code new SimpleDateFormat("dd-MMM-yyyy")} を使うため既定ロケールに依存する
+     * （{@code -Duser.language=ja -Duser.country=JP} で実行すると {@code 07-8-2026} になることを実測）。
+     * {@link Locale#setDefault} は JVM グローバルな変更のため、必要な 3 件（D1-06〜D1-08）だけに
+     * 掛かるようこのルールで絞る。
+     * </p>
+     *
+     * <p>
+     * <b>タイムゾーンは固定しない。</b>POI は日付セルの往復（{@code DateUtil#getExcelDate} ↔
+     * {@code DateUtil#getJavaDate}）に同一の既定タイムゾーンを使い、書き込み時と読み取り時のずれが
+     * 相殺されるため、既定タイムゾーンが何であっても結果は変わらない
+     * （{@code UTC}／{@code America/Los_Angeles}／{@code Pacific/Kiritimati}／{@code Europe/Istanbul}
+     * で本クラス 19 件が全 PASS することを実測して確認済み）。将来この固定を足す必要はない。
+     * </p>
+     */
+    @Rule
+    public final TestRule englishLocale = new TestRule() {
 
-    /** 既定ロケールを固定する（日付・時刻・日時セルの文字列化がロケール依存のため）。 */
-    @Before
-    public void fixLocale() {
-        originalLocale = Locale.getDefault();
-        Locale.setDefault(Locale.ENGLISH);
-    }
+        /** 既定ロケールの退避・固定・復元。 */
+        private final ExternalResource fixLocale = new ExternalResource() {
 
-    /** 既定ロケールを元に戻す。 */
-    @After
-    public void restoreLocale() {
-        Locale.setDefault(originalLocale);
+            /** 退避した既定ロケール。 */
+            private Locale original;
+
+            @Override
+            protected void before() {
+                original = Locale.getDefault();
+                Locale.setDefault(Locale.ENGLISH);
+            }
+
+            @Override
+            protected void after() {
+                Locale.setDefault(original);
+            }
+        };
+
+        @Override
+        public Statement apply(Statement base, Description description) {
+            return description.getAnnotation(EnglishLocale.class) == null
+                    ? base
+                    : fixLocale.apply(base, description);
+        }
+    };
+
+    /**
+     * 既定ロケールを {@link Locale#ENGLISH} に固定して実行すべきテストに付ける印。
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface EnglishLocale {
     }
 
     // ------------------------------------------------------------------ helpers
 
     /**
-     * 検証対象セル 1 個を {@code SETUP_TABLE} のデータ行に置いた {@code .xlsx} を組み立て、
-     * 実 {@link XlsFormatReader} で読んだ中間モデルの当該セル値を返す。
+     * 検証対象セル 1 個を {@code SETUP_TABLE} のデータ行に置いた {@code .xlsx} を組み立てて書き出す。
      *
-     * @param book  ブック名（{@code PoiXlsReader} のブックキャッシュ衝突を避けるためテストごとに一意）
-     * @param value 検証対象セル
-     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     * @param value 検証対象セル（{@code V} 列に置く）
+     * @return 出力先ディレクトリ
      */
-    private String readValue(String book, XlsFixture.CellSpec value) {
+    private Path writeSingleValueBook(XlsFixture.CellSpec value) {
         Path dir = folder.getRoot().toPath();
-        XlsFixture.book(book).sheet("s")
+        XlsFixture.book(BOOK).sheet(SHEET)
                 .row(text("SETUP_TABLE=T"))
                 .row(text("KEY"), text("V"))
                 .row(text("k"), value)
                 .writeTo(dir);
+        return dir;
+    }
 
-        TestDataContainer container = new XlsFormatReader().read(dir.toString(), book + "/s");
+    /**
+     * 実 {@link XlsFormatReader} で読み、唯一の {@code SETUP_TABLE} ブロックを返す。
+     *
+     * @param dir フィクスチャの置かれたディレクトリ
+     * @return テーブルデータブロック
+     */
+    private static TableDataBlock readTable(Path dir) {
+        TestDataContainer container = new XlsFormatReader().read(dir.toString(), BOOK + "/" + SHEET);
         List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
         assertThat(blocks.size(), is(1));
-        TableDataBlock table = (TableDataBlock) blocks.get(0);
+        return (TableDataBlock) blocks.get(0);
+    }
+
+    /**
+     * 検証対象セル 1 個の {@code .xlsx} を組み立て、実 {@link XlsFormatReader} で読んだ中間モデルの
+     * {@code V} 列の値を返す。
+     *
+     * @param value 検証対象セル
+     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readValue(XlsFixture.CellSpec value) {
+        TableDataBlock table = readTable(writeSingleValueBook(value));
         assertThat(table.getColumnNames(), is(Arrays.asList("KEY", "V")));
         assertThat(table.getRows().size(), is(1));
         return table.getRows().get(0).get(1);
+    }
+
+    /**
+     * 直前に書き出したフィクスチャ {@code .xlsx} を POI で開き直し、シートを返す。
+     * 「リーダに何を食わせたか」をブック側で確認するために使う。
+     *
+     * @return シート
+     */
+    private Sheet writtenSheet() {
+        Sheet sheet = XlsFixture.open(folder.getRoot().toPath().resolve(BOOK + ".xlsx")).getSheet(SHEET);
+        assertThat("書き出したフィクスチャに検証対象シートがあること", sheet, is(notNullValue()));
+        return sheet;
     }
 
     /**
@@ -135,7 +229,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsStringCellAsIs() {
-        assertThat(readValue("cellString", text("abc")), is("abc"));
+        assertThat(readValue(text("abc")), is("abc"));
     }
 
     /**
@@ -146,7 +240,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsIntegerNumericCellAsDoubleString() {
-        assertThat(readValue("cellInteger", number(1)), is("1.0"));
+        assertThat(readValue(number(1)), is("1.0"));
     }
 
     /**
@@ -156,7 +250,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsDecimalNumericCellAsDoubleString() {
-        assertThat(readValue("cellDecimal", number(1.5)), is("1.5"));
+        assertThat(readValue(number(1.5)), is("1.5"));
     }
 
     /**
@@ -166,7 +260,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsLargeNumericCellAsScientificNotation() {
-        assertThat(readValue("cellLargeNumber", number(12345678901234567890d)), is("1.2345678901234567E19"));
+        assertThat(readValue(number(12345678901234567890d)), is("1.2345678901234567E19"));
     }
 
     /**
@@ -176,7 +270,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsLeadingZeroStringCellAsIs() {
-        assertThat(readValue("cellLeadingZero", text("007")), is("007"));
+        assertThat(readValue(text("007")), is("007"));
     }
 
     // ------------------------------------------------------------------ D1-06〜D1-08（日付・時刻・日時）
@@ -187,8 +281,9 @@ public class XlsFormatReaderCellTypeTest {
      * Then : セルの表示形式ではなく POI 既定の {@code dd-MMM-yyyy} 表記になる（既定ロケール依存）。
      */
     @Test
+    @EnglishLocale
     public void readsDateFormattedCellAsPoiDefaultDatePattern() {
-        assertThat(readValue("cellDate", date(at(2026, 8, 7, 0, 0, 0), "yyyy/mm/dd")), is("07-Aug-2026"));
+        assertThat(readValue(date(at(2026, 8, 7, 0, 0, 0), "yyyy/mm/dd")), is("07-Aug-2026"));
     }
 
     /**
@@ -197,8 +292,9 @@ public class XlsFormatReaderCellTypeTest {
      * Then : 時刻成分が捨てられ、Excel シリアル値の日付部（1899-12-31）だけが残る。
      */
     @Test
+    @EnglishLocale
     public void readsTimeFormattedCellLosingTimeComponent() {
-        assertThat(readValue("cellTime", number(0.5, "hh:mm:ss")), is("31-Dec-1899"));
+        assertThat(readValue(number(0.5, "hh:mm:ss")), is("31-Dec-1899"));
     }
 
     /**
@@ -207,9 +303,9 @@ public class XlsFormatReaderCellTypeTest {
      * Then : 日付部だけが残り、時刻部は失われる。
      */
     @Test
+    @EnglishLocale
     public void readsDateTimeFormattedCellLosingTimeComponent() {
-        assertThat(readValue("cellDateTime", date(at(2026, 8, 7, 12, 34, 56), "yyyy/mm/dd hh:mm:ss")),
-                is("07-Aug-2026"));
+        assertThat(readValue(date(at(2026, 8, 7, 12, 34, 56), "yyyy/mm/dd hh:mm:ss")), is("07-Aug-2026"));
     }
 
     // ------------------------------------------------------------------ D1-09〜D1-11（数式・真偽値・エラー）
@@ -221,7 +317,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsFormulaCellAsFormulaText() {
-        assertThat(readValue("cellFormula", formula("1+1")), is("1+1"));
+        assertThat(readValue(formula("1+1")), is("1+1"));
     }
 
     /**
@@ -231,7 +327,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsBooleanCellAsUpperCaseLiteral() {
-        assertThat(readValue("cellBoolean", bool(true)), is("TRUE"));
+        assertThat(readValue(bool(true)), is("TRUE"));
     }
 
     /**
@@ -241,19 +337,66 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsErrorCellAsErrorText() {
-        assertThat(readValue("cellError", error(FormulaError.DIV0)), is("#DIV/0!"));
+        assertThat(readValue(error(FormulaError.DIV0)), is("#DIV/0!"));
     }
 
     // ------------------------------------------------------------------ D1-12〜D1-13（空セル・最優先）
 
     /**
-     * Given: {@code V} 列にセルが存在しない行。
+     * Given: 行末（最終列）にセルが存在しない行。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@code null} ではなく空文字が入る（Fake リーダ経路で {@code null} 行要素を与えた場合と異なる）。
+     *
+     * <p>
+     * 不在セルが行末にあると行の使用範囲（{@code Row#getLastCellNum()}）自体が縮むため、
+     * {@code PoiXlsReader#readOneLine} の {@code i < lastCellNum} ループは {@code V} 列に到達せず、
+     * {@code cell == null ? ""} の分岐は<b>通らない</b>。ここでの空文字は、行の長さがヘッダより短いときに
+     * 下流（本体パーサ）が行を埋める結果である。この分岐自体は
+     * {@link #readsAbsentCellInMiddleOfRowAsEmptyString()} が別経路として通す。
+     * </p>
      */
     @Test
     public void readsAbsentCellAsEmptyString() {
-        assertThat(readValue("cellAbsent", absent()), is(""));
+        assertThat(readValue(absent()), is(""));
+
+        // 行の使用範囲が KEY 列までしかない（＝リーダのループが V 列に到達しない）ことの確認。
+        Row row = writtenSheet().getRow(2);
+        assertThat(row.getLastCellNum(), is((short) 1));
+    }
+
+    /**
+     * Given: 行の途中（{@code V} 列）にセルが存在せず、その右（{@code W} 列）にはセルがある行。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : 穴の位置に空文字が入り、右隣の値はそのまま入る。
+     *
+     * <p>
+     * この形だけが {@code PoiXlsReader#readOneLine} の {@code cell == null ? ""}
+     * 分岐を実際に通す（行の使用範囲が {@code W} 列まで届いているため、ループが穴の位置を走査する）。
+     * 行末の不在セルを与える {@link #readsAbsentCellAsEmptyString()} とは経路が異なる。
+     * </p>
+     */
+    @Test
+    public void readsAbsentCellInMiddleOfRowAsEmptyString() {
+        // Given
+        Path dir = folder.getRoot().toPath();
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("SETUP_TABLE=T"))
+                .row(text("KEY"), text("V"), text("W"))
+                .row(text("k"), absent(), text("z"))
+                .writeTo(dir);
+
+        // 行の使用範囲が W 列まで届き、その内側の V 列が不在であることの確認
+        // （＝リーダのループが cell == null の位置を走査する）。
+        Row row = writtenSheet().getRow(2);
+        assertThat(row.getLastCellNum(), is((short) 3));
+        assertThat(row.getCell(1), is(nullValue()));
+
+        // When
+        TableDataBlock table = readTable(dir);
+
+        // Then
+        assertThat(table.getColumnNames(), is(Arrays.asList("KEY", "V", "W")));
+        assertThat(table.getRows(), is(Arrays.<List<String>>asList(Arrays.asList("k", "", "z"))));
     }
 
     /**
@@ -263,7 +406,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsEmptyStringCellAsEmptyString() {
-        assertThat(readValue("cellEmptyString", text("")), is(""));
+        assertThat(readValue(text("")), is(""));
     }
 
     /**
@@ -273,7 +416,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsBlankCellAsEmptyString() {
-        assertThat(readValue("cellBlank", blank()), is(""));
+        assertThat(readValue(blank()), is(""));
     }
 
     // ------------------------------------------------------------------ D1-14〜D1-16
@@ -285,7 +428,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsSurroundingWhitespacePreserved() {
-        assertThat(readValue("cellWhitespace", text("  pad  ")), is("  pad  "));
+        assertThat(readValue(text("  pad  ")), is("  pad  "));
     }
 
     /**
@@ -295,7 +438,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsEmbeddedNewlinePreserved() {
-        assertThat(readValue("cellNewline", text("line1\nline2")), is("line1\nline2"));
+        assertThat(readValue(text("line1\nline2")), is("line1\nline2"));
     }
 
     /**
@@ -305,7 +448,7 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Test
     public void readsLiteralNullStringAsString() {
-        assertThat(readValue("cellLiteralNull", text("null")), is("null"));
+        assertThat(readValue(text("null")), is("null"));
     }
 
     // ------------------------------------------------------------------ D1-17（最優先）
@@ -315,9 +458,24 @@ public class XlsFormatReaderCellTypeTest {
      *        実プロジェクトの Excel テストデータに実在するパターン。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : 表示形式 {@code @} は考慮されず {@code "1.0"} が入る（画面表示 {@code 1} と一致しない）。
+     *
+     * <p>
+     * 「表示形式が無視される」という主張を立てるには、そのセルが実際に表示形式 {@code @} を
+     * 持っていなければならない。読み取り値だけでは表示形式なしの数値セル（D1-02）と区別できないため、
+     * 書き出した {@code .xlsx} を読み戻して当該セルが数値セルかつ {@code getDataFormatString()} が
+     * {@code "@"} であることも確認する。
+     * </p>
      */
     @Test
     public void readsTextFormattedNumericCellAsDoubleString() {
-        assertThat(readValue("cellTextFormattedNumber", number(1, "@")), is("1.0"));
+        // When
+        String value = readValue(number(1, "@"));
+
+        // Then
+        assertThat(value, is("1.0"));
+
+        Cell cell = writtenSheet().getRow(2).getCell(1);
+        assertThat("検証対象セルが数値セルであること", cell.getCellType(), is(Cell.CELL_TYPE_NUMERIC));
+        assertThat("検証対象セルが表示形式 @ を持つこと", cell.getCellStyle().getDataFormatString(), is("@"));
     }
 }
