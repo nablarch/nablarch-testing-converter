@@ -534,6 +534,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 | 真偽値セル | 0 |
 
 - **最優先**: 文字列 ／ 数値（整数・小数・大きい数値）／ 空セル（セル不在・空文字）／ 表示形式 `@` 付き数値セル（ケース#17）
+
+**実測値の内訳（#19 で判明・2026-08-12）**: 数値セル39件という実測は正確だが、**38件はマーカー列 `[no]` の値**であり `getEffectiveColumnNames()` が除外するため中間モデルに入らない（#15 で実装した意図どおりの除外）。データ列の数値セルは6ファイル中**1件のみ** — `ProjectActionRequestTest.xlsx` の `downloadNormal` シート `SETUP_TABLE[1]=PROJECT` / `COST_OF_GOODS_SOLD`（`<c r="M14" s="55"><v>2000</v>`、`numFmtId="0"`＝General）で、中間モデルには `"2000.0"` が入る。同じ行の `SALES` / `SGA` / `ALLOCATION` は文字列セルのため `"1000"` / `"3000"` / `"4000"` のまま。したがって XLS-01 が実データの変換結果を壊すのは1セルだが、**表示形式 `@` は無視される**という挙動自体は変わらないため、テストケースとしての最優先は維持する。
 - **優先度を下げる**: 日付書式 ／ 時刻書式 ／ 日時書式 ／ 数式 ／ 真偽値 ／ エラー値（実データに存在しないため）
 - **ただし 17ケースの省略は不可。** 優先度を下げたケースで挙動が固定できない場合は、テストを落とすのではなく `issues.md` に課題として記録する。
 
@@ -599,18 +601,18 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] POI で `.xlsx` を組み立てるテストフィクスチャヘルパを作る（セル種別・書式・数式・エラー値を指定できること）
-- [ ] 実物 `.xlsx` 1本（`nablarch-example-web` `origin/main` の `ClientActionTest.xlsx`）を参照フィクスチャとして `src/test/resources` へ取り込む
-- [ ] 同じシート内容を POI で生成し、参照フィクスチャと `XlsFormatReader` の読み取り結果が一致することを確認する。一致しなければ差分を `issues.md` に「未確認」として記録する
-- [ ] 17ケースそれぞれのセルを含む `.xlsx` を生成し、`new XlsFormatReader().read(...)` で読んだ結果を**まず実行して記録する**（期待値を先に決めない）。着手順は Decisions の優先度に従う（最優先: 文字列／数値／空セル／表示形式 `@` 付き数値）
-- [ ] 記録した現状挙動を `.rn/ntf-test-data-converter/coverage/issues.md` の観点で評価し、仕様として妥当なものはテストで固定する
-- [ ] 妥当でないと判断したもの・挙動を固定できなかったものは `issues.md` に課題として記録する（**修正しない**）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-19.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
-- [ ] Design expert review（subagent — フィクスチャ基盤という構造を新設するため）
+- [x] POI で `.xlsx` を組み立てるテストフィクスチャヘルパを作る（セル種別・書式・数式・エラー値を指定できること）
+- [x] 実物 `.xlsx` 1本（`nablarch-example-web` `origin/main` の `ClientActionTest.xlsx`）を参照フィクスチャとして `src/test/resources` へ取り込む
+- [x] 同じシート内容を POI で生成し、参照フィクスチャと `XlsFormatReader` の読み取り結果が一致することを確認する。一致しなければ差分を `issues.md` に「未確認」として記録する
+- [x] 17ケースそれぞれのセルを含む `.xlsx` を生成し、`new XlsFormatReader().read(...)` で読んだ結果を**まず実行して記録する**（期待値を先に決めない）。着手順は Decisions の優先度に従う（最優先: 文字列／数値／空セル／表示形式 `@` 付き数値）
+- [x] 記録した現状挙動を `.rn/ntf-test-data-converter/coverage/issues.md` の観点で評価し、仕様として妥当なものはテストで固定する
+- [x] 妥当でないと判断したもの・挙動を固定できなかったものは `issues.md` に課題として記録する（**修正しない**）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [x] self-check（OK/NG per completion criterion、checks/task-19.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, coding）
+- [x] Verification expert review（subagent, test）
+- [x] Design expert review（subagent — フィクスチャ基盤という構造を新設するため）
 
 **Completion criteria**:
 
@@ -866,7 +868,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: active
 - **Date**: 2026-08-12
-- **Last completed**: #18 既存テスト 4辺分の軸棚卸し
-- **Next**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
-- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み。候補 `ClientActionTest.xlsx` は真正な Excel 保存物と確認済み）。`DataType` は 14種（`DEFAULT` ＋13）で実定義と一致することを #18 で確認済み。#18 完了（棚卸し `coverage/inventory.md`、未担保 107 件＝要追加 99／到達不能 6／上位層で担保済み 2）。#18 の裏取りで確定した実定義との差異・到達不能要素を #20〜#25 の記述へ反映済み。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
+- **Last completed**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
+- **Next**: #20 辺① 軸A・B・C（実ファイル経由）
+- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み）。**#19 で参照フィクスチャを `ClientActionTest.xlsx` → `ProjectActionRequestTest.xlsx` に差し替え済み**（前者は全セルが文字列／空白で数値セルを1件も含まないため、同一性確認の意味がなかった）。同梱バイナリは1本のまま。`DataType` は 14種（`DEFAULT` ＋13）で実定義と一致することを #18 で確認済み。#18 完了（棚卸し `coverage/inventory.md`、未担保 107 件＝要追加 99／到達不能 6／上位層で担保済み 2）。#18 の裏取りで確定した実定義との差異・到達不能要素を #20〜#25 の記述へ反映済み。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
 
