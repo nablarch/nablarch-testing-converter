@@ -885,14 +885,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: in progress
-- **Date**: 2026-08-12
-- **Last completed**: #21 辺① 軸E（多重度）・軸F（異常系）。3レビューとも PASS でチェックオフ済み。**辺①は 4 軸すべて埋まり、未担保 0 件（担保済み 33 ／ 到達不能 8）**
-- **Next**: #22 辺③ 軸D（セル型8ケース）・軸F（異常系）に着手する。#22 の Prerequisites は #18 なので #21 完了を待つ必要は無かったが、順に進める
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。#20 の成果物は `5509b09`（初回）／`0761b12`（ラウンド1 指摘 21 件）／`4b745a2`・`d9293bb`・`0811032`（ラウンド2・3 指摘）。テスト 17 件・全 354 PASS・src/main 無変更。3 レビューの判定と指摘は `checks/task-20.md` に記録済み（**再レビューの入力にはしない**＝中立フレーミング維持）。
-  **#20 で棚卸しが変わった**: C-08 は #21 送りではなく #20 で担保、C-17／C-11／C-13／C-16／C-20 は到達不能（`inventory.md` §1.3 は更新済み）。#21 へ送るのは C-09／C-12／C-15／C-18 の「空」4 件＋E-2/E-3(0 件)＋F1-01〜F1-06 の計 11 件。
-  **#21 で解消済み**: C-17／C-20 の「到達不能」に実行可能な根拠テストが付いた（`XlsFormatReaderInvalidInputTest` の名前行 1 列 2 件・型行不整合 2 件）。
-  課題は `coverage/issues.md` に **XLS-01〜15**（すべて未修正）。#21 で 6 件増えた: **XLS-10**＝未知のデータタイプ名のマーカーはブロックごとデータ行まで黙って消える（例外もログも無し）、**XLS-13**＝送信同期のメタ列欠落で先頭フィールドと値が黙って落ちる、**XLS-12**＝はみ出したセルは黙って捨てられる一方で不足側は `""` 埋めという非対称、**XLS-15**＝`MESSAGE` 本文の 2 つ目のレコードレイアウトが値行として吸収される（E-3 複数はメッセージ系では到達不能）、XLS-11・XLS-14 は記録のみ。**XLS-10／XLS-11 は本リポジトリ `src/main` の `TestCoreReaderAdapter` が原因で、この repo 内で修正可能**（`nablarch-testing` の変更を要する XLS-14 とは異なる）。
-  **台帳の基準時点**: `inventory.md` は §2〜§4 と §5.1 が #18 基準（4 辺を同じ基準で比べるため）、§1.2-2・§1.3・§5.2 が現時点ビュー。冒頭 §0 の案内に明記してある。
-  **ユーザー指摘による訂正を反映済み**: 課題一覧は影響度ではなく「検出できるか」で並べる（XLS-05 が最上位）、`nablarch-example-web` はサンプルアプリであって対象PJの実データではない（件数0は対象PJに無いことを意味しない）。
-  **未決（ユーザー判断待ち）**: Rules の「1 task = 1 commit」から #20 が逸脱している（7 コミット。レビュー修正ラウンドとセッション中断が理由）。Rules に修正ラウンドの扱いを書き足すか現状運用のままかは未定。
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
