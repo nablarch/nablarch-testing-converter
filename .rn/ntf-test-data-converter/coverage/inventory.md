@@ -1,34 +1,99 @@
-# 既存テスト 4辺分の軸棚卸し（task #18）
+# 既存テスト 4 辺分の軸棚卸し（task #18）
 
-4つの変換辺の既存テスト 126 件が、軸A〜F のどの要素を担保しているかを 1 件ずつ棚卸しした結果。
+4 つの変換辺の既存テスト 126 件が、軸A〜F のどの要素を担保しているかを 1 件ずつ棚卸しした結果。
 以降のタスク #19〜#25 は、本書「未担保一覧」に挙がった要素だけを埋める。
+本書は #26（カバレッジ計測と未到達分岐の列挙）の入力であり、#27 で
+`.rn/ntf-test-data-converter/coverage/axis-matrix.md`（各要素に担保テストメソッド名を記した 4 辺ぶんの
+軸×要素対応表）へ発展させる土台でもある。
 
 - 作成日: 2026-08-12
 - 対象コミット: `c1d2d21`（棚卸し実施時 HEAD）
 - 判定方法: 全テストメソッドのテスト本文を読み、実際にアサートしている対象のみを「担保」とした。
-  推測で埋めていない。アサートが間接的・副次的なものは「弱」印で区別した。
+  推測で埋めていない。アサートが間接的・副次的なものは 🔺 で区別した。
+
+### 判定基準
+
+- **軸A**: 「その `DataType` のブロックが生成されることをアサートしている」ことを担保とし、
+  `getDataType()` の直接アサートとは区別する。`XlsFormatReaderTest` で `getDataType()` を参照するのは
+  L281 / L542 / L578 / L641 の 4 箇所のみだが、他のテストもデータタイプ名を含むマーカー行を入力に与え、
+  そこから生成されたブロックの型・内容をアサートしている。よって軸A の ✅ は 10/14 になる。
+  なお軸C の C-05（`TestDataBlock.dataType`）は `getDataType()` を直接アサートしているテストにのみ ✅ を
+  付けており、軸A の ✅ とは別基準である（例: `readMapsTableBlockPreservingRawValues` は軸A A-02 は ✅ だが
+  軸C の C-05 は付けていない）。
+- **軸C**: 省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」の双方を別々に評価する。
+- **軸D・F**: 辺ごとに要素の定義が異なる（§0.5 / §0.7）。
+- **軸E**: 観点 × 多重度（0 件／1 件／複数件）の組ごとに評価する。
 
 ## 凡例
 
 | 印 | 意味 |
 |---|---|
 | ✅ | 担保あり（その軸要素を直接アサートしている） |
-| 🔺 | 弱い担保（間接的にしか通っていない／副次的にしか現れない。詳細は各表の備考欄） |
+| 🔺 | 弱い担保（間接的・副次的にしか通っていない。理由は同じセルに併記する） |
 | ❌ | 未担保 |
+| ※ | 補足注（軸要素 ID を伴わない、そのテスト固有の観点のメモ） |
+| — | 該当なし（そのテストはその軸を通さない／その要素に担保テストが 1 件もない） |
+| n/a | その要素に「省略」「空」という状態が存在しない（必須スカラー・2 値の列挙型など） |
+| **太字** | その辺でその要素を通す唯一の担保 |
+
+用語:
+
+- **器**: `YamlFormatReader` が `TestCoreReaderAdapter` から受け取る中間モデルの骨格。YAML の原文（生 Map）と
+  対で保持し、両者の件数・構造が一致することを前提に組み立てる。
+- **版面**: `XlsFormatWriter` が生成する Excel シート上の行・列の配置。値そのものではなく、
+  どの行に何が出るか（行の有無・位置）をアサートしているものを指す。
+
+内部参照は `§0.4` / `§0.8-5` のように節番号で書く。
+
+## 軸の一覧
+
+| 軸 | 正式名 | 要素の定義 |
+|---|---|---|
+| A | データタイプ | `DataType` 14 種（§0.2） |
+| B | ブロック実装 | `TestDataBlock` sealed 階層の具象 4 種（§0.3） |
+| C | 中間モデル全フィールド | 中間モデル 8 クラスの全 21 フィールド（§0.4） |
+| D | 値の表現 | 辺ごとに定義が異なる（§0.5） |
+| E | 多重度 | 4 観点 × 0 件／1 件／複数件（§0.6） |
+| F | 異常系 | 辺ごとに定義が異なる（§0.7） |
+
+## 目次
+
+- [0. 前提の実測](#s0)
+- [1. 辺① Excel→中間モデル（`XlsFormatReaderTest` 33 件）](#s1) — [1.3 辺① 未担保一覧](#s1-3)
+- [2. 辺② YAML→中間モデル（`YamlFormatReaderTest` 20 件）](#s2) — [2.3 辺② 未担保一覧](#s2-3)
+- [3. 辺③ 中間モデル→Excel（`XlsFormatWriterTest` 40 件）](#s3) — [3.3 辺③ 未担保一覧](#s3-3)
+- [4. 辺④ 中間モデル→YAML（`YamlFormatWriterTest` 33 件）](#s4) — [4.3 辺④ 未担保一覧](#s4-3)
+- [5. 全体サマリ](#s5) — [5.1 未担保件数（辺 × 軸）](#s5-1) / [5.3 コーディネータに判断を仰ぎたい点](#s5-3)
 
 ---
 
+<a id="s0"></a>
+
 ## 0. 前提の実測
 
-### 0.1 テストメソッド件数（実測 vs steering 想定）
+### 0.1 テストメソッド件数（実測と steering 想定の突き合わせ）
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+for f in src/test/java/nablarch/test/tool/converter/xls/XlsFormatReaderTest.java \
+         src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderTest.java \
+         src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java \
+         src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterTest.java \
+         src/test/java/nablarch/test/tool/converter/RoundTripTest.java; do
+  printf "%-30s %s @Test  %s lines\n" "$(basename $f)" "$(grep -c '@Test' $f)" "$(wc -l < $f)"
+done
+```
 
 ```
-$ for f in XlsFormatReaderTest YamlFormatReaderTest XlsFormatWriterTest YamlFormatWriterTest; ... grep -c '@Test'
-XlsFormatReaderTest.java  : 33 @Test  (1179 lines)
-YamlFormatReaderTest.java : 20 @Test  ( 608 lines)
-XlsFormatWriterTest.java  : 40 @Test  (1080 lines)
-YamlFormatWriterTest.java : 33 @Test  ( 724 lines)
+XlsFormatReaderTest.java       33 @Test  1179 lines
+YamlFormatReaderTest.java      20 @Test  608 lines
+XlsFormatWriterTest.java       40 @Test  1080 lines
+YamlFormatWriterTest.java      33 @Test  724 lines
+RoundTripTest.java             30 @Test  882 lines
 ```
+
+`RoundTripTest`（30 件）は 4 辺いずれの担当クラスのテストでもないため上の 126 件には含まれないが、
+4 辺すべてを実ファイル経由で駆動するため §0.8-8 で扱う。
 
 | 辺 | クラス | steering 想定 | 実測 | 差異 |
 |---|---|---|---|---|
@@ -86,7 +151,7 @@ YamlFormatWriterTest.java : 33 @Test  ( 724 lines)
 | C-03 | `TestDataSection` | `name` | String | 必須 | — |
 | C-04 | `TestDataSection` | `blocks` | List | 空許容 | 空リスト |
 | C-05 | `TestDataBlock` | `dataType` | DataType | 必須 | — |
-| C-06 | `TestDataBlock` | `groupId` | String | **省略可** | `""`（TestDataBlock L28/L41「省略時は空文字」） |
+| C-06 | `TestDataBlock` | `groupId` | String | **省略可** | `""`（TestDataBlock L27/L41「省略時は空文字」） |
 | C-07 | `TestDataBlock` | `identifier` | String | 必須 | — |
 | C-08 | `ColumnRowDataBlock` | `columnNames` | List | 空許容 | 空リスト |
 | C-09 | `ColumnRowDataBlock` | `rows` | List<List> | 空許容 | 空リスト |
@@ -100,11 +165,12 @@ YamlFormatWriterTest.java : 33 @Test  ( 724 lines)
 | C-17 | `RecordLayout` | `fields` | List | 空許容 | 空リスト |
 | C-18 | `RecordLayout` | `rows` | List<List> | 空許容 | 空リスト |
 | C-19 | `FieldDef` | `name` | String | 必須 | — |
-| C-20 | `FieldDef` | `type` | String | **省略可** | `null`（FieldDef L25/L38「省略時は null」） |
+| C-20 | `FieldDef` | `type` | String | **省略可** | `null`（FieldDef L24/L38「省略時は null」） |
 | C-21 | `FieldDef` | `length` | String | **省略可** | `null`（FieldDef L25/L43「省略時は null」） |
 
 内訳: 必須スカラー 6 件（C-01, C-03, C-05, C-07, C-10, C-19）／
-**省略可能フィールド 4 件**（C-06, C-16, C-20, C-21 — Javadoc に「省略時は…」と明記）／
+**省略可能フィールド 4 件**（C-06, C-16, C-20, C-21 — Javadoc に「省略時は…」と明記。
+C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldDef L24/L38、C-21 は FieldDef L25/L43）／
 空許容コレクション 11 件（C-02, C-04, C-08, C-09, C-11, C-12, C-13, C-14, C-15, C-17, C-18）。
 
 **steering との差異（コーディネータ判断を仰ぐ点）**: steering #20 の Steps は
@@ -114,7 +180,7 @@ YamlFormatWriterTest.java : 33 @Test  ( 724 lines)
 本棚卸しでは実定義を正とし、`fileType` は「FIXED / VARIABLE 双方」、`identifier` は「値あり 1 通り」として扱う。
 `directives` / `fwHeaderFields` は「非空 / 空 Map」の双方として扱う。
 
-### 0.5 軸D の要素（辺ごとに定義が異なる。steering #19/#22/#24/#25 の記述を要素化）
+### 0.5 軸D 値の表現 — 要素（辺ごとに定義が異なる。steering #19/#22/#24/#25 の記述を要素化）
 
 - **辺① セル種別 17 ケース**: D1-01 文字列／D1-02 整数数値／D1-03 小数数値／D1-04 大きい数値／
   D1-05 先頭ゼロ文字列／D1-06 日付書式／D1-07 時刻書式／D1-08 日時書式／D1-09 数式／D1-10 真偽値／
@@ -126,12 +192,16 @@ YamlFormatWriterTest.java : 33 @Test  ( 724 lines)
 - **辺④ YAML 表現 9 ケース**: D4-01 `"100"`／D4-02 `"true"`／D4-03 `"null"`／D4-04 `null`／D4-05 `""`／
   D4-06 `"007"`／D4-07 改行含む／D4-08 `"2026-08-07"`／D4-09 コロン・ハイフン・`#` 含む
 
-### 0.6 軸E の要素（4 観点 × 0/1/複数。steering #21 より）
+### 0.6 軸E 多重度 — 要素（4 観点 × 0 件／1 件／複数件。steering #21 より）
 
-E-1 セクション内ブロック数（0／1／複数）／E-2 ブロック内行数（0／1／複数）／
-E-3 ファイル内レコードレイアウト数（0／1／複数）／E-4 コンテナ内セクション数＝ブック内シート数（1／複数）
+- **E-1 セクション内ブロック数**（0／1／複数）
+- **E-2 ブロック内行数**（0／1／複数）
+- **E-3 ファイル内レコードレイアウト数**（0／1／複数）
+- **E-4 コンテナ内セクション数**（1／複数）— 呼称は本書を通じて「E-4 コンテナ内セクション数」に統一する。
+  辺ごとの実体は、辺①（ブック内シート数）／辺②（ディレクトリ内 YAML ファイル数）／
+  辺③（ブック内シート数）／辺④（出力 YAML ファイル数）。
 
-### 0.7 軸F の要素（辺ごと。steering #21/#22/#24/#25 より）
+### 0.7 軸F 異常系 — 要素（辺ごと。steering #21/#22/#24/#25 より）
 
 - **辺①（6）**: F1-01 シート不在／F1-02 ブック破損／F1-03 未知のデータタイプ名／
   F1-04 マーカーカラム欠落／F1-05 カラム名重複／F1-06 行と列の数の不一致
@@ -142,26 +212,127 @@ E-3 ファイル内レコードレイアウト数（0／1／複数）／E-4 コ�
 
 ### 0.8 棚卸しで判明した横断的な事実
 
-1. **辺①の既存 33 件は 1 件も実 `.xlsx` を通っていない。** `XlsFormatReaderTest` は内部クラス
-   `FakeTestDataReader`（L54-102）に `List<List<String>>` の canned 行を与えて `TestCoreReaderAdapter` を駆動する。
-   実セル → 文字列行の区間（`PoiXlsReader`）は一度も実行されない。したがって **軸D 辺①（17 ケース）は全て未担保**。
-2. **ただし辺③の往復テスト 8 件（`roundTrips*`）は実 `.xlsx` を経由して `XlsFormatReader` を駆動している。**
-   `XlsFormatWriterTest#roundTrip`（L861-865）は `new XlsFormatWriter().write(...)` で実ファイルを書き、
-   `new XlsFormatReader()`（本番配線＝`PoiXlsReader`）で読み戻す。よって steering #19 の
-   「実 `.xlsx` を入力として `XlsFormatReader` を駆動するテストが存在し、`FakeTestDataReader` を経由していない」は
-   **既に部分的に満たされている**（文字列セル・空セル・リテラル `null` の 3 ケース相当が通る）。#19 はこれを起点にできる。
-3. **辺②の既存 20 件は 1 件も実 YAML テキストを通っていない。** `YamlFormatReaderTest#reader`（L538-545）は
-   `YamlTestCoreAdapter#loadRawMap` を in-memory `LinkedHashMap` に差し替える。YAML パーサ（SnakeYAML Engine）は
-   通らない。したがって **軸D 辺②（10 ケース）は全て未担保**。ただし辺④の往復テスト 6 件（`roundTrip_*`）は
-   `writer.write(...)` で実 YAML ファイルを書き `new YamlFormatReader()` で読み戻すため、辺②を実ファイル経由で駆動している。
-4. **`getCellType()` をアサートしているテストは src/test 全体でゼロ**（`grep -rn "getCellType" src/test/` → 0 件）。
-   `XlsFormatWriterTest` のセル読み出しヘルパ `cell`（L100-107）／`line`（L110-121）は `getStringCellValue()` のみを使う。
-   したがって **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**。
-5. `overwrite` フラグは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` が持ち、
-   `XlsFormatWriter` / `YamlFormatWriter` は持たない（`grep -rln "overwrite" src/main/java`）。
-   軸F の F3-02 / F4-02 は writer 単体では再現できない可能性がある（#22/#25 で要判断）。
+以下は「事実:」（コードを読んで確認した内容）と「判断:」（それに基づく本書の扱い）を分けて記す。
+判断のうちコーディネータの確認を要するものは §5.3 に再掲する。
+
+1. **辺①の既存 33 件は 1 件も実 `.xlsx` を通っていない。**
+   事実: `XlsFormatReaderTest` は内部クラス `FakeTestDataReader`（L54-102）に `List<List<String>>` の
+   canned 行を与えて `TestCoreReaderAdapter` を駆動する。実セル → 文字列行の区間（`PoiXlsReader`）は
+   一度も実行されない。
+   判断: **軸D 辺①（17 ケース）は 33 件からは全て未担保**とする。
+2. **辺③の往復テスト 8 件（`roundTrips*`）は実 `.xlsx` を経由して `XlsFormatReader` を駆動している。**
+   事実: `XlsFormatWriterTest#roundTrip`（L861-865）は `new XlsFormatWriter().write(...)` で実ファイルを書き、
+   `new XlsFormatReader()`（本番配線＝`PoiXlsReader`）で読み戻す。
+   判断: steering #19 の「実 `.xlsx` を入力として `XlsFormatReader` を駆動するテストが存在し、
+   `FakeTestDataReader` を経由していない」は**既に部分的に満たされている**（文字列セル・空セル・
+   リテラル `null` の 3 ケース相当が通る）。#19 はこれを起点にできる。
+3. **辺②の既存 20 件は 1 件も実 YAML テキストを通っていない。**
+   事実: `YamlFormatReaderTest#reader`（L538-545）は `YamlTestCoreAdapter#loadRawMap` を in-memory
+   `LinkedHashMap` に差し替える。YAML パーサ（SnakeYAML Engine）は通らない。一方、辺④の往復テスト 6 件
+   （`roundTrip_*`）は `writer.write(...)` で実 YAML ファイルを書き `new YamlFormatReader()` で読み戻す。
+   判断: **軸D 辺②（10 ケース）は 20 件からは全て未担保**とし、往復 6 件が通す分は 🔺 で計上する。
+4. **`getCellType()` をアサートしているテストは src/test 全体でゼロ。**
+   事実: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
+   `cell`（L100-107）／`line`（L110-121）は `getStringCellValue()` のみを使う。
+   判断: **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**とする。
+5. **`overwrite` フラグを writer は持たない。**
+   事実: `grep -rln "overwrite" src/main/java` の結果、`overwrite` を保持するのは `ConversionRequest` /
+   `TestDataConverter` / `ConverterMojo` の 3 クラスのみで、`XlsFormatWriter` / `YamlFormatWriter` は保持しない。
+   `overwrite=false` 衝突は上位層の既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`
+   （L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済みである
+   （いずれも出力先に既存ファイルを置いた状態で変換し、`ConverterException` ／ `MojoExecutionException` を
+   アサートしている）。
+   判断: 軸F の F3-02 / F4-02 は writer 単体では再現できないため、**辺③／辺④の対象外（上位層で担保済み）**
+   として分類する（steering #22/#25 の Steps と一致）。
+6. **1 リソース単位 API のため、辺①・辺②では「セクション複数」「セクション 0」が構造上生成されない。**
+   事実: `XlsFormatReader#read`（L101-133）は `Collections.singletonList(section)` を返し、
+   `YamlFormatReader#read`（L87-95）も同じく `Collections.singletonList(section)` を返す。
+   一方 writer 側は `XlsFormatWriter#build`（L125）／`YamlFormatWriter#write`（L74）が
+   `container.getSections()` をループするため、辺③／辺④では複数・0 とも到達可能である。
+   判断: E-4「コンテナ内セクション数 複数」と C-02「sections 空」は**辺①・辺②では到達不能**、
+   **辺③・辺④では要追加**として分類する。
+7. **`DataType.DEFAULT` はリーダ 2 経路のいずれでも生成されない。**
+   事実: 辺① — `TestCoreReaderAdapter` L362 が `type == DataType.DEFAULT` のブロックを `continue` でスキップする。
+   辺② — `YamlFormatReader#addBlocksForSection`（L106-133）と `fileDataType`（L534-536）／
+   `addMessageBlocks`（L264）は `DEFAULT` 以外の 13 種のみを分岐に持ち、`DEFAULT` を返す経路がない。
+   判断: A-01 `DEFAULT` は**辺①・辺②で到達不能**。writer 側（辺③）は
+   `XlsFormatWriter` L400 がマーカー文字列を `block.getDataType().getName()` から組み立てるだけで
+   タイプを絞らないため到達可能であり、**辺③は要追加**（辺④は `serialize_unsupportedDataType_throws` で担保済み）。
+
+### 0.8-8 `RoundTripTest`（30 件）の扱い
+
+`src/test/java/nablarch/test/tool/converter/RoundTripTest.java`（30 `@Test` / 882 行）は 4 辺いずれの
+担当クラスのテストでもないため §0.1 の 126 件には含まれないが、`new XlsFormatWriter().write(...)` で実
+`.xlsx` を書き `new XlsFormatReader().read(...)`（本番配線）で読み戻す XLS 経路 13 件と、
+`new YamlFormatWriter().write(...)` → `new YamlFormatReader().read(...)` の YAML 経路 14 件、
+両経路を 1 メソッドで通す 3 件からなり、**4 辺すべてを実ファイル経由で駆動している**
+（往復ヘルパ: `xlsRoundTrip` L720-728 ／ `yamlRoundTrip` L733-741）。
+
+steering Rules（フェーズ2）に従い、これらが通す軸要素は **🔺弱い担保として計上するが正式担保としては数えず、
+直接テストの追加対象からも外さない**。したがって未担保一覧には残したうえで「`RoundTripTest#xxx` で 🔺 担保あり
+（重複を避けること）」と注記する。
+
+| # | テストメソッド | 経路（駆動する辺） | 🔺 で通す軸A | 🔺 で通す軸B | 🔺 で通す軸C | 🔺 で通す軸D |
+|---|---|---|---|---|---|---|
+| 1 | `xls_setupTable_isPreserved` | XLS（辺③→辺①） | A-02 | B-1 | C-05, **C-06(省略=`""`)**, C-07, C-08, C-09 | 辺① D1-01, D1-13／辺③ D3-05 |
+| 2 | `xls_expectedTable_withGroupId_isPreserved` | XLS（辺③→辺①） | A-03 | B-1 | C-05, C-06(値あり), C-07, C-08, C-09 | 辺① D1-01 |
+| 3 | `xls_expectedCompleteTable_isPreserved` | XLS（辺③→辺①） | **A-04（辺①で唯一）** | B-1 | C-05, C-06(省略), C-07, C-08, C-09 | 辺① D1-01 |
+| 4 | `xls_listMap_isPreserved` | XLS（辺③→辺①） | A-05 | B-2 | C-05, C-07, C-08, C-09 | 辺① D1-01, D1-13／辺③ D3-05 |
+| 5 | `xls_setupFixed_isPreserved` | XLS（辺③→辺①） | A-06 | B-3 | C-05, C-06(省略), C-07, C-10(FIXED), C-11(値あり), C-12, C-16(値あり), C-17〜C-21 | 辺① D1-01 |
+| 6 | `xls_expectedFixed_isPreserved` | XLS（辺③→辺①） | **A-07（辺①・辺③で唯一）** | B-3 | C-05, C-06(省略), C-07, C-10(FIXED), C-12, C-16(値あり), C-17〜C-21 | 辺① D1-01 |
+| 7 | `xls_setupVariable_isPreserved` | XLS（辺③→辺①） | A-08 | B-3 | C-05, C-06(省略), C-07, C-10(VARIABLE), C-21(省略) | 辺① D1-01 |
+| 8 | `xls_expectedVariable_isPreserved` | XLS（辺③→辺①） | **A-09（辺①・辺③で唯一）** | B-3 | C-05, C-06(省略), C-07, C-10(VARIABLE), C-21(省略) | 辺① D1-01 |
+| 9 | `xls_message_isPreserved` | XLS（辺③→辺①） | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16〜C-21 | 辺① D1-01 |
+| 10 | `xls_expectedRequestHeaderMessages_isPreserved` | XLS（辺③→辺①） | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16〜C-21 | 辺① D1-01 |
+| 11 | `xls_expectedRequestBodyMessages_isPreserved` | XLS（辺③→辺①） | A-12 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16〜C-21 | 辺① D1-01 |
+| 12 | `xls_responseHeaderMessages_isPreserved` | XLS（辺③→辺①） | A-13 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16〜C-21 | 辺① D1-01 |
+| 13 | `xls_responseBodyMessages_isPreserved` | XLS（辺③→辺①） | A-14 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16〜C-21 | 辺① D1-01 |
+| 14 | `yaml_setupTable_isPreserved` | YAML（辺④→辺②） | A-02 | B-1 | C-05, C-06(省略), C-07, C-08, C-09 | 辺② D2-02, D2-06／辺④ D4-04, D4-05 |
+| 15 | `yaml_expectedTable_withGroupId_isPreserved` | YAML（辺④→辺②） | A-03 | B-1 | C-05, C-06(値あり), C-07, C-08, C-09 | 辺② D2-02 |
+| 16 | `yaml_expectedCompleteTable_isPreserved` | YAML（辺④→辺②） | A-04 | B-1 | C-05, C-06(省略), C-07, C-08, C-09 | 辺② D2-02 |
+| 17 | `yaml_listMap_isPreserved` | YAML（辺④→辺②） | A-05 | B-2 | C-05, C-07, C-08, C-09 | 辺② D2-02 |
+| 18 | `yaml_listMap_withNullValue_isPreserved` | YAML（辺④→辺②） | A-05 | B-2 | C-09 | 辺② D2-06／辺④ D4-04 |
+| 19 | `yaml_setupFixed_isPreserved` | YAML（辺④→辺②） | A-06 | B-3 | C-05, C-06(省略), C-07, C-10(FIXED), C-11(値あり), C-12, C-16(値あり), C-17〜C-21 | 辺② D2-02 |
+| 20 | `yaml_expectedFixed_isPreserved` | YAML（辺④→辺②） | **A-07（辺④で唯一）** | B-3 | C-05, C-06(省略), C-07, C-10(FIXED), C-12, C-16(値あり), C-17〜C-21 | 辺② D2-02 |
+| 21 | `yaml_setupVariable_isPreserved` | YAML（辺④→辺②） | **A-08（辺④で唯一）** | B-3 | C-05, C-06(省略), C-07, C-10(VARIABLE), C-21(省略) | 辺② D2-02 |
+| 22 | `yaml_expectedVariable_isPreserved` | YAML（辺④→辺②） | A-09 | B-3 | C-05, C-06(省略), C-07, C-10(VARIABLE), C-21(省略) | 辺② D2-02 |
+| 23 | `yaml_message_isPreserved` | YAML（辺④→辺②） | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16〜C-21 | 辺② D2-02 |
+| 24 | `yaml_expectedRequestHeaderMessages_isPreserved` | YAML（辺④→辺②） | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
+| 25 | `yaml_expectedRequestBodyMessages_isPreserved` | YAML（辺④→辺②） | A-12 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
+| 26 | `yaml_responseHeaderMessages_isPreserved` | YAML（辺④→辺②） | A-13 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
+| 27 | `yaml_responseBodyMessages_isPreserved` | YAML（辺④→辺②） | A-14 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
+| 28 | `nullCell_xlsConvertsToLiteralString_yamlPreservesNull` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-16 リテラル `null`**／辺② D2-06／辺③ D3-04（値のみ）／辺④ D4-04 |
+| 29 | `leadingTrailingWhitespace_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-14 前後空白**／辺② D2-02 |
+| 30 | `specialNotation_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① D1-01／辺② D2-02 |
+
+※ 軸E は全 30 件が「1 セクション・1 ブロック」固定（`xlsRoundTrip` L725-726 ／ `yamlRoundTrip` L738-739 が
+`sections.size()==1` と `blocks.size()==1` をアサートする）ため、E-1(1)／E-4(1) 以外の多重度は通さない。
+軸F は 30 件とも正常系のため通さない。
+
+**この表によって従来 ❌ だった要素に新たに 🔺 が付くもの**:
+
+| 辺 | 新たに 🔺 になる要素 | 根拠テスト |
+|---|---|---|
+| 辺① | A-04 `EXPECTED_COMPLETED` | `xls_expectedCompleteTable_isPreserved` |
+| 辺① | A-07 `EXPECTED_FIXED` | `xls_expectedFixed_isPreserved` |
+| 辺① | A-09 `EXPECTED_VARIABLE` | `xls_expectedVariable_isPreserved` |
+| 辺① | C-06 `groupId` 省略(`""`) | `xls_setupTable_isPreserved`, `xls_expectedCompleteTable_isPreserved` ほか 5 件（`assertTableBlock` L751 ／ `assertFileBlock` L761 ／ `assertMessageBlock` L790 が `getGroupId()` を `""` と突き合わせる XLS 経路 7 件） |
+| 辺① | D1-14 前後空白 | `leadingTrailingWhitespace_isPreservedInBothPaths` |
+| 辺③ | A-07 `EXPECTED_FIXED` | `xls_expectedFixed_isPreserved` |
+| 辺③ | A-09 `EXPECTED_VARIABLE` | `xls_expectedVariable_isPreserved` |
+| 辺④ | A-07 `EXPECTED_FIXED` | `yaml_expectedFixed_isPreserved` |
+| 辺④ | A-08 `SETUP_VARIABLE` | `yaml_setupVariable_isPreserved` |
+
+辺① D1-01 文字列／D1-13 空文字／D1-16 リテラル `null`、辺② D2-02／D2-03／D2-06／D2-07、
+辺③ D3-04／D3-05、辺④ D4-01 は既に `XlsFormatWriterTest#roundTrips*` ／ `YamlFormatWriterTest#roundTrip_*`
+経由で 🔺 であり、`RoundTripTest` は担保の厚みを増すが判定は変えない。
+辺②については新たに 🔺 になる要素はない。
+
+**未担保件数への影響はない。** 🔺 は正式担保として数えないため、§5.1 の 107 件は本項の追加後も変わらない。
 
 ---
+
+<a id="s1"></a>
 
 ## 1. 辺① Excel→中間モデル（`XlsFormatReaderTest` 33 件）
 
@@ -169,29 +340,29 @@ E-3 ファイル内レコードレイアウト数（0／1／複数）／E-4 コ�
 
 | # | テストメソッド | 軸A | 軸B | 軸C | 軸D | 軸E | 軸F |
 |---|---|---|---|---|---|---|---|
-| 1 | `readMapsTableBlockPreservingRawValues` | A-02 | B-1 | C-07, C-08, C-09 | — 🔺文字列レベルで `${}`／`""`／null セル区別 | E-1(1), E-2(複数) | — |
-| 2 | `readTableNormalizesExcelQuotationNotation` | A-02 | B-1 | C-09 | — 🔺Excel 引用符記法 `""`→`""`・`"abc"`→`abc` | E-2(1) | — |
-| 3 | `readListMapNormalizesExcelQuotationNotation` | A-05 | B-2 | C-09 | — 🔺同上 | E-2(1) | — |
-| 4 | `readFixedFileNormalizesExcelQuotationNotation` | A-06 | B-3 | C-12, C-18 | — 🔺同上 | E-3(1) | — |
+| 1 | `readMapsTableBlockPreservingRawValues` | A-02 | B-1 | C-07, C-08, C-09 | — ※文字列レベルで `${}`／`""`／null セル区別 | E-1(1), E-2(複数) | — |
+| 2 | `readTableNormalizesExcelQuotationNotation` | A-02 | B-1 | C-09 | — ※Excel 引用符記法 `""`→`""`・`"abc"`→`abc` | E-2(1) | — |
+| 3 | `readListMapNormalizesExcelQuotationNotation` | A-05 | B-2 | C-09 | — ※同上 | E-2(1) | — |
+| 4 | `readFixedFileNormalizesExcelQuotationNotation` | A-06 | B-3 | C-12, C-18 | — ※同上 | E-3(1) | — |
 | 5 | `readMapsMultipleTablesWithoutDuplication` | A-02 | B-1 | C-07 | — | E-1(複数=2) | — |
 | 6 | `readPreservesGroupIdAndDataType` | A-03 | B-1 | C-05, C-06(値あり), C-09 | — | E-1(1) | — |
 | 7 | `readListMapPreservesColumnOrder` | A-05 | B-2 | C-08(記述順), C-09 | — | E-2(複数=2) | — |
-| 8 | `readListMapExcludesMarkerColumns` | A-05 | B-2 | C-08, C-09 | — 🔺マーカーカラム `[no]` 除外 | E-2(複数=2) | — |
-| 9 | `readMapsListMapBlock` | A-05 | B-2 | C-07, C-08, C-09 | — 🔺`${}`／`""` | E-2(複数=2) | — |
+| 8 | `readListMapExcludesMarkerColumns` | A-05 | B-2 | C-08, C-09 | — ※マーカーカラム `[no]` 除外 | E-2(複数=2) | — |
+| 9 | `readMapsListMapBlock` | A-05 | B-2 | C-07, C-08, C-09 | — ※`${}`／`""` | E-2(複数=2) | — |
 | 10 | `readMapsFixedLengthFileBlock` | A-06 | B-3 | C-07, C-10(FIXED), C-12, C-16(値あり), C-17, C-18, C-19, C-20(値あり), C-21(値あり) | — | E-3(1) | — |
-| 11 | `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines` | A-06 | B-3 | C-16, C-18, C-20, C-21(`"-"`) | — 🔺長さ記法 `-` の原文保持 | E-3(1) | — |
+| 11 | `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines` | A-06 | B-3 | C-16, C-18, C-20, C-21(`"-"`) | — ※長さ記法 `-` の原文保持 | E-3(1) | — |
 | 12 | `readRestoresMultipleRecordLayoutsInFixedFile` | A-06 | B-3 | C-12, C-16, C-17, C-18, C-19, C-20, C-21 | — | E-3(複数=2), E-2(1/複数) | — |
 | 13 | `readMapsVariableLengthFileBlock` | A-08 | B-3 | C-10(VARIABLE), C-18, C-19, C-21(省略=null) | — | E-3(1) | — |
 | 14 | `readMapsMessageBlock` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-15, C-18, C-19 | — | E-3(1) | — |
 | 15 | `readMapsExpectedRequestHeaderMessageBlock` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-13(値あり), C-14(空), C-15, C-17, C-18, C-19, C-20, C-21 | — | E-3(1) | — |
 | 16 | `readMapsAllFourSendSyncMessageTypes` | A-11, A-12, A-13, A-14 | B-4 | C-05, C-06 | — | E-1(複数=4) | — |
 | 17 | `readMapsMultipleSendSyncBlocksInSameGroup` | A-11 | B-4 | C-07 | — | E-1(複数=2) | — |
-| 18 | `readNormalizesRecordSeparatorCrlfSymbol` | A-08 | B-3 | C-11(値あり) | — 🔺`record-separator` CRLF シンボル逆正規化 | — | — |
-| 19 | `readNormalizesRecordSeparatorLfSymbol` | A-08 | B-3 | C-11 | — 🔺LF シンボル | — | — |
-| 20 | `readNormalizesRecordSeparatorCrSymbol` | A-08 | B-3 | C-11 | — 🔺CR シンボル | — | — |
-| 21 | `defaultConstructorWiresProductionAdapter` | — | — | — | — | — | — （本番配線の生成可能性のみ） |
+| 18 | `readNormalizesRecordSeparatorCrlfSymbol` | A-08 | B-3 | C-11(値あり) | — ※`record-separator` CRLF シンボル逆正規化 | — | — |
+| 19 | `readNormalizesRecordSeparatorLfSymbol` | A-08 | B-3 | C-11 | — ※LF シンボル | — | — |
+| 20 | `readNormalizesRecordSeparatorCrSymbol` | A-08 | B-3 | C-11 | — ※CR シンボル | — | — |
+| 21 | `defaultConstructorWiresProductionAdapter` | — | — | — | — | — | —（本番配線の生成可能性のみ） |
 | 22 | `readIgnoresDataTypePrefixedLineWithoutMarker` | — | — | C-04(空) | — | E-1(0) | 🔺F1-03 に近い（データタイプ名で始まるが `=` なしの行を無視） |
-| 23 | `readPreservesErrorModeRowInSendSyncMessage` | A-14 | B-4 | C-16, C-17, C-18, C-19 | — 🔺`errorMode:timeout` の原文保持 | E-3(1) | — |
+| 23 | `readPreservesErrorModeRowInSendSyncMessage` | A-14 | B-4 | C-16, C-17, C-18, C-19 | — ※`errorMode:timeout` の原文保持 | E-3(1) | — |
 | 24 | `readDerivesContainerAndSectionNamesFromResource` | A-02 | B-1 | C-01, C-02(1件), C-03 | — | E-4(1) | — |
 | 25 | `readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` | A-05 | B-2 | C-08, C-09 | — | — | **F1-05** ✅（WARN・後勝ち） |
 | 26 | `readListMapWithMultipleDuplicateColumnsEmitsWarnPerName` | A-05 | B-2 | C-08, C-09 | — | — | **F1-05** ✅（複数名の重複） |
@@ -199,53 +370,57 @@ E-3 ファイル内レコードレイアウト数（0／1／複数）／E-4 コ�
 | 28 | `readListMapWithoutDuplicatesEmitsNoWarn` | A-05 | B-2 | — | — | — | F1-05 の非回帰（WARN なし） |
 | 29 | `readReturnsEmptySectionWhenNoBlocks` | — | — | C-02(1件), C-04(空) | — | **E-1(0)** ✅ | — |
 | 30 | `readAssemblesMixedBlockTypesInOneSection` | A-02, A-05, A-06, A-10 | **B-1, B-2, B-3, B-4** | C-04 | — | E-1(複数=4) | — |
-| 31 | `readNormalizesRecordSeparatorEmptyValueToNoneSymbol` | A-08 | B-3 | C-11 | — 🔺NONE シンボル逆正規化 | — | — |
-| 32 | `readPassesThroughUnknownRecordSeparatorValue` | A-08 | B-3 | C-11 | — 🔺未知値のパススルー | — | — |
-| 33 | `readStripsQuotesFromQuotedGenericDirectiveValue` | A-08 | B-3 | C-11 | — 🔺ディレクティブ値の引用符除去 | — | — |
+| 31 | `readNormalizesRecordSeparatorEmptyValueToNoneSymbol` | A-08 | B-3 | C-11 | — ※NONE シンボル逆正規化 | — | — |
+| 32 | `readPassesThroughUnknownRecordSeparatorValue` | A-08 | B-3 | C-11 | — ※未知値のパススルー | — | — |
+| 33 | `readStripsQuotesFromQuotedGenericDirectiveValue` | A-08 | B-3 | C-11 | — ※ディレクティブ値の引用符除去 | — | — |
 
 ### 1.2 軸要素 → 担保テストメソッド
 
-**軸A（10/14 担保）**
+**軸A（✅ 10 ／ 🔺 3 ／ ❌ 1 ＝ 14）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
-| A-01 `DEFAULT` | ❌ | — |
+| A-01 `DEFAULT` | ❌ | —（到達不能。`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする。§0.8-7） |
 | A-02 `SETUP_TABLE_DATA` | ✅ | `readMapsTableBlockPreservingRawValues`, `readTableNormalizesExcelQuotationNotation`, `readMapsMultipleTablesWithoutDuplication`, `readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readDerivesContainerAndSectionNamesFromResource`, `readAssemblesMixedBlockTypesInOneSection` |
 | A-03 `EXPECTED_TABLE_DATA` | ✅ | `readPreservesGroupIdAndDataType` |
-| A-04 `EXPECTED_COMPLETED` | ❌ | — |
+| A-04 `EXPECTED_COMPLETED` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedCompleteTable_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
 | A-05 `LIST_MAP` | ✅ | `readListMapNormalizesExcelQuotationNotation`, `readListMapPreservesColumnOrder`, `readListMapExcludesMarkerColumns`, `readMapsListMapBlock`, `readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readListMapWithMultipleDuplicateColumnsEmitsWarnPerName`, `readListMapWithoutDuplicatesEmitsNoWarn`, `readAssemblesMixedBlockTypesInOneSection` |
 | A-06 `SETUP_FIXED` | ✅ | `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`, `readRestoresMultipleRecordLayoutsInFixedFile`, `readAssemblesMixedBlockTypesInOneSection` |
-| A-07 `EXPECTED_FIXED` | ❌ | — |
+| A-07 `EXPECTED_FIXED` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedFixed_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
 | A-08 `SETUP_VARIABLE` | ✅ | `readMapsVariableLengthFileBlock`, `readNormalizesRecordSeparatorCrlfSymbol`, `readNormalizesRecordSeparatorLfSymbol`, `readNormalizesRecordSeparatorCrSymbol`, `readNormalizesRecordSeparatorEmptyValueToNoneSymbol`, `readPassesThroughUnknownRecordSeparatorValue`, `readStripsQuotesFromQuotedGenericDirectiveValue` |
-| A-09 `EXPECTED_VARIABLE` | ❌ | — |
+| A-09 `EXPECTED_VARIABLE` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedVariable_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
 | A-10 `MESSAGE` | ✅ | `readMapsMessageBlock`, `readAssemblesMixedBlockTypesInOneSection` |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `readMapsExpectedRequestHeaderMessageBlock`, `readMapsAllFourSendSyncMessageTypes`, `readMapsMultipleSendSyncBlocksInSameGroup` |
 | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes` |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes` |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes`, `readPreservesErrorModeRowInSendSyncMessage` |
 
-**軸B（4/4 担保）**
+**軸B（✅ 4 ／ 4）**
 
 | 要素 | 判定 | 担保テストメソッド（代表） |
 |---|---|---|
-| B-1 `TableDataBlock` | ✅ | `readMapsTableBlockPreservingRawValues`, `readAssemblesMixedBlockTypesInOneSection` ほか |
-| B-2 `ListMapBlock` | ✅ | `readMapsListMapBlock`, `readAssemblesMixedBlockTypesInOneSection` ほか |
-| B-3 `FileDataBlock` | ✅ | `readMapsFixedLengthFileBlock`, `readMapsVariableLengthFileBlock`, `readAssemblesMixedBlockTypesInOneSection` ほか |
-| B-4 `MessageDataBlock` | ✅ | `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock`, `readAssemblesMixedBlockTypesInOneSection` ほか |
+| B-1 `TableDataBlock` | ✅ | `readMapsTableBlockPreservingRawValues`, `readAssemblesMixedBlockTypesInOneSection` ほか 5 件（計 7 件） |
+| B-2 `ListMapBlock` | ✅ | `readMapsListMapBlock`, `readAssemblesMixedBlockTypesInOneSection` ほか 6 件（計 8 件） |
+| B-3 `FileDataBlock` | ✅ | `readMapsFixedLengthFileBlock`, `readMapsVariableLengthFileBlock` ほか 10 件（計 12 件） |
+| B-4 `MessageDataBlock` | ✅ | `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock` ほか 4 件（計 6 件） |
 
-**軸C（21 フィールド／省略可能は「値あり」「省略」の双方を評価）**
+**軸C（21 フィールド ─ 両状態担保 9 ／ 未担保 12）**
+
+省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
+n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
+「値あり」の担保をもって両状態担保として数える。
 
 | 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
 |---|---|---|---|
 | C-01 `TestDataContainer.name` | ✅ | n/a | `readDerivesContainerAndSectionNamesFromResource` |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空 | `readDerivesContainerAndSectionNamesFromResource`, `readReturnsEmptySectionWhenNoBlocks`（※辺①は 1 リソース＝1 セクション固定。空・複数は構造上発生しない可能性あり — 要判断） |
+| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空（**到達不能**） | `readDerivesContainerAndSectionNamesFromResource`, `readReturnsEmptySectionWhenNoBlocks`（`XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため、辺①では sections は常に 1 件。空・複数は構造上生成されない。§0.8-6） |
 | C-03 `TestDataSection.name` | ✅ | n/a | `readDerivesContainerAndSectionNamesFromResource` |
-| C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 非空: 多数／空: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker` |
+| C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readMapsListMapBlock` ほか 28 件（ブロックを 1 件以上組み立てる計 30 件）／空: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker` |
 | C-05 `TestDataBlock.dataType` | ✅ | n/a | `readPreservesGroupIdAndDataType`, `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock`, `readMapsAllFourSendSyncMessageTypes` |
-| C-06 `TestDataBlock.groupId` | ✅ | ❌ 省略(`""`) | 値あり: `readPreservesGroupIdAndDataType`, `readMapsExpectedRequestHeaderMessageBlock`, `readMapsAllFourSendSyncMessageTypes`／`""` をアサートするテストは 0 件 |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | `readMapsTableBlockPreservingRawValues`, `readMapsListMapBlock`, `readMapsFixedLengthFileBlock`, `readMapsMessageBlock` ほか |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder`, `readListMapExcludesMarkerColumns` ほか |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: 多数 |
+| C-06 `TestDataBlock.groupId` | ✅ | 🔺 省略(`""`) | 値あり: `readPreservesGroupIdAndDataType`, `readMapsExpectedRequestHeaderMessageBlock` ほか 1 件（計 3 件）／省略: `XlsFormatReaderTest` で `""` をアサートするテストは 0 件。`RoundTripTest#xls_setupTable_isPreserved` ほか 6 件（計 7 件）が実 `.xlsx` 経由で `getGroupId()` が `""` であることをアサートする（§0.8-8。重複を避けること） |
+| C-07 `TestDataBlock.identifier` | ✅ | n/a | `readMapsTableBlockPreservingRawValues`, `readMapsListMapBlock` ほか 5 件（計 7 件） |
+| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder` ほか 5 件（計 7 件） |
+| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readTableNormalizesExcelQuotationNotation` ほか 8 件（計 10 件） |
 | C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `readMapsFixedLengthFileBlock`／VARIABLE: `readMapsVariableLengthFileBlock` |
 | C-11 `FileDataBlock.directives` | ✅ | ❌ 空 | 非空: `readNormalizesRecordSeparator*`（4件）, `readPassesThroughUnknownRecordSeparatorValue`, `readStripsQuotesFromQuotedGenericDirectiveValue` |
 | C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `readMapsFixedLengthFileBlock`, `readRestoresMultipleRecordLayoutsInFixedFile` |
@@ -253,32 +428,37 @@ E-3 ファイル内レコードレイアウト数（0／1／複数）／E-4 コ�
 | C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `readMapsMessageBlock`／空: `readMapsExpectedRequestHeaderMessageBlock` |
 | C-15 `MessageDataBlock.records` | ✅ | ❌ 空 | 非空: `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock` |
 | C-16 `RecordLayout.recordType` | ✅ | ❌ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`, `readRestoresMultipleRecordLayoutsInFixedFile`, `readPreservesErrorModeRowInSendSyncMessage` |
-| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readMapsFixedLengthFileBlock` ほか |
-| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: 多数 |
-| C-19 `FieldDef.name` | ✅ | n/a | `readMapsFixedLengthFileBlock`, `readMapsExpectedRequestHeaderMessageBlock` ほか |
+| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readMapsFixedLengthFileBlock`, `readRestoresMultipleRecordLayoutsInFixedFile` ほか 2 件（計 4 件） |
+| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock` ほか 6 件（計 8 件） |
+| C-19 `FieldDef.name` | ✅ | n/a | `readMapsFixedLengthFileBlock`, `readMapsExpectedRequestHeaderMessageBlock` ほか 4 件（計 6 件） |
 | C-20 `FieldDef.type` | ✅ | ❌ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines` |
 | C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`（`"10"`/`"5"`）, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`（`"-"`）／省略: `readMapsVariableLengthFileBlock` |
 
-**軸D（0/17 担保）**
+**軸D（✅ 0 ／ 🔺 4 ／ ❌ 13 ＝ 17）**
 
 D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`XlsFormatReaderTest` L54-102）に文字列行を直接与えるため、
 実セル → 文字列行の変換区間を一切通らない。セル種別という概念がテスト入力に存在しない。
 
-🔺 弱い担保（辺③の往復テスト経由・実 `.xlsx` を通る）:
-- D1-01 文字列: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsListMap`, `#roundTripsFixedFile`, `#roundTripsMessage` ほか
-- D1-13 空文字: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsNullCellAsLiteralNullString`
-- D1-16 リテラル `null`: `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString`
+🔺 弱い担保（実 `.xlsx` を通る往復テスト経由）:
+- D1-01 文字列: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsListMap` ほか 6 件（`roundTrips*` 全 8 件）、
+  `RoundTripTest` の XLS 経路 13 件と両経路 3 件（§0.8-8）
+- D1-13 空文字: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsNullCellAsLiteralNullString`、
+  `RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved`
+- **D1-14 前後空白**: `RoundTripTest#leadingTrailingWhitespace_isPreservedInBothPaths`（§0.8-8。半角/全角の前後空白が
+  Excel 往復で脱落しないことをアサートする）
+- D1-16 リテラル `null`: `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString`,
+  `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull`
 
 **軸E**
 
 | 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
 |---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker`／1: 多数／複数: `readMapsMultipleTablesWithoutDuplication`, `readMapsAllFourSendSyncMessageTypes`, `readMapsMultipleSendSyncBlocksInSameGroup`, `readAssemblesMixedBlockTypesInOneSection` |
-| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `readTableNormalizesExcelQuotationNotation` ほか／複数: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder`, `readListMapExcludesMarkerColumns`, `readMapsListMapBlock` |
-| E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 1: `readMapsFixedLengthFileBlock`／複数: `readRestoresMultipleRecordLayoutsInFixedFile` |
-| E-4 ブック内シート数 | n/a | ✅ | ❌ | 1: `readDerivesContainerAndSectionNamesFromResource`（※`XlsFormatReader#read` は「ブック名/シート名」1 リソース単位。複数シートは構造上到達不能の可能性 — 要判断） |
+| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker`／1: `readMapsTableBlockPreservingRawValues`, `readPreservesGroupIdAndDataType` ほか 24 件（ブロック 1 件のみを組み立てる計 26 件）／複数: `readMapsMultipleTablesWithoutDuplication`, `readMapsAllFourSendSyncMessageTypes` ほか 2 件（計 4 件） |
+| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `readTableNormalizesExcelQuotationNotation`, `readListMapNormalizesExcelQuotationNotation` ほか 1 件（計 3 件）／複数: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder` ほか 2 件（計 4 件） |
+| E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 1: `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock` ほか 5 件（計 7 件）／複数: `readRestoresMultipleRecordLayoutsInFixedFile` |
+| E-4 コンテナ内セクション数（辺①の実体: ブック内シート数） | n/a | ✅ | ❌（**到達不能**） | 1: `readDerivesContainerAndSectionNamesFromResource`。複数は `XlsFormatReader#read`（L96-101 の Javadoc・L133）が `"ブック名/シート名"` の 1 シート単位 API で `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
 
-**軸F（1/6 担保）**
+**軸F（✅ 1 ／ 🔺 1 ／ ❌ 4 ＝ 6）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
@@ -289,21 +469,42 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | F1-05 カラム名重複 | ✅ | `readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readListMapWithMultipleDuplicateColumnsEmitsWarnPerName`, `readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`（非回帰: `readListMapWithoutDuplicatesEmitsNoWarn`） |
 | F1-06 行と列の数の不一致 | ❌ | — |
 
+<a id="s1-3"></a>
+
 ### 1.3 辺① 未担保一覧（#19〜#21 が埋める対象）
 
-| 軸 | 未担保要素 | 件数 |
-|---|---|---|
-| A | A-01 `DEFAULT`, A-04 `EXPECTED_COMPLETED`, A-07 `EXPECTED_FIXED`, A-09 `EXPECTED_VARIABLE` | 4 |
-| B | （なし） | 0 |
-| C | C-02 sections 空／C-06 groupId 省略(`""`)／C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／C-13 MessageDataBlock.directives 空／C-15 MessageDataBlock.records 空／C-16 recordType 省略／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 12 |
-| D | D1-01〜D1-17 全 17 ケース（うち D1-01/D1-13/D1-16 は辺③往復経由の弱い担保あり） | 17 |
-| E | E-2(0件)／E-3(0件)／E-4(複数シート) | 3 |
-| F | F1-01 シート不在／F1-02 ブック破損／F1-03 未知データタイプ名（弱のみ）／F1-04 マーカーカラム欠落／F1-06 行列数不一致 | 5 |
-| **合計** | | **41** |
+**計上単位**（4 辺すべてでこの規則に従う）:
 
-**特に大きな空欄**: 軸D 17 ケース全滅（実 `.xlsx` を一度も通らないため）。#19 の主眼。
+- 軸A・軸B・軸C は **軸要素 1 件を 1 件**と数える。同一要素で「値あり」「省略」の両方が欠けていても 1 件とし、
+  欠けている状態は要素名に併記する。
+- 軸D・軸F は **ケース 1 件を 1 件**と数える。
+- 軸E は **（観点, 多重度）の組 1 件を 1 件**と数える。
+- 🔺（弱い担保のみ）の要素は未担保として計上する。正式担保は ✅ のみ。
+
+**状態**の 3 分類:
+
+- `要追加` — #19〜#25 がテストを書く対象。
+- `到達不能` — 構造上その状態が生成されない。根拠を併記する。テストは書かず、理由付きで空欄に残す。
+- `対象外（上位層で担保済み）` — 辺の担当クラスの関心事ではなく、上位層の既存テストで担保済み。
+
+| 軸 | 未担保要素 | 状態 | 件数 |
+|---|---|---|---|
+| A | A-04 `EXPECTED_COMPLETED`（🔺 `RoundTripTest#xls_expectedCompleteTable_isPreserved`）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 3 |
+| A | A-01 `DEFAULT` — `TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップするためリーダ経路で生成されない（§0.8-7） | 到達不能 | 1 |
+| B | （なし） | — | 0 |
+| C | C-06 groupId 省略(`""`)（🔺 `RoundTripTest#xls_setupTable_isPreserved` ほか 6 件）／C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／C-13 MessageDataBlock.directives 空／C-15 MessageDataBlock.records 空／C-16 recordType 省略／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 要追加 | 11 |
+| C | C-02 sections 空 — `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 1 |
+| D | D1-01〜D1-17 全 17 ケース（うち D1-01／D1-13／D1-14／D1-16 は往復テスト経由の 🔺 あり。§0.8-8 と上の「軸D」節を参照し重複を避けること） | 要追加 | 17 |
+| E | E-2(0 件)／E-3(0 件) | 要追加 | 2 |
+| E | E-4(複数) — `XlsFormatReader#read` が 1 シート単位 API（§0.8-6） | 到達不能 | 1 |
+| F | F1-01 シート不在／F1-02 ブック破損／F1-03 未知データタイプ名（🔺 `readIgnoresDataTypePrefixedLineWithoutMarker` のみ）／F1-04 マーカーカラム欠落／F1-06 行列数不一致 | 要追加 | 5 |
+| **合計** | | **要追加 38 ／ 到達不能 3 ／ 対象外 0** | **41（うち到達不能 3）** |
+
+**特に大きな空欄**: 軸D 17 ケース全滅（既存 33 件が実 `.xlsx` を一度も通らないため）。#19 の主眼。
 
 ---
+
+<a id="s2"></a>
 
 ## 2. 辺② YAML→中間モデル（`YamlFormatReaderTest` 20 件）
 
@@ -311,20 +512,20 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 
 | # | テストメソッド | 軸A | 軸B | 軸C | 軸D | 軸E | 軸F |
 |---|---|---|---|---|---|---|---|
-| 1 | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues` | A-02 | B-1 | C-05, C-06(省略=`""`), C-07, C-08, C-09 | — 🔺Map 値レベルで `${}`／null／`""` | E-1(1), E-2(複数=2) | — |
+| 1 | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues` | A-02 | B-1 | C-05, C-06(省略=`""`), C-07, C-08, C-09 | — ※Map 値レベルで `${}`／null／`""` | E-1(1), E-2(複数=2) | — |
 | 2 | `readTable_expectedWithGroup_formatsGroupIdAndCreatesBlockPerGroup` | A-03 | B-1 | C-05, C-06(値あり), C-09 | — | E-1(複数=2) | — |
 | 3 | `readTable_completed_mapsExpectedCompletedType` | A-04 | B-1 | C-05, C-07 | — | E-1(1) | — |
-| 4 | `readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull` | A-05 | B-2 | C-05, C-07, C-08(YAML 順), C-09 | — 🔺マーカーカラム `[ignore]` 除外・null 保持 | E-2(複数=2) | — |
-| 5 | `readFile_fixed_mapsRawFieldDefsAndValues` | A-06 | B-3 | C-05, C-07, C-10(FIXED), C-11(値あり), C-12, C-16(値あり), C-17, C-18, C-19, C-20, C-21(値あり＋省略) | — 🔺`${}`／`""` | E-3(複数=2), E-2(複数=2) | — |
+| 4 | `readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull` | A-05 | B-2 | C-05, C-07, C-08(YAML 順), C-09 | — ※マーカーカラム `[ignore]` 除外・null 保持 | E-2(複数=2) | — |
+| 5 | `readFile_fixed_mapsRawFieldDefsAndValues` | A-06 | B-3 | C-05, C-07, C-10(FIXED), C-11(値あり), C-12, C-16(値あり), C-17, C-18, C-19, C-20, C-21(値あり＋省略) | — ※`${}`／`""` | E-3(複数=2), E-2(複数=2) | — |
 | 6 | `readFile_variable_mapsVariableTypeWithNullLengths` | A-09 | B-3 | C-05, C-10(VARIABLE), C-17, C-18, C-19, C-20, C-21(省略) | — | E-3(1) | — |
 | 7 | `readFile_expectedFixedWithMultipleGroups_mapsExpectedFixedAndDedupesGroups` | A-07 | B-3 | C-05, C-06(値あり), C-07 | — | E-1(複数=3) | — |
 | 8 | `readFile_setupVariable_mapsSetupVariableType` | A-08 | B-3 | C-05, C-10(VARIABLE) | — | E-1(1) | — |
 | 9 | `readFile_recordTypeOmitted_keepsNullRecordType` | A-06 | B-3 | **C-16(省略=null)** ✅ | — | E-3(1) | — |
-| 10 | `readFile_recordTypeDefault_normalizedToNull` | A-08 | B-3 | C-16(`"Default"`→null) | — 🔺特殊値の正規化 | E-3(1) | — |
-| 11 | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | — 🔺`${}` | E-3(1) | — |
+| 10 | `readFile_recordTypeDefault_normalizedToNull` | A-08 | B-3 | C-16(`"Default"`→null) | — ※特殊値の正規化 | E-3(1) | — |
+| 11 | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | — ※`${}` | E-3(1) | — |
 | 12 | `readMessage_emptyBody_isStillMapped` | A-10 | B-4 | C-07, **C-14(空)**, **C-15(空)** | — | **E-3(0)** ✅ | — |
-| 13 | `readMessage_nullContent_isSkipped` | — | — | C-04(空) | — | E-1(0) | 🔺器が null を返す場合のスキップ |
-| 14 | `readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | — 🔺`${}`・`no` フィールド保持 | E-1(複数=3) | — |
+| 13 | `readMessage_nullContent_isSkipped` | — | — | C-04(空) | — | E-1(0) | ※器が null を返す場合のスキップ |
+| 14 | `readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | — ※`${}`・`no` フィールド保持 | E-1(複数=3) | — |
 | 15 | `readSendSync_allFourTypesAreRecognized` | A-11, A-12, A-13, A-14 | B-4 | C-05 | — | E-1(複数=4) | — |
 | 16 | `readSendSync_entryWithoutGroupId_isDropped` | A-14 | B-4 | C-07 | — | E-1(1) | 🔺**F2-04** に近い（送信系必須の `group_id` 欠落エントリを drop） |
 | 17 | `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` | A-02, A-10 | B-1, B-4 | C-04 | — | E-1(複数=2) | **F2-03** ✅（未知キー無視） |
@@ -334,11 +535,11 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 
 ### 2.2 軸要素 → 担保テストメソッド
 
-**軸A（13/14 担保）**
+**軸A（✅ 13 ／ 🔺 0 ／ ❌ 1 ＝ 14）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
-| A-01 `DEFAULT` | ❌ | — |
+| A-01 `DEFAULT` | ❌ | —（到達不能。`YamlFormatReader#addBlocksForSection` L106-133 ／ `fileDataType` L534-536 ／ `addMessageBlocks` L264 は `DEFAULT` 以外の 13 種のみを分岐に持ち、`DEFAULT` を返す経路がない。§0.8-7） |
 | A-02 `SETUP_TABLE_DATA` | ✅ | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues`, `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` |
 | A-03 `EXPECTED_TABLE_DATA` | ✅ | `readTable_expectedWithGroup_formatsGroupIdAndCreatesBlockPerGroup` |
 | A-04 `EXPECTED_COMPLETED` | ✅ | `readTable_completed_mapsExpectedCompletedType` |
@@ -353,28 +554,32 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `readSendSync_allFourTypesAreRecognized` |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `readSendSync_allFourTypesAreRecognized`, `readSendSync_entryWithoutGroupId_isDropped` |
 
-**軸B（4/4 担保）**
+**軸B（✅ 4 ／ 4）**
 
 | 要素 | 判定 | 担保テストメソッド（代表） |
 |---|---|---|
-| B-1 `TableDataBlock` | ✅ | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues` ほか |
-| B-2 `ListMapBlock` | ✅ | `readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull` |
-| B-3 `FileDataBlock` | ✅ | `readFile_fixed_mapsRawFieldDefsAndValues` ほか |
-| B-4 `MessageDataBlock` | ✅ | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` ほか |
+| B-1 `TableDataBlock` | ✅ | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues`, `readTable_completed_mapsExpectedCompletedType` ほか 2 件（計 4 件） |
+| B-2 `ListMapBlock` | ✅ | **`readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull`**（辺②で唯一） |
+| B-3 `FileDataBlock` | ✅ | `readFile_fixed_mapsRawFieldDefsAndValues`, `readFile_variable_mapsVariableTypeWithNullLengths` ほか 6 件（計 8 件） |
+| B-4 `MessageDataBlock` | ✅ | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`, `readMessage_emptyBody_isStillMapped` ほか 4 件（計 6 件） |
 
-**軸C**
+**軸C（21 フィールド ─ 両状態担保 12 ／ 未担保 9）**
+
+省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
+n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
+「値あり」の担保をもって両状態担保として数える。
 
 | 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
 |---|---|---|---|
 | C-01 `TestDataContainer.name` | ✅ | n/a | `read_namesContainerAndSectionByResourceName` |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空 | `read_namesContainerAndSectionByResourceName`（※辺②は 1 YAML ファイル＝1 セクション固定） |
+| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空（**到達不能**） | `read_namesContainerAndSectionByResourceName`（`YamlFormatReader#read` L94 が `Collections.singletonList(section)` を返すため、辺②では sections は常に 1 件。§0.8-6） |
 | C-03 `TestDataSection.name` | ✅ | n/a | `read_namesContainerAndSectionByResourceName` |
 | C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 空: `read_namesContainerAndSectionByResourceName`, `readMessage_nullContent_isSkipped` |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | 多数 |
-| C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...`, `readSendSync_groupsByRawValue...`／省略: `readTable_setup_...`, `readMessage_mapsRawFwHeader...` |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | 多数 |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...` |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `readTable_setup_...` ほか |
+| C-05 `TestDataBlock.dataType` | ✅ | n/a | `readTable_setup_...`, `readTable_expectedWithGroup_...` ほか 9 件（計 11 件） |
+| C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...` ほか 1 件（計 3 件）／省略: `readTable_setup_...`, `readMessage_mapsRawFwHeader...` |
+| C-07 `TestDataBlock.identifier` | ✅ | n/a | `readTable_setup_...`, `readTable_completed_...` ほか 7 件（計 9 件） |
+| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...`（計 2 件） |
+| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `readTable_setup_...`, `readTable_expectedWithGroup_...` ほか 1 件（計 3 件） |
 | C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `readFile_fixed_...`／VARIABLE: `readFile_variable_...`, `readFile_setupVariable_...` |
 | C-11 `FileDataBlock.directives` | ✅ | ❌ 空 | 非空: `readFile_fixed_mapsRawFieldDefsAndValues` のみ |
 | C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `readFile_fixed_...` |
@@ -382,33 +587,35 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`／空: `readMessage_emptyBody_isStillMapped`, `readSendSync_groupsByRawValue...` |
 | C-15 `MessageDataBlock.records` | ✅ | ✅ 空 | 非空: `readMessage_mapsRawFwHeader...`／空: `readMessage_emptyBody_isStillMapped` |
 | C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `readFile_fixed_...`, `readMessage_mapsRawFwHeader...`／省略: `readFile_recordTypeOmitted_keepsNullRecordType`, `readFile_recordTypeDefault_normalizedToNull` |
-| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readFile_fixed_...` ほか |
-| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `readFile_fixed_...` ほか |
-| C-19 `FieldDef.name` | ✅ | n/a | `readFile_fixed_...` ほか |
+| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
+| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
+| C-19 `FieldDef.name` | ✅ | n/a | `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
 | C-20 `FieldDef.type` | ✅ | ❌ 省略(null) | 値あり: `readFile_fixed_...`（`半角英字`/`数値`） |
 | C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `readFile_fixed_...`（`"5"`）／省略: `readFile_fixed_...`（`f2`）, `readFile_variable_...` |
 
-**軸D（0/10 担保）**
+**軸D（✅ 0 ／ 🔺 4 ／ ❌ 6 ＝ 10）**
 
 D2-01〜D2-10 すべて ❌。理由: 既存 20 件は `YamlFormatReaderTest#reader`（L538-545）で `loadRawMap` を
 in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパースを一切通らない。スカラー型の解釈が発生しない。
 
-🔺 弱い担保（辺④の往復テスト経由・実 YAML ファイルを通る）:
-- D2-02 引用符あり文字列: `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader` ほか往復 6 件
+🔺 弱い担保（実 YAML ファイルを通る往復テスト経由）:
+- D2-02 引用符あり文字列: `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader`, `#roundTrip_fixedFile_isPreservedThroughRealReader` ほか 4 件（`roundTrip_*` 全 6 件）、`RoundTripTest` の YAML 経路 14 件と両経路 3 件（§0.8-8）
 - D2-03 数値（`"123"`）: `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`
-- D2-06 `null`: 同上（`~` と「値なし」は未担保）
-- D2-07 `"null"`: 同上
+- D2-06 `null`: 同上、`RoundTripTest#yaml_setupTable_isPreserved`, `#yaml_listMap_withNullValue_isPreserved`, `#nullCell_xlsConvertsToLiteralString_yamlPreservesNull`（`~` と「値なし」は未担保）
+- D2-07 `"null"`: `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`
+
+`RoundTripTest` によって新たに 🔺 になる辺②の要素はない（§0.8-8）。
 
 **軸E**
 
 | 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
 |---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `read_namesContainerAndSectionByResourceName`, `readMessage_nullContent_isSkipped`／複数: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...`, `readSendSync_groupsByRawValue...`, `readSendSync_allFourTypesAreRecognized`, `read_mixedSections_...` |
-| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 複数: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...`, `readFile_fixed_...` |
-| E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `readMessage_emptyBody_isStillMapped`／複数: `readFile_fixed_mapsRawFieldDefsAndValues` |
-| E-4 ディレクトリ内ファイル数（＝セクション数） | n/a | ✅ | ❌ | 1: `read_namesContainerAndSectionByResourceName`（※`YamlFormatReader#read` は 1 リソース単位） |
+| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `read_namesContainerAndSectionByResourceName`, `readMessage_nullContent_isSkipped`／1: `readTable_setup_...`, `readTable_completed_...` ほか 2 件（計 4 件）／複数: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...` ほか 3 件（計 5 件） |
+| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `readTable_completed_mapsExpectedCompletedType`（`rows` に 1 件のみ。§2.1 の軸E 欄には E-2(1) を明記していない）／複数: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...` ほか 1 件（計 3 件） |
+| E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `readMessage_emptyBody_isStillMapped`／1: `readFile_variable_...`, `readFile_recordTypeOmitted_...` ほか 2 件（計 4 件）／複数: `readFile_fixed_mapsRawFieldDefsAndValues` |
+| E-4 コンテナ内セクション数（辺②の実体: ディレクトリ内 YAML ファイル数） | n/a | ✅ | ❌（**到達不能**） | 1: `read_namesContainerAndSectionByResourceName`。複数は `YamlFormatReader#read`（L87-95）が 1 リソース単位 API で `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
 
-**軸F（1/5 担保）**
+**軸F（✅ 1 ／ 🔺 2 ／ ❌ 2 ＝ 5）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
@@ -417,24 +624,33 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | F2-03 未知のキー | ✅ | `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` |
 | F2-04 必須構造の欠落 | 🔺 | `readSendSync_entryWithoutGroupId_isDropped`（送信系必須 `group_id` の欠落）、`readMessage_nullContent_isSkipped` |
 | F2-05 空ファイル | 🔺 | `read_namesContainerAndSectionByResourceName`（空 Map。実ファイルではない） |
-| （追加で担保済みの異常系） | ✅ | `read_containerCountMismatch_failsFast`, `read_fragmentRecordMismatch_failsFast`（器↔原文の不整合 fail-fast。steering の 5 ケースには含まれないが本辺固有の異常系として担保済み） |
+| （steering 外で担保済みの異常系） | ✅ | `read_containerCountMismatch_failsFast`, `read_fragmentRecordMismatch_failsFast`（器↔原文の不整合 fail-fast。steering の 5 ケースには含まれないが本辺固有の異常系として担保済み） |
+
+<a id="s2-3"></a>
 
 ### 2.3 辺② 未担保一覧（#24 が埋める対象）
 
-| 軸 | 未担保要素 | 件数 |
-|---|---|---|
-| A | A-01 `DEFAULT` | 1 |
-| B | （なし） | 0 |
-| C | C-02 sections 空／C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり・空の双方**／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 9（うち C-13 は 2 状態とも欠） |
-| D | D2-01〜D2-10 全 10 ケース（うち D2-02/D2-03/D2-06/D2-07 は辺④往復経由の弱い担保あり） | 10 |
-| E | E-2(0件)／E-4(複数) | 2 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落（弱のみ）／F2-05 空ファイル（弱のみ） | 4 |
-| **合計** | | **26** |
+計上単位と「状態」の 3 分類は §1.3 の規則に従う。
+
+| 軸 | 未担保要素 | 状態 | 件数 |
+|---|---|---|---|
+| A | （要追加はなし） | — | 0 |
+| A | A-01 `DEFAULT` — `YamlFormatReader` の分岐に `DEFAULT` を返す経路がない（§0.8-7） | 到達不能 | 1 |
+| B | （なし） | — | 0 |
+| C | C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives（値あり・空の双方が欠）**／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 要追加 | 8 |
+| C | C-02 sections 空 — `YamlFormatReader#read` L94 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 1 |
+| D | D2-01〜D2-10 全 10 ケース（うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 あり。§0.8-8 と上の「軸D」節を参照し重複を避けること） | 要追加 | 10 |
+| E | E-2(0 件) | 要追加 | 1 |
+| E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 1 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落（🔺 のみ）／F2-05 空ファイル（🔺 のみ） | 要追加 | 4 |
+| **合計** | | **要追加 23 ／ 到達不能 3 ／ 対象外 0** | **26（うち到達不能 3）** |
 
 **特に大きな空欄**: 軸D 10 ケース全滅（実 YAML テキストを一度も通らないため）と、
 `MessageDataBlock.directives`（C-13）が値あり・空の両方とも 0 件。
 
 ---
+
+<a id="s3"></a>
 
 ## 3. 辺③ 中間モデル→Excel（`XlsFormatWriterTest` 40 件）
 
@@ -447,8 +663,8 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | 3 | `writesTableMarkerWithGroupId` | A-03 | B-1 | C-06(値あり) | — | E-2(1) | — |
 | 4 | `writesExpectedCompleteTableMarker` | A-04 | B-1 | C-05 | — | E-2(1) | — |
 | 5 | `writesListMapBlock` | A-05 | B-2 | C-07, C-08, C-09 | 🔺D3-05 | E-2(複数=2) | — |
-| 6 | `tintsMarkerColumn` | A-02 | B-1 | — | 🔺マーカーカラム `[NOTE]` 記法 | — | — |
-| 7 | `writesFixedFileBlock` | A-06 | B-3 | C-07, C-11(値あり), C-12, C-16(値あり), C-17, C-18, C-19, C-20, C-21(`"-"`/`"5"`) | 🔺長さ記法 `-` | E-3(1) | — |
+| 6 | `tintsMarkerColumn` | A-02 | B-1 | — | ※マーカーカラム `[NOTE]` 記法 | — | — |
+| 7 | `writesFixedFileBlock` | A-06 | B-3 | C-07, C-11(値あり), C-12, C-16(値あり), C-17, C-18, C-19, C-20, C-21(`"-"`/`"5"`) | ※長さ記法 `-` | E-3(1) | — |
 | 8 | `writesVariableFileWithoutLengthRow` | A-08 | B-3 | C-10(VARIABLE 版面), C-11(空), C-21(省略) | — | E-3(1) | — |
 | 9 | `writesMultipleRecordLayouts` | A-06 | B-3 | C-12(2件), C-11(空) | — | **E-3(複数=2)** | — |
 | 10 | `rejectsNullRecordTypeOnSecondRecord` | A-06 | B-3 | C-16(null) | — | E-3(複数) | ✅ 2 レコード目 recordType null → `IllegalStateException` |
@@ -469,15 +685,15 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | 25 | `honorsConfigOverrides` | A-02 | B-1 | — | — | E-1(複数=2) | — |
 | 26 | `rejectsNegativeBlankRows` | — | — | — | — | — | ✅ 設定値負数 → `IllegalArgumentException`（steering の 4 ケース外） |
 | 27 | `writesWorkbookFileWithSheetPerSection` | A-02, A-05 | B-1, B-2 | C-01, **C-02(複数=2)**, C-03 | — | **E-4(複数=2)** | — |
-| 28 | `honorsMarkerColumnColorOverride` | A-02 | B-1 | — | 🔺マーカーカラム記法 | — | — |
-| 29 | `doesNotTintUnclosedBracketColumn` | A-02 | B-1 | — | 🔺未閉じ括弧 `[half` はマーカーでない | — | — |
-| 30 | `writesOmittedMetaAndFieldAsEmpty` | A-06 | B-3 | **C-20(省略)**, **C-21(省略)**, C-11(値 null) | 🔺null→空セル（メタ側） | E-3(1) | — |
+| 28 | `honorsMarkerColumnColorOverride` | A-02 | B-1 | — | ※マーカーカラム記法 | — | — |
+| 29 | `doesNotTintUnclosedBracketColumn` | A-02 | B-1 | — | ※未閉じ括弧 `[half` はマーカーでない | — | — |
+| 30 | `writesOmittedMetaAndFieldAsEmpty` | A-06 | B-3 | **C-20(省略)**, **C-21(省略)**, C-11(値 null) | ※null→空セル（メタ側） | E-3(1) | — |
 | 31 | `writesSequenceNoForAllSendSyncTypes` | A-11, A-12, A-13, A-14 | B-4 | C-05, C-06(値あり) | — | E-3(1) | — |
 | 32 | `wrapsIoFailure` | A-02 | B-1 | — | — | — | 🔺**F3-01**（親に通常ファイルが居座り出力先を作れない）→ `UncheckedIOException` |
-| 33 | `roundTripsTable` | A-02 | B-1 | C-05, C-07, C-08, C-09 | 🔺実 `.xlsx` 往復（文字列・`${}`・空文字） | E-2(複数=2) | — |
+| 33 | `roundTripsTable` | A-02 | B-1 | C-05, C-07, C-08, C-09 | ※実 `.xlsx` 往復（文字列・`${}`・空文字） | E-2(複数=2) | — |
 | 34 | `roundTripsNullCellAsLiteralNullString` | A-02 | B-1 | C-09 | 🔺D3-04 null→`"null"`（非可逆を固定）／🔺D3-05 `""` | E-2(1) | — |
-| 35 | `roundTripsListMap` | A-05 | B-2 | C-07, C-08, C-09 | 🔺実 `.xlsx` 往復 | E-2(複数=2) | — |
-| 36 | `roundTripsFixedFile` | A-06 | B-3 | C-07, C-10(FIXED), C-16, C-18, C-20, C-21 | 🔺長さ記法 `-` の往復 | E-3(1) | — |
+| 35 | `roundTripsListMap` | A-05 | B-2 | C-07, C-08, C-09 | ※実 `.xlsx` 往復 | E-2(複数=2) | — |
+| 36 | `roundTripsFixedFile` | A-06 | B-3 | C-07, C-10(FIXED), C-16, C-18, C-20, C-21 | ※長さ記法 `-` の往復 | E-3(1) | — |
 | 37 | `roundTripsMultipleRecordLayouts` | A-06 | B-3 | C-12(2件), C-16, C-18 | — | E-3(複数=2) | — |
 | 38 | `roundTripsVariableFile` | A-08 | B-3 | **C-10(VARIABLE)** ✅, C-21(省略) | — | E-3(1) | — |
 | 39 | `roundTripsMessage` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-17, C-18, C-19 | — | E-3(1) | — |
@@ -485,69 +701,73 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 
 ### 3.2 軸要素 → 担保テストメソッド
 
-**軸A（11/14 担保）**
+**軸A（✅ 11 ／ 🔺 2 ／ ❌ 1 ＝ 14）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
-| A-01 `DEFAULT` | ❌ | — |
+| A-01 `DEFAULT` | ❌ | —（writer 側は到達可能。`XlsFormatWriter` L400 がマーカー文字列を `block.getDataType().getName()` から組み立てるだけでタイプを絞らない。§0.8-7） |
 | A-02 `SETUP_TABLE_DATA` | ✅ | `writesTableBlock`, `metaRowContainsOnlyValueCells`, `appliesHeaderBackgroundColor`, `appliesSetupHeaderColor`, `drawsBlockOuterBorder`, `insertsBlankRowBetweenBlocks`, `appliesAutoColumnWidth`, `honorsConfigOverrides`, `writesWorkbookFileWithSheetPerSection`, `honorsMarkerColumnColorOverride`, `doesNotTintUnclosedBracketColumn`, `tintsMarkerColumn`, `wrapsIoFailure`, `roundTripsTable`, `roundTripsNullCellAsLiteralNullString` |
 | A-03 `EXPECTED_TABLE_DATA` | ✅ | `writesTableMarkerWithGroupId`, `appliesExpectedHeaderColor` |
 | A-04 `EXPECTED_COMPLETED` | ✅ | `writesExpectedCompleteTableMarker` |
 | A-05 `LIST_MAP` | ✅ | `writesListMapBlock`, `appliesTestShotsHeaderColor`, `appliesOtherHeaderColorForNonTestShotsListMap`, `writesWorkbookFileWithSheetPerSection`, `roundTripsListMap` |
 | A-06 `SETUP_FIXED` | ✅ | `writesFixedFileBlock`, `writesMultipleRecordLayouts`, `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`, `allowsNullRecordTypeOnSingleRecord`, `writesOmittedMetaAndFieldAsEmpty`, `roundTripsFixedFile`, `roundTripsMultipleRecordLayouts` |
-| A-07 `EXPECTED_FIXED` | ❌ | — |
+| A-07 `EXPECTED_FIXED` | 🔺 | `XlsFormatWriterTest` には 0 件。`RoundTripTest#xls_expectedFixed_isPreserved` が `XlsFormatWriter` で EXPECTED_FIXED ブロックを実 `.xlsx` へ書き出す（§0.8-8。重複を避けること） |
 | A-08 `SETUP_VARIABLE` | ✅ | `writesVariableFileWithoutLengthRow`, `roundTripsVariableFile` |
-| A-09 `EXPECTED_VARIABLE` | ❌ | — |
+| A-09 `EXPECTED_VARIABLE` | 🔺 | `XlsFormatWriterTest` には 0 件。`RoundTripTest#xls_expectedVariable_isPreserved` が `XlsFormatWriter` で EXPECTED_VARIABLE ブロックを実 `.xlsx` へ書き出す（§0.8-8。重複を避けること） |
 | A-10 `MESSAGE` | ✅ | `writesMessageBlock`, `appliesOtherHeaderColorForMessage`, `roundTripsMessage` |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `writesSendSyncMessageWithSequenceNo`, `writesSequenceNoForAllSendSyncTypes`, `roundTripsSendSyncMessage` |
 | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `writesSequenceNoForAllSendSyncTypes` |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `writesSequenceNoForAllSendSyncTypes` |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `writesSequenceNoForAllSendSyncTypes` |
 
-**軸B（4/4 担保）**
+**軸B（✅ 4 ／ 4）**
 
 | 要素 | 判定 | 担保テストメソッド（代表） |
 |---|---|---|
-| B-1 `TableDataBlock` | ✅ | `writesTableBlock`, `roundTripsTable` ほか |
-| B-2 `ListMapBlock` | ✅ | `writesListMapBlock`, `roundTripsListMap` ほか |
-| B-3 `FileDataBlock` | ✅ | `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow`, `roundTripsFixedFile` ほか |
-| B-4 `MessageDataBlock` | ✅ | `writesMessageBlock`, `writesSendSyncMessageWithSequenceNo`, `roundTripsMessage` ほか |
+| B-1 `TableDataBlock` | ✅ | `writesTableBlock`, `roundTripsTable` ほか 16 件（計 18 件） |
+| B-2 `ListMapBlock` | ✅ | `writesListMapBlock`, `roundTripsListMap` ほか 3 件（計 5 件） |
+| B-3 `FileDataBlock` | ✅ | `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow` ほか 8 件（計 10 件） |
+| B-4 `MessageDataBlock` | ✅ | `writesMessageBlock`, `writesSendSyncMessageWithSequenceNo` ほか 4 件（計 6 件） |
 
-**軸C**
+**軸C（21 フィールド ─ 両状態担保 12 ／ 未担保 9）**
+
+省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
+n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
+「値あり」の担保をもって両状態担保として数える。
 
 | 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
 |---|---|---|---|
 | C-01 `TestDataContainer.name` | ✅ | n/a | `writesWorkbookFileWithSheetPerSection`（`MyBook.xlsx`） |
-| C-02 `TestDataContainer.sections` | ✅(複数=2) | ❌ 空 | `writesWorkbookFileWithSheetPerSection` |
+| C-02 `TestDataContainer.sections` | ✅(複数=2) | ❌ 空 | `writesWorkbookFileWithSheetPerSection`（辺③は writer 側であり `XlsFormatWriter#build` L125 が `container.getSections()` をループするため、空・複数とも到達可能。§0.8-6） |
 | C-03 `TestDataSection.name` | ✅ | n/a | `writesWorkbookFileWithSheetPerSection`（Sheet1/Sheet2） |
-| C-04 `TestDataSection.blocks` | ✅ | ❌ 空 | 非空: 全テスト |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | `writesExpectedCompleteTableMarker`, `writesSequenceNoForAllSendSyncTypes`, `roundTripsTable` ほか |
+| C-04 `TestDataSection.blocks` | ✅ | ❌ 空 | 非空: `writesTableBlock`, `writesFixedFileBlock` ほか 36 件（§3.1 で軸B 欄が空でない計 38 件） |
+| C-05 `TestDataBlock.dataType` | ✅ | n/a | `writesExpectedCompleteTableMarker`, `writesSequenceNoForAllSendSyncTypes` ほか 3 件（計 5 件） |
 | C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `writesTableMarkerWithGroupId`, `writesSendSyncMessageWithSequenceNo`, `roundTripsSendSyncMessage`／省略: `writesTableBlock`（`SETUP_TABLE=USERS` に `[]` が出ない） |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | 多数 |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `writesTableBlock`, `writesListMapBlock`, `roundTripsTable` |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: 多数 |
-| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `roundTripsFixedFile`（明示アサート）, `writesFixedFileBlock`（長さ行の有無で暗黙）／VARIABLE: `roundTripsVariableFile`（明示）, `writesVariableFileWithoutLengthRow`（暗黙） |
-| C-11 `FileDataBlock.directives` | ✅ | ✅ 空 | 非空: `writesFixedFileBlock`, `writesOmittedMetaAndFieldAsEmpty`／空: `writesVariableFileWithoutLengthRow`, `writesMultipleRecordLayouts`（ディレクティブ行が出ない版面をアサート） |
+| C-07 `TestDataBlock.identifier` | ✅ | n/a | `writesTableBlock`, `writesListMapBlock` ほか 8 件（計 10 件） |
+| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `writesTableBlock`, `writesListMapBlock` ほか 2 件（計 4 件） |
+| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `writesTableBlock`, `writesListMapBlock` ほか 3 件（計 5 件） |
+| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `roundTripsFixedFile`（読み戻して `getFileType()` を明示アサート）, `writesFixedFileBlock`（長さ行が出る版面で暗黙）／VARIABLE: `roundTripsVariableFile`（明示）, `writesVariableFileWithoutLengthRow`（長さ行が出ない版面で暗黙） |
+| C-11 `FileDataBlock.directives` | ✅ | ✅ 空 | 非空: `writesFixedFileBlock`, `writesOmittedMetaAndFieldAsEmpty`（ディレクティブ行が出る版面をアサート＝暗黙）／空: `writesVariableFileWithoutLengthRow`, `writesMultipleRecordLayouts`（ディレクティブ行が出ない版面をアサート＝暗黙。C-10 と同じく writer 側では版面が唯一の観測点であり、`getDirectives()` を読み戻すテストはない） |
 | C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `writesFixedFileBlock`, `writesMultipleRecordLayouts` |
 | C-13 `MessageDataBlock.directives` | ❌ | ✅ 空 | **値ありのテストが 0 件**（`XlsFormatWriterTest` の `new MessageDataBlock(...)` 6 箇所すべてで 4 引数目が空 `map()`: L405-406, L432-433, L543-544, L833, L1033-1034, L1060-1061） |
 | C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `writesMessageBlock`, `appliesOtherHeaderColorForMessage`, `roundTripsMessage`／空: `writesSendSyncMessageWithSequenceNo`, `roundTripsSendSyncMessage` |
-| C-15 `MessageDataBlock.records` | ✅ | ❌ 空 | 非空: `writesMessageBlock` ほか |
+| C-15 `MessageDataBlock.records` | ✅ | ❌ 空 | 非空: `writesMessageBlock`, `writesSendSyncMessageWithSequenceNo`（計 2 件） |
 | C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`, `writesMultipleRecordLayouts`／省略: `allowsNullRecordTypeOnSingleRecord` |
-| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `writesFixedFileBlock` ほか |
-| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: 多数 |
-| C-19 `FieldDef.name` | ✅ | n/a | `writesFixedFileBlock` ほか |
+| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `writesFixedFileBlock`, `writesMessageBlock` ほか 2 件（計 4 件） |
+| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `writesFixedFileBlock`, `writesMessageBlock` ほか 5 件（計 7 件） |
+| C-19 `FieldDef.name` | ✅ | n/a | `writesFixedFileBlock`, `writesMessageBlock` ほか 2 件（計 4 件） |
 | C-20 `FieldDef.type` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`／省略: `writesOmittedMetaAndFieldAsEmpty` |
 | C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`（`"-"`/`"5"`）／省略: `writesVariableFileWithoutLengthRow`, `writesOmittedMetaAndFieldAsEmpty`, `roundTripsVariableFile` |
 
-**軸D（0/8 担保 — `getCellType()` 観点）**
+**軸D（✅ 0 ／ 🔺 2 ／ ❌ 6 ＝ 8。すべて `getCellType()` 観点）**
 
 | 要素 | 判定 | 備考 |
 |---|---|---|
 | D3-01 `"100"` | ❌ | 数値セルにならないことのアサートなし |
 | D3-02 `"=1+1"` | ❌ | 数式解釈されないことのアサートなし |
 | D3-03 `"007"` | ❌ | — |
-| D3-04 `null` | 🔺 | `writesTableBlock`, `roundTripsNullCellAsLiteralNullString` が値（`"null"` 文字列化）はアサートするが `getCellType()` はしない |
-| D3-05 `""` | 🔺 | `writesTableBlock`, `writesListMapBlock`, `roundTripsNullCellAsLiteralNullString` が値のみアサート |
+| D3-04 `null` | 🔺 | `writesTableBlock`, `roundTripsNullCellAsLiteralNullString` が値（`"null"` 文字列化）はアサートするが `getCellType()` はしない。`RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` も同じく値のみ（§0.8-8） |
+| D3-05 `""` | 🔺 | `writesTableBlock`, `writesListMapBlock` ほか 1 件が値のみアサート。`RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved` も同じく値のみ（§0.8-8） |
 | D3-06 改行含む文字列 | ❌ | — |
 | D3-07 32767 文字超 | ❌ | — |
 | D3-08 制御文字含む | ❌ | — |
@@ -558,37 +778,44 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 
 | 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
 |---|---|---|---|---|
-| E-1 セクション内ブロック数 | ❌ | ✅ | ✅ | 複数: `insertsBlankRowBetweenBlocks`, `honorsConfigOverrides` |
-| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 複数: `writesTableBlock`, `writesListMapBlock`, `writesSendSyncMessageWithSequenceNo`, `roundTripsTable` |
-| E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 複数: `writesMultipleRecordLayouts`, `roundTripsMultipleRecordLayouts` |
-| E-4 ブック内シート数 | n/a | ✅ | ✅ | 1: 多数／複数: `writesWorkbookFileWithSheetPerSection` |
+| E-1 セクション内ブロック数 | ❌ | ✅ | ✅ | 1: `writesTableBlock`, `writesFixedFileBlock` ほか 34 件（§3.1 の軸B 欄が空でない 38 件から複数ブロックの 2 件を除く 36 件。§3.1 の軸E 欄には E-1(1) を明記していない）／複数: `insertsBlankRowBetweenBlocks`, `honorsConfigOverrides`（計 2 件） |
+| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `metaRowContainsOnlyValueCells`, `writesTableMarkerWithGroupId` ほか 3 件（計 5 件）／複数: `writesTableBlock`, `writesListMapBlock` ほか 3 件（計 5 件） |
+| E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 1: `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow` ほか 8 件（計 10 件）／複数: `writesMultipleRecordLayouts`, `roundTripsMultipleRecordLayouts` ほか 2 件（計 4 件） |
+| E-4 コンテナ内セクション数（辺③の実体: ブック内シート数） | n/a | ✅ | ✅ | 1: `writesTableBlock`, `writesFixedFileBlock` ほか 35 件（`writesWorkbookFileWithSheetPerSection` を除く 37 件。§3.1 の軸E 欄には E-4(1) を明記していない）／複数: **`writesWorkbookFileWithSheetPerSection`**（辺③で唯一） |
 
-**軸F（0/4 担保、うち 1 件が弱い担保）**
+**軸F（✅ 0 ／ 🔺 1 ／ ❌ 2 ／ 対象外 1 ＝ 4）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
 | F3-01 出力先不在 | 🔺 | `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない） |
-| F3-02 `overwrite=false` 衝突 | ❌ | — （`overwrite` は `ConversionRequest`/`TestDataConverter`/`ConverterMojo` 側の関心。`XlsFormatWriter` は保持しない） |
+| F3-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
 | F3-03 書き込み権限なし | ❌ | — |
 | F3-04 シート名が Excel 制約違反 | ❌ | — |
 | （steering 外で担保済みの異常系） | ✅ | `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`（2 レコード目 recordType 空 → `IllegalStateException`）、`rejectsNegativeBlankRows`（設定値負数 → `IllegalArgumentException`） |
 
+<a id="s3-3"></a>
+
 ### 3.3 辺③ 未担保一覧（#22〜#23 が埋める対象）
 
-| 軸 | 未担保要素 | 件数 |
-|---|---|---|
-| A | A-01 `DEFAULT`, A-07 `EXPECTED_FIXED`, A-09 `EXPECTED_VARIABLE` | 3 |
-| B | （なし） | 0 |
-| C | C-02 sections 空／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 9 |
-| D | D3-01〜D3-08 全 8 ケース（D3-04/D3-05 は値のみ弱い担保。`getCellType()` は全件ゼロ） | 8 |
-| E | E-1(0件)／E-2(0件)／E-3(0件) | 3 |
-| F | F3-01 出力先不在（弱のみ）／F3-02 `overwrite=false` 衝突／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 4 |
-| **合計** | | **27** |
+計上単位と「状態」の 3 分類は §1.3 の規則に従う。
+
+| 軸 | 未担保要素 | 状態 | 件数 |
+|---|---|---|---|
+| A | A-01 `DEFAULT`（writer 側は到達可能。§0.8-7）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 3 |
+| B | （なし） | — | 0 |
+| C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 9 |
+| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | 8 |
+| E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 3 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | 3 |
+| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
+| **合計** | | **要追加 26 ／ 到達不能 0 ／ 対象外 1** | **27（うち対象外 1）** |
 
 **特に大きな空欄**: `getCellType()` を使ったテストが 1 件も存在しないため軸D 8 ケース全滅。#22 の主眼。
 次いで `MessageDataBlock.directives` に値を入れて書き出すテストが 0 件（C-13）。
 
 ---
+
+<a id="s4"></a>
 
 ## 4. 辺④ 中間モデル→YAML（`YamlFormatWriterTest` 33 件）
 
@@ -596,43 +823,43 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 
 | # | テストメソッド | 軸A | 軸B | 軸C | 軸D | 軸E | 軸F |
 |---|---|---|---|---|---|---|---|
-| 1 | `serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | A-02 | B-1 | C-06(省略→`group_id` キーなし), C-07, C-08, C-09 | **D4-04 `null`** ✅, **D4-05 `""`** ✅, 🔺`${}` の全値クォート | E-2(複数=2) | — |
+| 1 | `serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | A-02 | B-1 | C-06(省略→`group_id` キーなし), C-07, C-08, C-09 | **D4-04 `null`** ✅, **D4-05 `""`** ✅, ※`${}` の全値クォート | E-2(複数=2) | — |
 | 2 | `serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | A-03 | B-1 | C-06(値あり `[case01]`→`case01`) | — | E-1(複数=2) | — |
 | 3 | `serializeTable_completed_usesExpectedCompleteTablesKey` | A-04 | B-1 | C-05 | — | E-2(1) | — |
 | 4 | `serializeListMap_usesIdKeyAndColumnOrder` | A-05 | B-2 | C-07, C-08, C-09 | D4-04 `null` | E-2(複数=2) | — |
 | 5 | `serializeFile_fixedWithDirectivesAndOmittedLength` | A-06 | B-3 | C-07, C-10(FIXED), C-11(値あり), C-12(2件), C-16(値あり), C-17, C-18, C-19, C-20, C-21(値あり＋省略) | D4-05 `""` | **E-3(複数=2)**, E-2(複数=2) | — |
 | 6 | `serializeFile_variableOmitsDirectivesAndRecordTypeAndLength` | A-09 | B-3 | C-10(VARIABLE), **C-11(空)**, **C-16(省略)**, **C-21(省略)** | — | E-3(1) | — |
-| 7 | `serializeMessage_withDirectivesAndFwHeader` | A-10 | B-4 | C-07, **C-13(値あり)** ✅, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | 🔺`${}` | E-3(1) | — |
+| 7 | `serializeMessage_withDirectivesAndFwHeader` | A-10 | B-4 | C-07, **C-13(値あり)** ✅, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | ※`${}` | E-3(1) | — |
 | 8 | `serializeMessage_emptyBody_emitsIdOnly` | A-10 | B-4 | C-07, C-13(空), C-14(空), **C-15(空)** ✅ | — | **E-3(0)** ✅ | — |
-| 9 | `serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField` | A-11 | B-4 | C-06(値あり), C-07, C-13(空), C-14(空), C-16(省略), C-17, C-18, C-19, C-20, C-21 | 🔺`${}` | E-3(1) | — |
+| 9 | `serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField` | A-11 | B-4 | C-06(値あり), C-07, C-13(空), C-14(空), C-16(省略), C-17, C-18, C-19, C-20, C-21 | ※`${}` | E-3(1) | — |
 | 10 | `serializeSendSync_allFourSectionKeys` | A-11, A-12, A-13, A-14 | B-4 | C-05 | — | E-1(複数=4) | — |
 | 11 | `serialize_multipleSections_separatedByBlankLineInEncounterOrder` | A-02, A-10 | B-1, B-4 | C-05 | — | **E-1(複数=2)** | — |
 | 12 | `serialize_emptySection_isEmptyString` | — | — | **C-04(空)** ✅ | — | **E-1(0)** ✅ | — |
 | 13 | `serialize_escapesQuotesBackslashAndControlChars` | A-02 | B-1 | C-09 | **D4-07 改行含む** ✅（`\n`/`\r`/`\t`/`\x01`/`"`/`\` のエスケープ） | E-2(1) | — |
-| 14 | `serialize_surrogatePair_isOutputAsUtf8WithoutEscape` | A-02 | B-1 | C-09 | 🔺BMP 外文字（U+1F600）の非エスケープ出力 | E-2(複数=2) | — |
-| 15 | `serialize_quotesKeyContainingSpecialChars` | A-10 | B-4 | C-13(値あり) | 🔺**キー**中のコロン・空白のクォート（D4-09 の値側ではない） | — | — |
-| 16 | `serialize_emptyKey_isQuoted` | A-10 | B-4 | C-13(値あり) | 🔺空キーのクォート | — | — |
+| 14 | `serialize_surrogatePair_isOutputAsUtf8WithoutEscape` | A-02 | B-1 | C-09 | ※BMP 外文字（U+1F600）の非エスケープ出力 | E-2(複数=2) | — |
+| 15 | `serialize_quotesKeyContainingSpecialChars` | A-10 | B-4 | C-13(値あり) | ※**キー**中のコロン・空白のクォート（D4-09 の値側ではない） | — | — |
+| 16 | `serialize_emptyKey_isQuoted` | A-10 | B-4 | C-13(値あり) | ※空キーのクォート | — | — |
 | 17 | `serialize_distinguishesNullFromNullString` | A-02 | B-1 | C-09 | **D4-03 `"null"`** ✅, **D4-04 `null`** ✅ | E-2(複数=2) | — |
 | 18 | `serialize_emptyRows_emitsEmptyFlowList` | A-02 | B-1 | **C-09(空)** ✅ | — | **E-2(0)** ✅ | — |
 | 19 | `serialize_emptyColumnsRow_emitsEmptyFlowMap` | A-02 | B-1 | **C-08(空)** ✅ | — | E-2(1) | — |
 | 20 | `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` | A-06 | B-3 | **C-17(空)** ✅, **C-18(空)** ✅, C-16(省略) | — | E-3(1) | — |
 | 21 | `serialize_rowShorterThanColumns_fillsMissingWithNull` | A-02 | B-1 | C-08, C-09 | D4-04 `null`（補完） | — | ✅ 行と列の数の不一致（行が短い → null 補完） |
 | 22 | `serialize_fieldWithNullType_omitsType` | A-09 | B-3 | **C-20(省略)** ✅ | — | E-3(1) | — |
-| 23 | `serialize_keyStartingWithIndicator_isQuoted` | A-10 | B-4 | C-13(値あり) | 🔺**キー**先頭の YAML インジケータ `-`（D4-09 の値側ではない） | — | — |
-| 24 | `serialize_unbracketedGroupId_isUsedAsRawValue` | A-02 | B-1 | C-06(非整形値 `raw`) | — | — | 🔺防御的経路（`[]` で囲まれていない groupId） |
+| 23 | `serialize_keyStartingWithIndicator_isQuoted` | A-10 | B-4 | C-13(値あり) | ※**キー**先頭の YAML インジケータ `-`（D4-09 の値側ではない） | — | — |
+| 24 | `serialize_unbracketedGroupId_isUsedAsRawValue` | A-02 | B-1 | C-06(非整形値 `raw`) | — | — | ※防御的経路（`[]` で囲まれていない groupId） |
 | 25 | `serialize_unsupportedDataType_throws` | **A-01 `DEFAULT`** ✅ | B-1 | C-05 | — | — | ✅ 未サポート `DataType` → `IllegalArgumentException` |
 | 26 | `write_ioError_throwsUncheckedIOException` | A-02 | B-1 | — | — | — | 🔺**F4-01**（親に通常ファイルが居座り出力先を作れない）→ `UncheckedIOException` |
 | 27 | `write_writesEachSectionAsYamlFileWithSerializedContent` | A-02 | B-1 | C-01, C-02(1件), C-03 | — | E-4(1) | — |
-| 28 | `roundTrip_table_isPreservedThroughRealReader` | A-02 | B-1 | C-05, C-07, C-08, C-09 | 🔺実 YAML 往復（`${}`/`null`/`""`） | E-2(複数=2) | — |
-| 29 | `roundTrip_fixedFile_isPreservedThroughRealReader` | A-06 | B-3 | C-05, C-07, C-10(FIXED), C-12(2件), C-16, C-19, C-20, C-21(値あり＋省略), C-18 | 🔺実 YAML 往復 | E-3(複数=2) | — |
-| 30 | `roundTrip_message_preservesFwHeaderAndBody` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-16, C-18 | 🔺`${}` の往復 | E-3(1) | — |
-| 31 | `roundTrip_sendSync_preservesGroupIdAndNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | 🔺`${}` の往復 | E-3(1) | — |
-| 32 | `roundTrip_leadingTrailingWhitespace_isPreservedThroughRealReader` | A-02 | B-1 | C-09 | 🔺前後・中間の半角/全角空白が往復で脱落しない | E-2(1) | — |
+| 28 | `roundTrip_table_isPreservedThroughRealReader` | A-02 | B-1 | C-05, C-07, C-08, C-09 | ※実 YAML 往復（`${}`/`null`/`""`） | E-2(複数=2) | — |
+| 29 | `roundTrip_fixedFile_isPreservedThroughRealReader` | A-06 | B-3 | C-05, C-07, C-10(FIXED), C-12(2件), C-16, C-19, C-20, C-21(値あり＋省略), C-18 | ※実 YAML 往復 | E-3(複数=2) | — |
+| 30 | `roundTrip_message_preservesFwHeaderAndBody` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-16, C-18 | ※`${}` の往復 | E-3(1) | — |
+| 31 | `roundTrip_sendSync_preservesGroupIdAndNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | ※`${}` の往復 | E-3(1) | — |
+| 32 | `roundTrip_leadingTrailingWhitespace_isPreservedThroughRealReader` | A-02 | B-1 | C-09 | ※前後・中間の半角/全角空白が往復で脱落しない | E-2(1) | — |
 | 33 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | A-02 | B-1 | C-09 | 🔺**D4-01 `"100"` 相当（`"123"`）**・D4-03 `"null"`・D4-04 `null` の往復区別（出力 YAML の記法アサートではない） | E-2(複数=3) | — |
 
 ### 4.2 軸要素 → 担保テストメソッド
 
-**軸A（12/14 担保）**
+**軸A（✅ 12 ／ 🔺 2 ／ ❌ 0 ＝ 14）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
@@ -642,8 +869,8 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | A-04 `EXPECTED_COMPLETED` | ✅ | `serializeTable_completed_usesExpectedCompleteTablesKey` |
 | A-05 `LIST_MAP` | ✅ | `serializeListMap_usesIdKeyAndColumnOrder` |
 | A-06 `SETUP_FIXED` | ✅ | `serializeFile_fixedWithDirectivesAndOmittedLength`, `serialize_recordWithEmptyFieldsAndRows_...`, `roundTrip_fixedFile_...` |
-| A-07 `EXPECTED_FIXED` | ❌ | — |
-| A-08 `SETUP_VARIABLE` | ❌ | — |
+| A-07 `EXPECTED_FIXED` | 🔺 | `YamlFormatWriterTest` には 0 件。`RoundTripTest#yaml_expectedFixed_isPreserved` が `YamlFormatWriter` で EXPECTED_FIXED ブロックを実 `.yaml` へ書き出す（§0.8-8。重複を避けること） |
+| A-08 `SETUP_VARIABLE` | 🔺 | `YamlFormatWriterTest` には 0 件。`RoundTripTest#yaml_setupVariable_isPreserved` が `YamlFormatWriter` で SETUP_VARIABLE ブロックを実 `.yaml` へ書き出す（§0.8-8。重複を避けること） |
 | A-09 `EXPECTED_VARIABLE` | ✅ | `serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`, `serialize_fieldWithNullType_omitsType` |
 | A-10 `MESSAGE` | ✅ | `serializeMessage_withDirectivesAndFwHeader`, `serializeMessage_emptyBody_emitsIdOnly`, `serialize_multipleSections_...`, `serialize_quotesKeyContainingSpecialChars`, `serialize_emptyKey_isQuoted`, `serialize_keyStartingWithIndicator_isQuoted`, `roundTrip_message_...` |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField`, `serializeSendSync_allFourSectionKeys`, `roundTrip_sendSync_...` |
@@ -651,26 +878,31 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `serializeSendSync_allFourSectionKeys` |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `serializeSendSync_allFourSectionKeys` |
 
-**軸B（4/4 担保）**
+**軸B（✅ 4 ／ 4）**
 
 | 要素 | 判定 | 担保テストメソッド（代表） |
 |---|---|---|
-| B-1 `TableDataBlock` | ✅ | `serializeTable_setupNoGroup_...` ほか |
-| B-2 `ListMapBlock` | ✅ | `serializeListMap_usesIdKeyAndColumnOrder` |
-| B-3 `FileDataBlock` | ✅ | `serializeFile_fixedWithDirectivesAndOmittedLength` ほか |
-| B-4 `MessageDataBlock` | ✅ | `serializeMessage_withDirectivesAndFwHeader` ほか |
+| B-1 `TableDataBlock` | ✅ | `serializeTable_setupNoGroup_...`, `serializeTable_withGroupsSameType_...` ほか 15 件（計 17 件） |
+| B-2 `ListMapBlock` | ✅ | **`serializeListMap_usesIdKeyAndColumnOrder`**（辺④で唯一） |
+| B-3 `FileDataBlock` | ✅ | `serializeFile_fixedWithDirectivesAndOmittedLength`, `serializeFile_variableOmits...` ほか 3 件（計 5 件） |
+| B-4 `MessageDataBlock` | ✅ | `serializeMessage_withDirectivesAndFwHeader`, `serializeMessage_emptyBody_emitsIdOnly` ほか 8 件（計 10 件） |
 
-**軸C（4 辺中もっとも充実。19/21 が両状態とも担保）**
+**軸C（21 フィールド ─ 両状態担保 19 ／ 未担保 2）**
+
+省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
+n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
+「値あり」の担保をもって両状態担保として数える。
+未担保 2 件は C-02（sections 空・複数が欠）と C-12（records 空が欠）。4 つの辺のなかでもっとも充実している。
 
 | 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
 |---|---|---|---|
 | C-01 `TestDataContainer.name` | ✅ | n/a | `write_writesEachSectionAsYamlFileWithSerializedContent`（`td.yaml`） |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空／❌ 複数 | `write_writesEachSectionAsYamlFileWithSerializedContent` |
+| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空／❌ 複数 | `write_writesEachSectionAsYamlFileWithSerializedContent`（辺④は writer 側であり `YamlFormatWriter#write` L74 が `container.getSections()` をループするため、空・複数とも到達可能。§0.8-6） |
 | C-03 `TestDataSection.name` | ✅ | n/a | `write_writesEachSectionAsYamlFileWithSerializedContent` |
 | C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 空: `serialize_emptySection_isEmptyString` |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | 多数 |
+| C-05 `TestDataBlock.dataType` | ✅ | n/a | `serializeTable_completed_...`, `serializeSendSync_allFourSectionKeys` ほか 6 件（計 8 件） |
 | C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `serializeTable_withGroupsSameType_...`, `serializeSendSync_requiresGroupId...`, `serialize_unbracketedGroupId_...`／省略: `serializeTable_setupNoGroup_...` |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | 多数 |
+| C-07 `TestDataBlock.identifier` | ✅ | n/a | `serializeTable_setupNoGroup_...`, `serializeListMap_usesIdKeyAndColumnOrder` ほか 8 件（計 10 件） |
 | C-08 `ColumnRowDataBlock.columnNames` | ✅ | ✅ 空 | 空: `serialize_emptyColumnsRow_emitsEmptyFlowMap` |
 | C-09 `ColumnRowDataBlock.rows` | ✅ | ✅ 空 | 空: `serialize_emptyRows_emitsEmptyFlowList` |
 | C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `serializeFile_fixedWithDirectivesAndOmittedLength`（`type: "fixed"`）／VARIABLE: `serializeFile_variableOmits...`（`type: "variable"`） |
@@ -682,15 +914,15 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `serializeFile_fixedWith...`, `serializeMessage_withDirectives...`／省略: `serializeFile_variableOmits...`, `serializeSendSync_requiresGroupId...`, `serialize_recordWithEmptyFieldsAndRows_...` |
 | C-17 `RecordLayout.fields` | ✅ | ✅ 空 | 空: `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` |
 | C-18 `RecordLayout.rows` | ✅ | ✅ 空 | 空: `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` |
-| C-19 `FieldDef.name` | ✅ | n/a | 多数 |
+| C-19 `FieldDef.name` | ✅ | n/a | `serializeFile_fixedWith...`, `serializeMessage_withDirectivesAndFwHeader` ほか 3 件（計 5 件） |
 | C-20 `FieldDef.type` | ✅ | ✅ 省略(null) | 省略: `serialize_fieldWithNullType_omitsType` |
 | C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `serializeFile_fixedWith...`（`"5"`）／省略: `serializeFile_fixedWith...`（`f2`）, `serializeFile_variableOmits...` |
 
-**軸D（4/9 担保）**
+**軸D（✅ 4 ／ 🔺 2 ／ ❌ 3 ＝ 9）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
-| D4-01 `"100"` | 🔺 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`（`"123"` を往復で区別。**出力 YAML の記法（クォート有無）をアサートしていない**） |
+| D4-01 `"100"` | 🔺 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`（`"123"` を往復で区別。**出力 YAML の記法（クォート有無）をアサートしていない**）。`RoundTripTest` の YAML 経路も数値文字列を往復させるが記法はアサートしない（§0.8-8） |
 | D4-02 `"true"` | ❌ | — |
 | D4-03 `"null"` | ✅ | `serialize_distinguishesNullFromNullString`（`V: "null"`）, `roundTrip_nullAndNullStringAndNumeric_...` |
 | D4-04 `null` | ✅ | `serializeTable_setupNoGroup_...`（`NOTE: null`）, `serializeListMap_usesIdKeyAndColumnOrder`, `serialize_distinguishesNullFromNullString`, `serialize_rowShorterThanColumns_fillsMissingWithNull` |
@@ -707,37 +939,48 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `serialize_emptySection_isEmptyString`／複数: `serializeTable_withGroupsSameType_...`, `serializeSendSync_allFourSectionKeys`, `serialize_multipleSections_...` |
 | E-2 ブロック内行数 | ✅ | ✅ | ✅ | 0: `serialize_emptyRows_emitsEmptyFlowList`／複数: `serializeTable_setupNoGroup_...`, `serializeFile_fixedWith...`, `roundTrip_nullAndNullStringAndNumeric_...` |
 | E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `serializeMessage_emptyBody_emitsIdOnly`／複数: `serializeFile_fixedWith...`, `roundTrip_fixedFile_...` |
-| E-4 コンテナ内セクション数 | n/a | ✅ | ❌ | 1: `write_writesEachSectionAsYamlFileWithSerializedContent` |
+| E-4 コンテナ内セクション数（辺④の実体: 出力 YAML ファイル数） | n/a | ✅ | ❌ | 1: **`write_writesEachSectionAsYamlFileWithSerializedContent`**（辺④で唯一）。複数は `YamlFormatWriter#write` L74 が `container.getSections()` をループするため到達可能（§0.8-6） |
 
-**軸F（0/3 担保、うち 1 件が弱い担保）**
+**軸F（✅ 0 ／ 🔺 1 ／ ❌ 1 ／ 対象外 1 ＝ 3）**
 
 | 要素 | 判定 | 担保テストメソッド |
 |---|---|---|
 | F4-01 出力先不在 | 🔺 | `write_ioError_throwsUncheckedIOException`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース） |
-| F4-02 `overwrite=false` 衝突 | ❌ | — （`overwrite` は `ConversionRequest`/`TestDataConverter`/`ConverterMojo` 側の関心） |
+| F4-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `YamlFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
 | F4-03 書き込み権限なし | ❌ | — |
 | （steering 外で担保済みの異常系） | ✅ | `serialize_unsupportedDataType_throws`（`DataType.DEFAULT` → `IllegalArgumentException`）、`serialize_rowShorterThanColumns_fillsMissingWithNull`（行と列の数の不一致 → null 補完）、`serialize_unbracketedGroupId_isUsedAsRawValue`（非整形 groupId の防御的経路） |
 
+<a id="s4-3"></a>
+
 ### 4.3 辺④ 未担保一覧（#25 が埋める対象）
 
-| 軸 | 未担保要素 | 件数 |
-|---|---|---|
-| A | A-07 `EXPECTED_FIXED`, A-08 `SETUP_VARIABLE` | 2 |
-| B | （なし） | 0 |
-| C | C-02 sections 空・複数／C-12 FileDataBlock.records 空 | 2 |
-| D | D4-01 `"100"`（記法アサートなし・弱）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 5 |
-| E | E-4(複数セクション) | 1 |
-| F | F4-01 出力先不在（弱のみ）／F4-02 `overwrite=false` 衝突／F4-03 書き込み権限なし | 3 |
-| **合計** | | **13** |
+計上単位と「状態」の 3 分類は §1.3 の規則に従う。
+
+| 軸 | 未担保要素 | 状態 | 件数 |
+|---|---|---|---|
+| A | A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#yaml_expectedFixed_isPreserved`）／A-08 `SETUP_VARIABLE`（🔺 `RoundTripTest#yaml_setupVariable_isPreserved`） | 要追加 | 2 |
+| B | （なし） | — | 0 |
+| C | C-02 sections 空・複数（writer 側は到達可能。§0.8-6）／C-12 FileDataBlock.records 空 | 要追加 | 2 |
+| D | D4-01 `"100"`（記法アサートなしの 🔺）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 要追加 | 5 |
+| E | E-4(複数) — `YamlFormatWriter#write` L74 が sections をループするため到達可能（§0.8-6） | 要追加 | 1 |
+| F | F4-01 出力先不在（🔺 のみ）／F4-03 書き込み権限なし | 要追加 | 2 |
+| F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
+| **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1** | **13（うち対象外 1）** |
 
 **特に大きな空欄**: 軸D の 5 ケース（特に `"true"`・`"007"`・日付風文字列は、辺②で読み戻したときに
-型が変わりうる往復リスクの中心）。軸C は 4 辺中もっとも埋まっている。
+型が変わりうる往復リスクの中心）。軸C は 4 つの辺のなかでもっとも埋まっている。
 
 ---
 
+<a id="s5"></a>
+
 ## 5. 全体サマリ
 
+<a id="s5-1"></a>
+
 ### 5.1 未担保件数（辺 × 軸）
+
+計上単位は §1.3 の規則に従う。🔺（弱い担保のみ）の要素も未担保として計上している。
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
@@ -749,45 +992,73 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | F 異常系 | 5 | 4 | 4 | 3 | 16 |
 | **合計** | **41** | **26** | **27** | **13** | **107** |
 
+**状態別の内訳**（§1.3 / §2.3 / §3.3 / §4.3 の合計）:
+
+| 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
+|---|---|---|---|---|---|
+| 要追加 | 38 | 23 | 26 | 12 | 99 |
+| 到達不能 | 3 | 3 | 0 | 0 | 6 |
+| 対象外（上位層で担保済み） | 0 | 0 | 1 | 1 | 2 |
+| **合計** | **41** | **26** | **27** | **13** | **107** |
+
+到達不能 6 件の内訳: 辺①・辺② それぞれの A-01 `DEFAULT`（§0.8-7）／C-02 sections 空（§0.8-6）／E-4 複数（§0.8-6）。
+対象外 2 件の内訳: 辺③ F3-02 ／ 辺④ F4-02（いずれも `overwrite=false` 衝突。§0.8-5）。
+
+**`RoundTripTest`（30 件）による 🔺 の追加は上の件数を変えない。** 🔺 は正式担保として数えないため、
+§0.8-8 で 🔺 を付けた辺① A-04／A-07／A-09／C-06 省略／D1-14、辺③ A-07／A-09、辺④ A-07／A-08 は
+いずれも「要追加」のまま残している（重複テストを書かないよう、追加時は §0.8-8 の表を参照すること）。
+
 ### 5.2 軸A の辺横断ビュー（`DataType` 14 種 × 4 辺）
 
 | DataType | 辺① | 辺② | 辺③ | 辺④ |
 |---|---|---|---|---|
-| A-01 `DEFAULT` | ❌ | ❌ | ❌ | ✅ |
+| A-01 `DEFAULT` | ❌（到達不能） | ❌（到達不能） | ❌ | ✅ |
 | A-02 `SETUP_TABLE_DATA` | ✅ | ✅ | ✅ | ✅ |
 | A-03 `EXPECTED_TABLE_DATA` | ✅ | ✅ | ✅ | ✅ |
-| A-04 `EXPECTED_COMPLETED` | ❌ | ✅ | ✅ | ✅ |
+| A-04 `EXPECTED_COMPLETED` | 🔺 | ✅ | ✅ | ✅ |
 | A-05 `LIST_MAP` | ✅ | ✅ | ✅ | ✅ |
 | A-06 `SETUP_FIXED` | ✅ | ✅ | ✅ | ✅ |
-| A-07 `EXPECTED_FIXED` | ❌ | ✅ | ❌ | ❌ |
-| A-08 `SETUP_VARIABLE` | ✅ | ✅ | ✅ | ❌ |
-| A-09 `EXPECTED_VARIABLE` | ❌ | ✅ | ❌ | ✅ |
+| A-07 `EXPECTED_FIXED` | 🔺 | ✅ | 🔺 | 🔺 |
+| A-08 `SETUP_VARIABLE` | ✅ | ✅ | ✅ | 🔺 |
+| A-09 `EXPECTED_VARIABLE` | 🔺 | ✅ | 🔺 | ✅ |
 | A-10 `MESSAGE` | ✅ | ✅ | ✅ | ✅ |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
-| **担保数** | 10/14 | 13/14 | 11/14 | 12/14 |
+| **✅ 担保数** | 10/14 | 13/14 | 11/14 | 12/14 |
+| **🔺 弱い担保** | 3 | 0 | 2 | 2 |
+| **❌ 未担保** | 1 | 1 | 1 | 0 |
 
-`EXPECTED_FIXED`（A-07）は 4 辺中 1 辺しか通っていない最弱の要素。
+`EXPECTED_FIXED`（A-07）は ✅ が 4 つの辺のうち 1 辺（辺②）しかない最弱の要素。残る 3 辺は
+`RoundTripTest#xls_expectedFixed_isPreserved` / `#yaml_expectedFixed_isPreserved` 経由の 🔺 のみ（§0.8-8）。
+`DEFAULT`（A-01）は辺①・辺②で到達不能、辺③のみが要追加、辺④は `serialize_unsupportedDataType_throws` で ✅。
+
+<a id="s5-3"></a>
 
 ### 5.3 コーディネータに判断を仰ぎたい点
 
+#### 解決済み（steering 更新 commit `66eb28f` で確定）
+
+| # | 論点 | 確定内容 |
+|---|---|---|
+| 1 | 辺①・辺② の `DataType.DEFAULT` | **到達不能**。辺①は `TestCoreReaderAdapter` L362、辺②は `YamlFormatReader` の分岐に `DEFAULT` を返す経路がないこと（§0.8-7）。#20/#24 では理由付きで空欄に残す |
+| 2 | E-4「コンテナ内セクション数 複数」／C-02「sections 空・複数」 | 辺①・辺②は **到達不能**（`read` が `Collections.singletonList(section)` を返す 1 リソース単位 API）。辺③・辺④は writer が `container.getSections()` をループするため **要追加**（§0.8-6） |
+| 3 | 辺③／辺④ の `overwrite=false` 衝突（F3-02 / F4-02） | **対象外（上位層で担保済み）**。`overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` で writer は保持しない。既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
+| 4 | 既存の往復テスト（`RoundTripTest` 30 件、`XlsFormatWriterTest#roundTrips*` 8 件、`YamlFormatWriterTest#roundTrip_*` 6 件）の扱い | **🔺弱い担保として計上するが正式担保としては数えず、直接テストの追加対象からも外さない**（steering Rules フェーズ2）。§0.8-8 に `RoundTripTest` 30 件の対応表を置き、未担保一覧に 🔺 の注記を併記した |
+
+#### 未解決（コーディネータの確認が要る）
+
 1. **軸C の「省略」定義**: steering #20 の Steps は `identifier` と `fileType` も「値あり」「省略」双方を通すとしているが、
-   実定義には省略表現がない（0.4 参照）。実定義を正として `fileType` は FIXED/VARIABLE の 2 値、
-   `identifier` は必須スカラーとして扱ってよいか。
-2. **軸E の構造上到達不能な組み合わせ**: 辺①・辺②の `read` は 1 リソース（1 シート／1 YAML ファイル）単位のため、
-   E-4「ブック内シート数 複数」と C-02「sections 複数」は API 上到達できない可能性が高い。
-   #21/#24 で「到達不能」として理由付きで空欄のまま残す扱いでよいか。
-   （`ConverterFileFilter`/`TestDataConverter` を経由すればブック単位の複数シート変換になるが、それは辺の担当クラス外）
-3. **辺③ / 辺④ の `overwrite=false` 衝突（F3-02 / F4-02）**: `overwrite` を保持するのは
-   `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり、`XlsFormatWriter` / `YamlFormatWriter` は保持しない
-   （0.8-5 参照）。writer 単体では再現できないため、`TestDataConverter` 側の既存テストで担保済みか確認したうえで
-   「本辺の対象外」とするか、writer のテストから `TestDataConverter` を呼んで担保するかの判断が要る。
-4. **既存の往復テスト（`XlsFormatWriterTest#roundTrips*` 8 件、`YamlFormatWriterTest#roundTrip_*` 6 件）の扱い**:
-   steering Rules（フェーズ2）に「各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない」とあるが、
-   これらは `RoundTripTest` クラスとは別の、既存の辺③/辺④テスト内の往復である。
-   本棚卸しでは辺①/辺②の担保としては「🔺弱い担保」に留め、正式な担保として数えていない。この扱いでよいか。
-5. **`serialize_unsupportedDataType_throws` が `DataType.DEFAULT` を唯一通す**: 辺①〜③で `DEFAULT` を通すべきか。
-   `DEFAULT` は「どのタイプにも属さない」ためリーダ側では生成されえない可能性がある。
-   #20/#23/#24 で「到達不能」として理由付きで残す扱いが妥当か。
+   実定義には省略表現がない（§0.4）。実定義を正として `fileType` は FIXED/VARIABLE の 2 値、
+   `identifier` は必須スカラーとして扱ってよいか（本棚卸しは実定義を正として扱っている）。
+2. **steering の完了条件と「到達不能」の整合**: steering #24 の Completion criteria は
+   「辺②について軸A の 14 種…が埋まっている」、#23 は「辺③について軸A の 14 種…がすべてアサートされている」と読める。
+   本棚卸しでは辺② A-01 `DEFAULT` を到達不能と判定した（§0.8-7。辺①については steering #20 が既に到達不能と明記済み）。
+   #24 の完了条件を「13 種＋ `DEFAULT` は到達不能として理由付きで空欄」に読み替えてよいか。
+   同じく steering #21 は辺① E-4 のみを到達不能としているが、本棚卸しでは C-02「sections 空」も同じ根拠で到達不能と判定した。
+3. **辺③ A-01 `DEFAULT` の扱い**: writer 側は `XlsFormatWriter` L400 がマーカー文字列を
+   `getDataType().getName()` から組み立てるだけなので `DEFAULT` ブロックも書けてしまう（＝到達可能）。
+   辺④の `serialize_unsupportedDataType_throws` は `IllegalArgumentException` を投げる挙動を固定しているが、
+   辺③に同等のガードはない。#23 で現状挙動を記録して固定する対象としてよいか
+   （挙動が仕様として不適切なら `issues.md` 行き）。
