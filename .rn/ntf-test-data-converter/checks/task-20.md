@@ -109,9 +109,14 @@ C-09／C-12／C-15／C-18 の「空」は、いずれも**コレクションが 
 | C-11 `FileDataBlock.directives` 空 | 要追加 | 到達不能 | `DataFile` コンストラクタ L92 が `file-type` を必ず注入（`issues.md` XLS-07） |
 | C-13 `MessageDataBlock.directives` 空 | 要追加 | 到達不能 | 同上 |
 | C-16 `recordType` 省略（`null`） | 要追加 | 到達不能 | 実 `.xlsx` 経路では `""` になる（`issues.md` XLS-06） |
-| C-17 `RecordLayout.fields` 空 | 要追加（#21 送り） | 到達不能 | 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗（`issues.md` の「到達不能」表。**修正ラウンドで追加**） |
+| C-17 `RecordLayout.fields` 空 | 要追加 | 到達不能 | 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗（`issues.md` の「到達不能」表。**本タスクの当初分類では #21 送りにしていたが、修正ラウンドで到達不能と判定**） |
 | C-20 `FieldDef.type` 省略（`null`） | 要追加 | 到達不能 | 本体パーサが型の欠落を 2 通りの機構で弾く（`issues.md` の「到達不能」表。**修正ラウンドで機構の記述を訂正**） |
-| C-08 `columnNames` 空 | 要追加（#21 送り） | **本タスクで担保** | マーカー列だけのブロックで到達（`issues.md` XLS-08。**修正ラウンドで変更**） |
+| C-08 `columnNames` 空 | 要追加 | **本タスクで担保** | マーカー列だけのブロックで到達（`issues.md` XLS-08。**本タスクの当初分類では #21 送りにしていたが、修正ラウンドで担保へ変更**） |
+
+「#18 の分類」列は 6 件とも「要追加」である。**#18 は要素ごとの担当タスクを指定していない**
+（`git show ef80d30:.rn/ntf-test-data-converter/coverage/inventory.md` の §1.3 は C 11 件を 1 行にまとめて
+状態「要追加」とするだけで、状態の定義も「#19〜#25 がテストを書く対象」という総称）。
+C-08／C-17 を #21 送りにしていたのは本タスクの当初分類であって #18 ではない。
 
 **修正ラウンドで `inventory.md` §1.3 を実際に更新した**（当初は「本タスクの担当外」として書き換えていなかった）。
 §1.2-2 を新設して #19／#20 の担保を軸要素別に記し、§1.3 の分類・件数を
@@ -306,7 +311,7 @@ self-check ファイル・実装エキスパートのサマリ・期待する判
 
 | Aspect | Verdict | Evidence / Improvement |
 |---|---|---|
-| 成果物が実際に検証されたか（テストが実行されたか） | OK | `mvn clean test -Djacoco.skip=true` → `Tests run: 351, Failures: 0, Errors: 0` を自ら実行。件数の主張も親コミット `ef80d30`（337 件）を worktree に展開して差分 14 件を実測確認 |
+| 成果物が実際に検証されたか（テストが実行されたか） | OK（ラウンド 1 時点） | `mvn clean test -Djacoco.skip=true` → `Tests run: 351, Failures: 0, Errors: 0` を自ら実行。件数の主張も親コミット `ef80d30`（337 件）を worktree に展開して差分 14 件を実測確認。**いずれも修正ラウンド前の値**（現在は全 354 件・新規 17 件） |
 | カバレッジ（エッジケース・主張の裏取り） | 一部 NG（ラウンド 1） | ミューテーション 13 本中 11 本を本クラス単独で検出（`bookName`/`sheetName` 入れ替え・`fileType` 反転・`recordType`/`length`/`type` 定数化・LIST_MAP 列名ソート・`EXPECTED_COMPLETED` 除去・`fwHeaderFields` 空・`record-separator` 逆正規化無効・`groupId` 強制 `""`・`identifier` 定数化）。**SURVIVED: 送信同期の directives 空 Map 化**（＝ QA F3 と同じ空証明を独立に実証。全 351 件で見ても既存 Fake 経路 1 件しか落ちない）。`issues.md` の記述は自らプローブして実測照合し、XLS-07 の値・C-11/C-13/C-16/C-20 の到達不能根拠はいずれも**真**と確認。引用行番号 11 件中 10 件が正確、1 件（`toRecordLayouts` L305 → L306）が誤り。判定: **PASS**（マージ前に directives のアサート追加を推奨） |
 | 将来の脆さ | OK | 日付・数値・数式セルを使わないためロケール／TZ 非依存。POI API は `XlsFixture` に封じ込め |
 

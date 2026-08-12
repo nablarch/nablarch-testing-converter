@@ -23,7 +23,9 @@
 > - **§1.3** — 未担保一覧を #19／#20 の実測結果に合わせて更新した。分類を変更した行には
 >   根拠（`coverage/issues.md` の課題 ID）を併記してある。
 >
-> §2〜§5 は未更新（#18 時点のまま）である。§5.1 の未担保件数も §1.3 の更新を反映していない。
+> §2〜§4 と §5.1 は #18 時点のままである（§5.1 の未担保件数も §1.3 の更新を反映していない。
+> 4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。**§5.2 だけは §1.2-2 の #20 実績を
+> 反映した現時点ビューである。**
 
 ### 判定基準
 
@@ -497,17 +499,19 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 **軸A（`XlsFormatReaderRealFileTest`。#20 で ✅ 化した 3 件を太字）**
 
 列を 2 つに分けてある。**「`getDataType()` をアサート」列がその要素の担保**であり、「同経路を通過（参考）」列は
-同じデータタイプのブロックを実 `.xlsx` から作ってはいるがデータタイプ自体は見ていないテストである。
+同じデータタイプのブロックを実 `.xlsx` から作ってはいるが `getDataType()` 自体は見ていないテストである。
 後者は担保として数えない（重複テストを避けるための索引として載せている）。
+参考列の括弧書きは、そのテストが**軸A について**何を見ていないかを示すためのものであり、
+アサーション全体の要約ではない（各テストは自分の担当軸要素については別途アサートしている）。
 
 | 要素 | `getDataType()` をアサート（＝担保） | 同経路を通過（参考） |
 |---|---|---|
 | A-01 `DEFAULT` | —（到達不能。§1.2 と同じ） | — |
-| A-02 `SETUP_TABLE_DATA` | `readsSetupTableBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`（列名・行のみ）, `readsContainerAndSectionNamesFromRealBookAndSheetNames`（コンテナ名・セクション名のみ）, `readsFourBlockImplementationsFromOneRealSheet`（実装クラスと識別子のみ） |
+| A-02 `SETUP_TABLE_DATA` | `readsSetupTableBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`, `readsContainerAndSectionNamesFromRealBookAndSheetNames`, `readsFourBlockImplementationsFromOneRealSheet`（3 件とも `getDataType()` は見ない。最後の 1 件は実装クラスと識別子を見る） |
 | A-03 `EXPECTED_TABLE_DATA` | `readsExpectedTableBlockWithGroupIdFromRealBook` | — |
 | **A-04 `EXPECTED_COMPLETED`** | `readsExpectedCompletedTableBlockFromRealBook`（#18 では 🔺 `RoundTripTest` のみ → ✅） | — |
-| A-05 `LIST_MAP` | `readsListMapBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`（列名・行のみ）, `readsFourBlockImplementationsFromOneRealSheet` |
-| A-06 `SETUP_FIXED` | `readsSetupFixedFileBlockFromRealBook` | `readsOmittedFieldLengthNotationFromRealBook`（`length` のみ）, `readsOmittedRecordTypeAsEmptyStringFromRealBook`（`recordType` のみ）, `readsFourBlockImplementationsFromOneRealSheet` |
+| A-05 `LIST_MAP` | `readsListMapBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`, `readsFourBlockImplementationsFromOneRealSheet`（2 件とも `getDataType()` は見ない） |
+| A-06 `SETUP_FIXED` | `readsSetupFixedFileBlockFromRealBook` | `readsOmittedFieldLengthNotationFromRealBook`, `readsOmittedRecordTypeAsEmptyStringFromRealBook`, `readsFourBlockImplementationsFromOneRealSheet`（3 件とも `getDataType()` は見ない。前 2 件は軸C の `length` 省略・`recordType` 省略が担当） |
 | **A-07 `EXPECTED_FIXED`** | `readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`（#18 では 🔺 → ✅） | — |
 | A-08 `SETUP_VARIABLE` | `readsSetupVariableFileBlockWithoutFieldLengthFromRealBook` | — |
 | **A-09 `EXPECTED_VARIABLE`** | `readsExpectedVariableFileBlockWithGroupIdFromRealBook`（#18 では 🔺 → ✅） | — |
