@@ -826,5 +826,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-<!-- {{status: active | paused}} | {{last-completed: #N description}} | {{next: #N description}} | {{notes: ...}} -->
+- **Status**: paused
+- **Date**: 2026-08-12
+- **Last completed**: #17 Javadoc からの外部文書参照の除去（全 19 件）
+- **Next**: #18 既存テスト 4辺分の軸棚卸し（ただし plan gate 未承認のため着手不可）
+- **Notes**: フェーズ2（#18–#28、4変換辺を6軸で担保）を steering に追加し push 済み（commit `aecd5d0`、PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1）。**plan gate が未承認** — 再開時はまず計画とフィクスチャ方針をユーザーへ再提示し `/rn:ty` を取ること。承認前に #18 以降へ着手しない。保留中の決定：実 `.xlsx` フィクスチャを「テスト実行時に POI で生成」（推奨）とするか「バイナリを `src/test/resources` へ同梱」とするか。未確定の事実：`nablarch.test.core.reader.DataType` が指示書の言う 14 種かは #18 で実定義と突き合わせる（`FileDataBlock.FileType` は `FIXED`/`VARIABLE` の 2 要素と確認済み）。
 
