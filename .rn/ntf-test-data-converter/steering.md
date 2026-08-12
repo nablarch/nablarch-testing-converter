@@ -866,8 +866,12 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-08-12
-- **Last completed**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
-- **Next**: #20 辺① 軸A・B・C（実ファイル経由）— `XlsFixture` を使い、14 の `DataType`・4種のブロック・軸C 全21フィールドを実 `.xlsx` 経由で通す
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1（push 済み）。plan gate 承認済み（`/rn:gm` 補足3点は steering 反映済み）。#18 の棚卸しは `coverage/inventory.md`、課題は `coverage/issues.md`（XLS-01〜05、いずれも未修正）。**ユーザー確認待ちの論点**: (a) 数値セル39件のうち38件はマーカー列 `[no]` の値で中間モデルに入らず、XLS-01 が実データを壊すのは1セルのみ — この訂正を踏まえ軸D の優先度を変えるか（現状は最優先のまま維持）、(b) 日付・時刻・日時・数式・真偽値・エラーセルは実データに0件のため Excel 保存物との突き合わせ不能。`issues.md` に「未確認」として記録済みで、同梱バイナリ1本の例外は広げていない。**#20 着手時の前提**: `XlsFixture` の API は変更しない（Design レビュー判定）。到達不能要素（辺① `DEFAULT`／`sections` 空・複数）は理由付きで空欄に残す。
+(written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
+session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
+so only a genuinely suspended session reads `paused`.)
+
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
