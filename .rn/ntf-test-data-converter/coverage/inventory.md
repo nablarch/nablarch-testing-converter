@@ -496,19 +496,23 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 
 **軸A（`XlsFormatReaderRealFileTest`。#20 で ✅ 化した 3 件を太字）**
 
-| 要素 | 担保テストメソッド（`XlsFormatReaderRealFileTest#`） |
-|---|---|
-| A-01 `DEFAULT` | —（到達不能。§1.2 と同じ） |
-| A-02 `SETUP_TABLE_DATA` | `readsSetupTableBlockFromRealBook`, `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`, `readsContainerAndSectionNamesFromRealBookAndSheetNames`, `readsFourBlockImplementationsFromOneRealSheet` |
-| A-03 `EXPECTED_TABLE_DATA` | `readsExpectedTableBlockWithGroupIdFromRealBook` |
-| **A-04 `EXPECTED_COMPLETED`** | `readsExpectedCompletedTableBlockFromRealBook`（#18 では 🔺 `RoundTripTest` のみ → ✅） |
-| A-05 `LIST_MAP` | `readsListMapBlockFromRealBook`, `readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`, `readsFourBlockImplementationsFromOneRealSheet` |
-| A-06 `SETUP_FIXED` | `readsSetupFixedFileBlockFromRealBook`, `readsOmittedFieldLengthNotationFromRealBook`, `readsOmittedRecordTypeAsEmptyStringFromRealBook`, `readsFourBlockImplementationsFromOneRealSheet` |
-| **A-07 `EXPECTED_FIXED`** | `readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`（#18 では 🔺 → ✅） |
-| A-08 `SETUP_VARIABLE` | `readsSetupVariableFileBlockWithoutFieldLengthFromRealBook` |
-| **A-09 `EXPECTED_VARIABLE`** | `readsExpectedVariableFileBlockWithGroupIdFromRealBook`（#18 では 🔺 → ✅） |
-| A-10 `MESSAGE` | `readsMessageBlockFromRealBook`, `readsFourBlockImplementationsFromOneRealSheet` |
-| A-11〜A-14 送信同期 4 種 | `readsAllFourSendSyncMessageTypesFromRealBook`（識別子を `RM01`〜`RM04` と別々にし、データタイプ・グループ ID・識別子・ディレクティブを 1 対 1 で突き合わせる） |
+列を 2 つに分けてある。**「`getDataType()` をアサート」列がその要素の担保**であり、「同経路を通過（参考）」列は
+同じデータタイプのブロックを実 `.xlsx` から作ってはいるがデータタイプ自体は見ていないテストである。
+後者は担保として数えない（重複テストを避けるための索引として載せている）。
+
+| 要素 | `getDataType()` をアサート（＝担保） | 同経路を通過（参考） |
+|---|---|---|
+| A-01 `DEFAULT` | —（到達不能。§1.2 と同じ） | — |
+| A-02 `SETUP_TABLE_DATA` | `readsSetupTableBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`（列名・行のみ）, `readsContainerAndSectionNamesFromRealBookAndSheetNames`（コンテナ名・セクション名のみ）, `readsFourBlockImplementationsFromOneRealSheet`（実装クラスと識別子のみ） |
+| A-03 `EXPECTED_TABLE_DATA` | `readsExpectedTableBlockWithGroupIdFromRealBook` | — |
+| **A-04 `EXPECTED_COMPLETED`** | `readsExpectedCompletedTableBlockFromRealBook`（#18 では 🔺 `RoundTripTest` のみ → ✅） | — |
+| A-05 `LIST_MAP` | `readsListMapBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`（列名・行のみ）, `readsFourBlockImplementationsFromOneRealSheet` |
+| A-06 `SETUP_FIXED` | `readsSetupFixedFileBlockFromRealBook` | `readsOmittedFieldLengthNotationFromRealBook`（`length` のみ）, `readsOmittedRecordTypeAsEmptyStringFromRealBook`（`recordType` のみ）, `readsFourBlockImplementationsFromOneRealSheet` |
+| **A-07 `EXPECTED_FIXED`** | `readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`（#18 では 🔺 → ✅） | — |
+| A-08 `SETUP_VARIABLE` | `readsSetupVariableFileBlockWithoutFieldLengthFromRealBook` | — |
+| **A-09 `EXPECTED_VARIABLE`** | `readsExpectedVariableFileBlockWithGroupIdFromRealBook`（#18 では 🔺 → ✅） | — |
+| A-10 `MESSAGE` | `readsMessageBlockFromRealBook` | `readsFourBlockImplementationsFromOneRealSheet` |
+| A-11〜A-14 送信同期 4 種 | `readsAllFourSendSyncMessageTypesFromRealBook`（識別子を `RM01`〜`RM04` と別々にし、データタイプ・グループ ID・識別子・ディレクティブを 1 対 1 で突き合わせる） | — |
 
 **軸B** — B-1〜B-4 のすべてを `readsFourBlockImplementationsFromOneRealSheet` が 1 シートから生成し、
 実装クラスに加えて識別子（`T` / `lm` / `f.dat` / `m`）まで突き合わせる。各種別の個別テストも
@@ -559,11 +563,11 @@ C-11／C-13／C-16／C-20 を「要追加」に計上していた。分類を変
 | A | A-01 `DEFAULT` — `TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップするためリーダ経路で生成されない（§0.8-7） | 到達不能 | 到達不能（変更なし） | 1 |
 | B | （なし） | — | — | 0 |
 | C | C-06 groupId 省略(`""`) | 要追加 | **担保済み（#20）** — `#readsSetupTableBlockFromRealBook` ほか 2 件が `""` を直接アサート | 1 |
-| C | C-08 columnNames 空 | 要追加 | **担保済み（#20 修正ラウンド）** — `#readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`／`#readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`。マーカー列だけのブロックで到達する（`issues.md` **XLS-08**）。**#18 では「軸E の 0 件と重なる」として #21 送りに分類していたが誤り**（軸E の 4 観点 E-1〜E-4 に「列名 0 件」に対応する要素は無い） | 1 |
+| C | C-08 columnNames 空 | 要追加 | **担保済み（#20 修正ラウンド）** — `#readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`／`#readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`。マーカー列だけのブロックで到達する（`issues.md` **XLS-08**）。**#20 の当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが誤り**（軸E の 4 観点 E-1〜E-4 に「列名 0 件」に対応する要素は無い）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
 | C | C-09 rows 空／C-12 FileDataBlock.records 空／C-15 MessageDataBlock.records 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（**#21 が担当**） — いずれもコレクション 0 件であり、軸E の E-2(0 件)／E-3(0 件) と同じ入力になる | 4 |
 | C | C-11 FileDataBlock.directives 空／C-13 MessageDataBlock.directives 空 | 要追加 | **到達不能** — 本体 `DataFile` コンストラクタ L92 が `file-type` を必ず注入する（`issues.md` **XLS-07**）。根拠は `#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`／`#readsAllFourSendSyncMessageTypesFromRealBook` がテストで示す | 2 |
 | C | C-16 recordType 省略(`null`) | 要追加 | **到達不能** — 実 `.xlsx` 経路では空セルが `""` として読まれる（`issues.md` **XLS-06**）。根拠は `#readsOmittedRecordTypeAsEmptyStringFromRealBook` | 1 |
-| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗する（`issues.md`「到達不能」表）。**#18 では #21 送りに分類していたが誤り**（軸E の 0 件ではない） | 1 |
+| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗する（`issues.md`「到達不能」表）。**#20 の当初分類では #21 送りにしていたが誤り**（軸E の 0 件ではない）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
 | C | C-20 FieldDef.type 省略(`null`) | 要追加 | **到達不能** — 型の欠落を本体パーサが 2 通りの機構で弾く（`issues.md`「到達不能」表） | 1 |
 | C | C-02 sections 空 — `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
 | D | D1-01〜D1-17 全 17 ケース | 要追加 | **担保済み（#19）** — `XlsFormatReaderCellTypeTest` 19 件（17 ケース＋空白セル＋行途中の不在セル）。Excel 保存物との突き合わせは `XlsReferenceFixtureTest` 2 件（`issues.md` XLS-01〜XLS-05） | 17 |
@@ -1113,28 +1117,32 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 
 ### 5.2 軸A の辺横断ビュー（`DataType` 14 種 × 4 辺）
 
+**本節は §5.1 と違い現時点の状態を示す。** 辺①は #20 完了後の値（`XlsFormatReaderRealFileTest` による ✅ 化を反映。§1.2-2）。
+辺②〜辺④は #22〜#25 が未着手のため #18 時点から変わっていない。
+
 | DataType | 辺① | 辺② | 辺③ | 辺④ |
 |---|---|---|---|---|
 | A-01 `DEFAULT` | ❌（到達不能） | ❌（到達不能） | ❌ | ✅ |
 | A-02 `SETUP_TABLE_DATA` | ✅ | ✅ | ✅ | ✅ |
 | A-03 `EXPECTED_TABLE_DATA` | ✅ | ✅ | ✅ | ✅ |
-| A-04 `EXPECTED_COMPLETED` | 🔺 | ✅ | ✅ | ✅ |
+| A-04 `EXPECTED_COMPLETED` | ✅（#20 で 🔺→✅） | ✅ | ✅ | ✅ |
 | A-05 `LIST_MAP` | ✅ | ✅ | ✅ | ✅ |
 | A-06 `SETUP_FIXED` | ✅ | ✅ | ✅ | ✅ |
-| A-07 `EXPECTED_FIXED` | 🔺 | ✅ | 🔺 | 🔺 |
+| A-07 `EXPECTED_FIXED` | ✅（#20 で 🔺→✅） | ✅ | 🔺 | 🔺 |
 | A-08 `SETUP_VARIABLE` | ✅ | ✅ | ✅ | 🔺 |
-| A-09 `EXPECTED_VARIABLE` | 🔺 | ✅ | 🔺 | ✅ |
+| A-09 `EXPECTED_VARIABLE` | ✅（#20 で 🔺→✅） | ✅ | 🔺 | ✅ |
 | A-10 `MESSAGE` | ✅ | ✅ | ✅ | ✅ |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
-| **✅ 担保数** | 10/14 | 13/14 | 11/14 | 12/14 |
-| **🔺 弱い担保** | 3 | 0 | 2 | 2 |
+| **✅ 担保数** | 13/14 | 13/14 | 11/14 | 12/14 |
+| **🔺 弱い担保** | 0 | 0 | 2 | 2 |
 | **❌ 未担保** | 1 | 1 | 1 | 0 |
 
-`EXPECTED_FIXED`（A-07）は ✅ が 4 つの辺のうち 1 辺（辺②）しかない最弱の要素。残る 3 辺は
-`RoundTripTest#xls_expectedFixed_isPreserved` / `#yaml_expectedFixed_isPreserved` 経由の 🔺 のみ（§0.8-8）。
+`EXPECTED_FIXED`（A-07）は #20 で辺①が ✅ になり、残る 🔺 は辺③・辺④の 2 辺
+（`RoundTripTest#xls_expectedFixed_isPreserved` / `#yaml_expectedFixed_isPreserved` 経由。§0.8-8）。
+`SETUP_VARIABLE`（A-08）の辺④と `EXPECTED_VARIABLE`（A-09）の辺③も 🔺 のままで、いずれも #23／#25 の対象。
 `DEFAULT`（A-01）は辺①・辺②で到達不能、辺③のみが要追加、辺④は `serialize_unsupportedDataType_throws` で ✅。
 
 <a id="s5-3"></a>

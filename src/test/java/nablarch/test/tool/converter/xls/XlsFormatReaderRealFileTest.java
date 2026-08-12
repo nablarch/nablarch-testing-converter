@@ -8,7 +8,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ import org.junit.rules.TemporaryFolder;
  * {@code XlsFormatReaderTest}（既存 33 件）は内部 Fake リーダに {@code List<List<String>>} の canned 行を
  * 与えるため、実セル → 文字列行の区間を通らない。本クラスは {@link XlsFixture} が POI で組み立てた
  * 実 {@code .xlsx} を本番配線の {@link XlsFormatReader}（{@code PoiXlsReader}）へ食わせる。
- * Excel 上の記法と入力値は既存 33 件（および `RoundTripTest`）を参考にしており、混在シート・送信同期の
+ * Excel 上の記法と入力値は既存 33 件（および {@code RoundTripTest}）を参考にしており、混在シート・送信同期の
  * 入力はほぼそのまま移植したものである。組み直したのは<b>入力経路</b>（実 {@code .xlsx} → 本番配線）と
  * アサーション対象であって、記法そのものではない。
  * </p>
@@ -59,7 +58,8 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスが扱わない軸要素と理由（本表がその唯一の索引である）:</b>
+ * <b>本クラスが扱わない軸要素と理由（テストコード側の索引。根拠の本文は
+ * {@code coverage/inventory.md} §1.3 と {@code coverage/issues.md} の「到達不能」表にあり、そちらが原本）:</b>
  * </p>
  * <table border="1">
  *   <caption>実 {@code .xlsx} 経路で到達不能／本タスクの範囲外の軸要素</caption>
@@ -339,7 +339,7 @@ public class XlsFormatReaderRealFileTest {
      *        行は 0 件にはならず、<b>セルを 1 つも持たない行</b>がデータ行の件数ぶん入る。
      *
      * <p>
-     * 担保する軸要素: C-08（空）。#18 の棚卸しでは「軸E の 0 件と重なる」として #21 送りに分類されていたが、
+     * 担保する軸要素: C-08（空）。本タスクの当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが、
      * 軸E の 4 観点（E-1 セクション内ブロック数／E-2 ブロック内行数／E-3 ファイル内レコードレイアウト数／
      * E-4 コンテナ内セクション数）に「列名 0 件」に対応する要素は無い。本クラスで担保する。
      * </p>
@@ -692,9 +692,10 @@ public class XlsFormatReaderRealFileTest {
             assertThat("送信同期ブロックの実装クラス", block, is(instanceOf(MessageDataBlock.class)));
             MessageDataBlock message = (MessageDataBlock) block;
             byType.put(message.getDataType(), message);
-            // 送信系に FW 制御ヘッダは無い
-            assertTrue("送信同期 " + message.getDataType() + " の FW 制御ヘッダは空のはず",
-                    message.getFwHeaderFields().isEmpty());
+            // 送信系に FW 制御ヘッダは無い。これは Excel の入力内容ではなく経路の性質で、
+            // XlsFormatReader が送信同期ブロックには常に空 Map を与えるため入力によらず空になる。
+            assertThat("送信同期 " + message.getDataType() + " の FW 制御ヘッダ",
+                    message.getFwHeaderFields(), is(Collections.<String, String>emptyMap()));
             // ディレクティブ行を 1 行も書いていないが、器が注入する file-type だけは必ず現れる
             // （issues.md XLS-07。C-13「MessageDataBlock.directives 空」が到達不能である根拠）。
             assertThat("送信同期 " + message.getDataType() + " の file-type",
@@ -703,10 +704,10 @@ public class XlsFormatReaderRealFileTest {
         }
         assertThat("4 種すべてが揃うこと", byType.size(), is(4));
 
-        assertBlock(byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), "[case1]", "RM01");
-        assertBlock(byType.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), "[case1]", "RM02");
-        assertBlock(byType.get(DataType.RESPONSE_HEADER_MESSAGES), "[res_case1]", "RM03");
-        assertBlock(byType.get(DataType.RESPONSE_BODY_MESSAGES), "[res_case1]", "RM04");
+        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), "[case1]", "RM01");
+        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), "[case1]", "RM02");
+        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_HEADER_MESSAGES), "[res_case1]", "RM03");
+        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_BODY_MESSAGES), "[res_case1]", "RM04");
 
         // 要求ヘッダ 1 種は MESSAGE と同水準（レコード種別／フィールド／値行）まで固定する。
         MessageDataBlock requestHeader = byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
@@ -824,8 +825,8 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat("セクション数", container.getSections().size(), is(1));
-        assertTrue("マーカー行が無いシートのブロック一覧は空のはず",
-                container.getSections().get(0).getBlocks().isEmpty());
+        assertThat("マーカー行が無いシートのブロック一覧",
+                container.getSections().get(0).getBlocks(), is(Collections.<TestDataBlock>emptyList()));
     }
 
     // ------------------------------------------------------------------ 軸C レコード種別の省略
@@ -892,7 +893,7 @@ public class XlsFormatReaderRealFileTest {
      * @param groupId    期待するグループ ID
      * @param identifier 期待する識別子
      */
-    private static void assertBlock(MessageDataBlock block, String groupId, String identifier) {
+    private static void assertGroupIdAndIdentifier(MessageDataBlock block, String groupId, String identifier) {
         assertThat("識別子 " + identifier + " のブロックが生成されていること", block, is(notNullValue()));
         assertThat("グループ ID", block.getGroupId(), is(groupId));
         assertThat("識別子", block.getIdentifier(), is(identifier));
