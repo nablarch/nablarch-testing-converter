@@ -498,7 +498,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | `XlsFormatReaderCellTypeTest` | #19 | 19 | `XlsFixture` が POI で組み立てた実 `.xlsx` |
 | `XlsReferenceFixtureTest` | #19 | 2 | Excel 保存物の参照フィクスチャ ＋ POI 生成物 |
 | `XlsFormatReaderRealFileTest` | #20 ＋ #21 | 23（#20 が 17 ＋ #21 が 6） | `XlsFixture` が POI で組み立てた実 `.xlsx` |
-| `XlsFormatReaderInvalidInputTest` | #21 | 13 | 同上（意図的に壊した入力・破損ブック） |
+| `XlsFormatReaderInvalidInputTest` | #21 | 16 | 同上（意図的に壊した入力・破損ブック） |
 
 **軸A（`XlsFormatReaderRealFileTest`。#20 で ✅ 化した 3 件を太字）**
 
@@ -555,7 +555,9 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | E-3 ファイル内レコードレイアウト数 | ✅（**#21**） | ✅ | ✅（**#21** で実 `.xlsx` 経路も） | 0: `#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook`（ファイル系）・`#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`（メッセージ系）／1: `#readsSetupFixedFileBlockFromRealBook`・`#readsMessageBlockFromRealBook`（いずれも `records.size()==1` をアサート）／複数: **`#readsMultipleRecordLayoutsFromOneFixedFileInRealBook`**（断片 2 件。Fake リーダ経路には `XlsFormatReaderTest#readRestoresMultipleRecordLayoutsInFixedFile` がある） |
 | E-4 コンテナ内セクション数 | n/a | ✅ | ❌（**到達不能**） | 1: `#readsContainerAndSectionNamesFromRealBookAndSheetNames`。複数は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
 
-- **9 組すべてが実 `.xlsx` 経路でアサートされている**（E-4(複数) のみ到達不能で空欄。E-4 の 0 件は n/a）。
+- **アサート済みのセルは 10 個ある。**内訳は E-1〜E-3 の 3 観点 × 0／1／複数 ＝ **9 組**（すべて実 `.xlsx` 経路）と、
+  E-4(1) の 1 組。残るセルは E-4(複数)＝到達不能で空欄、E-4(0)＝n/a（コンテナは必ず 1 セクションを持つ）の 2 つで、
+  合わせて 4 観点 × 3 多重度 ＝ 12 セルになる。
   #21 の当初実装では E-3(複数) を Fake リーダ経路の ✅（#18 判定）に依拠して空けていたが、
   **辺①の担保は実ファイル経路で揃えるという #20 の基準に合わせ、コーディネータの指示で追加した**。
 - **E-3(複数) は `MessageDataBlock` 経路では到達不能**である。本体 `MessageParser` が生成する
@@ -572,7 +574,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | F1-02 ブック破損 | ✅（**#21**） | `failsWithGenericRuntimeExceptionWhenWorkbookIsBroken` | `java.lang.RuntimeException: test data file open failed.` ＋ POI の `IllegalArgumentException`。ファイル名はどのメッセージにも出ない（`issues.md` **XLS-14**） |
 | F1-03 未知のデータタイプ名 | ✅（**#21**。#18 は 🔺） | `ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook`／`readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` | 例外にならず継続。未知名はブロックごと消える（**XLS-10**）。既知名＋余分な文字はグループ ID になる（**XLS-11**） |
 | F1-04 マーカーカラム欠落 | ✅（**#21**） | `readsMarkerColumnWithoutBracketsAsOrdinaryDataColumnInRealBook`／`dropsFirstFieldWhenSendSyncMetaColumnIsMissingInRealBook` | 例外にならず継続。角括弧なしの列はデータ列になる。送信同期のメタ列欠落は先頭フィールドと値を落とす（**XLS-13**） |
-| F1-05 カラム名重複 | ✅（#16） | `XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` ほか 3 件 | 後勝ちで除去＋WARN ログ |
+| F1-05 カラム名重複 | ✅（**#21** で実 `.xlsx` 経路も） | `deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook`／`deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook`（**#21**）。#16 の `XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` ほか 3 件は **Fake リーダ経路** | 後勝ちで除去＋WARN ログ 1 件（ブック名・シート名・ブロック識別子・カラム名・採用列番号を含む）。実 `.xlsx` 経路でも Fake 経路と同じ結果になることを実測 |
 | F1-06 行と列の数の不一致 | ✅（**#21**） | `padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook`／`padsShortValueRowAndDropsCellsBeyondNameRowInFixedFileInRealBook`／`failsWhenLengthRowIsShorterThanNameRowInRealBook`／`failsWhenNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenTypeRowIsShorterThanNameRowInRealBook`／`failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook` | **値行**の不足は空文字埋め・超過は切り捨て（例外にならない。**XLS-12**）。**名前行・型行・長さ行**の不整合は本体パーサが例外で弾く |
 | （軸F の要素ではない補足） | — | `absorbsSecondNameRowAsDataRowInMessageBodyInRealBook` | `MESSAGE` 本文に 2 つ目のレコードレイアウトを書くと、名前行・型行・長さ行がすべて 1 つ目の値行として吸収される（**XLS-15**。E-3(複数) がメッセージ系で到達不能である根拠） |
 
@@ -620,7 +622,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | D | D1-01〜D1-17 全 17 ケース | 要追加 | **担保済み（#19）** — `XlsFormatReaderCellTypeTest` 19 件（17 ケース＋空白セル＋行途中の不在セル）。Excel 保存物との突き合わせは `XlsReferenceFixtureTest` 2 件（`issues.md` XLS-01〜XLS-05） | 17 |
 | E | E-2(0 件)／E-3(0 件) | 要追加 | **担保済み（#21）** — E-2(0) は C-09 の 2 件と同じ入力、E-3(0) は C-12／C-15 と同じ入力（上記 C 行のテストメソッド） | 2 |
 | E | E-4(複数) — `XlsFormatReader#read` が 1 シート単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F1-01 シート不在／F1-02 ブック破損／F1-03 未知データタイプ名（🔺 `readIgnoresDataTypePrefixedLineWithoutMarker` のみ）／F1-04 マーカーカラム欠落／F1-06 行列数不一致 | 要追加 | **担保済み（#21）** — `XlsFormatReaderInvalidInputTest` 13 件（うち 12 件が軸F の 5 ケース、1 件が XLS-15 の根拠。§1.2-2 の軸F 表に要素別の担保テストメソッドを記載）。継続する異常系で見つけた課題は `issues.md` **XLS-10〜XLS-15** | 5 |
+| F | F1-01 シート不在／F1-02 ブック破損／F1-03 未知データタイプ名（🔺 `readIgnoresDataTypePrefixedLineWithoutMarker` のみ）／F1-04 マーカーカラム欠落／F1-06 行列数不一致 | 要追加 | **担保済み（#21）** — `XlsFormatReaderInvalidInputTest` 16 件（内訳: 本 5 ケースが 9 件、F1-05 の実 `.xlsx` 担保が 2 件、C-17／C-20 到達不能の根拠が 4 件、XLS-15 の根拠が 1 件。§1.2-2 の軸F 表に要素別の担保テストメソッドを記載）。継続する異常系で見つけた課題は `issues.md` **XLS-10〜XLS-15** | 5 |
 | **合計** | | **要追加 38 ／ 到達不能 3** | **要追加 0 ／ 担保済み 33 ／ 到達不能 8 ／ 対象外 0** | **41** |
 
 **合計の検算**（表の「件数」列を上から順に足す）:
@@ -639,15 +641,16 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | C | C-15 `MessageDataBlock.records` 空 | `#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`（E-3(0 件) と同じ入力） |
 | C | C-18 `RecordLayout.rows` 空 | `#readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook` |
 | E | E-2(0 件)／E-3(0 件) | 上記 C-09／C-12・C-15 と同じ 2 件・3 件 |
-| F | F1-01／F1-02／F1-03／F1-04／F1-06 | `XlsFormatReaderInvalidInputTest` 13 件（§1.2-2 の軸F 表） |
+| F | F1-01／F1-02／F1-03／F1-04／F1-06 | `XlsFormatReaderInvalidInputTest` 16 件（§1.2-2 の軸F 表） |
 
-**#21 が追加で埋めた 1 件（上記 11 件の外）**: E-3(複数) を実 `.xlsx` 経路で担保する
-`XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook`。
-#18 の棚卸しは Fake リーダ経路の `XlsFormatReaderTest#readRestoresMultipleRecordLayoutsInFixedFile` を
-もって E-3(複数) を ✅ と判定していたため §1.3 の未担保一覧（41 件）には現れないが、
-**辺①の担保は実ファイル経路で揃える**という #20 の基準に照らすと空欄だった。
-コーディネータの指示（steering #21 の Completion criteria「軸E の 3 観点それぞれで 0／1／複数」）により追加した。
-本表の件数（41）と合計には影響しない。
+**#21 が追加で埋めた 2 件（上記 11 件の外）**: いずれも #18 の棚卸しが **Fake リーダ経路の担保をもって ✅**
+と判定していたため §1.3 の未担保一覧（41 件）には現れないが、**辺①の担保は実ファイル経路で揃える**という
+#20 の基準に照らすと空欄だったものである。コーディネータの指示により追加した。本表の件数（41）と合計には影響しない。
+
+| 要素 | 実 `.xlsx` 経路の担保（#21 で追加） | #18 が ✅ とした Fake 経路の担保 |
+|---|---|---|
+| E-3(複数) | `XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` | `XlsFormatReaderTest#readRestoresMultipleRecordLayoutsInFixedFile` |
+| F1-05 カラム名重複 | `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook`／`#deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook` | `XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` ほか 3 件（#16） |
 
 - **C-08 と C-17 は #21 のスコープから外れる**（前者は #20 で担保済み、後者は到達不能）。
   #18 §1.3 の「要追加 11（C）」＝ C-06／C-08／C-09／C-11／C-12／C-13／C-15／C-16／C-17／C-18／C-20 の
@@ -657,10 +660,10 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
   |---|---|---|
   | 担保済み（#20） | C-06／C-08 | 2 |
   | 到達不能 | C-11／C-13／C-16／C-17／C-20 | 5 |
-  | 要追加（#21） | C-09／C-12／C-15／C-18 | 4 |
+  | 担保済み（**#21**。#20 の時点では「要追加」） | C-09／C-12／C-15／C-18 | 4 |
   | **合計** | | **11** |
 
-  11 − 2 − 5 = 4 が上表の C 4 件である。
+  2 ＋ 5 ＋ 4 ＝ 11。末尾の 4 件が上表の C 4 件であり、#21 で担保済みになった。
 
 **#18 時点の「特に大きな空欄」**（軸D 17 ケース全滅）は #19 で解消し、#20 後に残っていた最大の空欄
 （軸F の 5 ケース）は #21 で解消した。**辺①の「要追加」は 0 件**である。残る 8 件は到達不能で、
@@ -1158,8 +1161,8 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 計上単位は §1.3 の規則に従う。🔺（弱い担保のみ）の要素も未担保として計上している。
 
 **本節は #18 時点のスナップショットであり、4 辺を同じ基準で比べるためにその基準を保っている。**
-辺①はその後 #19／#20 で 22 件が担保済みになった（§1.3 の「#20 後の状態」列）。
-辺①の最新の状態別内訳は **要追加 11 ／ 担保済み 22 ／ 到達不能 8 ／ 対象外 0** であり、
+辺①はその後 #19／#20／#21 で 33 件が担保済みになった（§1.3 の「#21 後の状態」列）。
+辺①の最新の状態別内訳は **要追加 0 ／ 担保済み 33 ／ 到達不能 8 ／ 対象外 0** であり、
 下の表の辺①列（要追加 38 ／ 到達不能 3）は #18 時点の値である。辺②〜辺④は #22〜#25 が未着手のため #18 時点のまま。
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |

@@ -415,11 +415,13 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 |---|---|---|
 | `UNKNOWN_TYPE=X`／カラム行 `A`／データ行 `a1`／`SETUP_TABLE=T`／カラム行 `B`／データ行 `b1` | ブロックは **1 件**（`SETUP_TABLE=T` だけ）。未知タイプ側はマーカー行もカラム行もデータ行も中間モデルに現れない | `XlsFormatReaderInvalidInputTest#ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook` |
 
-- 原因: `TestCoreReaderAdapter` の `HeaderCollector#parse`（L361-364）が、先頭セルから判定したデータタイプが
+- 原因: **本リポジトリの `src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java`**（`nablarch-testing` 側ではない）の
+  `HeaderCollector#parse`（L361-364）が、先頭セルから判定したデータタイプが
   `DEFAULT`（＝既知のどの名前にも一致しない）の行を `continue` でスキップする。マーカー行として認識されない
   以上ブロックは 1 件も生成されず、後続行も `BodyLineCollector`（L457-463）が `collecting == false` のまま
   読み飛ばす。
-- 実測: 上表のとおり。**警告・ログ出力は一切ない**（プローブ実行・テスト実行とも WARN の出力なし）。
+- 実測: 上表のとおり。**警告は 1 件も出ない**。担保テストが `java.util.logging` のルートロガーへハンドラを付け、
+  WARNING 以上のレコードが 0 件であることをアサートしている（「検出できない」という主張の実行可能な根拠）。
   小文字表記（`setup_table=T`）でも同じくブロック 0 件になることをプローブで確認した
   （`DataType` の名前照合は大文字完全一致のため）。
 - 影響: マーカーの綴り誤り・大文字小文字の誤りがあると、そのブロックは変換後の YAML に 1 行も出ない。
@@ -427,6 +429,8 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 - 判断: **仕様として不適切**（少なくとも「先頭セルが `=` を含みデータタイプ名らしいのに未知」を WARN で
   報せるべき）。ただし NTF の Excel 形式では任意文字列の先頭セルは正当なデータ行でもあり得るため、
   検知は発見的（ヒューリスティック）にならざるを得ない。修正はこの作業では行わない。
+- **修正するとしたら本リポジトリ内で完結する**（原因コードが `src/main` にあるため。XLS-11 も同じ）。
+  `nablarch-testing` の変更を要する XLS-14 とはこの点が異なる。
 
 ### XLS-13 送信同期メッセージのメタ列（`no`）欠落で先頭フィールドと値が黙って失われる（影響度 低・**検出できない**）
 
@@ -438,7 +442,7 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
   値行の先頭セルは本体 `SendSyncMessageParser` L134 の
   `currentFragment.addValueWithId(temp, temp.remove(NO_COLUMN_NUMBER))`（`NO_COLUMN_NUMBER` は L99 で `0`）が
   ID として取り除く。メタ列が無い入力でも「先頭列＝メタ列」という前提が変わらないため、実データが 1 列ぶんずれる。
-- 実測: 上表のとおり。例外にならず警告も出ない。
+- 実測: 上表のとおり。例外にならず警告も出ない（担保テストが WARNING 以上のログ 0 件をアサートする）。
 - 影響: 失われるのはフィールド 1 件とその値であり、変換後の YAML を元の Excel と突き合わせない限り気づけない。
   ただしメタ列の欠落は NTF の記法違反であり、正しく書かれた入力では起こらない。よって影響度は「低」とする。
 - 判断: 入力が記法違反である以上パーサが救えないことは受け入れるが、**黙って落ちる**点は記録に値する。
@@ -458,7 +462,7 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
   テーブル経路・LIST_MAP 経路は本体 `HeaderLine#excludeMarkerColumns` L81 の
   `(i >= line.size()) ? "" : line.get(i)`。`TableDataParser#onReadLine` L98 がこれを呼ぶ）。埋める側は
   XLS-04（セル不在と空文字が区別されない）と同じ扱いであり受容できるが、**捨てる側は情報が失われる**。
-- 実測: 上表のとおり。例外にならず警告も出ない。
+- 実測: 上表のとおり。例外にならず警告も出ない（担保テスト 2 件が WARNING 以上のログ 0 件をアサートする）。
 - 影響: カラム行の書き忘れ（値だけ足した列）があると、その列の値は変換後に存在しない。
   ただしカラム名が無い値は中間モデルに置き場所が無く、変換ツール単独では救えない。よって影響度は「低」とする。
 - 判断: 少なくとも WARN が要る（カラム行より右に非空セルがある、という検知は容易である）。
@@ -474,7 +478,7 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
   扱うが、`MessageParser` が生成する匿名 `FixedLengthFileParser` はこれを上書きし、
   空行以外は常に `currentFragment.addValue(tail(line))` とする（`MessageParser` の
   `createFixedLengthFileParser` 内。送信同期の `no` 列＝先頭セルが非空のデータ行に合わせた仕様）。
-- 実測: 上表のとおり。例外にならず警告も出ない。
+- 実測: 上表のとおり。例外にならず警告も出ない（担保テストが WARNING 以上のログ 0 件をアサートする）。
 - 帰結: **`MESSAGE`／送信同期系では 1 ブロックにレコードレイアウトを 2 件以上作れない**
   （軸E の E-3(複数) はメッセージ系では到達不能。ファイル系
   `XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` で担保する）。
@@ -490,7 +494,8 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 |---|---|---|
 | `SETUP_TABLEX=T`（`SETUP_TABLE` の綴り誤り） | `dataType` ＝ `SETUP_TABLE_DATA`、`groupId` ＝ `"X"`（角括弧なし）、`identifier` ＝ `"T"` | `XlsFormatReaderInvalidInputTest#readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` |
 
-- 原因: `TestCoreReaderAdapter#markerGroupId`（L282-286）がデータタイプ名の直後から `=` までを無条件に
+- 原因: **本リポジトリの `src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java`**（`nablarch-testing` 側ではない）の
+  `markerGroupId`（L282-286）がデータタイプ名の直後から `=` までを無条件に
   グループ ID として切り出す。正しい記法は `SETUP_TABLE[g1]=T` のように角括弧付きだが、角括弧の有無は
   検証されない。
 - 影響: 変換後の YAML に作成者が意図しない `group_id: "X"` が出る。値そのものは失われず、
@@ -529,13 +534,15 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 | データ行がカラム行より短いとき空文字で埋められる | 妥当（XLS-04 のとおり Excel 上で空セルと区別できない） |
 | 型行・長さ行の要素数不一致が例外で弾かれる（`field name size is 2. but types size is 1.` 等） | 妥当（器が組み立たない以上、原文の充填先も決まらない。黙って続けるより良い） |
 | マーカーカラムの角括弧欠落（`[no]` ではなく `no`）で当該列がふつうのデータカラムになる | 妥当（マーカーカラムの判定は「`[` で始まり `]` で終わる」であり記法どおり） |
+| 実 `.xlsx` 経路のカラム名重複（F1-05）が Fake リーダ経路と同じ結果になる（後勝ちで 1 件に絞られ、WARN ログが 1 件出る） | 妥当（#16 で実装した意図どおり。実ファイル経路でも同じであることを `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook`／`#deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook` で固定した） |
 
 ### 未確認（#21）
 
-- **軸F の「継続する異常系」で警告が出ないことは、ログ出力の有無を目視で確認したにとどまる。**
-  XLS-10／XLS-12／XLS-13／XLS-15 の担保テストはログハンドラを取り付けておらず、「WARN が出ない」ことを
-  アサートしていない（`XlsFormatReaderTest` のカラム名重複テストのようなログ捕捉は行っていない）。
-  課題として記録した挙動そのもの（中間モデルの内容）はアサートしてある。
+- **「警告が出ない」ことのアサートは `java.util.logging` 経路に限る。**XLS-10／XLS-12／XLS-13／XLS-15 の担保テストは
+  JUL のルートロガーへハンドラを付けて WARNING 以上が 0 件であることをアサートしているが、
+  `nablarch-testing` 自身のログ基盤（`nablarch.core.log`）への出力は捕捉していない。
+  変換ツール側で JUL を使うのは `XlsFormatReader`（`deduplicateColumnNames` の WARN）だけであり、
+  そこが唯一の警告の出所であることはソースを走査して確認した（`grep -rn "Logger" src/main/java` の結果は 1 箇所）。
 - **ブック破損の再現は「Excel でない中身のファイル」1 種類のみ**である。
   ZIP としては開けるが内部構造が壊れている `.xlsx`（部分破損）の挙動は未確認。
 - **XLS-15 は `MESSAGE` で実測した。**送信同期 4 種でも同じかは未確認
