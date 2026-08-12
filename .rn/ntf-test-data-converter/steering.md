@@ -649,9 +649,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - [x] `TestDataContainer.sections` は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため常に1件。「空」「複数」はいずれも到達不能として理由付きで空欄に残す
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（354 件 PASS）
 - [x] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
-- [ ] QA expert review（subagent） — ラウンド1 実施済み（FAIL・指摘は `0761b12` で修正済み）。**再レビュー未実施**
-- [ ] Craft expert review（subagent, coding） — ラウンド1 実施済み（FAIL・修正済み）。**再レビュー未実施**
-- [ ] Verification expert review（subagent, test） — ラウンド1 実施済み（PASS・条件付き）。修正が入ったため**再レビュー未実施**
+- [x] QA expert review（subagent） — ラウンド3 で PASS（`0811032`）
+- [x] Craft expert review（subagent, coding） — ラウンド2 で PASS（`d9293bb`）
+- [x] Verification expert review（subagent, test） — ラウンド2 で PASS（`d9293bb`）
 
 **Completion criteria**:
 
@@ -876,8 +876,14 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
+- **Status**: in progress
 - **Date**: 2026-08-12
-- **Last completed**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）。#20 は実装・修正ラウンドまで完了しチェックオフ未了
-- **Next**: #20 の3レビュー（QA / Craft coding / Verification test）を `0761b12` に対して**再実行**する。OK が揃えば `checks/task-20.md` の Expert Reviews 節と Overall Verdict を更新してチェックオフ → #21 へ
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1（push 済み）。#20 の成果物は `5509b09`（初回）＋ `0761b12`（レビュー指摘21件の修正、テスト 17 件・全 354 PASS・src/main 無変更）。ラウンド1 の判定は QA=FAIL / Craft=FAIL / Verification=PASS で、指摘・triage・ミューテーション結果は `checks/task-20.md` に記録済み（再レビュー用の入力にはしないこと＝中立フレーミング維持）。**#20 で棚卸しが変わった**: C-08 は #21 送りではなく #20 で担保、C-17 は到達不能、C-11／C-13／C-16／C-20 も到達不能（`inventory.md` §1.3 は `0761b12` で更新済み）。#21 へ送るのは C-09／C-12／C-15／C-18 の「空」4 件。課題は `coverage/issues.md`（XLS-01〜09。XLS-08＝マーカー列のみのブロックが「セル0個の行」になり書き戻すと消える、XLS-09＝`XlsFormatReader` L531 のコメント誤り。いずれも未修正）。**ユーザー指摘による訂正を反映済み**: 課題一覧は影響度ではなく「検出できるか」で並べる（XLS-05 が最上位）、`nablarch-example-web` はサンプルアプリであって対象PJの実データではない（件数0は対象PJに無いことを意味しない）。
+- **Last completed**: #20 辺① 軸A・B・C（実ファイル経由）。3レビューとも PASS でチェックオフ済み
+- **Next**: #21 辺① 軸E（多重度）・軸F（異常系）に着手する
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。#20 の成果物は `5509b09`（初回）／`0761b12`（ラウンド1 指摘 21 件）／`4b745a2`・`d9293bb`・`0811032`（ラウンド2・3 指摘）。テスト 17 件・全 354 PASS・src/main 無変更。3 レビューの判定と指摘は `checks/task-20.md` に記録済み（**再レビューの入力にはしない**＝中立フレーミング維持）。
+  **#20 で棚卸しが変わった**: C-08 は #21 送りではなく #20 で担保、C-17／C-11／C-13／C-16／C-20 は到達不能（`inventory.md` §1.3 は更新済み）。#21 へ送るのは C-09／C-12／C-15／C-18 の「空」4 件＋E-2/E-3(0 件)＋F1-01〜F1-06 の計 11 件。
+  **#21 で必ず拾うこと**: C-17／C-20 の「到達不能」は現在ソース読解とプローブだけが根拠で、リポジトリ内に実行可能な証拠が無い（C-11／C-13／C-16 は根拠テストを持つ）。F1-06 で 3 入力（名前行 1 列／型行が名前行より短い／型セルが中間位置で空）の例外型・メッセージを固定し、`issues.md` の「到達不能」表からテストメソッド名を参照する。Steps と Completion criteria に記載済み。
+  課題は `coverage/issues.md`（XLS-01〜09。XLS-08＝マーカー列のみのブロックが「セル0個の行」になり書き戻すと消える、XLS-09＝`XlsFormatReader` L531 のコメント誤り。いずれも未修正）。
+  **台帳の基準時点**: `inventory.md` は §2〜§4 と §5.1 が #18 基準（4 辺を同じ基準で比べるため）、§1.2-2・§1.3・§5.2 が現時点ビュー。冒頭 §0 の案内に明記してある。
+  **ユーザー指摘による訂正を反映済み**: 課題一覧は影響度ではなく「検出できるか」で並べる（XLS-05 が最上位）、`nablarch-example-web` はサンプルアプリであって対象PJの実データではない（件数0は対象PJに無いことを意味しない）。
+  **未決（ユーザー判断待ち）**: Rules の「1 task = 1 commit」から #20 が逸脱している（7 コミット。レビュー修正ラウンドとセッション中断が理由）。Rules に修正ラウンドの扱いを書き足すか現状運用のままかは未定。
