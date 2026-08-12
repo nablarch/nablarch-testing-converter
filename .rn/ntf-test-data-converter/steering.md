@@ -46,7 +46,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 - 期待値を先に決めない。まず現状の挙動を実行して記録し、それが仕様として妥当かを判断してから固定する
 - 本作業で見つかった不具合は、この作業の中では修正しない。`.rn/ntf-test-data-converter/coverage/issues.md` に記録して切り分ける（src/main を変更しない）
-- 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない
+- 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない。ただし**既存**の往復テスト（`RoundTripTest` 30件、`XlsFormatWriterTest#roundTrips*` 8件、`YamlFormatWriterTest#roundTrip_*` 6件）が実ファイル経由で通している軸要素は、棚卸しに「🔺弱い担保」として必ず計上する（重複テストを書かないため）。正式担保としては数えず、直接テストの追加対象からは外さない
 - 既存テストを軸で棚卸ししてから新規テストを足す。棚卸しなしの新規追加はしない
 - 対応表・カバレッジを示さずに「網羅した」と報告しない
 
@@ -633,8 +633,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - [ ] 14の `DataType` それぞれについて、実 `.xlsx` から中間モデルへ入ることをアサートするテストを追加する
 - [ ] 軸B の4種（`TableDataBlock` / `ListMapBlock` / `FileDataBlock` / `MessageDataBlock`）が実ファイル経由で生成されることをアサートする
-- [ ] 軸C の全フィールドを非デフォルト値でアサートする。`groupId` / `identifier` / `fileType` / `directives` / `fwHeaderFields` / `recordType` / `FieldDef.type` / `FieldDef.length` は「値あり」「省略」の双方を通す
+- [ ] 軸C の全フィールドを非デフォルト値でアサートする。**省略可能なのは実定義上 `groupId` / `recordType` / `FieldDef.type` / `FieldDef.length` の4件のみ**（#18 で確認）。この4件は「値あり」「省略」の双方を通す。`directives` / `fwHeaderFields` は「非空」「空 Map」の双方を通す。`identifier` は必須スカラー、`fileType` は `FIXED`/`VARIABLE` の2値であり「省略」の表現を持たないため双方通しの対象外とする
 - [ ] `FileDataBlock.fileType` の `FIXED` / `VARIABLE` 両方を通す
+- [ ] `DataType.DEFAULT` はリーダ経路では生成されない（`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする）。辺①では「到達不能」として理由付きで空欄に残す
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
 - [ ] QA expert review（subagent）
@@ -660,7 +661,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] 軸E: 1セクションに 0／1／複数ブロック、1ブロックに 0／1／複数行、1ファイルに 0／1／複数レコードレイアウト、1ブックに 1／複数シートのテストを追加する
+- [ ] 軸E: 1セクションに 0／1／複数ブロック、1ブロックに 0／1／複数行、1ファイルに 0／1／複数レコードレイアウトのテストを追加する。「1ブックに複数シート」は `XlsFormatReader.read` が `"ブック名/シート名"` の1シート単位 API（`XlsFormatReader` L96-101）のため到達不能。理由付きで空欄に残す
 - [ ] 軸F: シート不在／ブック破損／未知のデータタイプ名／マーカーカラム欠落／カラム名重複／行と列の数の不一致のテストを追加する（現状の挙動をまず記録してから固定する）
 - [ ] 異常系のうち仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
@@ -671,7 +672,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Completion criteria**:
 
-- 軸E の4観点（セクション内ブロック数／ブロック内行数／ファイル内レコードレイアウト数／ブック内シート数）それぞれで 0／1／複数（シートは 1／複数）がアサートされている
+- 軸E の3観点（セクション内ブロック数／ブロック内行数／ファイル内レコードレイアウト数）それぞれで 0／1／複数がアサートされている。「ブック内シート数 複数」は到達不能として根拠付きで空欄に残されている
 - 軸F の6ケース（シート不在／ブック破損／未知データタイプ名／マーカーカラム欠落／カラム名重複／行列数不一致）すべてで、例外型・メッセージまたは継続時の結果がアサートされている
 - src/main への変更がゼロ
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
@@ -687,7 +688,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 **Steps**:
 
 - [ ] 軸D の8ケース（`"100"` ／ `"=1+1"` ／ `"007"` ／ `null` ／ `""` ／改行含む文字列／32767文字超／制御文字含む）を書き出し、読み返して `getCellType()` をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
-- [ ] 軸F: 出力先不在／同名ファイル既存かつ `overwrite=false` ／書き込み権限なし／シート名が Excel 制約違反（31文字超・禁止文字）のテストを追加する
+- [ ] 軸F: 出力先不在／書き込み権限なし／シート名が Excel 制約違反（31文字超・禁止文字）のテストを追加する。`overwrite=false` 衝突は `XlsFormatWriter` が `overwrite` を保持せず（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`）、上位層の既存テスト（`TestDataConverterTest` L331・`ConverterMojoTest` L262）で担保済みのため辺③の対象外とし、根拠を対応表に記録する
 - [ ] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-22.md に記録）
@@ -699,7 +700,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - 軸D の8ケースすべてで `getCellType()` がアサートされている（`getStringCellValue()` のみのアサートで終わっていない）
 - `"=1+1"` が数式セルとして解釈されないこと、`"100"` が数値セルにならないことがアサートされている
-- 軸F の4ケース（出力先不在／`overwrite=false` 衝突／書き込み権限なし／シート名制約違反）で例外型または結果がアサートされている
+- 軸F の3ケース（出力先不在／書き込み権限なし／シート名制約違反）で例外型または結果がアサートされている。`overwrite=false` 衝突は上位層で担保済みとして根拠付きで対象外にされている
 - src/main への変更がゼロ
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
 
@@ -768,7 +769,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - [ ] 軸D の9ケース（`"100"` ／ `"true"` ／ `"null"` ／ `null` ／ `""` ／ `"007"` ／改行含む／`"2026-08-07"` ／コロン・ハイフン・`#` 含む）を書き出し、出力 YAML の記法をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
 - [ ] 各ケースについて、#24 で固定した辺②の読み取り挙動と突き合わせ、文字列が同じ文字列として復元されるか否かを判定し記録する
-- [ ] 軸F: 出力先不在／`overwrite=false` 衝突／書き込み権限なしのテストを追加する
+- [ ] 軸F: 出力先不在／書き込み権限なしのテストを追加する。`overwrite=false` 衝突は `YamlFormatWriter` が `overwrite` を保持しないため辺④の対象外とし、上位層で担保済みである根拠を対応表に記録する（#22 と同じ扱い）
 - [ ] #18 の棚卸し表で辺④の空欄となっている軸A・B・C・E の要素を埋める
 - [ ] 復元できない組み合わせがあれば `issues.md` に課題として記録する（**修正しない**）
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
@@ -781,7 +782,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - 軸D の9ケースすべてで出力 YAML の記法（引用符の有無・複数行記法・NULL 表現）がアサートされている
 - 9ケースそれぞれについて、辺④で書き辺②で読んだとき元の文字列が復元されるか否かが判定・記録されている（復元されない場合は課題として記録され、修正されていない）
-- 軸F の3ケース（出力先不在／`overwrite=false` 衝突／書き込み権限なし）で例外型または結果がアサートされている
+- 軸F の2ケース（出力先不在／書き込み権限なし）で例外型または結果がアサートされている。`overwrite=false` 衝突は上位層で担保済みとして根拠付きで対象外にされている
 - 辺④について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E が埋まっている
 - src/main への変更がゼロ
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
