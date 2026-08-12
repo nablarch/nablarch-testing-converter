@@ -571,15 +571,15 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] `XlsFormatReaderTest`（33件）・`YamlFormatReaderTest`（20件）・`XlsFormatWriterTest`（40件）・`YamlFormatWriterTest`（33件）の全テストメソッドを列挙する
-- [ ] 軸C の全フィールドを実クラス（`TestDataContainer` / `TestDataSection` / `TestDataBlock` / `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock` / `RecordLayout` / `FieldDef`）から読み取り、省略可能なフィールドを特定する
-- [ ] 軸A の `DataType` 14種を `nablarch.test.core.reader.DataType` の実定義と突き合わせ、14種であることを確認する（ユーザー側でも `DEFAULT` ＋13 の計14種と確認済み。突き合わせは省略せず実施し、差異があれば実定義を正とし記録する）
-- [ ] 各テストメソッドを軸A〜F の要素へ対応付け、`.rn/ntf-test-data-converter/coverage/inventory.md` に4辺ぶんの棚卸し表として記録する
-- [ ] 各辺の空欄（未担保の軸要素）を一覧として同ファイルに明記する
-- [ ] self-check（OK/NG per completion criterion、checks/task-18.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, writing）
-- [ ] Verification expert review（subagent, fact-check）
+- [x] `XlsFormatReaderTest`（33件）・`YamlFormatReaderTest`（20件）・`XlsFormatWriterTest`（40件）・`YamlFormatWriterTest`（33件）の全テストメソッドを列挙する
+- [x] 軸C の全フィールドを実クラス（`TestDataContainer` / `TestDataSection` / `TestDataBlock` / `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock` / `RecordLayout` / `FieldDef`）から読み取り、省略可能なフィールドを特定する
+- [x] 軸A の `DataType` 14種を `nablarch.test.core.reader.DataType` の実定義と突き合わせ、14種であることを確認する（ユーザー側でも `DEFAULT` ＋13 の計14種と確認済み。突き合わせは省略せず実施し、差異があれば実定義を正とし記録する）
+- [x] 各テストメソッドを軸A〜F の要素へ対応付け、`.rn/ntf-test-data-converter/coverage/inventory.md` に4辺ぶんの棚卸し表として記録する
+- [x] 各辺の空欄（未担保の軸要素）を一覧として同ファイルに明記する
+- [x] self-check（OK/NG per completion criterion、checks/task-18.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, writing）
+- [x] Verification expert review（subagent, fact-check）
 
 **Completion criteria**:
 
@@ -636,6 +636,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - [ ] 軸C の全フィールドを非デフォルト値でアサートする。**省略可能なのは実定義上 `groupId` / `recordType` / `FieldDef.type` / `FieldDef.length` の4件のみ**（#18 で確認）。この4件は「値あり」「省略」の双方を通す。`directives` / `fwHeaderFields` は「非空」「空 Map」の双方を通す。`identifier` は必須スカラー、`fileType` は `FIXED`/`VARIABLE` の2値であり「省略」の表現を持たないため双方通しの対象外とする
 - [ ] `FileDataBlock.fileType` の `FIXED` / `VARIABLE` 両方を通す
 - [ ] `DataType.DEFAULT` はリーダ経路では生成されない（`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする）。辺①では「到達不能」として理由付きで空欄に残す
+- [ ] `TestDataContainer.sections` は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため常に1件。「空」「複数」はいずれも到達不能として理由付きで空欄に残す
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-20.md に記録）
 - [ ] QA expert review（subagent）
@@ -716,6 +717,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - [ ] #18 の棚卸し表で辺③の空欄となっている軸A・B・C・E の要素を確認する
 - [ ] 空欄の要素それぞれについてテストを追加する（軸C は省略可能フィールドの「値あり」「省略」双方）
+- [ ] `DataType.DEFAULT` は辺③では到達可能（`XlsFormatWriter#marker` L399-400 が `getDataType().getName()` からマーカーを組み立てるだけでタイプを絞らない）。現状の挙動をまず実行して記録してから固定する。辺④は `serialize_unsupportedDataType_throws` のとおり `DEFAULT` を例外で弾くため、**辺③④で扱いが非対称**である。この非対称を `issues.md` に課題として記録する（**修正しない**）
 - [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-23.md に記録）
 - [ ] QA expert review（subagent）
@@ -724,7 +726,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Completion criteria**:
 
-- 辺③について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E の 0／1／複数がすべてアサートされている
+- 辺③について軸A の14種（`DEFAULT` を含む。辺③では到達可能）・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E の 0／1／複数がすべてアサートされている
+- 辺③④の `DEFAULT` の扱いの非対称（辺③は書き出す／辺④は例外）が `issues.md` に記録され、かつ修正されていない
 - #18 の棚卸し表で辺③に残っていた空欄が、埋まったか理由付きで残されたかのいずれかになっている
 - src/main への変更がゼロ
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
@@ -753,7 +756,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - 軸D の10ケースすべてがアサートされ、特に `null` ／ `~` ／値なし の3者が区別されるか否か、`"null"` とリテラル NULL が区別されるか否かが結果として固定されている
 - 軸F の5ケース（スキーマ違反／不正 YAML／未知キー／必須構造欠落／空ファイル）で例外型または結果がアサートされている
-- 辺②について軸A の14種・軸B の4種・軸C の全フィールド（省略可能なものは省略時も）・軸E が埋まっている
+- 辺②について軸A の13種（`DEFAULT` を除く。`YamlFormatReader#addBlocksForSection` L106-133 が既知セクションキーのみを分岐に持ち `DEFAULT` を生成しないため到達不能。根拠付きで空欄に残す）・軸B の4種・軸C の全フィールド（省略可能なものは省略時も。`sections` は `YamlFormatReader#read` L94 が `Collections.singletonList` を返すため「空」「複数」とも到達不能として根拠付きで空欄）・軸E が埋まっている
 - src/main への変更がゼロ
 - `mvn clean test -Djacoco.skip=true` が全テスト PASS する
 
@@ -863,7 +866,7 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: active
 - **Date**: 2026-08-12
-- **Last completed**: #17 Javadoc からの外部文書参照の除去（全 19 件）
-- **Next**: #18 既存テスト 4辺分の軸棚卸し
-- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み。候補 `ClientActionTest.xlsx` は真正な Excel 保存物と確認済み）。`DataType` は 14種（`DEFAULT` ＋13）とユーザー側でも確認済みだが、#18 での実定義突き合わせは予定どおり実施する。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
+- **Last completed**: #18 既存テスト 4辺分の軸棚卸し
+- **Next**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
+- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み。候補 `ClientActionTest.xlsx` は真正な Excel 保存物と確認済み）。`DataType` は 14種（`DEFAULT` ＋13）で実定義と一致することを #18 で確認済み。#18 完了（棚卸し `coverage/inventory.md`、未担保 107 件＝要追加 99／到達不能 6／上位層で担保済み 2）。#18 の裏取りで確定した実定義との差異・到達不能要素を #20〜#25 の記述へ反映済み。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
 
