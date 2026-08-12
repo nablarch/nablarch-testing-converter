@@ -681,15 +681,15 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] 軸E: 1セクションに 0／1／複数ブロック、1ブロックに 0／1／複数行、1ファイルに 0／1／複数レコードレイアウトのテストを追加する。「1ブックに複数シート」は `XlsFormatReader.read` が `"ブック名/シート名"` の1シート単位 API（`XlsFormatReader` L96-101）のため到達不能。理由付きで空欄に残す
-- [ ] 軸F: シート不在／ブック破損／未知のデータタイプ名／マーカーカラム欠落／カラム名重複／行と列の数の不一致のテストを追加する（現状の挙動をまず記録してから固定する）
-- [ ] F1-06（行と列の数の不一致）で、#20 が「到達不能」と判定した C-17／C-20 の根拠を実行可能なテストにする。3 入力（名前行 1 列／型行が名前行より短い／型セルが中間位置で空）それぞれで例外型とメッセージをアサートし、`issues.md` の「到達不能」表からそのテストメソッド名を参照する。#20 時点では C-17／C-20 だけが散文の記述のみで、本体パーサの挙動が変われば到達可能に変わっても検出できない状態になっている（C-11／C-13／C-16 は根拠テストを持つ）
-- [ ] 異常系のうち仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-21.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] 軸E: 1セクションに 0／1／複数ブロック、1ブロックに 0／1／複数行、1ファイルに 0／1／複数レコードレイアウトのテストを追加する。「1ブックに複数シート」は `XlsFormatReader.read` が `"ブック名/シート名"` の1シート単位 API（`XlsFormatReader` L96-101）のため到達不能。理由付きで空欄に残す
+- [x] 軸F: シート不在／ブック破損／未知のデータタイプ名／マーカーカラム欠落／カラム名重複／行と列の数の不一致のテストを追加する（現状の挙動をまず記録してから固定する）
+- [x] F1-06（行と列の数の不一致）で、#20 が「到達不能」と判定した C-17／C-20 の根拠を実行可能なテストにする。3 入力（名前行 1 列／型行が名前行より短い／型セルが中間位置で空）それぞれで例外型とメッセージをアサートし、`issues.md` の「到達不能」表からそのテストメソッド名を参照する。#20 時点では C-17／C-20 だけが散文の記述のみで、本体パーサの挙動が変われば到達可能に変わっても検出できない状態になっている（C-11／C-13／C-16 は根拠テストを持つ）
+- [x] 異常系のうち仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（376 件 PASS）
+- [x] self-check（OK/NG per completion criterion、checks/task-21.md に記録）
+- [x] QA expert review（subagent） — ラウンド3 で PASS
+- [x] Craft expert review（subagent, coding） — ラウンド3 で PASS
+- [x] Verification expert review（subagent, test） — ラウンド2 で PASS
 
 **Completion criteria**:
 
@@ -887,12 +887,12 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: in progress
 - **Date**: 2026-08-12
-- **Last completed**: #20 辺① 軸A・B・C（実ファイル経由）。3レビューとも PASS でチェックオフ済み
-- **Next**: #21 辺① 軸E（多重度）・軸F（異常系）に着手する
+- **Last completed**: #21 辺① 軸E（多重度）・軸F（異常系）。3レビューとも PASS でチェックオフ済み。**辺①は 4 軸すべて埋まり、未担保 0 件（担保済み 33 ／ 到達不能 8）**
+- **Next**: #22 辺③ 軸D（セル型8ケース）・軸F（異常系）に着手する。#22 の Prerequisites は #18 なので #21 完了を待つ必要は無かったが、順に進める
 - **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。#20 の成果物は `5509b09`（初回）／`0761b12`（ラウンド1 指摘 21 件）／`4b745a2`・`d9293bb`・`0811032`（ラウンド2・3 指摘）。テスト 17 件・全 354 PASS・src/main 無変更。3 レビューの判定と指摘は `checks/task-20.md` に記録済み（**再レビューの入力にはしない**＝中立フレーミング維持）。
   **#20 で棚卸しが変わった**: C-08 は #21 送りではなく #20 で担保、C-17／C-11／C-13／C-16／C-20 は到達不能（`inventory.md` §1.3 は更新済み）。#21 へ送るのは C-09／C-12／C-15／C-18 の「空」4 件＋E-2/E-3(0 件)＋F1-01〜F1-06 の計 11 件。
-  **#21 で必ず拾うこと**: C-17／C-20 の「到達不能」は現在ソース読解とプローブだけが根拠で、リポジトリ内に実行可能な証拠が無い（C-11／C-13／C-16 は根拠テストを持つ）。F1-06 で 3 入力（名前行 1 列／型行が名前行より短い／型セルが中間位置で空）の例外型・メッセージを固定し、`issues.md` の「到達不能」表からテストメソッド名を参照する。Steps と Completion criteria に記載済み。
-  課題は `coverage/issues.md`（XLS-01〜09。XLS-08＝マーカー列のみのブロックが「セル0個の行」になり書き戻すと消える、XLS-09＝`XlsFormatReader` L531 のコメント誤り。いずれも未修正）。
+  **#21 で解消済み**: C-17／C-20 の「到達不能」に実行可能な根拠テストが付いた（`XlsFormatReaderInvalidInputTest` の名前行 1 列 2 件・型行不整合 2 件）。
+  課題は `coverage/issues.md` に **XLS-01〜15**（すべて未修正）。#21 で 6 件増えた: **XLS-10**＝未知のデータタイプ名のマーカーはブロックごとデータ行まで黙って消える（例外もログも無し）、**XLS-13**＝送信同期のメタ列欠落で先頭フィールドと値が黙って落ちる、**XLS-12**＝はみ出したセルは黙って捨てられる一方で不足側は `""` 埋めという非対称、**XLS-15**＝`MESSAGE` 本文の 2 つ目のレコードレイアウトが値行として吸収される（E-3 複数はメッセージ系では到達不能）、XLS-11・XLS-14 は記録のみ。**XLS-10／XLS-11 は本リポジトリ `src/main` の `TestCoreReaderAdapter` が原因で、この repo 内で修正可能**（`nablarch-testing` の変更を要する XLS-14 とは異なる）。
   **台帳の基準時点**: `inventory.md` は §2〜§4 と §5.1 が #18 基準（4 辺を同じ基準で比べるため）、§1.2-2・§1.3・§5.2 が現時点ビュー。冒頭 §0 の案内に明記してある。
   **ユーザー指摘による訂正を反映済み**: 課題一覧は影響度ではなく「検出できるか」で並べる（XLS-05 が最上位）、`nablarch-example-web` はサンプルアプリであって対象PJの実データではない（件数0は対象PJに無いことを意味しない）。
   **未決（ユーザー判断待ち）**: Rules の「1 task = 1 commit」から #20 が逸脱している（7 コミット。レビュー修正ラウンドとセッション中断が理由）。Rules に修正ラウンドの扱いを書き足すか現状運用のままかは未定。

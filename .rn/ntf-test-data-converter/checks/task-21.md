@@ -235,19 +235,41 @@ $ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
 
 ## Expert Reviews
 
-（1 巡目は実施済み: QA / Craft / Verification。判定は本ファイルには渡されていない。
-指摘への対応は Evidence 9 のとおり。2 巡目はコーディネータが起動する）
+3 レビューとも独立サブエージェントとして起動し、**先行ラウンドの判定・指摘は渡していない**（中立フレーミング）。
+QA には「対応表・棚卸しの数字は、表の行を実際に足し合わせて検算すること」を必須観点として明示した。
 
-### QA
+| レビュー | ラウンド1（`56128b5`） | ラウンド2（`c724a37`） | ラウンド3（`c787352` ＋ 最終修正） |
+|---|---|---|---|
+| QA | **PASS**（Major 1・Minor 6） | **FAIL**（旧メソッド名参照が完了条件の未達） | **PASS**（Minor 1＝空 `<p>`。修正済み） |
+| Craft (coding) | **FAIL**（Major 5・Minor 4） | **FAIL**（N1・N2 旧メソッド名／N3 未使用ヘルパ／N4 方針記述） | **PASS**（Minor 4。うち 3 件を修正、1 件は据え置き） |
+| Verification (test) | **PASS**（Minor 3） | **PASS**（Minor 1＝旧メソッド名） | 再実行せず（変更が Javadoc・ドキュメント・未使用ヘルパ削除のみでアサーションに触れていないため） |
 
-### Craft (coding)
+### 指摘への対応
 
-### Verification (test)
+- **ラウンド1**: `Evidence 9` に A〜D の対応を記録。事実誤り 1 件（`TestCoreReaderAdapter#markerGroupId` を「本体」と誤記。実際は本リポジトリ `src/main`）、台帳の陳腐化 1 件（§5.1 の注記が #20 時点のまま）、担保の穴 2 件（F1-05 が Fake 経路のみ／XLS-10・12・13・15 の「警告も出ない」が未アサート）を解消した。
+- **ラウンド2**: メソッド分割で生じた旧メソッド名への参照 5 箇所を差し替え。3 レビュアーが独立に同じ箇所を挙げた。
+- **ラウンド3**: 例外メッセージ突き合わせ方針の記述を実装に合わせて 4 類型へ（本体の `toString()` ダンプ、外部ライブラリ POI の文言）。空 `<p>` を除去。
+
+### 据え置いたもの（理由付き）
+
+| 指摘 | 判断 |
+|---|---|
+| Craft: 2 クラス間のヘルパ重複（`fieldNames`・`read`）を `XlsFixture` へ集約 | 見送り。アサート系ヘルパをクラスごとに残す判断はレビュアー自身も妥当としており、#22〜#25 で辺③④のフィクスチャ要件が固まってから判断するほうが手戻りが少ない |
+| Craft: `assertThrows` と `try/fail/catch` の使い分け | 現状維持（レビュアーも推奨）。クラス内で混在なし |
+| Craft: `assertNameRowNeedsTwoColumns` がヘルパ区画の外にある | 据え置き。呼び出し元 2 件の直後にあり意図が読め、C-17／C-20 の対を割ってもいない |
+| ブック部分破損（ZIP は開けるが内部破損）の挙動／XLS-15 が送信同期 4 種でも起きるか | `issues.md`「未確認（#21）」に射程として記録済み |
+
+### 検証の要点（Verification が実測）
+
+- 追加 22 件すべてが、`src/main` へのミューテーションで 1 つ以上のケースにより赤くなる。空証明・トートロジーは無い。
+- **ログ捕捉の 0 件アサートは空証明ではない** — `read()` に `LOGGER.warning` を注入すると `assertNoWarning` を持つ 5 メソッド全部が赤くなり、実行順を `reversealphabetical`／`random` に変えても同じ。
+- C-17／C-20 の到達不能根拠は「例外が出なくなる方向」に壊しても赤くなり、到達可能化を検出する tripwire として機能する。
+- 固定長経路とメッセージ経路を握り潰すミューテーションが、分割した 2 メソッドをそれぞれ独立に赤くする。
 
 ## Overall Verdict
 
 - Self-check: OK（Completion criteria 5 項目すべて OK。留保していた E-3(複数) はコーディネータ指示により追加し解消）
-- QA: 未実施
-- Craft expert (coding): 未実施
-- Verification expert (test): 未実施
-- Ready to check off: レビュー後に判断
+- QA: **OK**（ラウンド3 で PASS。全表の検算一致・台帳とテストの全メソッド名突き合わせ 245 識別子で未解決参照ゼロ・全 376 テスト PASS・src/main 無変更を自ら実行して確認）
+- Craft expert (coding): **OK**（ラウンド3 で PASS）
+- Verification expert (test): **OK**（ラウンド2 で PASS）
+- Ready to check off: **Yes**
