@@ -212,3 +212,73 @@ Excel が保存した同種のセルで同じ結果になる保証はない。
 - steering Assumptions の例外は「実物 `.xlsx` 1 本のみ」であり、上記の未確認範囲を埋めるには
   日付・数式・真偽値・エラーセルを含む Excel 保存物を追加同梱する必要がある。
   同梱本数を増やすかどうかは**コーディネータの判断が要る**。
+
+---
+
+## #20 辺① 軸A・B・C（実ファイル経由）で記録した課題
+
+### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中）
+
+| 入力 | 中間モデルへ入る値 | 担保テスト |
+|---|---|---|
+| `SETUP_FIXED=f.dat` の名前行 先頭セル（レコード種別）が空白セル | `RecordLayout.recordType` ＝ `""` | `XlsFormatReaderRealFileTest#readsOmittedRecordTypeAsEmptyStringFromRealBook` |
+
+- 中間モデル `RecordLayout` の Javadoc（L26/L36）は省略時の表現を **`null`** と定めており、
+  YAML 経路（辺②）は実際に `null` を入れる
+  （`YamlFormatReaderTest#readFile_recordTypeOmitted_keepsNullRecordType`）。
+- Excel 経路は `XlsFormatReader#toRecordLayouts` L305 が生行の先頭セルをそのまま採る。
+  空セルは `PoiXlsReader` が `""` を返すため、`null` にはならない。
+- 影響: `YamlFormatWriter` L261-263 は `recordType != null` のときだけ `record_type` を書き出すため、
+  **Excel 由来の「レコード種別省略」は `record_type: ""` として YAML に現れる**（YAML 由来の省略はキー自体が無い）。
+  プローブで実測した変換後 YAML:
+
+  ```yaml
+  setup_files:
+    - path: "f.dat"
+      type: "fixed"
+      directives:
+        file-type: "Fixed"
+      records:
+        - record_type: ""
+  ```
+
+- Excel へ書き戻す際は `XlsFormatWriter` L275 の `nullToEmpty` により元と同じ空セルへ戻るため、
+  Excel→YAML→Excel の往復自体は安定する。しかし同じ「省略」が入力形式によって 2 通りに表現され、
+  YAML 同士の比較・スキーマ上の扱いが揃わない。
+- 判断: **仕様として不適切**（省略の表現が経路間で非対称）。修正はこの作業では行わない。
+- 帰結: 辺①では軸C の C-16「省略（`null`）」は**到達不能**である。
+
+### XLS-07 器が注入する既定ディレクティブが、Excel に書かれていなくても中間モデルに現れる（影響度 低・記録のみ）
+
+| 入力 | 中間モデルへ入る `directives` | 担保テスト |
+|---|---|---|
+| ディレクティブ行を持たない `EXPECTED_FIXED` | `{file-type=Fixed}` | `XlsFormatReaderRealFileTest#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook` |
+| `record-separator` だけを書いた `EXPECTED_VARIABLE` | `{file-type=Variable, record-separator=CRLF, field-separator=,}` | `#readsExpectedVariableFileBlockWithGroupIdFromRealBook` |
+| ディレクティブ行を持たない送信同期メッセージ 4 種 | `{file-type=Fixed}` | `#readsAllFourSendSyncMessageTypesFromRealBook` |
+
+- 原因: 本体 `DataFile` のコンストラクタ（L92）が `setDirective("file-type", getFileType())` を必ず実行する。
+  可変長は `VariableLengthFile` L29 がさらに `field-separator` の既定値 `,` を設定する。
+- 変換後 YAML には作成者が書いていない `file-type` / `field-separator` が出力される。
+  ただし値は器の既定値そのものであり、テスト実行時の解釈は変わらない。
+- 判断: 受容できる（記録のみ）。
+- 帰結: 辺①では軸C の C-11 `FileDataBlock.directives` 空 と C-13 `MessageDataBlock.directives` 空 は
+  **到達不能**である（Excel にディレクティブ行が 1 行も無くても空 Map にならない）。
+
+### 課題としないと判断した観測結果（#20）
+
+| 観測 | 判断 |
+|---|---|
+| グループ ID を持たないマーカー（`SETUP_TABLE=T`）の `groupId` が `""` | 妥当（`TestDataBlock` Javadoc L27/L41「省略時は空文字」どおり） |
+| 可変長ファイルの `FieldDef.length` が `null` | 妥当（長さ行を持たないため。`FieldDef` Javadoc L25/L43 どおり） |
+| マーカー行の無いシートがブロック 0 件のセクションになる | 妥当 |
+| Excel 記述順の列名が LIST_MAP でアルファベット順にならない | 妥当（steering #15 の修正どおり） |
+
+### 到達不能と判定した軸要素（#20 で新たに判明したもの）
+
+`inventory.md` §1.3 では「要追加」に分類されていたが、実 `.xlsx` 経路では生成できないことが判明したもの。
+
+| 軸要素 | 根拠 |
+|---|---|
+| C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | XLS-07（器が `file-type` を必ず注入する） |
+| C-16 `RecordLayout.recordType` 省略（`null`） | XLS-06（実 `.xlsx` 経路では `""` になる） |
+| C-20 `FieldDef.type` 省略（`null`） | 型行が名前行より短い、または型セルが空だと本体パーサが `DataFileFragment#assertSameSizeAsNames`（L342 ← `setTypes` L203）で `IllegalArgumentException` を投げ、`TestDataParsingTemplate#parse` L160 が `IllegalStateException("can't get data")` に包んで失敗する（プローブで実測）。器が成立する入力では型が常に全フィールドぶん揃うため、`XlsFormatReader#readFieldDefs` L378 の `null` フォールバックには到達しない。例外そのものは軸F の F1-06（行と列の数の不一致）としてタスク #21 が扱う |
