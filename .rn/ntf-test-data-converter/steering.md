@@ -866,9 +866,8 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: active
+- **Status**: paused
 - **Date**: 2026-08-12
 - **Last completed**: #19 辺① 実 `.xlsx` フィクスチャ基盤と軸D（セル種別17ケース）
-- **Next**: #20 辺① 軸A・B・C（実ファイル経由）
-- **Notes**: **plan gate 承認済み（2026-08-12、`/rn:gm` による補足3点つき承認）** — フェーズ2（#18–#28）へ着手可。承認時の補足を steering へ反映済み: (1) フィクスチャは POI 生成方式（Decisions「フェーズ2 フィクスチャ方針」）、(2) 軸D 17ケースの優先度をユーザー実測に基づき設定（Decisions「軸D の優先度」。省略は不可、固定できなければ `issues.md` へ）、(3) 実物 `.xlsx` 1本を参照フィクスチャとして同梱し POI 生成物との読み取り一致を確認する（Assumptions の例外としてユーザー承認済み）。**#19 で参照フィクスチャを `ClientActionTest.xlsx` → `ProjectActionRequestTest.xlsx` に差し替え済み**（前者は全セルが文字列／空白で数値セルを1件も含まないため、同一性確認の意味がなかった）。同梱バイナリは1本のまま。`DataType` は 14種（`DEFAULT` ＋13）で実定義と一致することを #18 で確認済み。#18 完了（棚卸し `coverage/inventory.md`、未担保 107 件＝要追加 99／到達不能 6／上位層で担保済み 2）。#18 の裏取りで確定した実定義との差異・到達不能要素を #20〜#25 の記述へ反映済み。PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
-
+- **Next**: #20 辺① 軸A・B・C（実ファイル経由）— `XlsFixture` を使い、14 の `DataType`・4種のブロック・軸C 全21フィールドを実 `.xlsx` 経由で通す
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1（push 済み）。plan gate 承認済み（`/rn:gm` 補足3点は steering 反映済み）。#18 の棚卸しは `coverage/inventory.md`、課題は `coverage/issues.md`（XLS-01〜05、いずれも未修正）。**ユーザー確認待ちの論点**: (a) 数値セル39件のうち38件はマーカー列 `[no]` の値で中間モデルに入らず、XLS-01 が実データを壊すのは1セルのみ — この訂正を踏まえ軸D の優先度を変えるか（現状は最優先のまま維持）、(b) 日付・時刻・日時・数式・真偽値・エラーセルは実データに0件のため Excel 保存物との突き合わせ不能。`issues.md` に「未確認」として記録済みで、同梱バイナリ1本の例外は広げていない。**#20 着手時の前提**: `XlsFixture` の API は変更しない（Design レビュー判定）。到達不能要素（辺① `DEFAULT`／`sections` 空・複数）は理由付きで空欄に残す。
