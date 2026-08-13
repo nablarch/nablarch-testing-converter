@@ -47,6 +47,17 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
+ * <b>アサートの読み方。</b>{@code getCellType()} が返すのは排他的な {@code int} 定数
+ * （{@code CELL_TYPE_NUMERIC=0}／{@code CELL_TYPE_STRING=1}／{@code CELL_TYPE_FORMULA=2}／
+ * {@code CELL_TYPE_BLANK=3}）である。したがって {@code is(CELL_TYPE_STRING)} が通れば、
+ * 同じセルに対する {@code is(not(CELL_TYPE_NUMERIC))} などの否定形も、
+ * {@code getNumericCellValue()} ／ {@code getCellFormula()} が {@code IllegalStateException} に
+ * なることも<b>必ず成り立つ</b>。本クラスの否定形アサートと {@code assertThrows} は、
+ * 完了条件の文言（「数値セルにならない」「数式として解釈されない」）を字面どおり残すために置いてあるだけで、
+ * <b>型アサートとは独立した担保ではない</b>。実装が壊れたときに落ちるのは型アサートの行である。
+ * </p>
+ *
+ * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
  * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
  * （XLS-17〜XLS-19）として記録してあり、実装（src/main）は変更していない。
@@ -91,6 +102,9 @@ public class XlsFormatWriterCellTypeTest {
      * @return コンテナ
      */
     private static TestDataContainer container(String value) {
+        // D3-04（value == null）を通すため Arrays.asList を使う。List.of は null 要素を拒否するので
+        // ここを List.of へ置き換えると writesNullValueAsLiteralNullStringCell が壊れる
+        // （同趣旨の注意書きが XlsFormatWriterTest#row（L63）の Javadoc にもある）。
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 Arrays.asList("KEY", "V"),
                 Collections.singletonList(Arrays.asList("k", value)));
@@ -132,18 +146,45 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * 同じ文字を繰り返した文字列を作る。
+     * XML 1.0 で表現できない制御文字が {@code ?} へ置換されることを、1 文字ぶん確かめる。
      *
-     * @param c     文字
-     * @param count 繰り返し回数
-     * @return 文字列
+     * <p>
+     * 制御文字はソースに直接書くと編集経路で失われるため、呼び出し側は {@code (char)} キャストで渡す。
+     * </p>
+     *
+     * @param illegal XML 1.0 で表現できない制御文字
      */
-    private static String repeat(char c, int count) {
-        StringBuilder builder = new StringBuilder(count);
-        for (int i = 0; i < count; i++) {
-            builder.append(c);
-        }
-        return builder.toString();
+    private void assertReplacedWithQuestionMark(char illegal) {
+        // Given
+        String value = "a" + illegal + "b";
+        String label = String.format("U+%04X", (int) illegal);
+
+        // When
+        String inMemory = buildInMemory(value);
+        Cell cell = writeAndReopen(value);
+
+        // Then
+        assertThat(label + " はメモリ上のブックでは保たれている（失われるのは直列化区間）", inMemory, is(value));
+        assertThat(label, cell.getCellType(), is(Cell.CELL_TYPE_STRING));
+        assertThat(label + " は ? へ置き換わる（issues.md XLS-17）", cell.getStringCellValue(), is("a?b"));
+    }
+
+    /**
+     * XML 1.0 で表現できる制御文字がそのまま保たれることを、1 文字ぶん確かめる。
+     *
+     * @param legal XML 1.0 で表現できる制御文字
+     */
+    private void assertWrittenAsIs(char legal) {
+        // Given
+        String value = "a" + legal + "b";
+        String label = String.format("U+%04X", (int) legal);
+
+        // When
+        Cell cell = writeAndReopen(value);
+
+        // Then
+        assertThat(label, cell.getCellType(), is(Cell.CELL_TYPE_STRING));
+        assertThat(label + " は保たれる", cell.getStringCellValue(), is(value));
     }
 
     // ------------------------------------------------------------------ D3-01〜D3-03（型として解釈されうる記法）
@@ -163,9 +204,10 @@ public class XlsFormatWriterCellTypeTest {
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("数値セルにならない", cell.getCellType(), is(not(Cell.CELL_TYPE_NUMERIC)));
         assertThat(cell.getStringCellValue(), is("100"));
-        // 数値としては取り出せない（＝数値セルでないことのもう一つの証拠）
+        // 以下 2 行は上の型アサートの帰結を字面どおり書き下したものであり、独立した担保ではない
+        // （クラス Javadoc「アサートの読み方」参照）。
+        assertThat("数値セルにならない", cell.getCellType(), is(not(Cell.CELL_TYPE_NUMERIC)));
         assertThrows(IllegalStateException.class, () -> cell.getNumericCellValue());
     }
 
@@ -184,9 +226,10 @@ public class XlsFormatWriterCellTypeTest {
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("数式セルにならない", cell.getCellType(), is(not(Cell.CELL_TYPE_FORMULA)));
         assertThat("数式は評価されず記法のまま残る", cell.getStringCellValue(), is("=1+1"));
-        // 数式としては取り出せない（＝数式セルでないことのもう一つの証拠）
+        // 以下 2 行は上の型アサートの帰結を字面どおり書き下したものであり、独立した担保ではない
+        // （クラス Javadoc「アサートの読み方」参照）。
+        assertThat("数式セルにならない", cell.getCellType(), is(not(Cell.CELL_TYPE_FORMULA)));
         assertThrows(IllegalStateException.class, () -> cell.getCellFormula());
     }
 
@@ -204,8 +247,9 @@ public class XlsFormatWriterCellTypeTest {
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("数値セルにならない（先頭ゼロが落ちない）", cell.getCellType(), is(not(Cell.CELL_TYPE_NUMERIC)));
         assertThat(cell.getStringCellValue(), is("007"));
+        // 型アサートの帰結（独立した担保ではない。クラス Javadoc「アサートの読み方」参照）。
+        assertThat("数値セルにならない（先頭ゼロが落ちない）", cell.getCellType(), is(not(Cell.CELL_TYPE_NUMERIC)));
     }
 
     // ------------------------------------------------------------------ D3-04・D3-05（値なし）
@@ -229,8 +273,9 @@ public class XlsFormatWriterCellTypeTest {
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("空白セルにはならない", cell.getCellType(), is(not(Cell.CELL_TYPE_BLANK)));
         assertThat(cell.getStringCellValue(), is("null"));
+        // 型アサートの帰結（独立した担保ではない。クラス Javadoc「アサートの読み方」参照）。
+        assertThat("空白セルにはならない", cell.getCellType(), is(not(Cell.CELL_TYPE_BLANK)));
     }
 
     /**
@@ -248,8 +293,9 @@ public class XlsFormatWriterCellTypeTest {
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("空白セルにはならない", cell.getCellType(), is(not(Cell.CELL_TYPE_BLANK)));
         assertThat(cell.getStringCellValue(), is(""));
+        // 型アサートの帰結（独立した担保ではない。クラス Javadoc「アサートの読み方」参照）。
+        assertThat("空白セルにはならない", cell.getCellType(), is(not(Cell.CELL_TYPE_BLANK)));
     }
 
     // ------------------------------------------------------------------ D3-06 改行
@@ -274,25 +320,55 @@ public class XlsFormatWriterCellTypeTest {
     /**
      * Given: {@code CRLF} 改行を含む文字列を持つデータ行。
      * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
-     * Then : <b>文字列セル</b>になるが、{@code CR}（{@code U+000D}）が黙って落ち {@code LF} だけが残る。
+     * Then : <b>文字列セル</b>になるが、{@code CRLF}（2 文字）が黙って {@code LF} 1 文字へ正規化される。
      *
      * <p>
      * 担保する軸要素: D3-06（改行の異表記）。メモリ上のブックでは {@code CRLF} が保たれており
-     * （{@code XlsFormatWriter#build} 直後の値は 4 文字）、失われるのはファイルへ直列化する区間である。
+     * （{@code XlsFormatWriter#build} 直後の値は 4 文字）、変わるのはファイルへ直列化する区間である。
+     * XML の行末正規化は「{@code CR} を捨てる」のではなく「{@code CR} を {@code LF} へ置き換える」
+     * 規則であり、{@code CRLF} の場合だけ 2 文字が 1 文字にまとまるため長さが減る
+     * （{@code CR} 単独では長さが変わらない。{@code #replacesLoneCarriageReturnWithLineFeedInStringCell}）。
      * 変換前後で値が変わるため {@code issues.md} の <b>XLS-18</b> に課題として記録した（修正はしない）。
      * </p>
      */
     @Test
-    public void dropsCarriageReturnFromCrLfStringCell() {
+    public void replacesCrLfWithSingleLineFeedInStringCell() {
         // When
+        String inMemory = buildInMemory("a\r\nb");
         Cell cell = writeAndReopen("a\r\nb");
 
         // Then
-        assertThat("メモリ上のブックでは CRLF が保たれている（失われるのは直列化区間）",
-                buildInMemory("a\r\nb"), is("a\r\nb"));
+        assertThat("メモリ上のブックでは CRLF が保たれている（変わるのは直列化区間）", inMemory, is("a\r\nb"));
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("CR が落ちて LF だけが残る（issues.md XLS-18）", cell.getStringCellValue(), is("a\nb"));
-        assertThat(cell.getStringCellValue().length(), is(3));
+        assertThat("CRLF が LF 1 文字へまとまる（issues.md XLS-18）",
+                cell.getStringCellValue(), is("a\nb"));
+    }
+
+    /**
+     * Given: {@code LF} を伴わない単独の {@code CR} を含む文字列を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になるが、{@code CR} が黙って {@code LF} へ置き換わる。
+     *        <b>文字数は 3 文字のまま変わらない。</b>
+     *
+     * <p>
+     * 担保する軸要素: D3-06（改行の異表記）。{@code CRLF}（{@code #replacesCrLfWithSingleLineFeedInStringCell}）
+     * では 4 文字が 3 文字になるため長さの差で気づけるが、単独 {@code CR} では長さが変わらないため
+     * 差分の長さでは気づけない。すなわち XML の行末正規化は削除ではなく<b>置換</b>である
+     * （{@code issues.md} <b>XLS-18</b>）。
+     * </p>
+     */
+    @Test
+    public void replacesLoneCarriageReturnWithLineFeedInStringCell() {
+        // When
+        String inMemory = buildInMemory("a\rb");
+        Cell cell = writeAndReopen("a\rb");
+
+        // Then
+        assertThat("メモリ上のブックでは CR が保たれている（変わるのは直列化区間）", inMemory, is("a\rb"));
+        assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
+        assertThat("CR が LF へ置き換わる（issues.md XLS-18）", cell.getStringCellValue(), is("a\nb"));
+        assertThat("長さは変わらないため差分の長さでは気づけない",
+                cell.getStringCellValue().length(), is("a\rb".length()));
     }
 
     // ------------------------------------------------------------------ D3-07 32767 文字超
@@ -311,16 +387,15 @@ public class XlsFormatWriterCellTypeTest {
     @Test
     public void writesStringLongerThanExcelCellLimitAsStringCell() {
         // Given
-        String tooLong = repeat('x', EXCEL_MAX_CELL_LENGTH + 1);
+        String tooLong = "x".repeat(EXCEL_MAX_CELL_LENGTH + 1);
 
         // When
         Cell cell = writeAndReopen(tooLong);
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("切り詰められない（issues.md XLS-19）",
-                cell.getStringCellValue().length(), is(EXCEL_MAX_CELL_LENGTH + 1));
-        assertThat(cell.getStringCellValue(), is(tooLong));
+        assertThat("切り詰められず 32768 文字がそのまま読み戻せる（issues.md XLS-19）",
+                cell.getStringCellValue(), is(tooLong));
     }
 
     /**
@@ -333,67 +408,81 @@ public class XlsFormatWriterCellTypeTest {
     @Test
     public void writesStringOfExcelCellLimitLengthAsStringCell() {
         // Given
-        String atLimit = repeat('x', EXCEL_MAX_CELL_LENGTH);
+        String atLimit = "x".repeat(EXCEL_MAX_CELL_LENGTH);
 
         // When
         Cell cell = writeAndReopen(atLimit);
 
         // Then
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat(cell.getStringCellValue().length(), is(EXCEL_MAX_CELL_LENGTH));
+        assertThat("32767 文字が内容ごとそのまま読み戻せる", cell.getStringCellValue(), is(atLimit));
     }
 
     // ------------------------------------------------------------------ D3-08 制御文字
 
-    /**
-     * Given: XML 1.0 で使えない制御文字（{@code NUL}／{@code BEL}／{@code VT}／{@code US}）を含む値。
-     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
-     * Then : <b>文字列セル</b>になるが、当該文字が黙って {@code ?}（{@code U+003F}）へ置き換わる。
-     *        文字数は変わらない。
+    /*
+     * D3-08 は文字ごとに 1 メソッドへ分けてある（姉妹クラス XlsFormatReaderCellTypeTest が
+     * 17 ケースを 1 ケース 1 @Test で展開しているのに合わせた）。ループで束ねると最初の 1 文字が
+     * 落ちた時点で残りが実行されず、どの文字で挙動が違うのかが分からなくなるためである。
      *
-     * <p>
-     * 担保する軸要素: D3-08。メモリ上のブックでは制御文字が保たれており
-     * （{@code XlsFormatWriter#build} 直後は入力と同一）、置換されるのはファイルへ直列化する区間である。
-     * 変換前後で値が変わるため {@code issues.md} の <b>XLS-17</b> に課題として記録した（修正はしない）。
-     * 制御文字はソースに直接書くと編集経路で失われるため、{@code (char)} キャストで組み立てる。
-     * </p>
+     * 以下 4 件（NUL／BEL／VT／US）は XML 1.0 で表現できない制御文字。
+     * 実 .xlsx へ書き出すと当該文字が黙って ?（U+003F）へ置き換わる（文字数は変わらない）。
+     * メモリ上のブックでは保たれており、置換されるのはファイルへ直列化する区間である。
+     * 変換前後で値が変わるため issues.md の XLS-17 に課題として記録した（修正はしない）。
+     * 担保する軸要素: D3-08。
+     */
+
+    /**
+     * {@code NUL}（{@code U+0000}）を含む値が {@code ?} へ置換されて書かれる。
      */
     @Test
-    public void replacesXmlIllegalControlCharactersWithQuestionMark() {
-        // Given / When / Then（4 文字それぞれで同じ挙動になることを確かめる）
-        char[] illegals = {(char) 0x00, (char) 0x07, (char) 0x0B, (char) 0x1F};
-        for (char illegal : illegals) {
-            String label = String.format("U+%04X", (int) illegal);
-            String value = "a" + illegal + "b";
-            Cell cell = writeAndReopen(value);
-            assertThat(label + " はメモリ上のブックでは保たれている（失われるのは直列化区間）",
-                    buildInMemory(value), is(value));
-            assertThat(label, cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-            assertThat(label + " は ? へ置き換わる（issues.md XLS-17）",
-                    cell.getStringCellValue(), is("a?b"));
-        }
+    public void replacesNulCharacterWithQuestionMark() {
+        assertReplacedWithQuestionMark((char) 0x00);
     }
 
     /**
-     * Given: XML 1.0 で使える制御文字（{@code TAB}／{@code DEL}）を含む値。
-     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
-     * Then : <b>文字列セル</b>になり、当該文字がそのまま保たれる（置換されない）。
-     *
-     * <p>
-     * 担保する軸要素: D3-08 の対照。置換されるのは「制御文字だから」ではなく
-     * 「XML 1.0 で表現できない文字だから」であることを、置換されない制御文字で示す
-     * （{@code issues.md} XLS-17 の原因の裏付け）。
-     * </p>
+     * {@code BEL}（{@code U+0007}）を含む値が {@code ?} へ置換されて書かれる。
      */
     @Test
-    public void writesXmlLegalControlCharactersAsIs() {
-        // Given / When / Then
-        char[] legals = {(char) 0x09, (char) 0x7F};
-        for (char legal : legals) {
-            String label = String.format("U+%04X", (int) legal);
-            Cell cell = writeAndReopen("a" + legal + "b");
-            assertThat(label, cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-            assertThat(label + " は保たれる", cell.getStringCellValue(), is("a" + legal + "b"));
-        }
+    public void replacesBellCharacterWithQuestionMark() {
+        assertReplacedWithQuestionMark((char) 0x07);
+    }
+
+    /**
+     * {@code VT}（{@code U+000B}）を含む値が {@code ?} へ置換されて書かれる。
+     */
+    @Test
+    public void replacesVerticalTabCharacterWithQuestionMark() {
+        assertReplacedWithQuestionMark((char) 0x0B);
+    }
+
+    /**
+     * {@code US}（{@code U+001F}）を含む値が {@code ?} へ置換されて書かれる。
+     */
+    @Test
+    public void replacesUnitSeparatorCharacterWithQuestionMark() {
+        assertReplacedWithQuestionMark((char) 0x1F);
+    }
+
+    /*
+     * 以下 2 件（TAB／DEL）は D3-08 の対照。置換されるのは「制御文字だから」ではなく
+     * 「XML 1.0 で表現できない文字だから」であることを、置換されない制御文字で示す
+     * （issues.md XLS-17 の原因の裏付け）。
+     */
+
+    /**
+     * {@code TAB}（{@code U+0009}）を含む値はそのまま書かれる（置換されない）。
+     */
+    @Test
+    public void writesTabCharacterAsIs() {
+        assertWrittenAsIs((char) 0x09);
+    }
+
+    /**
+     * {@code DEL}（{@code U+007F}）を含む値はそのまま書かれる（置換されない）。
+     */
+    @Test
+    public void writesDeleteCharacterAsIs() {
+        assertWrittenAsIs((char) 0x7F);
     }
 }

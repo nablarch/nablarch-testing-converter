@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.tool.converter.model.TableDataBlock;
@@ -48,8 +47,17 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 異常系は<b>例外になるもの</b>（F3-03・F3-04 の禁止文字）と<b>例外にならず書けてしまうもの</b>
+ * 異常系は<b>例外になるもの</b>（F3-03・F3-04 の禁止文字・空文字）と<b>例外にならず書けてしまうもの</b>
  * （F3-01・F3-04 の 31 文字超）に分かれる。後者は「書けてしまった結果」をそのまま固定する。
+ * ただしこの区別は無条件ではない。POI が切り詰めを禁止文字検査より先に適用するため、
+ * <b>禁止文字が index 31 以降にある 32 文字以上のシート名は例外にならず黙って書き出される</b>
+ * （{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
+ * </p>
+ *
+ * <p>
+ * <b>F3-04 で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
+ * 31 文字ちょうど（正常側の境界）である。シート名のアポストロフィ（先頭／末尾）と {@code null} は
+ * タスク #22 のスコープ外であり、<b>未担保</b>である。
  * </p>
  *
  * <p>
@@ -104,18 +112,26 @@ public class XlsFormatWriterInvalidOutputTest {
     }
 
     /**
-     * 同じ文字を繰り返した文字列を作る。
+     * Excel が禁じる文字を含むシート名が拒否されることを、1 つのシート名ぶん確かめる。
      *
-     * @param c     文字
-     * @param count 繰り返し回数
-     * @return 文字列
+     * <p>
+     * 渡すシート名は 31 文字以下であること。32 文字以上だと切り詰めが先に走り、禁止文字の位置に
+     * よっては検査に到達しない（{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
+     * </p>
+     *
+     * @param sheetName 禁止文字を含むシート名
      */
-    private static String repeat(char c, int count) {
-        StringBuilder builder = new StringBuilder(count);
-        for (int i = 0; i < count; i++) {
-            builder.append(c);
-        }
-        return builder.toString();
+    private void assertRejectsSheetName(String sheetName) {
+        // When
+        IllegalArgumentException thrown = assertThrows(sheetName, IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container("Forbidden", sheetName),
+                        folder.getRoot().getAbsolutePath()));
+
+        // Then
+        assertThat(sheetName, thrown.getMessage(), containsString("Invalid char"));
+        assertThat(sheetName, thrown.getMessage(), containsString("in sheet name '" + sheetName + "'"));
+        assertFalse("ブックは作られない: " + sheetName,
+                new File(folder.getRoot(), "Forbidden.xlsx").exists());
     }
 
     /**
@@ -215,31 +231,57 @@ public class XlsFormatWriterInvalidOutputTest {
 
     // ------------------------------------------------------------------ F3-04 シート名が Excel 制約違反
 
-    /**
-     * Given: Excel がシート名に禁じる文字（{@code / \ ? * [ ] :}）を含むセクション名。
-     * When : {@code write}。
-     * Then : POI の {@code IllegalArgumentException} が送出され、どの文字がどの位置で不正かが
-     *        メッセージに入る。ブックは作られない。
+    /*
+     * 禁止文字は文字ごとに 1 メソッドへ分けてある（姉妹クラス XlsFormatReaderCellTypeTest が
+     * 1 ケース 1 @Test で展開しているのに合わせた）。ループで束ねると最初の 1 文字が落ちた時点で
+     * 残りが実行されず、どの文字で挙動が違うのかが分からなくなるためである。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。検査は POI の {@code WorkbookUtil} が行う。</p>
+     * 以下 7 件（/ \ ? * [ ] :）はいずれも Excel がシート名に禁じる文字である。
+     * write すると POI の IllegalArgumentException が送出され、どの文字がどの位置で不正かが
+     * メッセージに入る。ブックは作られない。検査は POI の WorkbookUtil が行う。
+     * 担保する軸要素: F3-04（禁止文字）。
      */
+
+    /** シート名に {@code /} を含むと拒否される。 */
     @Test
-    public void rejectsSheetNameContainingCharacterForbiddenByExcel() {
-        // Given
-        List<String> forbidden = Arrays.asList("a/b", "a\\b", "a?b", "a*b", "a[b", "a]b", "a:b");
+    public void rejectsSheetNameContainingSlash() {
+        assertRejectsSheetName("a/b");
+    }
 
-        for (String sheetName : forbidden) {
-            // When
-            IllegalArgumentException thrown = assertThrows(sheetName, IllegalArgumentException.class,
-                    () -> new XlsFormatWriter().write(container("Forbidden", sheetName),
-                            folder.getRoot().getAbsolutePath()));
+    /** シート名に {@code \} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingBackslash() {
+        assertRejectsSheetName("a\\b");
+    }
 
-            // Then
-            assertThat(sheetName, thrown.getMessage(), containsString("Invalid char"));
-            assertThat(sheetName, thrown.getMessage(), containsString("in sheet name '" + sheetName + "'"));
-            assertFalse("ブックは作られない: " + sheetName,
-                    new File(folder.getRoot(), "Forbidden.xlsx").exists());
-        }
+    /** シート名に {@code ?} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingQuestionMark() {
+        assertRejectsSheetName("a?b");
+    }
+
+    /** シート名に {@code *} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingAsterisk() {
+        assertRejectsSheetName("a*b");
+    }
+
+    /** シート名に {@code [} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingOpeningBracket() {
+        assertRejectsSheetName("a[b");
+    }
+
+    /** シート名に {@code ]} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingClosingBracket() {
+        assertRejectsSheetName("a]b");
+    }
+
+    /** シート名に {@code :} を含むと拒否される。 */
+    @Test
+    public void rejectsSheetNameContainingColon() {
+        assertRejectsSheetName("a:b");
     }
 
     /**
@@ -262,6 +304,33 @@ public class XlsFormatWriterInvalidOutputTest {
     }
 
     /**
+     * Given: Excel の上限ちょうど（31 文字）のセクション名。
+     * When : {@code write}。
+     * Then : 例外にならず、シート名が<b>そのまま</b>書き出される（切り詰められない）。
+     *        元の名前でシートを引ける。
+     *
+     * <p>
+     * 担保する軸要素: F3-04（文字数の上限の正常側の境界）。超過側
+     * （{@code #truncatesSheetNameLongerThanExcelLimitSilently}）と対にして、
+     * 切り詰めが起きる境界が 31／32 のどちらであるかを固定する。
+     * </p>
+     */
+    @Test
+    public void writesSheetNameOfExcelLimitLengthAsIs() {
+        // Given
+        String atLimit = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
+
+        // When
+        new XlsFormatWriter().write(container("AtLimit", atLimit), folder.getRoot().getAbsolutePath());
+
+        // Then
+        Workbook workbook = XlsFixture.open(folder.getRoot().toPath().resolve("AtLimit.xlsx"));
+        assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
+        assertThat("31 文字はそのまま保たれる", workbook.getSheetName(0), is(atLimit));
+        assertThat("元のセクション名でシートを引ける", workbook.getSheet(atLimit), is(notNullValue()));
+    }
+
+    /**
      * Given: Excel の上限（31 文字）を 1 文字超える 32 文字のセクション名。
      * When : {@code write}。
      * Then : 例外にならず、シート名が<b>黙って 31 文字へ切り詰められて</b>書き出される。
@@ -277,7 +346,7 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void truncatesSheetNameLongerThanExcelLimitSilently() {
         // Given
-        String tooLong = repeat('a', EXCEL_MAX_SHEET_NAME_LENGTH + 1);
+        String tooLong = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH + 1);
 
         // When
         new XlsFormatWriter().write(container("TooLong", tooLong), folder.getRoot().getAbsolutePath());
@@ -289,13 +358,77 @@ public class XlsFormatWriterInvalidOutputTest {
         Workbook workbook = XlsFixture.open(folder.getRoot().toPath().resolve("TooLong.xlsx"));
         assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
         assertThat("31 文字へ切り詰められる（issues.md XLS-16）",
-                workbook.getSheetName(0), is(repeat('a', EXCEL_MAX_SHEET_NAME_LENGTH)));
+                workbook.getSheetName(0), is("a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH)));
         assertThat("元のセクション名ではシートを引けない", workbook.getSheet(tooLong), is(nullValue()));
         // 変換ツール自身の読み戻しも元の名前では失敗する
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
                 () -> new XlsFormatReader().read(folder.getRoot().getAbsolutePath(),
                         "TooLong/" + tooLong));
         assertThat(thrown.getMessage(), containsString("sheet not found."));
+    }
+
+    /**
+     * Given: 32 文字目（index 31）に Excel の禁止文字 {@code /} を置いた 32 文字のセクション名。
+     * When : {@code write}。
+     * Then : <b>例外にならず</b>、禁止文字が切り詰めで消えたシート名（{@code a} × 31）のブックが
+     *        黙って書き出される。
+     *
+     * <p>
+     * 担保する軸要素: F3-04（切り詰めと禁止文字検査の順序）。POI 3.8 の
+     * {@code XSSFWorkbook#createSheet(String)} は {@code substring(0, 31)} による切り詰めを
+     * {@code WorkbookUtil.validateSheetName} <b>より先に</b>適用する。したがって
+     * 「禁止文字を含むシート名は必ず例外になる」とは言えず、<b>禁止文字が index 31 以降にある
+     * 32 文字以上の名前では検査に到達せず黙って書き出される</b>。
+     * 検査そのものは効いていること（切り詰め後の名前に禁止文字が残れば失敗すること）は
+     * {@code #rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation} が示す。
+     * {@code issues.md} の <b>XLS-16</b> の帰結の一つである。
+     * </p>
+     */
+    @Test
+    public void writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation() {
+        // Given
+        String hidden = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH) + "/";
+
+        // When
+        new XlsFormatWriter().write(container("Hidden", hidden), folder.getRoot().getAbsolutePath());
+
+        // Then
+        File written = new File(folder.getRoot(), "Hidden.xlsx");
+        assertTrue("禁止文字を含む名前なのにブックが書かれる（issues.md XLS-16）", written.exists());
+        Workbook workbook = XlsFixture.open(written.toPath());
+        assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
+        assertThat("禁止文字は切り詰めで消え、検査に到達しない",
+                workbook.getSheetName(0), is("a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH)));
+    }
+
+    /**
+     * Given: 31 文字目（index 30）に Excel の禁止文字 {@code /} を置いた 32 文字のセクション名。
+     * When : {@code write}。
+     * Then : {@code IllegalArgumentException} で失敗する。メッセージが示すシート名は
+     *        <b>切り詰め後の 31 文字</b>であり、渡した 32 文字ではない。
+     *
+     * <p>
+     * 担保する軸要素: F3-04（切り詰めと禁止文字検査の順序）。
+     * {@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation} の対照であり、
+     * 「切り詰めてから検査する」という順序を、例外メッセージに現れる名前で裏づける。
+     * </p>
+     */
+    @Test
+    public void rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation() {
+        // Given
+        String surviving = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/a";
+
+        // When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container("Surviving", surviving),
+                        folder.getRoot().getAbsolutePath()));
+
+        // Then
+        assertThat(thrown.getMessage(), containsString("Invalid char (/) found at index (30)"));
+        assertThat("メッセージのシート名は切り詰め後の 31 文字（＝検査は切り詰めの後に走る）",
+                thrown.getMessage(),
+                containsString("in sheet name '" + "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/'"));
+        assertFalse("ブックは作られない", new File(folder.getRoot(), "Surviving.xlsx").exists());
     }
 
     /**
@@ -311,7 +444,7 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void failsWhenTruncatedSheetNamesCollide() {
         // Given
-        String base = repeat('a', EXCEL_MAX_SHEET_NAME_LENGTH);
+        String base = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 Collections.singletonList("C"),
                 Collections.singletonList(Collections.singletonList("v")));
