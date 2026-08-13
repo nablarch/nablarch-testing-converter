@@ -74,7 +74,7 @@ import org.junit.rules.TemporaryFolder;
  * <b>末尾 3 件だけは軸要素の担保ではない。</b>書き出したブックを {@link XlsFormatReader} で読み戻し、
  * {@code issues.md} の XLS-20／XLS-21／XLS-22 が主張する「読み戻すとどうなるか」を実検査する。
  * これらは辺③の担保としても辺①の担保としても数えない（steering Rules フェーズ2 の
- * 「往復テストで担保を代替しない」に従う）。置く理由は、この 3 件が無いと本体パーサの挙動が変わったときに
+ * 往復テストの扱いに従う）。置く理由は、この 3 件が無いと本体パーサの挙動が変わったときに
  * 上の担保テストは緑のまま {@code issues.md} の記述だけが誤りになるためである
  * （{@code XlsFormatWriterCellTypeTest} の末尾 2 件と同じ役割）。
  * </p>
@@ -85,6 +85,9 @@ public class XlsFormatWriterModelTest {
 
     /** 出力シート名。 */
     private static final String SHEET = "s";
+
+    /** {@link XlsFormatWriter} が付ける拡張子。 */
+    private static final String EXTENSION = ".xlsx";
 
     /**
      * 出力先。
@@ -100,7 +103,7 @@ public class XlsFormatWriterModelTest {
     // ------------------------------------------------------------------ helpers
 
     /**
-     * null を含められるよう {@link Arrays#asList} で行を組み立てる。
+     * 行を組み立てる（{@link Arrays#asList}）。
      *
      * @param cells セル
      * @return 行
@@ -143,7 +146,7 @@ public class XlsFormatWriterModelTest {
      */
     private File write(TestDataContainer container) {
         new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
-        return new File(folder.getRoot(), container.getName() + XlsFixture.EXTENSION);
+        return new File(folder.getRoot(), container.getName() + EXTENSION);
     }
 
     /**
@@ -312,7 +315,8 @@ public class XlsFormatWriterModelTest {
      * Given: グループ ID 付き {@code EXPECTED_REQUEST_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01}。
-     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行になる。
+     *        データ行の列 0 は送信系のため連番になる。
      *
      * <p>担保する軸要素: A-12。</p>
      */
@@ -332,7 +336,8 @@ public class XlsFormatWriterModelTest {
      * Given: グループ ID 付き {@code RESPONSE_HEADER_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01}。
-     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行になる。
+     *        データ行の列 0 は送信系のため連番になる。
      *
      * <p>担保する軸要素: A-13。</p>
      */
@@ -352,7 +357,8 @@ public class XlsFormatWriterModelTest {
      * Given: グループ ID 付き {@code RESPONSE_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01}。
-     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行になる。
+     *        データ行の列 0 は送信系のため連番になる。
      *
      * <p>担保する軸要素: A-14。</p>
      */

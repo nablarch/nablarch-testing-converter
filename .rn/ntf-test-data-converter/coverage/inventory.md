@@ -986,7 +986,7 @@ A-07／A-09 が同クラスに 0 件であることは
 | A-01 `DEFAULT` | ❌ | ✅ | `writesDefaultDataTypeMarker` | 識別セル `DEFAULT=T`（例外にならない）。ヘッダ色はその他グループ。読み戻すとブロックが消える（`issues.md` **XLS-20**。`#dropsDefaultDataTypeBlockWhenReadBack`） |
 | A-07 `EXPECTED_FIXED` | 🔺 | ✅ | `writesExpectedFixedFileBlockWithLengthRow` | 識別セル `EXPECTED_FIXED=exp.dat`。識別行 → ディレクティブ行 → 名前行 → 型行 → **長さ行** → データ行 |
 | A-09 `EXPECTED_VARIABLE` | 🔺 | ✅ | `writesExpectedVariableFileBlockWithoutLengthRow` | 識別セル `EXPECTED_VARIABLE[g2]=exp.csv`。可変長なので**長さ行なし** |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesExpectedRequestBodyMessagesMarker` | 識別セル `EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01`。**入力の FW 制御ヘッダが空 Map のため**識別行の次は名前行・データ行の列 0 に連番 |
+| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesExpectedRequestBodyMessagesMarker` | 識別セル `EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01`。**入力の FW 制御ヘッダが空 Map のため**識別行の次は名前行。データ行の列 0 は**送信系のため**連番（`XlsDataTypeUtil.isSendSyncType` による分岐であり、`fwHeaderFields` が空であることとは無関係） |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseHeaderMessagesMarker` | 識別セル `RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01`。同上 |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseBodyMessagesMarker` | 識別セル `RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01`。同上 |
 
@@ -1123,6 +1123,20 @@ A-07／A-09 が同クラスに 0 件であることは
 | C-17 `RecordLayout.fields` 空 | ✅ | `writesRecordWithoutFieldColumnsWhenFieldsAreEmpty` | 名前行はレコード種別セルだけ（右は矩形整形の空セル）、型行・長さ行は空セルだけ、データ行の値はフィールド定義が無いまま出る。この版面は読み戻せない（`issues.md` **XLS-22**。`#failsToReadBackRecordWithoutFields`） |
 | C-18 `RecordLayout.rows` 空 | ✅ | `writesRecordWithoutDataRowsWhenRecordRowsAreEmpty` | 名前行・型行・長さ行まで。データ行は行そのものが無い |
 
+**§3.1 の表の C-10 タグの付け方に誤りが 2 つある（2026-08-13・#23 レビュー ラウンド3 の仕上げで判明。
+§3.1 は #18 時点のスナップショットのため表そのものは書き換えない）。**
+
+- **C-10(FIXED) の非往復担保は `XlsFormatWriterTest#writesFixedFileBlock` と
+  `XlsFormatWriterModelTest#writesExpectedFixedFileBlockWithLengthRow` である。** §3.1 の #7
+  `writesFixedFileBlock` の軸C 欄に `C-10` タグが欠けており、C-10(FIXED) を挙げているのは
+  #36 `roundTripsFixedFile`（往復テスト）だけになっている。表の面だけを読むと A-12〜A-14 と同型の誤判定
+  （往復でしか通っていないのに ✅）に見えるが、**実体は穴ではない**。両メソッドとも FIXED 固有の長さ行を
+  直接アサートしており（前者は型行の次に `["", "-", "5"]`、後者は `["", "5"]`）、`layoutFile` の
+  `block.getFileType() == FileType.FIXED` 分岐を非往復で固定している（両メソッドの本体を開いて確認した）。
+- **#38 `roundTripsVariableFile` の `**C-10(VARIABLE)**` の太字は誤りである。** 凡例の太字は
+  「その辺でその要素を通す唯一の担保」を意味するが、C-10(VARIABLE) は #8
+  `writesVariableFileWithoutLengthRow`（非往復）にも付いており唯一ではない。
+
 **軸E の 0 件（#18 は未担保 3。#23 完了後は 0）**
 
 | 要素 | 状態 | 担保テストメソッド（`XlsFormatWriterModelTest#`） | 備考 |
@@ -1134,7 +1148,7 @@ A-07／A-09 が同クラスに 0 件であることは
 **末尾 3 件は軸要素の担保に数えていない。** `#dropsDefaultDataTypeBlockWhenReadBack` ／
 `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` ／ `#failsToReadBackRecordWithoutFields` は
 書き出したブックを `XlsFormatReader` で読み戻し、`issues.md` XLS-20／XLS-21／XLS-22 の「読み戻すとどうなるか」を
-実検査する。steering Rules フェーズ2 の「往復テストで担保を代替しない」に従い、辺③の担保としても
+実検査する。steering Rules フェーズ2（往復テストの扱い）に従い、辺③の担保としても
 辺①の担保としても数えない。置く理由は #22 が `xl/sharedStrings.xml` の生バイト検査 2 件を置いたのと同じで、
 本体パーサ・`PoiXlsReader` の挙動が変わったときに**担保テストは緑のまま `issues.md` の記述だけが誤りになる**
 状態を防ぐためである。したがって **12 件（#23 当初の担保）＋ 3 件（#23 レビュー対応の送信同期の担保）

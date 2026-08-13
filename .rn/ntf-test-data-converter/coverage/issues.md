@@ -747,7 +747,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 3 件
 （`#dropsDefaultDataTypeBlockWhenReadBack` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` ／
 `#failsToReadBackRecordWithoutFields`）が読み戻しを実検査する。
-これらは軸要素の担保としては数えない（steering Rules フェーズ2 の「往復テストで担保を代替しない」）。
+これらは軸要素の担保としては数えない（steering Rules フェーズ2（往復テストの扱い））。
 
 ### XLS-21 カラム名 0 件のブロックを書き出すと、読み戻しでデータ行がカラム名へ昇格し値が消える（影響度 中・**検出できない**）
 

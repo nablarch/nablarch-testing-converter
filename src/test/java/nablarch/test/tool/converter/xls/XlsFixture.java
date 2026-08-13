@@ -25,7 +25,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 /**
  * {@code xls} パッケージのテストが共有する POI ユーティリティ。実 {@code .xlsx} を組み立てる
  * フィクスチャビルダ（{@link #book}／{@link #sheet}／{@link #row}／{@link #writeTo}）と、
- * 書き出したブックを読む側のヘルパ（{@link #open}／{@link #cell}／{@link #line}／{@link #EXTENSION}）から成る。
+ * 書き出したブックを読む側のヘルパ（{@link #open}／{@link #cell}／{@link #line}）から成る。
  *
  * <p>
  * <b>ビルダ側の存在理由。</b>既存のテストヘルパ（{@code XlsFormatWriterTest} ／ {@code RoundTripTest} が
@@ -70,7 +70,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * <p>
  * <b>本クラスが引き受けるヘルパの範囲（#22 から持ち越した判断を #23 で確定。2026-08-13）。</b>
  * 引き受けるのは<b>POI のブック・シートを直接触る</b>ユーティリティだけである
- * （{@link #open}／{@link #cell}／{@link #line}／{@link #EXTENSION}）。
+ * （{@link #open}／{@link #cell}／{@link #line}）。
  * <b>中間モデルを組み立てるヘルパ（{@code row} / {@code map} / {@code container}）は引き受けない。</b>
  * 上段の「本クラスは中間モデル組み立てヘルパとは対象レイヤが異なる」という線引きをそのまま境界に使う。
  * </p>
@@ -99,16 +99,8 @@ final class XlsFixture {
 
     /**
      * {@link #writeTo} が付ける出力拡張子。{@code PoiXlsReader} は {@code .xls} → {@code .xlsx} の順に探す。
-     *
-     * <p>
-     * {@link XlsFormatWriter} が付ける拡張子と同じ値であり、SUT の出力ファイル名を組み立てる用途にも
-     * 使える（{@code XlsFormatWriterModelTest#write}）。
-     * ただし SUT 側の定義は {@code XlsFormatWriter} の {@code private static final String EXTENSION}
-     * であってテストからは参照できないため、<b>本定数は同じ値を独立に持っているだけ</b>で、
-     * 両者が一致していることを担保するものではない。
-     * </p>
      */
-    static final String EXTENSION = ".xlsx";
+    private static final String EXTENSION = ".xlsx";
 
     /** ブック名（出力ファイル名から拡張子を除いたもの）。 */
     private final String bookName;

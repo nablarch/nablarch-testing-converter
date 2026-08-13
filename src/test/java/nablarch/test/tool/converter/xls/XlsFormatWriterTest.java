@@ -417,7 +417,8 @@ public class XlsFormatWriterTest {
     /**
      * Given: 送信系（EXPECTED_REQUEST_HEADER_MESSAGES・no 列）。
      * When : build。
-     * Then : FW ヘッダ無し・データ行の列 0 に no（連番）。
+     * Then : 本テストの入力が FW 制御ヘッダを持たない（空 Map）ため識別行の次は名前行になる。
+     *        データ行の列 0 は送信系のため no（連番）になる。
      */
     @Test
     public void writesSendSyncMessageWithSequenceNo() {
