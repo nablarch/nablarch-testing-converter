@@ -22,7 +22,7 @@
 > - **§1.2-2（新設）** — #19／#20／#21 が追加したテストクラス（`XlsFormatReaderCellTypeTest` /
 >   `XlsReferenceFixtureTest` / `XlsFormatReaderRealFileTest` / `XlsFormatReaderInvalidInputTest`）の
 >   担保を軸要素別に記す。
->   §1.1／§1.2 は「`XlsFormatReaderTest` 33 件」を対象とした #18 時点の事実として**そのまま残す**。
+>   §1.1 は「`XlsFormatReaderTest` 33 件」を対象とした #18 時点の事実として**そのまま残す**。
 > - **§1.3** — 未担保一覧を #19／#20／#21 の実測結果に合わせて更新した。分類を変更した行には
 >   根拠（`coverage/issues.md` の課題 ID）を併記してある。
 >
@@ -31,8 +31,6 @@
 > - **§3.1-2（新設）** — #22 が追加したテストクラス（`XlsFormatWriterCellTypeTest` /
 >   `XlsFormatWriterInvalidOutputTest`）の担保を軸要素別に記す。
 >   §3.1 は「`XlsFormatWriterTest` 40 件」を対象とした #18 時点の事実として**そのまま残す**。
-> - **§3.2** — 軸D 表・軸F 表に「#22 後」列を足し、`getCellType()` の件数に関する記述を
->   #18 時点のスナップショットと現時点の実測とに書き分けた。軸A・軸B・軸C・軸E の各表は #18 時点のままである。
 > - **§3.3** — 辺③ 未担保一覧を #22 の実測結果に合わせて更新した。
 >
 > **辺③（#23 辺③ 軸A・B・C・E の欠け補充。2026-08-13）**
@@ -40,9 +38,6 @@
 > - **§3.1-3（新設）** — #23 が追加したテストクラス（`XlsFormatWriterModelTest`）の担保を軸要素別に記す。
 >   §3.1（`XlsFormatWriterTest` 40 件）と §3.1-2（#22 の 2 クラス）は**そのまま残す**。
 >   `XlsFormatWriter` の JaCoCo 実測（未到達 3 箇所）も本節末尾に置いた。
-> - **§3.2** — 軸A 表・軸C 表・軸E 表を #23 の実測結果に合わせて更新した（見出しの件数も直した）。
->   軸B 表は #18 時点で ✅ 4/4 のため判定は変えていない（ラウンド2 で独立性の開示だけを足した。下記）。
->   軸D 表・軸F 表は #22 の記述のままである。
 > - **§3.3** — 辺③ 未担保一覧に「#23 後の状態」列を足し、**要追加 0 ／ 担保済み 29 ／ 対象外 1**
 >   （総計 30）に更新した。#23 のレビュー対応で送信同期 3 件（A-12〜A-14）を足した分を含む。
 > - **§0.8-6 / §0.8-7 / §5.2 / §5.3** — 辺③の C-02「sections 空」と A-01 `DEFAULT` が
@@ -50,15 +45,9 @@
 >
 > **辺③（#23 レビュー ラウンド2 対応。2026-08-13。テストの担保内容は変えていない）**
 >
-> - **§0.1** — 印字ブロックを現在の実測へ更新した（`XlsFormatWriterTest.java` の行数 1080 → 1076）。
->   #18 時点の値との差と、その差が出た理由を併記した。
-> - **§0.8-4 / §3.2** — `cell` / `line` の定義位置が `XlsFixture` へ移ったことを書き足した
+> - **§0.8-4** — `cell` / `line` の定義位置が `XlsFixture` へ移ったことを書き足した
 >   （挙動が `getStringCellValue()` 固定である点は #18 から変わっていない）。
-> - **§3.1-4** — 「`build` だけを見るのは 30 件（40 − 10）」という**引き算で出した数字を撤回**し、
->   **実ファイル 10 ／ `build` 28 ／ SUT のブックを作らない 2** の実測と導出コマンドへ差し替えた。
-> - **§3.1-5** — `causeOf` の写し 1 件を重複台帳に追加し、`container` を抽出しない理由を
->   循環していない根拠へ書き換えた。
-> - **§3.2 / §3.3** — **辺③では軸B が軸A から独立していない**ことを開示した（判定 ✅ 4/4 と件数 0 は変えない）。
+> - **§3.3** — **辺③では軸B が軸A から独立していない**ことを開示した（判定 ✅ 4/4 と件数 0 は変えない）。
 >
 > **上記以外（§2・§4・§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§3.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
@@ -71,7 +60,7 @@
 
 - **軸A**: 「その `DataType` のブロックが生成されることをアサートしている」ことを担保とし、
   `getDataType()` の直接アサートとは区別する。`XlsFormatReaderTest` で `getDataType()` を参照するのは
-  L281 / L542 / L578 / L641 の 4 箇所のみだが、他のテストもデータタイプ名を含むマーカー行を入力に与え、
+  一部のテストだけだが、他のテストもデータタイプ名を含むマーカー行を入力に与え、
   そこから生成されたブロックの型・内容をアサートしている。よって軸A の ✅ は 10/14 になる。
   なお軸C の C-05（`TestDataBlock.dataType`）は `getDataType()` を直接アサートしているテストにのみ ✅ を
   付けており、軸A の ✅ とは別基準である（例: `readMapsTableBlockPreservingRawValues` は軸A A-02 は ✅ だが
@@ -136,24 +125,20 @@ for f in src/test/java/nablarch/test/tool/converter/xls/XlsFormatReaderTest.java
          src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java \
          src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterTest.java \
          src/test/java/nablarch/test/tool/converter/RoundTripTest.java; do
-  printf "%-30s %s @Test  %s lines\n" "$(basename $f)" "$(grep -c '@Test' $f)" "$(wc -l < $f)"
+  printf "%-30s %s @Test\n" "$(basename $f)" "$(grep -c '@Test' $f)"
 done
 ```
 
 ```
-XlsFormatReaderTest.java       33 @Test  1179 lines
-YamlFormatReaderTest.java      20 @Test  608 lines
-XlsFormatWriterTest.java       40 @Test  1076 lines
-YamlFormatWriterTest.java      33 @Test  724 lines
-RoundTripTest.java             30 @Test  882 lines
+XlsFormatReaderTest.java       33 @Test
+YamlFormatReaderTest.java      20 @Test
+XlsFormatWriterTest.java       40 @Test
+YamlFormatWriterTest.java      33 @Test
+RoundTripTest.java             30 @Test
 ```
 
-**上のブロックは現在（2026-08-13・#23 レビュー ラウンド2 対応後）の実測であり、上のコマンドを
-そのまま実行すれば再現する。** #18 完了時点（`5bf7048`）との差は `XlsFormatWriterTest.java` の
-行数だけで、**1080 → 1076** である（`@Test` の数は 5 クラスとも #18 から変わっていない）。
-減った理由は #23 のレビュー対応でセル読み出しヘルパ `cell` / `line` と未使用 import を削り、
-クラス Javadoc を増やしたためである（§3.1-3 の変更 3 点）。#18 時点の値は
-`git show 5bf7048:<パス> | wc -l` → **1080** で確かめられる。
+**上のブロックは現在（2026-08-13）の実測であり、上のコマンドをそのまま実行すれば再現する。**
+`@Test` の数は 5 クラスとも #18 から変わっていない。
 
 `RoundTripTest`（30 件）は 4 辺いずれの担当クラスのテストでもないため上の 126 件には含まれないが、
 4 辺すべてを実ファイル経由で駆動するため §0.8-8 で扱う。
@@ -171,29 +156,29 @@ RoundTripTest.java             30 @Test  882 lines
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
 （converter リポジトリには存在せず、依存の `nablarch-testing` 本体で定義されている）
 
-| # | 定数名 | `getType()` | `getName()`（記法名） | 定義行 |
-|---|---|---|---|---|
-| A-01 | `DEFAULT` | 0 | `DEFAULT` | L11 |
-| A-02 | `SETUP_TABLE_DATA` | 1 | `SETUP_TABLE` | L14 |
-| A-03 | `EXPECTED_TABLE_DATA` | 2 | `EXPECTED_TABLE` | L17 |
-| A-04 | `EXPECTED_COMPLETED` | 4 | `EXPECTED_COMPLETE_TABLE` | L23 |
-| A-05 | `LIST_MAP` | 3 | `LIST_MAP` | L29 |
-| A-06 | `SETUP_FIXED` | 5 | `SETUP_FIXED` | L32 |
-| A-07 | `EXPECTED_FIXED` | 6 | `EXPECTED_FIXED` | L35 |
-| A-08 | `SETUP_VARIABLE` | 7 | `SETUP_VARIABLE` | L38 |
-| A-09 | `EXPECTED_VARIABLE` | 8 | `EXPECTED_VARIABLE` | L41 |
-| A-10 | `MESSAGE` | 9 | `MESSAGE` | L44 |
-| A-11 | `EXPECTED_REQUEST_HEADER_MESSAGES` | 10 | 同名 | L47 |
-| A-12 | `EXPECTED_REQUEST_BODY_MESSAGES` | 11 | 同名 | L50 |
-| A-13 | `RESPONSE_HEADER_MESSAGES` | 12 | 同名 | L53 |
-| A-14 | `RESPONSE_BODY_MESSAGES` | 13 | 同名 | L56 |
+| # | 定数名 | `getType()` | `getName()`（記法名） |
+|---|---|---|---|
+| A-01 | `DEFAULT` | 0 | `DEFAULT` |
+| A-02 | `SETUP_TABLE_DATA` | 1 | `SETUP_TABLE` |
+| A-03 | `EXPECTED_TABLE_DATA` | 2 | `EXPECTED_TABLE` |
+| A-04 | `EXPECTED_COMPLETED` | 4 | `EXPECTED_COMPLETE_TABLE` |
+| A-05 | `LIST_MAP` | 3 | `LIST_MAP` |
+| A-06 | `SETUP_FIXED` | 5 | `SETUP_FIXED` |
+| A-07 | `EXPECTED_FIXED` | 6 | `EXPECTED_FIXED` |
+| A-08 | `SETUP_VARIABLE` | 7 | `SETUP_VARIABLE` |
+| A-09 | `EXPECTED_VARIABLE` | 8 | `EXPECTED_VARIABLE` |
+| A-10 | `MESSAGE` | 9 | `MESSAGE` |
+| A-11 | `EXPECTED_REQUEST_HEADER_MESSAGES` | 10 | 同名 |
+| A-12 | `EXPECTED_REQUEST_BODY_MESSAGES` | 11 | 同名 |
+| A-13 | `RESPONSE_HEADER_MESSAGES` | 12 | 同名 |
+| A-14 | `RESPONSE_BODY_MESSAGES` | 13 | 同名 |
 
 **突き合わせ結果: 14 種（`DEFAULT` ＋ 13）で steering の記述と一致。差異なし。**
 
 ### 0.3 軸B: `TestDataBlock` sealed 階層
 
-`TestDataBlock`（abstract sealed, L16-17）が permit するのは `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock`。
-`ColumnRowDataBlock`（abstract sealed, L19-20）がさらに `TableDataBlock` / `ListMapBlock` を permit する。
+`TestDataBlock`（abstract sealed）が permit するのは `ColumnRowDataBlock` / `FileDataBlock` / `MessageDataBlock`。
+`ColumnRowDataBlock`（abstract sealed）がさらに `TableDataBlock` / `ListMapBlock` を permit する。
 したがって **具象（final）実装は 4 種**であり、steering の「4種」と一致する。
 
 | # | 具象クラス | 直接の親 | 保持する `DataType` |
@@ -214,26 +199,25 @@ RoundTripTest.java             30 @Test  882 lines
 | C-03 | `TestDataSection` | `name` | String | 必須 | — |
 | C-04 | `TestDataSection` | `blocks` | List | 空許容 | 空リスト |
 | C-05 | `TestDataBlock` | `dataType` | DataType | 必須 | — |
-| C-06 | `TestDataBlock` | `groupId` | String | **省略可** | `""`（TestDataBlock L27/L41「省略時は空文字」） |
+| C-06 | `TestDataBlock` | `groupId` | String | **省略可** | `""`（TestDataBlock の Javadoc「省略時は空文字」） |
 | C-07 | `TestDataBlock` | `identifier` | String | 必須 | — |
 | C-08 | `ColumnRowDataBlock` | `columnNames` | List | 空許容 | 空リスト |
 | C-09 | `ColumnRowDataBlock` | `rows` | List<List> | 空許容 | 空リスト |
-| C-10 | `FileDataBlock` | `fileType` | FileType | 必須（2値） | FIXED / VARIABLE（FileDataBlock L25） |
+| C-10 | `FileDataBlock` | `fileType` | FileType | 必須（2値） | FIXED / VARIABLE（FileDataBlock の Javadoc） |
 | C-11 | `FileDataBlock` | `directives` | Map | 空許容 | 空 Map |
 | C-12 | `FileDataBlock` | `records` | List | 空許容 | 空リスト |
 | C-13 | `MessageDataBlock` | `directives` | Map | 空許容 | 空 Map |
-| C-14 | `MessageDataBlock` | `fwHeaderFields` | Map | 空許容 | 空 Map（MessageDataBlock L40「FW ヘッダを読まない経路では空 Map」） |
+| C-14 | `MessageDataBlock` | `fwHeaderFields` | Map | 空許容 | 空 Map（MessageDataBlock の Javadoc「FW ヘッダを読まない経路では空 Map」） |
 | C-15 | `MessageDataBlock` | `records` | List | 空許容 | 空リスト |
-| C-16 | `RecordLayout` | `recordType` | String | **省略可** | `null`（RecordLayout L26/L36「省略時は null」） |
+| C-16 | `RecordLayout` | `recordType` | String | **省略可** | `null`（RecordLayout の Javadoc「省略時は null」） |
 | C-17 | `RecordLayout` | `fields` | List | 空許容 | 空リスト |
 | C-18 | `RecordLayout` | `rows` | List<List> | 空許容 | 空リスト |
 | C-19 | `FieldDef` | `name` | String | 必須 | — |
-| C-20 | `FieldDef` | `type` | String | **省略可** | `null`（FieldDef L24/L38「省略時は null」） |
-| C-21 | `FieldDef` | `length` | String | **省略可** | `null`（FieldDef L25/L43「省略時は null」） |
+| C-20 | `FieldDef` | `type` | String | **省略可** | `null`（FieldDef の Javadoc「省略時は null」） |
+| C-21 | `FieldDef` | `length` | String | **省略可** | `null`（FieldDef の Javadoc「省略時は null」） |
 
 内訳: 必須スカラー 6 件（C-01, C-03, C-05, C-07, C-10, C-19）／
-**省略可能フィールド 4 件**（C-06, C-16, C-20, C-21 — Javadoc に「省略時は…」と明記。
-C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldDef L24/L38、C-21 は FieldDef L25/L43）／
+**省略可能フィールド 4 件**（C-06, C-16, C-20, C-21 — Javadoc に「省略時は…」と明記）／
 空許容コレクション 11 件（C-02, C-04, C-08, C-09, C-11, C-12, C-13, C-14, C-15, C-17, C-18）。
 
 **steering との差異（コーディネータ判断を仰ぐ点）**: steering #20 の Steps は
@@ -279,25 +263,25 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
 判断のうちコーディネータの確認を要するものは §5.3 に再掲する。
 
 1. **辺①の既存 33 件は 1 件も実 `.xlsx` を通っていない。**
-   事実: `XlsFormatReaderTest` は内部クラス `FakeTestDataReader`（L54-102）に `List<List<String>>` の
+   事実: `XlsFormatReaderTest` は内部クラス `FakeTestDataReader` に `List<List<String>>` の
    canned 行を与えて `TestCoreReaderAdapter` を駆動する。実セル → 文字列行の区間（`PoiXlsReader`）は
    一度も実行されない。
    判断: **軸D 辺①（17 ケース）は 33 件からは全て未担保**とする。
 2. **辺③の往復テスト 8 件（`roundTrips*`）は実 `.xlsx` を経由して `XlsFormatReader` を駆動している。**
-   事実: `XlsFormatWriterTest#roundTrip`（#18 完了時点 `5bf7048` の L861-865。本コミット時点は L857-861）は `new XlsFormatWriter().write(...)` で実ファイルを書き、
+   事実: `XlsFormatWriterTest#roundTrip` は `new XlsFormatWriter().write(...)` で実ファイルを書き、
    `new XlsFormatReader()`（本番配線＝`PoiXlsReader`）で読み戻す。
    判断: steering #19 の「実 `.xlsx` を入力として `XlsFormatReader` を駆動するテストが存在し、
    `FakeTestDataReader` を経由していない」は**既に部分的に満たされている**（文字列セル・空セル・
    リテラル `null` の 3 ケース相当が通る）。#19 はこれを起点にできる。
 3. **辺②の既存 20 件は 1 件も実 YAML テキストを通っていない。**
-   事実: `YamlFormatReaderTest#reader`（L538-545）は `YamlTestCoreAdapter#loadRawMap` を in-memory
+   事実: `YamlFormatReaderTest#reader` は `YamlTestCoreAdapter#loadRawMap` を in-memory
    `LinkedHashMap` に差し替える。YAML パーサ（SnakeYAML Engine）は通らない。一方、辺④の往復テスト 6 件
    （`roundTrip_*`）は `writer.write(...)` で実 YAML ファイルを書き `new YamlFormatReader()` で読み戻す。
    判断: **軸D 辺②（10 ケース）は 20 件からは全て未担保**とし、往復 6 件が通す分は 🔺 で計上する。
 4. **`getCellType()` をアサートしているテストは #18 時点では src/test 全体でゼロだった。**
    事実（#18 時点）: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
-   `cell`（`5bf7048` の L100-107）／`line`（同 L110-121）は `getStringCellValue()` のみを使う。
-   **この 2 つは #23 のレビュー対応で `XlsFixture` へ移した**（現在の定義位置は §3.2 の該当項）。
+   `cell` ／ `line` は `getStringCellValue()` のみを使う。
+   **この 2 つは #23 のレビュー対応で `XlsFixture` へ移した。**
    判断（#18 時点）: **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**とする。
    **現在は 0 件ではない（2026-08-13 追記。件数の内訳をレビュー指摘により訂正）。**
    #19 が `XlsFormatReaderCellTypeTest` に、#22 が `XlsFormatWriterCellTypeTest` に入れた。実測は次のとおり。
@@ -310,14 +294,14 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    `grep -c getCellType src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java`
    は **19** を返すが、これは<b>行数</b>であってアサート数でもテスト数でもない
    （19 行のうち 2 行はクラス Javadoc の散文）。以前ここに「#22 が 19 件を入れた」と書いていたのは
-   この行数をテスト件数として並べたもので、誤りだった。最新の内訳と経緯は §3.2 の軸D 表の直後に記す。
+   この行数をテスト件数として並べたもので、誤りだった。
    上記の「ゼロ」は #18 時点のスナップショットであり、現在形として読んではならない。
 5. **`overwrite` フラグを writer は持たない。**
    事実: `grep -rln "overwrite" src/main/java` の結果、`overwrite` を保持するのは `ConversionRequest` /
    `TestDataConverter` / `ConverterMojo` の 3 クラスのみで、`XlsFormatWriter` / `YamlFormatWriter` は保持しない。
-   `overwrite=false` 衝突を検査するのは `TestDataConverter#checkOverwrite`（L90-99）であり、
-   上位層の既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と
-   `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が通している
+   `overwrite=false` 衝突を検査するのは `TestDataConverter#checkOverwrite` であり、
+   上位層の既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse` と
+   `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` が通している
    （いずれも出力先に既存ファイルを置いた状態で変換し、`ConverterException` ／ `MojoExecutionException` を
    アサートしている）。
    判断: 軸F の F3-02 / F4-02 は writer 単体では再現できないため、**辺③／辺④の対象外**
@@ -327,17 +311,17 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    当初この項と各節は「上位層の既存テストで担保済み」と書いていたが、
    **担保されているのは `.yaml` を出力側とする衝突だけ**である。
    事実:
-   - `checkOverwrite`（L90-99）は `target.outputPaths(container, outputBase)` を多態で呼び分ける。
+   - `checkOverwrite` は `target.outputPaths(container, outputBase)` を多態で呼び分ける。
      引用した 2 件の既存テストは**どちらも XLS→YAML** であり（`TestDataConverter.convert(DataFormat.XLS,
      DataFormat.YAML, ...)` ／ Mojo の `from=xls, to=yaml`。衝突させているのは `BookA/data.yaml`）、
-     実行されるのは `YamlFormatHandler#outputPaths`（L63）である。
-   - **`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている。**
-     4 引数入口 `TestDataConverter.convert(DataFormat, DataFormat, Path, Path)`（L49-56）は
+     実行されるのは `YamlFormatHandler#outputPaths` である。
+   - **`XlsFormatHandler#outputPaths` 自体は `overwrite=false` 下で実行されている。**
+     4 引数入口 `TestDataConverter.convert(DataFormat, DataFormat, Path, Path)` は
      `Builder#overwrite` を呼ばずにリクエストを組み、`ConversionRequest` の `overwrite` 既定値は
-     `false`（L120 の Javadoc・L128 のフィールド）なので、`checkOverwrite` は早期 return せず
+     `false` なので、`checkOverwrite` は早期 return せず
      `outputPaths` を呼ぶ。実際に通しているのは XLS を出力側とする
-     `TestDataConverterTest#convertsYamlToXls`（L202）／`#convertsXlsToXls`（L224）／
-     `#convertsYamlWithFilesToXls`（L427）の 3 件である。
+     `TestDataConverterTest#convertsYamlToXls`／`#convertsXlsToXls`／
+     `#convertsYamlWithFilesToXls` の 3 件である。
    - **1 件も通っていないのは `.xlsx` が既存で衝突する分岐**（`checkOverwrite` の
      `Files.exists(output)` が真 → `ConverterException`）**のほう**である。
 
@@ -363,9 +347,9 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    辺④（YAML 出力）の F4-02 については、上記 2 件がまさに `.yaml` を出力側とする衝突であり、
    この但し書きは当たらない。
 6. **1 リソース単位 API のため、辺①・辺②では「セクション複数」「セクション 0」が構造上生成されない。**
-   事実: `XlsFormatReader#read`（L101-133）は `Collections.singletonList(section)` を返し、
-   `YamlFormatReader#read`（L87-95）も同じく `Collections.singletonList(section)` を返す。
-   一方 writer 側は `XlsFormatWriter#build`（L125）／`YamlFormatWriter#write`（L74）が
+   事実: `XlsFormatReader#read` は `Collections.singletonList(section)` を返し、
+   `YamlFormatReader#read` も同じく `Collections.singletonList(section)` を返す。
+   一方 writer 側は `XlsFormatWriter#build` ／ `YamlFormatWriter#write` が
    `container.getSections()` をループするため、辺③／辺④では複数・0 とも到達可能である。
    判断: E-4「コンテナ内セクション数 複数」と C-02「sections 空」は**辺①・辺②では到達不能**、
    **辺③・辺④では要追加**として分類する。
@@ -373,11 +357,11 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections` が
    シートを 1 枚も持たないブックが書き出されることを実測して固定した（`issues.md` **XLS-23**）。
 7. **`DataType.DEFAULT` はリーダ 2 経路のいずれでも生成されない。**
-   事実: 辺① — `TestCoreReaderAdapter` L362 が `type == DataType.DEFAULT` のブロックを `continue` でスキップする。
-   辺② — `YamlFormatReader#addBlocksForSection`（L106-133）と `fileDataType`（L534-536）／
-   `addMessageBlocks`（L264）は `DEFAULT` 以外の 13 種のみを分岐に持ち、`DEFAULT` を返す経路がない。
+   事実: 辺① — `TestCoreReaderAdapter` が `type == DataType.DEFAULT` のブロックを `continue` でスキップする。
+   辺② — `YamlFormatReader#addBlocksForSection` と `fileDataType` ／
+   `addMessageBlocks` は `DEFAULT` 以外の 13 種のみを分岐に持ち、`DEFAULT` を返す経路がない。
    判断: A-01 `DEFAULT` は**辺①・辺②で到達不能**。writer 側（辺③）は
-   `XlsFormatWriter` L400 がマーカー文字列を `block.getDataType().getName()` から組み立てるだけで
+   `XlsFormatWriter#marker` がマーカー文字列を `block.getDataType().getName()` から組み立てるだけで
    タイプを絞らないため到達可能であり、**辺③は要追加**（辺④は `serialize_unsupportedDataType_throws` で担保済み）。
    **辺③は #23 で担保済みになった（2026-08-13 追記）**: `XlsFormatWriterModelTest#writesDefaultDataTypeMarker` が
    識別セル `DEFAULT=T` が書き出されることを実測して固定した。あわせて
@@ -386,12 +370,12 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
 
 ### 0.8-8 `RoundTripTest`（30 件）の扱い
 
-`src/test/java/nablarch/test/tool/converter/RoundTripTest.java`（30 `@Test` / 882 行）は 4 辺いずれの
+`RoundTripTest`（30 `@Test`）は 4 辺いずれの
 担当クラスのテストでもないため §0.1 の 126 件には含まれないが、`new XlsFormatWriter().write(...)` で実
 `.xlsx` を書き `new XlsFormatReader().read(...)`（本番配線）で読み戻す XLS 経路 13 件と、
 `new YamlFormatWriter().write(...)` → `new YamlFormatReader().read(...)` の YAML 経路 14 件、
 両経路を 1 メソッドで通す 3 件からなり、**4 辺すべてを実ファイル経由で駆動している**
-（往復ヘルパ: `xlsRoundTrip` L720-728 ／ `yamlRoundTrip` L733-741）。
+（往復ヘルパ: `xlsRoundTrip` ／ `yamlRoundTrip`）。
 
 steering Rules（フェーズ2）に従い、これらが通す軸要素は **🔺弱い担保として計上するが正式担保としては数えず、
 直接テストの追加対象からも外さない**。したがって未担保一覧には残したうえで「`RoundTripTest#xxx` で 🔺 担保あり
@@ -430,7 +414,7 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 | 29 | `leadingTrailingWhitespace_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-14 前後空白**／辺② D2-02 |
 | 30 | `specialNotation_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① D1-01／辺② D2-02 |
 
-※ 軸E は全 30 件が「1 セクション・1 ブロック」固定（`xlsRoundTrip` L725-726 ／ `yamlRoundTrip` L738-739 が
+※ 軸E は全 30 件が「1 セクション・1 ブロック」固定（`xlsRoundTrip` ／ `yamlRoundTrip` が
 `sections.size()==1` と `blocks.size()==1` をアサートする）ため、E-1(1)／E-4(1) 以外の多重度は通さない。
 軸F は 30 件とも正常系のため通さない。
 
@@ -441,7 +425,7 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 | 辺① | A-04 `EXPECTED_COMPLETED` | `xls_expectedCompleteTable_isPreserved` |
 | 辺① | A-07 `EXPECTED_FIXED` | `xls_expectedFixed_isPreserved` |
 | 辺① | A-09 `EXPECTED_VARIABLE` | `xls_expectedVariable_isPreserved` |
-| 辺① | C-06 `groupId` 省略(`""`) | `xls_setupTable_isPreserved`, `xls_expectedCompleteTable_isPreserved` ほか 5 件（`assertTableBlock` L751 ／ `assertFileBlock` L761 ／ `assertMessageBlock` L790 が `getGroupId()` を `""` と突き合わせる XLS 経路 7 件） |
+| 辺① | C-06 `groupId` 省略(`""`) | `xls_setupTable_isPreserved`, `xls_expectedCompleteTable_isPreserved` ほか 5 件（`assertTableBlock` ／ `assertFileBlock` ／ `assertMessageBlock` が `getGroupId()` を `""` と突き合わせる XLS 経路 7 件） |
 | 辺① | D1-14 前後空白 | `leadingTrailingWhitespace_isPreservedInBothPaths` |
 | 辺③ | A-07 `EXPECTED_FIXED` | `xls_expectedFixed_isPreserved` |
 | 辺③ | A-09 `EXPECTED_VARIABLE` | `xls_expectedVariable_isPreserved` |
@@ -509,104 +493,9 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 | 32 | `readPassesThroughUnknownRecordSeparatorValue` | A-08 | B-3 | C-11 | — ※未知値のパススルー | — | — |
 | 33 | `readStripsQuotesFromQuotedGenericDirectiveValue` | A-08 | B-3 | C-11 | — ※ディレクティブ値の引用符除去 | — | — |
 
-### 1.2 軸要素 → 担保テストメソッド
-
-**軸A（✅ 10 ／ 🔺 3 ／ ❌ 1 ＝ 14）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| A-01 `DEFAULT` | ❌ | —（到達不能。`TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップする。§0.8-7） |
-| A-02 `SETUP_TABLE_DATA` | ✅ | `readMapsTableBlockPreservingRawValues`, `readTableNormalizesExcelQuotationNotation`, `readMapsMultipleTablesWithoutDuplication`, `readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readDerivesContainerAndSectionNamesFromResource`, `readAssemblesMixedBlockTypesInOneSection` |
-| A-03 `EXPECTED_TABLE_DATA` | ✅ | `readPreservesGroupIdAndDataType` |
-| A-04 `EXPECTED_COMPLETED` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedCompleteTable_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
-| A-05 `LIST_MAP` | ✅ | `readListMapNormalizesExcelQuotationNotation`, `readListMapPreservesColumnOrder`, `readListMapExcludesMarkerColumns`, `readMapsListMapBlock`, `readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readListMapWithMultipleDuplicateColumnsEmitsWarnPerName`, `readListMapWithoutDuplicatesEmitsNoWarn`, `readAssemblesMixedBlockTypesInOneSection` |
-| A-06 `SETUP_FIXED` | ✅ | `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`, `readRestoresMultipleRecordLayoutsInFixedFile`, `readAssemblesMixedBlockTypesInOneSection` |
-| A-07 `EXPECTED_FIXED` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedFixed_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
-| A-08 `SETUP_VARIABLE` | ✅ | `readMapsVariableLengthFileBlock`, `readNormalizesRecordSeparatorCrlfSymbol`, `readNormalizesRecordSeparatorLfSymbol`, `readNormalizesRecordSeparatorCrSymbol`, `readNormalizesRecordSeparatorEmptyValueToNoneSymbol`, `readPassesThroughUnknownRecordSeparatorValue`, `readStripsQuotesFromQuotedGenericDirectiveValue` |
-| A-09 `EXPECTED_VARIABLE` | 🔺 | `XlsFormatReaderTest` には 0 件。`RoundTripTest#xls_expectedVariable_isPreserved` が実 `.xlsx` 経由で通す（§0.8-8。重複を避けること） |
-| A-10 `MESSAGE` | ✅ | `readMapsMessageBlock`, `readAssemblesMixedBlockTypesInOneSection` |
-| A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `readMapsExpectedRequestHeaderMessageBlock`, `readMapsAllFourSendSyncMessageTypes`, `readMapsMultipleSendSyncBlocksInSameGroup` |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes` |
-| A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes` |
-| A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `readMapsAllFourSendSyncMessageTypes`, `readPreservesErrorModeRowInSendSyncMessage` |
-
-**軸B（✅ 4 ／ 4）**
-
-| 要素 | 判定 | 担保テストメソッド（代表） |
-|---|---|---|
-| B-1 `TableDataBlock` | ✅ | `readMapsTableBlockPreservingRawValues`, `readAssemblesMixedBlockTypesInOneSection` ほか 5 件（計 7 件） |
-| B-2 `ListMapBlock` | ✅ | `readMapsListMapBlock`, `readAssemblesMixedBlockTypesInOneSection` ほか 6 件（計 8 件） |
-| B-3 `FileDataBlock` | ✅ | `readMapsFixedLengthFileBlock`, `readMapsVariableLengthFileBlock` ほか 10 件（計 12 件） |
-| B-4 `MessageDataBlock` | ✅ | `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock` ほか 4 件（計 6 件） |
-
-**軸C（21 フィールド ─ 両状態担保 9 ／ 未担保 12）**
-
-省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
-n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
-「値あり」の担保をもって両状態担保として数える。
-
-| 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
-|---|---|---|---|
-| C-01 `TestDataContainer.name` | ✅ | n/a | `readDerivesContainerAndSectionNamesFromResource` |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空（**到達不能**） | `readDerivesContainerAndSectionNamesFromResource`, `readReturnsEmptySectionWhenNoBlocks`（`XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため、辺①では sections は常に 1 件。空・複数は構造上生成されない。§0.8-6） |
-| C-03 `TestDataSection.name` | ✅ | n/a | `readDerivesContainerAndSectionNamesFromResource` |
-| C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readMapsListMapBlock` ほか 28 件（ブロックを 1 件以上組み立てる計 30 件）／空: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker` |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | `readPreservesGroupIdAndDataType`, `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock`, `readMapsAllFourSendSyncMessageTypes` |
-| C-06 `TestDataBlock.groupId` | ✅ | 🔺 省略(`""`) | 値あり: `readPreservesGroupIdAndDataType`, `readMapsExpectedRequestHeaderMessageBlock` ほか 1 件（計 3 件）／省略: `XlsFormatReaderTest` で `""` をアサートするテストは 0 件。`RoundTripTest#xls_setupTable_isPreserved` ほか 6 件（計 7 件）が実 `.xlsx` 経由で `getGroupId()` が `""` であることをアサートする（§0.8-8。重複を避けること） |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | `readMapsTableBlockPreservingRawValues`, `readMapsListMapBlock` ほか 5 件（計 7 件） |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder` ほか 5 件（計 7 件） |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `readMapsTableBlockPreservingRawValues`, `readTableNormalizesExcelQuotationNotation` ほか 8 件（計 10 件） |
-| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `readMapsFixedLengthFileBlock`／VARIABLE: `readMapsVariableLengthFileBlock` |
-| C-11 `FileDataBlock.directives` | ✅ | ❌ 空 | 非空: `readNormalizesRecordSeparator*`（4件）, `readPassesThroughUnknownRecordSeparatorValue`, `readStripsQuotesFromQuotedGenericDirectiveValue` |
-| C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `readMapsFixedLengthFileBlock`, `readRestoresMultipleRecordLayoutsInFixedFile` |
-| C-13 `MessageDataBlock.directives` | ✅ | ❌ 空 | 非空: `readMapsExpectedRequestHeaderMessageBlock` のみ |
-| C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `readMapsMessageBlock`／空: `readMapsExpectedRequestHeaderMessageBlock` |
-| C-15 `MessageDataBlock.records` | ✅ | ❌ 空 | 非空: `readMapsMessageBlock`, `readMapsExpectedRequestHeaderMessageBlock` |
-| C-16 `RecordLayout.recordType` | ✅ | ❌ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`, `readRestoresMultipleRecordLayoutsInFixedFile`, `readPreservesErrorModeRowInSendSyncMessage` |
-| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readMapsFixedLengthFileBlock`, `readRestoresMultipleRecordLayoutsInFixedFile` ほか 2 件（計 4 件） |
-| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock` ほか 6 件（計 8 件） |
-| C-19 `FieldDef.name` | ✅ | n/a | `readMapsFixedLengthFileBlock`, `readMapsExpectedRequestHeaderMessageBlock` ほか 4 件（計 6 件） |
-| C-20 `FieldDef.type` | ✅ | ❌ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines` |
-| C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `readMapsFixedLengthFileBlock`（`"10"`/`"5"`）, `readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines`（`"-"`）／省略: `readMapsVariableLengthFileBlock` |
-
-**軸D（✅ 0 ／ 🔺 4 ／ ❌ 13 ＝ 17）**
-
-D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`XlsFormatReaderTest` L54-102）に文字列行を直接与えるため、
-実セル → 文字列行の変換区間を一切通らない。セル種別という概念がテスト入力に存在しない。
-
-🔺 弱い担保（実 `.xlsx` を通る往復テスト経由）:
-- D1-01 文字列: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsListMap` ほか 6 件（`roundTrips*` 全 8 件）、
-  `RoundTripTest` の XLS 経路 13 件と両経路 3 件（§0.8-8）
-- D1-13 空文字: `XlsFormatWriterTest#roundTripsTable`, `#roundTripsNullCellAsLiteralNullString`、
-  `RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved`
-- **D1-14 前後空白**: `RoundTripTest#leadingTrailingWhitespace_isPreservedInBothPaths`（§0.8-8。半角/全角の前後空白が
-  Excel 往復で脱落しないことをアサートする）
-- D1-16 リテラル `null`: `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString`,
-  `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull`
-
-**軸E**
-
-| 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
-|---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `readReturnsEmptySectionWhenNoBlocks`, `readIgnoresDataTypePrefixedLineWithoutMarker`／1: `readMapsTableBlockPreservingRawValues`, `readPreservesGroupIdAndDataType` ほか 24 件（ブロック 1 件のみを組み立てる計 26 件）／複数: `readMapsMultipleTablesWithoutDuplication`, `readMapsAllFourSendSyncMessageTypes` ほか 2 件（計 4 件） |
-| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `readTableNormalizesExcelQuotationNotation`, `readListMapNormalizesExcelQuotationNotation` ほか 1 件（計 3 件）／複数: `readMapsTableBlockPreservingRawValues`, `readListMapPreservesColumnOrder` ほか 2 件（計 4 件） |
-| E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 1: `readFixedFileNormalizesExcelQuotationNotation`, `readMapsFixedLengthFileBlock` ほか 5 件（計 7 件）／複数: `readRestoresMultipleRecordLayoutsInFixedFile` |
-| E-4 コンテナ内セクション数（辺①の実体: ブック内シート数） | n/a | ✅ | ❌（**到達不能**） | 1: `readDerivesContainerAndSectionNamesFromResource`。複数は `XlsFormatReader#read`（L96-101 の Javadoc・L133）が `"ブック名/シート名"` の 1 シート単位 API で `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
-
-**軸F（✅ 1 ／ 🔺 1 ／ ❌ 4 ＝ 6）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| F1-01 シート不在 | ❌ | — |
-| F1-02 ブック破損 | ❌ | — |
-| F1-03 未知のデータタイプ名 | 🔺 | `readIgnoresDataTypePrefixedLineWithoutMarker`（データタイプ名で始まるが `=` を持たない行の無視。「未知の名前」そのものではない） |
-| F1-04 マーカーカラム欠落 | ❌ | — |
-| F1-05 カラム名重複 | ✅ | `readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`, `readListMapWithMultipleDuplicateColumnsEmitsWarnPerName`, `readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins`（非回帰: `readListMapWithoutDuplicatesEmitsNoWarn`） |
-| F1-06 行と列の数の不一致 | ❌ | — |
-
 ### 1.2-2 #19／#20／#21 が追加したテストクラスの担保（2026-08-12 追記）
 
-**本節は #20 で新設し、#21 で追記した。** §1.1／§1.2 は「`XlsFormatReaderTest` 33 件」を対象とした
+**本節は #20 で新設し、#21 で追記した。** §1.1 は「`XlsFormatReaderTest` 33 件」を対象とした
 #18 時点の事実であり書き換えていない。ここには #19／#20／#21 が追加した
 **実 `.xlsx` を入力とするテストクラス**の担保だけを記す。
 
@@ -627,7 +516,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 
 | 要素 | `getDataType()` をアサート（＝担保） | 同経路を通過（参考） |
 |---|---|---|
-| A-01 `DEFAULT` | —（到達不能。§1.2 と同じ） | — |
+| A-01 `DEFAULT` | —（到達不能。§0.8-7） | — |
 | A-02 `SETUP_TABLE_DATA` | `readsSetupTableBlockFromRealBook` | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`, `readsContainerAndSectionNamesFromRealBookAndSheetNames`, `readsFourBlockImplementationsFromOneRealSheet`（3 件とも `getDataType()` は見ない。最後の 1 件は実装クラスと識別子を見る） |
 | A-03 `EXPECTED_TABLE_DATA` | `readsExpectedTableBlockWithGroupIdFromRealBook` | — |
 | **A-04 `EXPECTED_COMPLETED`** | `readsExpectedCompletedTableBlockFromRealBook`（#18 では 🔺 `RoundTripTest` のみ → ✅） | — |
@@ -643,7 +532,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 実装クラスに加えて識別子（`T` / `lm` / `f.dat` / `m`）まで突き合わせる。各種別の個別テストも
 `onlyBlock(Class)` ヘルパで実装クラスを確認している。
 
-**軸C（#18 §1.2 から状態が変わったものだけ。根拠は `coverage/issues.md` の課題 ID）**
+**軸C（#18 時点から状態が変わったものだけ。根拠は `coverage/issues.md` の課題 ID）**
 
 | 要素 | #18 の判定 | #21 後 | 担保テストメソッド／根拠 |
 |---|---|---|---|
@@ -670,7 +559,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `XlsFormatReaderRealFileTest#readsEmptyBlockListFromRealSheetWithoutMarkers`（#20）／1: 同クラスの単一ブロックのテスト多数／複数: `#readsFourBlockImplementationsFromOneRealSheet`（4 件）・`#readsAllFourSendSyncMessageTypesFromRealBook`（4 件） |
 | E-2 ブロック内行数 | ✅（**#21**） | ✅ | ✅ | 0: `#readsEmptyRowsFromTableWithoutDataRowsInRealBook`／`#readsEmptyRowsFromListMapWithoutDataRowsInRealBook`／1: `#readsExpectedTableBlockWithGroupIdFromRealBook`（1 行）／複数: `#readsSetupTableBlockFromRealBook`（2 行） |
 | E-3 ファイル内レコードレイアウト数 | ✅（**#21**） | ✅ | ✅（**#21** で実 `.xlsx` 経路も） | 0: `#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook`（ファイル系）・`#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`（メッセージ系）／1: `#readsSetupFixedFileBlockFromRealBook`・`#readsMessageBlockFromRealBook`（いずれも `records.size()==1` をアサート）／複数: **`#readsMultipleRecordLayoutsFromOneFixedFileInRealBook`**（断片 2 件。Fake リーダ経路には `XlsFormatReaderTest#readRestoresMultipleRecordLayoutsInFixedFile` がある） |
-| E-4 コンテナ内セクション数 | n/a | ✅ | ❌（**到達不能**） | 1: `#readsContainerAndSectionNamesFromRealBookAndSheetNames`。複数は `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
+| E-4 コンテナ内セクション数 | n/a | ✅ | ❌（**到達不能**） | 1: `#readsContainerAndSectionNamesFromRealBookAndSheetNames`。複数は `XlsFormatReader#read` が `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
 
 - **アサート済みのセルは 10 個ある。**内訳は E-1〜E-3 の 3 観点 × 0／1／複数 ＝ **9 組**（すべて実 `.xlsx` 経路）と、
   E-4(1) の 1 組。残るセルは E-4(複数)＝到達不能で空欄、E-4(0)＝n/a（コンテナは必ず 1 セクションを持つ）の 2 つで、
@@ -720,7 +609,7 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 - `対象外` — 辺の担当クラスの関心事ではなく、上位層の関心事であるもの。理由を併記する。
   §5.1 では `対象外（上位層で担保済み）` と表記しているが、**辺③の F3-02 についてはこの表記は正確でない**
   （上位層の既存テストが通すのは XLS→YAML の経路だけで、`.xlsx` を出力側とする衝突は未担保）。
-  §3.1-2／§3.2／§3.3 では `対象外（衝突検査は上位層）` へ改めた。詳細は §0.8-5 の訂正欄。
+  §3.1-2／§3.3 では `対象外（衝突検査は上位層）` へ改めた。詳細は §0.8-5 の訂正欄。
 
 **本表は #21 の実測結果に合わせて更新した（2026-08-12）。** #18 時点は「要追加 38 ／ 到達不能 3」、
 #20 完了時点は「要追加 11 ／ 担保済み 22 ／ 到達不能 8」であった。#21 が残る 11 件（C 4 件・E 2 件・F 5 件）を
@@ -730,16 +619,16 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 | 軸 | 未担保要素 | #18 の状態 | #21 後の状態 | 件数 |
 |---|---|---|---|---|
 | A | A-04 `EXPECTED_COMPLETED`／A-07 `EXPECTED_FIXED`／A-09 `EXPECTED_VARIABLE` | 要追加 | **担保済み（#20）** — 順に `XlsFormatReaderRealFileTest#readsExpectedCompletedTableBlockFromRealBook`／`#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`／`#readsExpectedVariableFileBlockWithGroupIdFromRealBook` | 3 |
-| A | A-01 `DEFAULT` — `TestCoreReaderAdapter` L362 が DEFAULT ブロックをスキップするためリーダ経路で生成されない（§0.8-7） | 到達不能 | 到達不能（変更なし） | 1 |
+| A | A-01 `DEFAULT` — `TestCoreReaderAdapter` が DEFAULT ブロックをスキップするためリーダ経路で生成されない（§0.8-7） | 到達不能 | 到達不能（変更なし） | 1 |
 | B | （なし） | — | — | — | 0 |
 | C | C-06 groupId 省略(`""`) | 要追加 | **担保済み（#20）** — `#readsSetupTableBlockFromRealBook` ほか 2 件が `""` を直接アサート | 1 |
 | C | C-08 columnNames 空 | 要追加 | **担保済み（#20 修正ラウンド）** — `#readsEmptyColumnNamesFromMarkerOnlyTableInRealBook`／`#readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook`。マーカー列だけのブロックで到達する（`issues.md` **XLS-08**）。**#20 の当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが誤り**（軸E の 4 観点 E-1〜E-4 に「列名 0 件」に対応する要素は無い）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
 | C | C-09 rows 空／C-12 FileDataBlock.records 空／C-15 MessageDataBlock.records 空／C-18 RecordLayout.rows 空 | 要追加 | **担保済み（#21）** — `XlsFormatReaderRealFileTest#readsEmptyRowsFromTableWithoutDataRowsInRealBook`／`#readsEmptyRowsFromListMapWithoutDataRowsInRealBook`（C-09 は 2 経路）／`#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook`（C-12）／`#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`（C-15）／`#readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook`（C-18）。いずれも例外にならず空コレクションになることを実測して固定した | 4 |
-| C | C-11 FileDataBlock.directives 空／C-13 MessageDataBlock.directives 空 | 要追加 | **到達不能** — 本体 `DataFile` コンストラクタ L92 が `file-type` を必ず注入する（`issues.md` **XLS-07**）。根拠は `#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`／`#readsAllFourSendSyncMessageTypesFromRealBook` がテストで示す | 2 |
+| C | C-11 FileDataBlock.directives 空／C-13 MessageDataBlock.directives 空 | 要追加 | **到達不能** — 本体 `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` **XLS-07**）。根拠は `#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`／`#readsAllFourSendSyncMessageTypesFromRealBook` がテストで示す | 2 |
 | C | C-16 recordType 省略(`null`) | 要追加 | **到達不能** — 実 `.xlsx` 経路では空セルが `""` として読まれる（`issues.md` **XLS-06**）。根拠は `#readsOmittedRecordTypeAsEmptyStringFromRealBook` | 1 |
-| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` L234 が失敗する（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook` と `#failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook` がテストで示す。**#20 の当初分類では #21 送りにしていたが誤り**（軸E の 0 件ではない）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
+| C | C-17 RecordLayout.fields 空 | 要追加 | **到達不能** — 名前行が 2 列未満だと本体 `DataFileParser` が失敗する（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook` と `#failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook` がテストで示す。**#20 の当初分類では #21 送りにしていたが誤り**（軸E の 0 件ではない）。#18 §1.3 は本要素を「要追加」に列挙しただけで、どのタスクが埋めるかは指定していない | 1 |
 | C | C-20 FieldDef.type 省略(`null`) | 要追加 | **到達不能** — 型の欠落を本体パーサが 2 通りの機構で弾く（`issues.md`「到達不能」表）。根拠は **#21 が追加した** `XlsFormatReaderInvalidInputTest#failsWhenTypeRowIsShorterThanNameRowInRealBook`（機構①）／`#failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook`（機構②）がテストで示す | 1 |
-| C | C-02 sections 空 — `XlsFormatReader#read` L133 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
+| C | C-02 sections 空 — `XlsFormatReader#read` が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
 | D | D1-01〜D1-17 全 17 ケース | 要追加 | **担保済み（#19）** — `XlsFormatReaderCellTypeTest` 19 件（17 ケース＋空白セル＋行途中の不在セル）。Excel 保存物との突き合わせは `XlsReferenceFixtureTest` 2 件（`issues.md` XLS-01〜XLS-05） | 17 |
 | E | E-2(0 件)／E-3(0 件) | 要追加 | **担保済み（#21）** — E-2(0) は C-09 の 2 件と同じ入力、E-3(0) は C-12／C-15 と同じ入力（上記 C 行のテストメソッド） | 2 |
 | E | E-4(複数) — `XlsFormatReader#read` が 1 シート単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
@@ -832,99 +721,6 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | 19 | `read_containerCountMismatch_failsFast` | A-06 | B-3 | — | — | — | ✅ 器↔原文の件数不整合 → `IllegalStateException` |
 | 20 | `read_fragmentRecordMismatch_failsFast` | A-06 | B-3 | — | — | — | ✅ 器の断片構造↔原文レコード不整合 → `IllegalStateException` |
 
-### 2.2 軸要素 → 担保テストメソッド
-
-**軸A（✅ 13 ／ 🔺 0 ／ ❌ 1 ＝ 14）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| A-01 `DEFAULT` | ❌ | —（到達不能。`YamlFormatReader#addBlocksForSection` L106-133 ／ `fileDataType` L534-536 ／ `addMessageBlocks` L264 は `DEFAULT` 以外の 13 種のみを分岐に持ち、`DEFAULT` を返す経路がない。§0.8-7） |
-| A-02 `SETUP_TABLE_DATA` | ✅ | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues`, `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` |
-| A-03 `EXPECTED_TABLE_DATA` | ✅ | `readTable_expectedWithGroup_formatsGroupIdAndCreatesBlockPerGroup` |
-| A-04 `EXPECTED_COMPLETED` | ✅ | `readTable_completed_mapsExpectedCompletedType` |
-| A-05 `LIST_MAP` | ✅ | `readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull` |
-| A-06 `SETUP_FIXED` | ✅ | `readFile_fixed_mapsRawFieldDefsAndValues`, `readFile_recordTypeOmitted_keepsNullRecordType`, `read_containerCountMismatch_failsFast`, `read_fragmentRecordMismatch_failsFast` |
-| A-07 `EXPECTED_FIXED` | ✅ | `readFile_expectedFixedWithMultipleGroups_mapsExpectedFixedAndDedupesGroups` |
-| A-08 `SETUP_VARIABLE` | ✅ | `readFile_setupVariable_mapsSetupVariableType`, `readFile_recordTypeDefault_normalizedToNull` |
-| A-09 `EXPECTED_VARIABLE` | ✅ | `readFile_variable_mapsVariableTypeWithNullLengths` |
-| A-10 `MESSAGE` | ✅ | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`, `readMessage_emptyBody_isStillMapped`, `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` |
-| A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField`, `readSendSync_allFourTypesAreRecognized` |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `readSendSync_allFourTypesAreRecognized` |
-| A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `readSendSync_allFourTypesAreRecognized` |
-| A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `readSendSync_allFourTypesAreRecognized`, `readSendSync_entryWithoutGroupId_isDropped` |
-
-**軸B（✅ 4 ／ 4）**
-
-| 要素 | 判定 | 担保テストメソッド（代表） |
-|---|---|---|
-| B-1 `TableDataBlock` | ✅ | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues`, `readTable_completed_mapsExpectedCompletedType` ほか 2 件（計 4 件） |
-| B-2 `ListMapBlock` | ✅ | **`readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull`**（辺②で唯一） |
-| B-3 `FileDataBlock` | ✅ | `readFile_fixed_mapsRawFieldDefsAndValues`, `readFile_variable_mapsVariableTypeWithNullLengths` ほか 6 件（計 8 件） |
-| B-4 `MessageDataBlock` | ✅ | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`, `readMessage_emptyBody_isStillMapped` ほか 4 件（計 6 件） |
-
-**軸C（21 フィールド ─ 両状態担保 12 ／ 未担保 9）**
-
-省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
-n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
-「値あり」の担保をもって両状態担保として数える。
-
-| 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
-|---|---|---|---|
-| C-01 `TestDataContainer.name` | ✅ | n/a | `read_namesContainerAndSectionByResourceName` |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空（**到達不能**） | `read_namesContainerAndSectionByResourceName`（`YamlFormatReader#read` L94 が `Collections.singletonList(section)` を返すため、辺②では sections は常に 1 件。§0.8-6） |
-| C-03 `TestDataSection.name` | ✅ | n/a | `read_namesContainerAndSectionByResourceName` |
-| C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 空: `read_namesContainerAndSectionByResourceName`, `readMessage_nullContent_isSkipped` |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | `readTable_setup_...`, `readTable_expectedWithGroup_...` ほか 9 件（計 11 件） |
-| C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...` ほか 1 件（計 3 件）／省略: `readTable_setup_...`, `readMessage_mapsRawFwHeader...` |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | `readTable_setup_...`, `readTable_completed_...` ほか 7 件（計 9 件） |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ❌ 空 | 非空: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...`（計 2 件） |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ❌ 空 | 非空: `readTable_setup_...`, `readTable_expectedWithGroup_...` ほか 1 件（計 3 件） |
-| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `readFile_fixed_...`／VARIABLE: `readFile_variable_...`, `readFile_setupVariable_...` |
-| C-11 `FileDataBlock.directives` | ✅ | ❌ 空 | 非空: `readFile_fixed_mapsRawFieldDefsAndValues` のみ |
-| C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `readFile_fixed_...` |
-| C-13 `MessageDataBlock.directives` | ❌ | ❌ | **アサートするテストが 0 件**（`getDirectives()` の呼び出しは `YamlFormatReaderTest` L164 の FileDataBlock のみ） |
-| C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`／空: `readMessage_emptyBody_isStillMapped`, `readSendSync_groupsByRawValue...` |
-| C-15 `MessageDataBlock.records` | ✅ | ✅ 空 | 非空: `readMessage_mapsRawFwHeader...`／空: `readMessage_emptyBody_isStillMapped` |
-| C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `readFile_fixed_...`, `readMessage_mapsRawFwHeader...`／省略: `readFile_recordTypeOmitted_keepsNullRecordType`, `readFile_recordTypeDefault_normalizedToNull` |
-| C-17 `RecordLayout.fields` | ✅ | ❌ 空 | 非空: `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
-| C-18 `RecordLayout.rows` | ✅ | ❌ 空 | 非空: `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
-| C-19 `FieldDef.name` | ✅ | n/a | `readFile_fixed_...`, `readFile_variable_...` ほか 2 件（計 4 件） |
-| C-20 `FieldDef.type` | ✅ | ❌ 省略(null) | 値あり: `readFile_fixed_...`（`半角英字`/`数値`） |
-| C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `readFile_fixed_...`（`"5"`）／省略: `readFile_fixed_...`（`f2`）, `readFile_variable_...` |
-
-**軸D（✅ 0 ／ 🔺 4 ／ ❌ 6 ＝ 10）**
-
-D2-01〜D2-10 すべて ❌。理由: 既存 20 件は `YamlFormatReaderTest#reader`（L538-545）で `loadRawMap` を
-in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパースを一切通らない。スカラー型の解釈が発生しない。
-
-🔺 弱い担保（実 YAML ファイルを通る往復テスト経由）:
-- D2-02 引用符あり文字列: `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader`, `#roundTrip_fixedFile_isPreservedThroughRealReader` ほか 4 件（`roundTrip_*` 全 6 件）、`RoundTripTest` の YAML 経路 14 件と両経路 3 件（§0.8-8）
-- D2-03 数値（`"123"`）: `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`
-- D2-06 `null`: 同上、`RoundTripTest#yaml_setupTable_isPreserved`, `#yaml_listMap_withNullValue_isPreserved`, `#nullCell_xlsConvertsToLiteralString_yamlPreservesNull`（`~` と「値なし」は未担保）
-- D2-07 `"null"`: `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`
-
-`RoundTripTest` によって新たに 🔺 になる辺②の要素はない（§0.8-8）。
-
-**軸E**
-
-| 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
-|---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `read_namesContainerAndSectionByResourceName`, `readMessage_nullContent_isSkipped`／1: `readTable_setup_...`, `readTable_completed_...` ほか 2 件（計 4 件）／複数: `readTable_expectedWithGroup_...`, `readFile_expectedFixedWithMultipleGroups_...` ほか 3 件（計 5 件） |
-| E-2 ブロック内行数 | ❌ | ✅ | ✅ | 1: `readTable_completed_mapsExpectedCompletedType`（`rows` に 1 件のみ。§2.1 の軸E 欄には E-2(1) を明記していない）／複数: `readTable_setup_...`, `readListMap_preservesYamlColumnOrder...` ほか 1 件（計 3 件） |
-| E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `readMessage_emptyBody_isStillMapped`／1: `readFile_variable_...`, `readFile_recordTypeOmitted_...` ほか 2 件（計 4 件）／複数: `readFile_fixed_mapsRawFieldDefsAndValues` |
-| E-4 コンテナ内セクション数（辺②の実体: ディレクトリ内 YAML ファイル数） | n/a | ✅ | ❌（**到達不能**） | 1: `read_namesContainerAndSectionByResourceName`。複数は `YamlFormatReader#read`（L87-95）が 1 リソース単位 API で `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
-
-**軸F（✅ 1 ／ 🔺 2 ／ ❌ 2 ＝ 5）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| F2-01 スキーマ違反 | ❌ | —（`YamlTestDataValidatorTest` は別クラスであり本辺の対象外） |
-| F2-02 YAML として不正 | ❌ | — |
-| F2-03 未知のキー | ✅ | `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` |
-| F2-04 必須構造の欠落 | 🔺 | `readSendSync_entryWithoutGroupId_isDropped`（送信系必須 `group_id` の欠落）、`readMessage_nullContent_isSkipped` |
-| F2-05 空ファイル | 🔺 | `read_namesContainerAndSectionByResourceName`（空 Map。実ファイルではない） |
-| （steering 外で担保済みの異常系） | ✅ | `read_containerCountMismatch_failsFast`, `read_fragmentRecordMismatch_failsFast`（器↔原文の不整合 fail-fast。steering の 5 ケースには含まれないが本辺固有の異常系として担保済み） |
-
 <a id="s2-3"></a>
 
 ### 2.3 辺② 未担保一覧（#24 が埋める対象）
@@ -937,7 +733,7 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | A | A-01 `DEFAULT` — `YamlFormatReader` の分岐に `DEFAULT` を返す経路がない（§0.8-7） | 到達不能 | 1 |
 | B | （なし） | — | 0 |
 | C | C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives（値あり・空の双方が欠）**／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 要追加 | 8 |
-| C | C-02 sections 空 — `YamlFormatReader#read` L94 が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 1 |
+| C | C-02 sections 空 — `YamlFormatReader#read` が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 1 |
 | D | D2-01〜D2-10 全 10 ケース（うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 あり。§0.8-8 と上の「軸D」節を参照し重複を避けること） | 要追加 | 10 |
 | E | E-2(0 件) | 要追加 | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 1 |
@@ -1006,6 +802,38 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 が識別セル全体をアサートしており独立に ✅、A-12〜A-14 は #23 レビュー対応で
 `XlsFormatWriterModelTest` に追加した 3 メソッドが担保する。
 
+**上表 40 件の内訳（実測・2026-08-13）**: **実ファイル 10 件 ／ `build` 28 件 ／
+SUT のブックを作らない `ExcelFormatConfig` 単体 2 件**（10 ＋ 28 ＋ 2 ＝ 40）。
+§3.1-3 の `XlsFormatWriterModelTest` との違いは「`build` か実ファイルか」ではなく
+「**全件が実ファイル経路か否か**」である。
+
+導出コマンド（`@Test` ごとにメソッド本体を切り出し、本体に現れる呼び出しで分類する。
+`roundTrip` ヘルパ経由の 8 件を実ファイル側に数えるため `roundTrip(` も見る）:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+awk '/^    @Test/{t=1;d=0;s=0;b="";next}
+     t{b=b $0"\n"; o=gsub(/\{/,"{"); c=gsub(/\}/,"}"); d+=o-c; if(o>0)s=1;
+       if(s&&d<=0){t=0; tot++; if(b~/\.write\(/||b~/roundTrip\(/)w++; else if(b~/build\(/)bu++; else nn++}}
+     END{printf "@Test=%d build=%d write=%d neither=%d\n",tot,bu,w,nn}' \
+  src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java
+```
+
+```
+@Test=40 build=28 write=10 neither=2
+```
+
+`@Test=40` が `grep -c '@Test' <同ファイル>` の 40 と一致することが、切り出しに漏れが無いことの確認になる
+（`@Test(expected = ...)` 付きの 4 件を落とさないため、パターンは `^    @Test$` ではなく `^    @Test` である）。
+`build` と `write` の両方を呼ぶメソッドは無い。
+
+**実ファイルを書く 10 件**: `roundTrip` ヘルパ経由の 8 件（`roundTripsTable` / `roundTripsNullCellAsLiteralNullString` /
+`roundTripsListMap` / `roundTripsFixedFile` / `roundTripsMultipleRecordLayouts` / `roundTripsVariableFile` /
+`roundTripsMessage` / `roundTripsSendSyncMessage`）と `writesWorkbookFileWithSheetPerSection` ／ `wrapsIoFailure`。
+**どちらも呼ばない 2 件**: `eachGroupHasDistinctDefaultColor` ／ `rejectsNegativeBlankRows`。
+どちらも `ExcelFormatConfig` だけを叩き、`XlsFormatWriter` のブックを作らない
+（前者は既定色 4 種が互いに異なることを、後者は負数を渡すと `IllegalArgumentException` になることを見る）。
+
 ### 3.1-2 #22 が追加したテストクラスの担保（2026-08-13 追記）
 
 **本節は #22 で新設した。** §3.1 は「`XlsFormatWriterTest` 40 件」を対象とした #18 時点の事実であり
@@ -1065,8 +893,8 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 
 | 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterInvalidOutputTest#`） | 観測した挙動 |
 |---|---|---|---|---|
-| F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` L105 の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
-| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは `.yaml` を出力側とする衝突だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている（`TestDataConverterTest#convertsYamlToXls`, `#convertsXlsToXls` ほか 1 件（計 3 件）。変異で実証。§0.8-5 と同じ 3 件）が、**`.xlsx` が既存で衝突する分岐**（`checkOverwrite` の `Files.exists(output)` → `ConverterException`）は 1 件も通っていない（§0.8-5 の訂正） |
+| F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
+| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite`）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは `.yaml` を出力側とする衝突だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`。`XlsFormatHandler#outputPaths` 自体は `overwrite=false` 下で実行されている（`TestDataConverterTest#convertsYamlToXls`, `#convertsXlsToXls` ほか 1 件（計 3 件）。変異で実証。§0.8-5 と同じ 3 件）が、**`.xlsx` が既存で衝突する分岐**（`checkOverwrite` の `Files.exists(output)` → `ConverterException`）は 1 件も通っていない（§0.8-5 の訂正） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException: failed to write Excel: <出力先パス>` ＋ 原因 `java.nio.file.AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境（root 実行など）では `Assume` でスキップする（確認用ファイルの作成が拒否されることを前提条件として確かめる） |
 | F3-04 シート名が Excel 制約違反 | ❌ | ✅ | 禁止文字 7 件: `rejectsSheetNameContainingSlash`／`rejectsSheetNameContainingBackslash`／`rejectsSheetNameContainingQuestionMark`／`rejectsSheetNameContainingAsterisk`／`rejectsSheetNameContainingOpeningBracket`／`rejectsSheetNameContainingClosingBracket`／`rejectsSheetNameContainingColon`。ほか `rejectsEmptySheetName`／`writesSheetNameOfExcelLimitLengthAsIs`／`truncatesSheetNameLongerThanExcelLimitSilently`／`writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`failsWhenTruncatedSheetNamesCollide`／`failsWhenSheetNamesDifferOnlyInCase` | **31 文字ちょうどはそのまま書かれる**（切り詰めなし）。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name`（**大文字小文字だけが違う名前も同名と判定される**。切り詰めが走らない 3 文字で実測）。空文字は `IllegalArgumentException: sheetName '' is invalid`。禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗するが、**これは切り詰め後の名前に禁止文字が残る場合に限る**（下記） |
 
@@ -1088,7 +916,7 @@ F3-04 の範囲を「31 文字超・禁止文字」と定めているため）�
 
 **F3-01 の隣接領域に、src/test 全体で一度も通っていない分岐が 1 つある（2026-08-13・第 3 ラウンドの指摘により開示）。**
 上表の F3-01 行は「出力先まわりが揃う」と書いているが、`XlsFormatWriter#write` の
-**`parent == null` 分岐（L102-106）は未担保**である。`src/main` のコメント（L103）が
+**`parent == null` 分岐は未担保**である。`src/main` のコメントが
 「親ディレクトリを持たない相対パス（例: `"foo.xlsx"`）が生成されると `getParent()` は `null` を返すため、
 null チェックが必須」と明記している分岐であるため、担保の穴としてここに開示する。
 
@@ -1107,11 +935,11 @@ null チェックが必須」と明記している分岐であるため、担保
      **#22 時点は 19 か所だった**（内訳に `XlsFormatWriterModelTest` が無かった）。#23 が
      `XlsFormatWriterModelTest` を追加したことで 20 になり、この記述は陳腐化していた
      （2026-08-13・#23 レビュー対応で訂正。増えた 1 か所も `basePath` は絶対パスであり結論は変わらない）。
-  2. 本番配線 `TestDataConverter#convert`（L75 `writer.write(container, outputBase.toString())`）。
-     `outputBase` は `XlsFormatHandler#resolveOutputBase`（L58-60）が `request.getOutputPath()` から組む。
-     テストが渡す出力先は `TemporaryFolder` 由来の絶対パス（`TestDataConverterTest` L69 `out = folder.newFolder("out").toPath()`／
+  2. 本番配線 `TestDataConverter#convert`（`writer.write(container, outputBase.toString())`）。
+     `outputBase` は `XlsFormatHandler#resolveOutputBase` が `request.getOutputPath()` から組む。
+     テストが渡す出力先は `TemporaryFolder` 由来の絶対パス（`TestDataConverterTest` の `out = folder.newFolder("out").toPath()`／
      `ConverterMojoTest` の `inject(mojo, "output", out.toFile())`）と、`SampleConversionTest` の
-     `OUTPUT_BASE = Paths.get(".output/SampleConversionTest")`（L34）だけで、いずれも空文字にならない。
+     `OUTPUT_BASE = Paths.get(".output/SampleConversionTest")` だけで、いずれも空文字にならない。
 - **#22 では埋めない。** #22 の軸F の定義は F3-01 出力先不在／F3-02 `overwrite=false` 衝突／F3-03 書き込み権限なし／
   F3-04 シート名制約違反の 4 要素（§0.7）であり、この分岐はいずれにも当たらない。
   本書の軸要素ではないため §3.3 の件数には算入しない（#22 完了時点の §3.3 の件数は
@@ -1134,17 +962,16 @@ null チェックが必須」と明記している分岐であるため、担保
 
 **実ファイル経路で確かめている。** 本クラスは 18 件すべてが `write` の作ったファイルを開き直す。
 空の行・空のセルが直列化で落ちないことまで含めて固定するためであり、`XlsFormatWriterCellTypeTest`（#22）と
-同じ方針である。**`XlsFormatWriterTest` 40 件との違いは「全件がそうか否か」である**（→ §3.1-4）。
+同じ方針である。**`XlsFormatWriterTest` 40 件との違いは「全件がそうか否か」である**（→ §3.1 末尾の内訳）。
 
 **`XlsFormatWriterTest` の 40 件は #23 では 1 行も変えていなかったが、#23 のレビュー対応で変更した。**
 変更は次の 3 点のみで、`@Test` の数・アサートの内容は変えていない
 （`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java` → **40** のまま）。
 
 1. セル読み出しヘルパ `cell` / `line` の定義を削除し `XlsFixture` の同名 static メソッドを static import
-   （理由と判断は §3.1-5）
+   （理由と判断は `issues.md`「ヘルパ抽出の要否」）
 2. 未使用になった import（`org.apache.poi.ss.usermodel.Cell` / `Row`）の削除
-3. クラス Javadoc の訂正（`build` と `write` の内訳。§3.1-4。**ラウンド2 で内訳の数字を
-   30/10 から 28/10/2 へ再訂正した**）
+3. クラス Javadoc の訂正（`build` と `write` の内訳。§3.1 末尾）
 
 A-07／A-09 が同クラスに 0 件であることは
 `grep -c 'EXPECTED_FIXED\|EXPECTED_VARIABLE' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java` → **0**
@@ -1164,19 +991,19 @@ A-07／A-09 が同クラスに 0 件であることは
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseBodyMessagesMarker` | 識別セル `RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01`。同上 |
 
 **A-12／A-13／A-14 の ✅ は #18 以来（#23 の当初版を含め）誤りだった。**
-この 3 タイプを辺③で通していたのは `XlsFormatWriterTest#writesSequenceNoForAllSendSyncTypes`（L818-835）だけで、
-同メソッドがアサートするのは**データ行の列 0 の連番 `"1"`**（L833 `cell(sheet, 4, 0)`。4 タイプ共通の値）であり、
+この 3 タイプを辺③で通していたのは `XlsFormatWriterTest#writesSequenceNoForAllSendSyncTypes` だけで、
+同メソッドがアサートするのは**データ行の列 0 の連番 `"1"`**（`cell(sheet, 4, 0)`。4 タイプ共通の値）であり、
 **タイプを区別する出力を 1 つも固定していなかった**。辺③で識別セルを直接アサートしていたのは
-`XlsFormatWriterTest` L435（A-11 `EXPECTED_REQUEST_HEADER_MESSAGES`）の 1 箇所だけである。
+`XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo`（A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` の識別セル）の 1 箇所だけである。
 
-- **変異による実測（2026-08-13。#23 レビュー指摘の再現）**: `XlsFormatWriter#marker`（`src/main` L399-401）が
+- **変異による実測（2026-08-13。#23 レビュー指摘の再現）**: `XlsFormatWriter#marker` が
   この 3 タイプにだけ別文字列 `"MUTATED"` を返すよう `src/main` を一時的に変異させて全件実行したところ、
   落ちたのは **`RoundTripTest` の 3 件のみ**（`xls_expectedRequestBodyMessages_isPreserved` ／
   `xls_responseHeaderMessages_isPreserved` ／ `xls_responseBodyMessages_isPreserved`）で、
   **`XlsFormatWriterTest` 40 件は全緑**だった（`Tests run: 425, Failures: 3`）。
   往復テストは steering Rules フェーズ2 により正式な担保に数えないため、
   **この時点で A-12／A-13／A-14 は 🔺 相当（正式担保 0）**であった。
-- **埋め方**: 開示だけで済ませず、上表の 3 メソッドを追加した。粒度は L422（A-11）に揃え、
+- **埋め方**: 開示だけで済ませず、上表の 3 メソッドを追加した。粒度は A-11 の担保テスト（`writesSendSyncMessageWithSequenceNo`）に揃え、
   グループ ID と識別子を含むマーカー全体を固定する。
 - **歯があることの実証**: 同じ変異を再度入れて全件実行し、`XlsFormatWriterModelTest` の該当 3 件が
   落ちることを確認した（`Tests run: 428, Failures: 6` ＝ 新規 3 件 ＋ `RoundTripTest` 3 件）。
@@ -1219,403 +1046,9 @@ A-07／A-09 が同クラスに 0 件であることは
 
 | 箇所 | 未到達の内容 | 扱い |
 |---|---|---|
-| `write` L104 `if (parent != null)` | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
-| `layout` L171 `else if (block instanceof MessageDataBlock)` の false 側と L174 の `throw` | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
-| `isMarkerColumn` L410 `columnName != null` | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` L189 のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
-
-<a id="s3-1-4"></a>
-
-### 3.1-4 「§3.1 の 40 件は `build` を見る」は誤りだった（2026-08-13・#23 レビュー指摘により訂正。ラウンド2 で内訳を再実測）
-
-**訂正前の記述**: §3.1-3 は「§3.1 の 40 件は `build`（メモリ上のブック）を見るが、本クラスは
-`write` が実際に作ったファイルを開き直す」と書いていた。`XlsFormatWriterModelTest` のクラス Javadoc も
-同じことを書いていた。**どちらも誤り**である。同じ本書の §0.8-2 が「辺③の往復テスト 8 件は実 `.xlsx` を
-経由して」と書いており自己矛盾していた。
-
-**ラウンド2 でさらに訂正した。** 訂正の初版はここに「実ファイルは 10 件、したがって `build` だけを
-見るのは 30 件（40 − 10）」と書いていたが、**この 30 は引き算で出した数字であって実測ではなく、
-実測と合わない**。`build` も `write` も呼ばないテストが 2 件あるためである。
-**実測せず導出した数字を載せるのは、この節が訂正しようとした誤り方そのものである。**
-
-**実測（2026-08-13・ラウンド2）**: `XlsFormatWriterTest` の 40 件は
-**実ファイル 10 件 ／ `build` 28 件 ／ SUT のブックを作らない `ExcelFormatConfig` 単体 2 件**に分かれる
-（10 ＋ 28 ＋ 2 ＝ 40）。
-
-導出コマンド（`@Test` ごとにメソッド本体を切り出し、本体に現れる呼び出しで分類する。
-`roundTrip` ヘルパ経由の 8 件を実ファイル側に数えるため `roundTrip(` も見る）:
-
-```sh
-cd /home/tie303177/work/nablarch/nablarch-testing-converter
-awk '/^    @Test/{t=1;d=0;s=0;b="";next}
-     t{b=b $0"\n"; o=gsub(/\{/,"{"); c=gsub(/\}/,"}"); d+=o-c; if(o>0)s=1;
-       if(s&&d<=0){t=0; tot++; if(b~/\.write\(/||b~/roundTrip\(/)w++; else if(b~/build\(/)bu++; else nn++}}
-     END{printf "@Test=%d build=%d write=%d neither=%d\n",tot,bu,w,nn}' \
-  src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java
-```
-
-```
-@Test=40 build=28 write=10 neither=2
-```
-
-`@Test=40` が `grep -c '@Test' <同ファイル>` の 40 と一致することが、切り出しに漏れが無いことの確認になる
-（`@Test(expected = ...)` 付きの 4 件を落とさないため、パターンは `^    @Test$` ではなく `^    @Test` である）。
-`build` と `write` の両方を呼ぶメソッドは無い（上のコマンドの分類は排他だが、
-`awk -F'\t' '$2==1 && ($3==1||$4==1)'` 相当の突き合わせでも 0 件だった）。
-
-**実ファイルを書く 10 件の内訳**（`grep -n 'new XlsFormatWriter()\.write(' <同ファイル>` は 3 か所を返す。
-行番号は本コミット時点。以前ここに載せていた L733／L855／L863 は #23 完了時点 `3125c92` のもので、
-`git show 3125c92:<パス> | grep -n` で再現できる）:
-
-| 呼び出し位置 | 呼ぶテストメソッド | 件数 |
-|---|---|---|
-| L859（`roundTrip` ヘルパ L857-861） | `roundTripsTable` / `roundTripsNullCellAsLiteralNullString` / `roundTripsListMap` / `roundTripsFixedFile` / `roundTripsMultipleRecordLayouts` / `roundTripsVariableFile` / `roundTripsMessage` / `roundTripsSendSyncMessage` | 8 |
-| L729 | `writesWorkbookFileWithSheetPerSection` | 1 |
-| L851 | `wrapsIoFailure` | 1 |
-| **合計** | | **10** |
-
-**どちらも呼ばない 2 件**: `eachGroupHasDistinctDefaultColor`（L577）／`rejectsNegativeBlankRows`（L706）。
-どちらも `ExcelFormatConfig` だけを叩き、`XlsFormatWriter` のブックを作らない
-（前者は既定色 4 種が互いに異なることを、後者は負数を渡すと `IllegalArgumentException` になることを見る）。
-
-`XlsFormatWriterModelTest` との違いは「`build` か実ファイルか」ではなく
-「**全件が実ファイル経路か否か**」であり、§3.1-3 と当該クラス Javadoc（`XlsFormatWriterTest` ／
-`XlsFormatWriterModelTest` の 2 つ）はその表現へ訂正した。
-
-**src/test 全体の `XlsFormatWriter#write` 直接呼び出しは 20 か所である**（#23 で `XlsFormatWriterModelTest` が
-1 か所増えたため、§3.1-2 が書いていた 19 か所は陳腐化していた。§3.1-2 側も訂正済み）。
-
-```
-$ grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l
-20
-$ grep -rc "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | grep -v ':0$'
-src/test/java/nablarch/test/tool/converter/ConverterMojoTest.java:1
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java:2
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java:10
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java:3
-src/test/java/nablarch/test/tool/converter/TestDataConverterTest.java:2
-src/test/java/nablarch/test/tool/converter/RoundTripTest.java:1
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java:1
-```
-
-増えた 1 か所（`XlsFormatWriterModelTest#write` ヘルパ）が渡す `basePath` は
-`folder.getRoot().getAbsolutePath()` であり空文字にならないため、§3.1-2 の
-[`parent == null` 分岐が未担保](#s3-1-2-parent-null)という結論は変わらない。
-
-<a id="s3-1-5"></a>
-
-### 3.1-5 ヘルパ抽出の要否（#22 からの持ち越し。#23 で判断を確定。2026-08-13）
-
-`.rn/ntf-test-data-converter/checks/task-22.md` が「中間モデル組み立てヘルパの抽出の**要否は #23 で判断する**」と
-書いて #23 へ委ねていた。#23 は Writer 系 4 本目のテストクラスを追加しながらこの判断をどこにも記録して
-いなかったため、ここで確定して記録する。
-
-**実測した重複（2026-08-13。定義位置は #23 完了時点 `3125c92`。ただし下表の `causeOf` 行だけは
-この時点にまだ存在しないため本コミット時点の実測である）**
-
-```
-$ git grep -n "List<String> line(Sheet" 3125c92 -- src/test
-3125c92:.../xls/XlsFormatWriterModelTest.java:187:    private static List<String> line(Sheet sheet, int r) {
-3125c92:.../xls/XlsFormatWriterTest.java:110:    private static List<String> line(Sheet sheet, int r) {
-$ git grep -n "String cell(Sheet" 3125c92 -- src/test
-3125c92:.../xls/XlsFormatWriterTest.java:100:    private static String cell(Sheet sheet, int r, int c) {
-$ git grep -c "static List<String> row(String" 3125c92 -- src/test | wc -l
-8
-$ git grep -c "static Map<String, String> map(String" 3125c92 -- src/test | wc -l
-2
-$ git grep -n "static TestDataContainer container(" 3125c92 -- src/test | wc -l
-5
-```
-
-| ヘルパ | 定義数（`3125c92`） | 本体 | 判断 |
-|---|---|---|---|
-| `line(Sheet, int)` | 2（`XlsFormatWriterTest` L110 ／ `XlsFormatWriterModelTest` L187） | 完全一致（11 行） | **`XlsFixture` へ抽出した** |
-| `cell(Sheet, int, int)` | 1（`XlsFormatWriterTest` L100） | — | **`XlsFixture` へ抽出した**（`line` と対のため） |
-| `row(String...)` | 8 ファイル（`xls` / `yaml` / `converter` / `core.reader` の 4 パッケージ） | `Arrays.asList` 1 行 | **現状維持** |
-| `map(String...)` | 2（`XlsFormatWriterTest` ／ `XlsFormatWriterModelTest`） | 完全一致 | **現状維持** |
-| `container(...)` | 5（引数の形が 5 通り） | 別物 | **現状維持**（下記） |
-| 往復（`roundTrip` ／ `writeAndReadBack`） | 2（同一ロジック） | — | **現状維持**（下記） |
-| `causeOf(Throwable)`<br>（**本行だけ本コミット時点の実測**） | 2（`XlsFormatReaderInvalidInputTest` L338 ／ `XlsFormatWriterModelTest` L751）。`3125c92` では 1（`XlsFormatWriterModelTest` 側は **#23 レビュー ラウンド1（`4905838`）が作った新規の写し**で、上のコマンド群を実行した時点にはまだ無かった） | 完全一致（3 行） | **現状維持**（下記） |
-
-**判断の理由**
-
-- **境界は「POI のブック・シートを直接触るか」に引いた。** `XlsFixture` は既に
-  `static Workbook open(Path)` でパッケージの POI 読み出し側を担っており、抽出前の時点で
-  **7 テストクラス**が使っていた（`git grep -l "XlsFixture" 3125c92 -- src/test | wc -l` → 8 ファイル。
-  うち 1 つは `XlsFixture` 自身）。抽出後は `XlsFormatWriterTest` が加わり
-  **8 クラス**になる（`grep -rln "XlsFixture" src/test --include=*.java | wc -l` → 9）。
-  同クラスの Javadoc が線を引いているのは「**中間モデル**組み立てヘルパとは対象レイヤが異なる」であって、
-  シート読み出しユーティリティは元から対象外ではない。`line` / `cell` はこちら側に入る。
-- **`cell` は写しが 1 件だったが `line` と一緒に移した。** 対になるアクセサを分けて置くと、
-  次の Writer 系テストクラス（すでに 4 本ある）が `cell` 側の写しを作る。
-- **`row` は抽出しない。** 4 パッケージ 8 ファイルに定着したイディオムで、集約するとパッケージをまたぐ
-  依存が増えるだけである（本体は 1 行）。
-- **`map` は抽出しない。** 写しは 2 件あるが**中間モデル組み立て側**であり、`XlsFixture` の Javadoc が
-  明示する境界の向こうにある。
-- **`container` は抽出しない。** 以前ここには「引数の形が 5 通りだから重複ではない」と書いていたが、
-  **この根拠は循環している**（5 通り目の `container(String, TestDataBlock...)` は #23 自身が
-  `XlsFormatWriterTest` の `container(String, String, TestDataBlock...)` から第 2 引数を定数 `SHEET` に
-  固定して作ったものなので、「形が違う」のは抽出しなかった結果であって理由ではない。
-  2026-08-13・ラウンド2 のレビュー指摘）。実質的な理由は次のとおり。
-  5 定義はいずれも**そのクラスのブック名・シート名の決め方に合わせた局所版**であり、
-  共有版へ寄せるとその決め方を呼び出し側の引数へ戻すことになる。具体的には
-  `XlsFormatWriterModelTest#container`（L144）は `TemporaryFolder` がメソッドごとに別ディレクトリを
-  与える前提でシート名を定数 `SHEET` に固定した 2 引数版であり、`XlsFormatWriterTest` の 3 引数版へ
-  寄せると**呼び出し 17 か所すべてが同じシート名リテラルを書く**ことになる
-  （`grep -c "container(" src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java`
-  から定義行 1 を引いて 17）。`XlsFormatWriterCellTypeTest#container(String)` は
-  検証対象の値 1 個だけを受ける版、`XlsFormatWriterInvalidOutputTest#container(String, String...)` は
-  シート名の並びだけを受ける版で、いずれも同じ理由による。
-- **往復ヘルパ（`XlsFormatWriterTest#roundTrip` ／ `XlsFormatWriterModelTest#writeAndReadBack`）も抽出しない。**
-  ロジックは同一だが、`XlsFormatReader` を駆動する＝**辺①側の SUT を呼ぶ**ヘルパであり、
-  `XlsFixture`（POI だけを触る）にも中間モデル組み立てにも属さない。往復は steering Rules フェーズ2 で
-  正式担保に数えない位置づけであり、共通基盤へ格上げすると担保として使われやすくなる副作用がある。
-- **`causeOf` も抽出しない（#23 レビュー ラウンド1 が作った新規の写しであることを開示する）。**
-  `XlsFormatWriterModelTest` L751 は `XlsFormatReaderInvalidInputTest` L338 と**本体が完全一致**で、
-  `4905838` が作った写しである（`git log -S "private static Throwable causeOf" -- <ModelTest のパス>` →
-  `4905838`）。**本節が上の重複台帳を作ったのはその 1 つ前の時点だったため、この写しは表に載っていなかった**
-  （2026-08-13・ラウンド2 の指摘により追加）。移さない理由は往復ヘルパと同じで、`XlsFixture`（POI だけを触る）にも
-  中間モデル組み立てにも属さないため境界のどちら側でもないこと、および本体が 3 行の
-  「原因例外を 1 段たどるだけ」のアサートで、共有先を新設するほうが読み手の追跡経路を増やすことである。
-  **写しであること自体はソース側の Javadoc でも開示している**（`XlsFormatWriterModelTest#causeOf` の
-  「`XlsFormatReaderInvalidInputTest` の同名ヘルパと同じ」）。3 件目の写しが生まれたときは
-  `XlsFixture` ではなく異常系テスト共通の置き場を新設して判断し直す。
-
-**記録先**: 判断そのものは `XlsFixture` のクラス Javadoc（「本クラスが引き受けるヘルパの範囲」）に置き、
-実測値とコマンドは本節に置いた。`causeOf` は `XlsFixture` の守備範囲外なので同 Javadoc には書かず、
-本節と `XlsFormatWriterModelTest#causeOf` の Javadoc に置いた。
-
-### 3.2 軸要素 → 担保テストメソッド
-
-**軸A（#18 時点の記載: ✅ 11 ／ 🔺 2 ／ ❌ 1 ＝ 14。実際は ✅ 8 ／ 🔺 5 ／ ❌ 1 だった ─ 下記。
-#23 レビュー対応後は ✅ 14）**
-
-**#18 時点の内訳は誤っていた。** A-12／A-13／A-14 を ✅ としていたが、変異による実測（2026-08-13）で
-**タイプを区別する出力を固定するテストが辺③に 1 件も無い**ことが分かった（落ちるのは `RoundTripTest` の
-3 件だけ＝🔺）。#18 時点の正しい内訳は **✅ 8 ／ 🔺 5（A-07・A-09・A-12・A-13・A-14）／ ❌ 1（A-01）**である。
-根拠は [§3.1-3](#s3-1-3-sendsync)。
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| A-01 `DEFAULT` | ✅（#23 で ❌→✅） | `XlsFormatWriterModelTest#writesDefaultDataTypeMarker`（§3.1-3）。writer 側は到達可能である（`XlsFormatWriter` L400 がマーカー文字列を `block.getDataType().getName()` から組み立てるだけでタイプを絞らない。§0.8-7）。#18 時点は ❌。辺④が例外で弾くのとの非対称は `issues.md` **XLS-20** |
-| A-02 `SETUP_TABLE_DATA` | ✅ | `writesTableBlock`, `metaRowContainsOnlyValueCells`, `appliesHeaderBackgroundColor`, `appliesSetupHeaderColor`, `drawsBlockOuterBorder`, `insertsBlankRowBetweenBlocks`, `appliesAutoColumnWidth`, `honorsConfigOverrides`, `writesWorkbookFileWithSheetPerSection`, `honorsMarkerColumnColorOverride`, `doesNotTintUnclosedBracketColumn`, `tintsMarkerColumn`, `wrapsIoFailure`, `roundTripsTable`, `roundTripsNullCellAsLiteralNullString` |
-| A-03 `EXPECTED_TABLE_DATA` | ✅ | `writesTableMarkerWithGroupId`, `appliesExpectedHeaderColor` |
-| A-04 `EXPECTED_COMPLETED` | ✅ | `writesExpectedCompleteTableMarker` |
-| A-05 `LIST_MAP` | ✅ | `writesListMapBlock`, `appliesTestShotsHeaderColor`, `appliesOtherHeaderColorForNonTestShotsListMap`, `writesWorkbookFileWithSheetPerSection`, `roundTripsListMap` |
-| A-06 `SETUP_FIXED` | ✅ | `writesFixedFileBlock`, `writesMultipleRecordLayouts`, `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`, `allowsNullRecordTypeOnSingleRecord`, `writesOmittedMetaAndFieldAsEmpty`, `roundTripsFixedFile`, `roundTripsMultipleRecordLayouts` |
-| A-07 `EXPECTED_FIXED` | ✅（#23 で 🔺→✅） | `XlsFormatWriterModelTest#writesExpectedFixedFileBlockWithLengthRow`（§3.1-3）。`XlsFormatWriterTest` には 0 件のままで、#18 時点は `RoundTripTest#xls_expectedFixed_isPreserved` 経由の 🔺 だけだった（§0.8-8） |
-| A-08 `SETUP_VARIABLE` | ✅ | `writesVariableFileWithoutLengthRow`, `roundTripsVariableFile` |
-| A-09 `EXPECTED_VARIABLE` | ✅（#23 で 🔺→✅） | `XlsFormatWriterModelTest#writesExpectedVariableFileBlockWithoutLengthRow`（§3.1-3）。`XlsFormatWriterTest` には 0 件のままで、#18 時点は `RoundTripTest#xls_expectedVariable_isPreserved` 経由の 🔺 だけだった（§0.8-8） |
-| A-10 `MESSAGE` | ✅ | `writesMessageBlock`, `appliesOtherHeaderColorForMessage`, `roundTripsMessage` |
-| A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `writesSendSyncMessageWithSequenceNo`（L422 が識別セル全体をアサート）, `writesSequenceNoForAllSendSyncTypes`, `roundTripsSendSyncMessage` |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（#23 レビュー対応で 🔺→✅） | `XlsFormatWriterModelTest#writesExpectedRequestBodyMessagesMarker`（[§3.1-3](#s3-1-3-sendsync)）。`writesSequenceNoForAllSendSyncTypes` は連番 `"1"` しか見ておらず**タイプを区別しない**（変異で実証） |
-| A-13 `RESPONSE_HEADER_MESSAGES` | ✅（#23 レビュー対応で 🔺→✅） | `XlsFormatWriterModelTest#writesResponseHeaderMessagesMarker`（同上） |
-| A-14 `RESPONSE_BODY_MESSAGES` | ✅（#23 レビュー対応で 🔺→✅） | `XlsFormatWriterModelTest#writesResponseBodyMessagesMarker`（同上） |
-
-**A-12／A-13／A-14 の判定は #18 以来 ✅ と書かれていたが誤りだった**（#23 レビュー指摘）。
-`writesSequenceNoForAllSendSyncTypes` が固定するのは 4 タイプ共通の連番 `"1"` だけで、
-`XlsFormatWriter#marker` をこの 3 タイプだけ別文字列にする変異を入れても落ちるのは `RoundTripTest` の 3 件
-（＝🔺）だけだった。正式担保 0 の状態だったため 3 メソッドを追加して埋めた。実測と手順は
-[§3.1-3](#s3-1-3-sendsync)。
-
-**軸B（✅ 4 ／ 4）**
-
-| 要素 | 判定 | 担保テストメソッド（代表） |
-|---|---|---|
-| B-1 `TableDataBlock` | ✅ | `writesTableBlock`, `roundTripsTable` ほか 16 件（計 18 件） |
-| B-2 `ListMapBlock` | ✅ | `writesListMapBlock`, `roundTripsListMap` ほか 3 件（計 5 件） |
-| B-3 `FileDataBlock` | ✅ | `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow` ほか 8 件（計 10 件） |
-| B-4 `MessageDataBlock` | ✅ | `writesMessageBlock`, `writesSendSyncMessageWithSequenceNo` ほか 4 件（計 6 件） |
-
-<a id="s3-2-axis-b-not-independent"></a>
-
-**開示: 辺③において軸B は軸A から独立していない（2026-08-13・ラウンド2 の Verification 指摘。実物で確認）。**
-上の ✅ 4/4 は判定として誤りではないが、**独立した 4 要素を通した担保だと読めてしまう**ので開示する。
-
-- **B-1 と B-2 はコード経路が同一である。** `XlsFormatWriter#layout`（`src/main` L166-175）は
-  `block instanceof ColumnRowDataBlock` → `layoutColumnRow` ／ `instanceof FileDataBlock` → `layoutFile` ／
-  `instanceof MessageDataBlock` → `layoutMessage` の 3 分岐しか持たない。
-  `TableDataBlock` と `ListMapBlock` はどちらも `ColumnRowDataBlock`（`abstract sealed`。
-  `ColumnRowDataBlock` L19-20 が この 2 つを permit する）なので、**両者は同じ `layoutColumnRow` を通る**。
-  `ListMapBlock` は `ColumnRowDataBlock` に対して何も上書きしておらず、`DataType` を
-  `LIST_MAP` に固定するコンストラクタしか持たない（`ListMapBlock` L17-30）。
-  したがって版面上で B-1 と B-2 を分けるのは `layoutColumnRow` L184-185 が
-  `block.getDataType()` から作る識別セルだけであり、**それは軸A（A-02 ほか ／ A-05）そのものである**。
-- **結果として B-1 ✅ ／ B-2 ✅ は A-02・A-05・A-06・A-10 の言い換えになっている。**
-  独立した担保として数えられるのは実質的に **3 経路**（`layoutColumnRow` ／ `layoutFile` ／
-  `layoutMessage`）である。
-- **テストは足していない。** 足しても通る経路が増えないため（B-1 と B-2 で分岐する `src/main` の
-  コードが存在しない）。§3.3 の件数（軸B 0 件）も変えない。
-  **辺①では事情が異なる**: 読み側は識別行の文字列からブロック実装を選ぶため B-1 と B-2 は別経路になる
-  （§1.2-2 の `readsFourBlockImplementationsFromOneRealSheet`）。本開示は辺③に限る。
-
-**軸C（21 フィールド ─ #18 時点: 両状態担保 12 ／ 未担保 9。#23 完了後: 両状態担保 21 ／ 未担保 0）**
-
-省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
-n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
-「値あり」の担保をもって両状態担保として数える。
-**#18 時点で ❌ だった 9 件は #23 が埋めた**（担保テストメソッドは `XlsFormatWriterModelTest#` のもの。詳細は §3.1-3）。
-
-| 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
-|---|---|---|---|
-| C-01 `TestDataContainer.name` | ✅ | n/a | `writesWorkbookFileWithSheetPerSection`（`MyBook.xlsx`） |
-| C-02 `TestDataContainer.sections` | ✅(複数=2) | ✅ 空（#23 で ❌→✅） | 複数: `writesWorkbookFileWithSheetPerSection`／空: `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`（シート 0 枚のブックになる。`issues.md` **XLS-23**）。辺③は writer 側であり `XlsFormatWriter#build` L125 が `container.getSections()` をループするため空・複数とも到達可能（§0.8-6） |
-| C-03 `TestDataSection.name` | ✅ | n/a | `writesWorkbookFileWithSheetPerSection`（Sheet1/Sheet2） |
-| C-04 `TestDataSection.blocks` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesTableBlock`, `writesFixedFileBlock` ほか 36 件（§3.1 で軸B 欄が空でない計 38 件）／空: `XlsFormatWriterModelTest#writesEmptySheetWhenSectionHasNoBlocks`（行を 1 行も持たないシートになる） |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | `writesExpectedCompleteTableMarker`, `writesSequenceNoForAllSendSyncTypes` ほか 3 件（計 5 件） |
-| C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `writesTableMarkerWithGroupId`, `writesSendSyncMessageWithSequenceNo`, `roundTripsSendSyncMessage`／省略: `writesTableBlock`（`SETUP_TABLE=USERS` に `[]` が出ない） |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | `writesTableBlock`, `writesListMapBlock` ほか 8 件（計 10 件） |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesTableBlock`, `writesListMapBlock` ほか 2 件（計 4 件）／空: `XlsFormatWriterModelTest#writesEmptyHeaderRowWhenColumnNamesAreEmpty`（カラム名行がデータ行の幅ぶんの空セルになる。`issues.md` **XLS-21**） |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesTableBlock`, `writesListMapBlock` ほか 3 件（計 5 件）／空: `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty`（識別行とカラム名行だけになる） |
-| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | **往復テストを除いても担保されている（変異で実証。下記）。** FIXED: `writesFixedFileBlock`（L270 が長さ行 `["", "-", "5"]` をアサート）, `XlsFormatWriterModelTest#writesExpectedFixedFileBlockWithLengthRow`（L264）／VARIABLE: `writesVariableFileWithoutLengthRow`（L296 が長さ行の無い版面をアサート）, `XlsFormatWriterModelTest#writesExpectedVariableFileBlockWithoutLengthRow`（L295）。`getFileType()` を明示アサートするのは 🔺 の往復 2 件（`roundTripsFixedFile` L954 ／ `roundTripsVariableFile` L1012）だけだが、**版面が writer 側の観測点である**（C-11 と同じ） |
-| C-11 `FileDataBlock.directives` | ✅ | ✅ 空 | 非空: `writesFixedFileBlock`, `writesOmittedMetaAndFieldAsEmpty`（ディレクティブ行が出る版面をアサート＝暗黙）／空: `writesVariableFileWithoutLengthRow`, `writesMultipleRecordLayouts`（ディレクティブ行が出ない版面をアサート＝暗黙。C-10 と同じく writer 側では版面が唯一の観測点であり、`getDirectives()` を読み戻すテストはない） |
-| C-12 `FileDataBlock.records` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesFixedFileBlock`, `writesMultipleRecordLayouts`／空: `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`（識別行とディレクティブ行だけになる） |
-| C-13 `MessageDataBlock.directives` | ✅（#23 で ❌→✅） | ✅ 空 | 値あり **2 件**: `XlsFormatWriterModelTest#writesDirectiveRowsBeforeFwHeaderRowsInMessage`（ディレクティブ行が FW 制御ヘッダ行より上に出る）, `#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`／空 **9 件**: `XlsFormatWriterTest` の 6 メソッド ＋ `XlsFormatWriterModelTest` の送信同期 3 メソッド。#18 時点は**値ありのテストが 0 件**だった（`XlsFormatWriterTest` の `new MessageDataBlock(...)` 6 箇所すべてで 4 引数目が空 `map()`。下表参照） |
-| C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空 **5 件**／空 **6 件**。内訳は下表。**#23 レビューで訂正**（空側に `writesSequenceNoForAllSendSyncTypes` が抜けていた） |
-| C-15 `MessageDataBlock.records` | ✅ | ✅ 空（#23 で ❌→✅） | 非空 **10 件**／空 **1 件**（`XlsFormatWriterModelTest#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`）。内訳は下表。**#23 レビューで訂正**（非空を「計 2 件」と書いていたが、`XlsFormatWriterTest` の `new MessageDataBlock(...)` 6 箇所は<b>すべて</b>非空の `records` を渡している） |
-| C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`, `writesMultipleRecordLayouts`／省略: `allowsNullRecordTypeOnSingleRecord` |
-| C-17 `RecordLayout.fields` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesFixedFileBlock`, `writesMessageBlock` ほか 2 件（計 4 件）／空: `XlsFormatWriterModelTest#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`（読み戻せない版面になる。`issues.md` **XLS-22**） |
-| C-18 `RecordLayout.rows` | ✅ | ✅ 空（#23 で ❌→✅） | 非空: `writesFixedFileBlock`, `writesMessageBlock` ほか 5 件（計 7 件）／空: `XlsFormatWriterModelTest#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（名前行・型行・長さ行までで値行が出ない） |
-| C-19 `FieldDef.name` | ✅ | n/a | `writesFixedFileBlock`, `writesMessageBlock` ほか 2 件（計 4 件） |
-| C-20 `FieldDef.type` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`／省略: `writesOmittedMetaAndFieldAsEmpty` |
-| C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`（`"-"`/`"5"`）／省略: `writesVariableFileWithoutLengthRow`, `writesOmittedMetaAndFieldAsEmpty`, `roundTripsVariableFile` |
-
-**C-10 `FileDataBlock.fileType` は往復テストを除いても担保されている（変異による実証。2026-08-13）。**
-#23 レビューは「C-10 の**明示的**なアサートは往復テスト（`roundTripsFixedFile` ／ `roundTripsVariableFile`）だけ
-＝🔺 ではないか」と指摘した。`XlsFormatWriter#layoutFile`（`src/main` L210）の
-`boolean fixed = block.getFileType() == FileDataBlock.FileType.FIXED;` を `!=` に反転させて全件実行し、
-落ちるテストを数えた。
-
-```
-$ JAVA_HOME=... mvn clean test -Djacoco.skip=true   # layoutFile の fixed 判定を反転
-Tests run: 428, Failures: 11, Errors: 1
-```
-
-落ちた 12 件のうち **往復テストでないものが 8 件**あった。
-
-| クラス | 落ちたテスト（往復でないもの） | 何を捉えたか |
-|---|---|---|
-| `XlsFormatWriterTest` | `writesFixedFileBlock`(L270) ／ `writesMultipleRecordLayouts`(L321) ／ `writesOmittedMetaAndFieldAsEmpty`(L807) | FIXED で長さ行が出る版面 |
-| `XlsFormatWriterTest` | `writesVariableFileWithoutLengthRow`(L296) | VARIABLE で長さ行が出ない版面 |
-| `XlsFormatWriterModelTest` | `writesExpectedFixedFileBlockWithLengthRow`(L264) ／ `writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`(L615) ／ `writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`(L643) | FIXED で長さ行が出る版面 |
-| `XlsFormatWriterModelTest` | `writesExpectedVariableFileBlockWithoutLengthRow`(L295) | VARIABLE で長さ行が出ない版面 |
-
-残る 4 件（`RoundTripTest#xls_setupFixed_isPreserved` ／ `#xls_expectedFixed_isPreserved` ／
-`XlsFormatWriterTest#roundTripsFixedFile` ／ `#roundTripsMultipleRecordLayouts`）は往復であり数えない。
-**FIXED 側・VARIABLE 側とも往復でないテストが落ちる**ため、C-10 は ✅ である。
-`getFileType()` を読み戻して直接比べるアサートは往復にしか無いが、
-**writer 側の観測点は版面である**（C-11 と同じ扱い。§凡例の「版面」を参照）。
-変異は確認後に戻し、`git diff HEAD -- src/main` が 0 行であることを確かめた。
-
-**C-13／C-14／C-15 の内訳（`new MessageDataBlock(...)` の全 9 定義箇所を実物で読んだ結果。2026-08-13）**
-
-```
-$ grep -rn -A3 "new MessageDataBlock(" src/test/java/nablarch/test/tool/converter/xls/*.java
-```
-
-`MessageDataBlock(DataType, groupId, identifier, directives, fwHeaderFields, records)` の
-第 4／第 5／第 6 引数を読む。定義箇所は 9 つだが、そのうち 1 つ（`sendSyncMessage` ヘルパ）は 3 メソッドが
-共有するため、テストメソッド単位では 11 件になる。
-
-| 定義箇所 | テストメソッド | C-13 `directives` | C-14 `fwHeaderFields` | C-15 `records` |
-|---|---|---|---|---|
-| `XlsFormatWriterTest` L401 | `writesMessageBlock` | 空 | 非空 | 非空 |
-| `XlsFormatWriterTest` L428 | `writesSendSyncMessageWithSequenceNo` | 空 | 空 | 非空 |
-| `XlsFormatWriterTest` L539 | `appliesOtherHeaderColorForMessage` | 空 | 非空 | 非空 |
-| `XlsFormatWriterTest` L829 | `writesSequenceNoForAllSendSyncTypes` | 空 | 空 | 非空 |
-| `XlsFormatWriterTest` L1029 | `roundTripsMessage` | 空 | 非空 | 非空 |
-| `XlsFormatWriterTest` L1056 | `roundTripsSendSyncMessage` | 空 | 空 | 非空 |
-| `XlsFormatWriterModelTest` L386（`sendSyncMessage` ヘルパ） | `writesExpectedRequestBodyMessagesMarker` / `writesResponseHeaderMessagesMarker` / `writesResponseBodyMessagesMarker`（3 件） | 空 | 空 | 非空 |
-| `XlsFormatWriterModelTest` L545 | `writesDirectiveRowsBeforeFwHeaderRowsInMessage` | **非空** | 非空 | 非空 |
-| `XlsFormatWriterModelTest` L573 | `writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` | **非空** | 非空 | **空** |
-| **メソッド数の合計（11 件）** | | 非空 2 ／ 空 9 | 非空 5 ／ 空 6 | 非空 10 ／ 空 1 |
-
-行番号は本コミット時点（2026-08-13・#23 レビュー ラウンド2 対応後）の実測。`XlsFormatWriterTest` の 6 箇所は
-#23 でも 2 度のレビュー対応でも中身を変えていない（変えたのは import・Javadoc・ヘルパ削除だけ。§3.1-3）。
-クラス Javadoc を書き換えた分だけ行番号は下へずれており、ラウンド2 で全数を取り直した。
-
-**軸D（#18 時点: ✅ 0 ／ 🔺 2 ／ ❌ 6 ＝ 8。すべて `getCellType()` 観点。#22 完了後は ✅ 8）**
-
-| 要素 | #18 の判定 | #22 後 | 備考 |
-|---|---|---|---|
-| D3-01 `"100"` | ❌ | ✅ | 数値セルにならないことのアサートなし → `XlsFormatWriterCellTypeTest#writesNumericLookingStringAsStringCell`（§3.1-2） |
-| D3-02 `"=1+1"` | ❌ | ✅ | 数式解釈されないことのアサートなし → `#writesFormulaLookingStringAsStringCell`（§3.1-2） |
-| D3-03 `"007"` | ❌ | ✅ | `#writesLeadingZeroStringAsStringCell` |
-| D3-04 `null` | 🔺 | ✅ | `writesTableBlock`, `roundTripsNullCellAsLiteralNullString` が値（`"null"` 文字列化）はアサートするが `getCellType()` はしない。`RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` も同じく値のみ（§0.8-8）→ セル型は `#writesNullValueAsLiteralNullStringCell` |
-| D3-05 `""` | 🔺 | ✅ | `writesTableBlock`, `writesListMapBlock` ほか 1 件が値のみアサート。`RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved` も同じく値のみ（§0.8-8）→ セル型は `#writesEmptyValueAsEmptyStringCell` |
-| D3-06 改行含む文字列 | ❌ | ✅ | `#writesLineFeedStringAsStringCell`／`#replacesCrLfWithSingleLineFeedInStringCell`／`#replacesLoneCarriageReturnWithLineFeedInStringCell`（`issues.md` XLS-18） |
-| D3-07 32767 文字超 | ❌ | ✅ | `#writesStringLongerThanExcelCellLimitAsStringCell`／`#writesStringOfExcelCellLimitLengthAsStringCell`（`issues.md` XLS-19） |
-| D3-08 制御文字含む | ❌ | ✅ | `#replacesNulCharacterWithQuestionMark`／`#replacesBellCharacterWithQuestionMark`／`#replacesVerticalTabCharacterWithQuestionMark`／`#replacesUnitSeparatorCharacterWithQuestionMark`／`#writesTabCharacterAsIs`／`#writesDeleteCharacterAsIs`（`issues.md` XLS-17） |
-
-`grep -rn "getCellType" src/test/` → #18 時点は **0 件**。セル読み出しヘルパ `cell` / `line` は
-`getStringCellValue()` 固定であり、**挙動は現在も変わっていないが定義位置は変わった**。
-#18 時点（`5bf7048`）は `XlsFormatWriterTest` の L100-107（`cell`）／L110-121（`line`）にあり、
-#22 はこの 2 つを変更していない。**#23 のレビュー対応で `XlsFixture` へ移した**（§3.1-3 の変更 3 点・§3.1-5）。
-現在の定義位置は `XlsFixture` の **L240**（`cell`）／**L263**（`line`）である
-（`grep -n "static String cell(Sheet\|static List<String> line(Sheet" src/test/java/nablarch/test/tool/converter/xls/XlsFixture.java`。
-本コミット時点の実測）。移動先が非文字列セルを作るクラスであるため、両メソッドには
-「文字列セル専用（非文字列セルでは `IllegalStateException`）」を Javadoc の `@throws` として明記してある。
-**辺③（writer 側）で `getCellType()` を使うのは #22 が追加した `XlsFormatWriterCellTypeTest` が最初である**
-（観測結果は §3.1-2 の軸D 表）。src/test 全体で見ると最初は #22 ではなく **#19** であり、
-`XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString`（L478）が
-`assertThat("検証対象セルが数値セルであること", cell.getCellType(), is(Cell.CELL_TYPE_NUMERIC));` を持つ
-（フィクスチャのセル型が意図どおりであることを確かめる用途）。この行を入れたコミットは
-`git blame -L 478,478` で **`c04261d`**（"test(xls): #19 の4レビュー指摘を修正 …"）であり、#18 完了コミット
-`5bf7048` より後である（2026-08-13 に実物で確認して訂正。当初この節は「`getCellType()` を使うのは
-#22 が追加した `XlsFormatWriterCellTypeTest` である」と現在形で断定していたが事実に反していた）。
-現在の `grep -rc "getCellType" src/test --include=*.java | grep -v ":0$"` は **3 行**を返す
-（`grep -r` の出力順はファイルシステム依存で安定しないため、下は `| sort` を付けた結果。本コミット時点の実測）。
-
-```
-$ grep -rc "getCellType" src/test --include=*.java | grep -v ":0$" | sort
-src/test/java/nablarch/test/tool/converter/xls/XlsFixture.java:1
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatReaderCellTypeTest.java:1
-src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java:19
-```
-
-`XlsFixture.java:1` は**アサートではなく Javadoc の散文**である（`cell` の
-「セル種別そのものを見たいときは素の `getRow` / `getCell` をたどる」という注意書き。
-#23 レビュー ラウンド2 で書き足したもの）。したがって `getCellType()` を**アサート**しているのは
-引き続き `XlsFormatReaderCellTypeTest`（1）と `XlsFormatWriterCellTypeTest`（17。下記）の 2 クラスである。
-
-`| grep -v ":0$"` を落とすと `grep -rc` は走査した全 **35 ファイル**を返し、うち **32 行**が `:0` である
-（`grep -rc "getCellType" src/test --include=*.java | wc -l` → **35**、
-`grep -rc "getCellType" src/test --include=*.java | grep -c ":0$"` → **32**）。以前ここには
-`| grep -v ":0$"` 無しのコマンドを載せたうえで 2 行だけを結果として書いていたが、これは出力そのものでは
-なく部分集合であった（2026-08-13・第 3 ラウンドの指摘により訂正）。
-**さらに #22 が書いた「34 ／ 32」は #23 が `XlsFormatWriterModelTest.java` を追加した時点で陳腐化していた**
-（走査対象のファイルが 1 つ増え `:0` も 1 つ増える）。
-**#23 レビュー ラウンド2 の「35 ／ 33」も同じ理由で陳腐化した** ─ `XlsFixture` の Javadoc に
-`getCellType()` の 3 文字を書いた瞬間に `:0` が 1 つ減り 33 → 32 になった。
-上の値は本コミット時点の実測である（2026-08-13）。この段落は「軸D 表は #22 の記述のまま」という断りの外にある ─
-**現在形で検証可能な数字を主張する散文**だからである。なお `XlsFormatWriterCellTypeTest:19` は<b>行数</b>であって
-アサート数ではない（§0.8-4 のとおり 19 行のうち 2 行はクラス Javadoc の散文で、アサートは 17 行）。
-
-**軸E（#18 時点: 0 件の 3 要素が未担保。#23 完了後はすべて ✅）**
-
-| 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
-|---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅（#23 で ❌→✅） | ✅ | ✅ | 0: `XlsFormatWriterModelTest#writesEmptySheetWhenSectionHasNoBlocks`（§3.1-3）／1: `writesTableBlock`, `writesFixedFileBlock` ほか 34 件（§3.1 の軸B 欄が空でない 38 件から複数ブロックの 2 件を除く 36 件。§3.1 の軸E 欄には E-1(1) を明記していない）／複数: `insertsBlankRowBetweenBlocks`, `honorsConfigOverrides`（計 2 件） |
-| E-2 ブロック内行数 | ✅（#23 で ❌→✅） | ✅ | ✅ | 0: `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty`（テーブル経路）／`#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（ファイル経路の値行）（§3.1-3）／1: `metaRowContainsOnlyValueCells`, `writesTableMarkerWithGroupId` ほか 3 件（計 5 件）／複数: `writesTableBlock`, `writesListMapBlock` ほか 3 件（計 5 件） |
-| E-3 ファイル内レコードレイアウト数 | ✅（#23 で ❌→✅） | ✅ | ✅ | 0: `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`（ファイル経路）／`#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`（メッセージ経路）（§3.1-3）／1: `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow` ほか 8 件（計 10 件）／複数: `writesMultipleRecordLayouts`, `roundTripsMultipleRecordLayouts` ほか 2 件（計 4 件） |
-| E-4 コンテナ内セクション数（辺③の実体: ブック内シート数） | n/a | ✅ | ✅ | 1: `writesTableBlock`, `writesFixedFileBlock` ほか 35 件（`writesWorkbookFileWithSheetPerSection` を除く 37 件。§3.1 の軸E 欄には E-4(1) を明記していない）／複数: **`writesWorkbookFileWithSheetPerSection`**（辺③で唯一） |
-
-**E-4 の「0 件」欄が `n/a` である理由**（読者が C-02 行と突き合わせたときに矛盾に見えるため補足。2026-08-13 追記）:
-§0.6 が定める E-4 の多重度は**「1 件」と「複数件」の 2 つだけ**で、E-1〜E-3 と違い 0 件を要素に持たない。
-よって `n/a` は「0 件を通していない」ではなく「**軸E に 0 件という要素が存在しない**」という意味である。
-一方、軸C の C-02（`TestDataContainer.sections` 空）は #23 で ✅ になっており、
-**セクション 0 件の入力自体は `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`
-が通している**（シート 0 枚のブックが書き出される。`issues.md` XLS-23）。
-担保の穴ではなく、軸E と軸C で要素の切り方が違うだけである。
-
-**軸F（#18 時点: ✅ 0 ／ 🔺 1 ／ ❌ 2 ／ 対象外 1 ＝ 4。#22 完了後は ✅ 3 ／ 対象外 1）**
-
-| 要素 | #18 の判定 | #22 後 | 担保テストメソッド |
-|---|---|---|---|
-| F3-01 出力先不在 | 🔺 | ✅ | 🔺: `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない）／✅: `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook`（§3.1-2） |
-| F3-02 `overwrite=false` 衝突 | **対象外（衝突検査は上位層）** | **対象外（変更なし）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。共通処理 `TestDataConverter#checkOverwrite`（L90-99）の分岐は上位層の既存テスト（L336／L267）が通しているが、**両者とも XLS→YAML であり `.xlsx` を出力側とする衝突は未担保**である（§0.8-5 の訂正）。#22 でも辺③の対象外のままとした（`XlsFormatWriter` 単体では再現できない） |
-| F3-03 書き込み権限なし | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`（§3.1-2） |
-| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest` の 14 件（禁止文字 7 件 `#rejectsSheetNameContainingSlash`〜`#rejectsSheetNameContainingColon`／`#rejectsEmptySheetName`／`#writesSheetNameOfExcelLimitLengthAsIs`／`#truncatesSheetNameLongerThanExcelLimitSilently`／`#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`#failsWhenTruncatedSheetNamesCollide`／`#failsWhenSheetNamesDifferOnlyInCase`）。全メソッド名と担保範囲（アポストロフィ・`null` は範囲外）は §3.1-2。`issues.md` XLS-16 |
-| （steering 外で担保済みの異常系） | ✅ | `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`（2 レコード目 recordType 空 → `IllegalStateException`）、`rejectsNegativeBlankRows`（設定値負数 → `IllegalArgumentException`） |
+| `write` の `if (parent != null)` | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
+| `layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw` | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
+| `isMarkerColumn` の `columnName != null` | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
 
 <a id="s3-3"></a>
 
@@ -1638,12 +1071,12 @@ src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java:
 |---|---|---|---|---|---|
 | A | A-01 `DEFAULT`（writer 側は到達可能。§0.8-7）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — 順に `XlsFormatWriterModelTest#writesDefaultDataTypeMarker`／`#writesExpectedFixedFileBlockWithLengthRow`／`#writesExpectedVariableFileBlockWithoutLengthRow`（§3.1-3）。記録した課題は `issues.md` **XLS-20** | 3 |
 | A | **A-12 `EXPECTED_REQUEST_BODY_MESSAGES`／A-13 `RESPONSE_HEADER_MESSAGES`／A-14 `RESPONSE_BODY_MESSAGES`**（#18 は ✅ と誤判定。実際は 🔺 `RoundTripTest` の 3 件のみ） | （表に上がっていなかった） | （同左） | **担保済み（#23 レビュー対応）** — 順に `XlsFormatWriterModelTest#writesExpectedRequestBodyMessagesMarker`／`#writesResponseHeaderMessagesMarker`／`#writesResponseBodyMessagesMarker`（[§3.1-3](#s3-1-3-sendsync)）。変異で穴と歯の両方を実証済み | 3 |
-| B | （なし。ただし**辺③では B-1 `TableDataBlock` と B-2 `ListMapBlock` のコード経路が同一**であり、軸B は軸A から独立していない。テストを足しても通る `src/main` の経路は増えないため件数は 0 のままとする。根拠と実物の確認結果は [§3.2 の開示](#s3-2-axis-b-not-independent)） | — | — | — | 0 |
+| B | （なし。ただし**辺③では B-1 `TableDataBlock` と B-2 `ListMapBlock` のコード経路が同一**であり、軸B は軸A から独立していない。テストを足しても通る `src/main` の経路は増えないため件数は 0 のままとする。`XlsFormatWriter#layout` が `ColumnRowDataBlock` ／ `FileDataBlock` ／ `MessageDataBlock` の 3 分岐しか持たず、`TableDataBlock` と `ListMapBlock` はどちらも `layoutColumnRow` を通るためである。版面上で両者を分けるのは `layoutColumnRow` が `getDataType()` から作る識別セルだけで、それは軸A そのものである） | — | — | — | 0 |
 | C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — 順に `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`／`#writesEmptySheetWhenSectionHasNoBlocks`／`#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／`#writesTableWithoutDataRowsWhenRowsAreEmpty`／`#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`／`#writesDirectiveRowsBeforeFwHeaderRowsInMessage`／`#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`／`#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`／`#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（§3.1-3）。記録した課題は `issues.md` **XLS-21〜XLS-23** | 9 |
 | D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 18 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 18）。内訳は **8 ケース**＋改行の異表記 **2 件**・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋2＋1＋3＋2＋2 ＝ **18**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 担保済み（変更なし） | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — E-1(0) は C-04、E-2(0) は C-09／C-18、E-3(0) は C-12／C-15 と同じ入力（上の C 行のテストメソッド。§3.1-3 の軸E 表） | 3 |
-| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の黙った切り詰め **1 件**＋切り詰めが禁止文字検査を無効化する境界 **2 件**＋切り詰め後の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.2 の軸F 表）＝ 1＋1＋14 ＝ **16**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 担保済み（変更なし） | 3 |
-| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite`（L90-99）で完結する。既存テスト（L336／L267）が通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 対象外（変更なし。#23 でも辺③に書かない） | 1 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の黙った切り詰め **1 件**＋切り詰めが禁止文字検査を無効化する境界 **2 件**＋切り詰め後の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＝ 1＋1＋14 ＝ **16**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 担保済み（変更なし） | 3 |
+| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite` で完結する。上に挙げた既存テストが通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 対象外（変更なし。#23 でも辺③に書かない） | 1 |
 | **合計** | | **要追加 26（実際は 29）／ 到達不能 0 ／ 対象外 1** | **要追加 15（実際は 18）／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **要追加 0 ／ 担保済み 29 ／ 到達不能 0 ／ 対象外 1** | **30（うち対象外 1）** |
 
 **合計の検算**（表の「件数」列を上から順に足す）:
@@ -1656,7 +1089,7 @@ src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java:
 「#18」「#22 後」の列に括弧で添えた「実際は」は、A-12〜A-14 が当時から未担保だったことを
 遡って数え直した値である（当時の表には行として存在しなかった）。
 
-**軸要素の外に、開示すべき担保の穴が 1 つある。** `XlsFormatWriter#write` の `parent == null` 分岐（L102-106）は
+**軸要素の外に、開示すべき担保の穴が 1 つある。** `XlsFormatWriter#write` の `parent == null` 分岐は
 src/test 全体で一度も通っていない。§0.7 の軸F 4 要素のいずれにも当たらないため上表には算入していないが、
 F3-01 の隣接領域であり `src/main` のコメントが「null チェックが必須」と明記している分岐であるため開示する。
 到達経路の全数と実測は [§3.1-2 の該当項](#s3-1-2-parent-null)。
@@ -1721,99 +1154,6 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | 32 | `roundTrip_leadingTrailingWhitespace_isPreservedThroughRealReader` | A-02 | B-1 | C-09 | ※前後・中間の半角/全角空白が往復で脱落しない | E-2(1) | — |
 | 33 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | A-02 | B-1 | C-09 | 🔺**D4-01 `"100"` 相当（`"123"`）**・D4-03 `"null"`・D4-04 `null` の往復区別（出力 YAML の記法アサートではない） | E-2(複数=3) | — |
 
-### 4.2 軸要素 → 担保テストメソッド
-
-**軸A（✅ 12 ／ 🔺 2 ／ ❌ 0 ＝ 14）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| A-01 `DEFAULT` | ✅ | `serialize_unsupportedDataType_throws`（**4 辺で唯一 `DEFAULT` を通すテスト**） |
-| A-02 `SETUP_TABLE_DATA` | ✅ | `serializeTable_setupNoGroup_...`, `serialize_multipleSections_...`, `serialize_escapesQuotesBackslashAndControlChars`, `serialize_surrogatePair_...`, `serialize_distinguishesNullFromNullString`, `serialize_emptyRows_...`, `serialize_emptyColumnsRow_...`, `serialize_rowShorterThanColumns_...`, `serialize_unbracketedGroupId_...`, `write_ioError_...`, `write_writesEachSectionAsYamlFile...`, `roundTrip_table_...`, `roundTrip_leadingTrailingWhitespace_...`, `roundTrip_nullAndNullStringAndNumeric_...` |
-| A-03 `EXPECTED_TABLE_DATA` | ✅ | `serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` |
-| A-04 `EXPECTED_COMPLETED` | ✅ | `serializeTable_completed_usesExpectedCompleteTablesKey` |
-| A-05 `LIST_MAP` | ✅ | `serializeListMap_usesIdKeyAndColumnOrder` |
-| A-06 `SETUP_FIXED` | ✅ | `serializeFile_fixedWithDirectivesAndOmittedLength`, `serialize_recordWithEmptyFieldsAndRows_...`, `roundTrip_fixedFile_...` |
-| A-07 `EXPECTED_FIXED` | 🔺 | `YamlFormatWriterTest` には 0 件。`RoundTripTest#yaml_expectedFixed_isPreserved` が `YamlFormatWriter` で EXPECTED_FIXED ブロックを実 `.yaml` へ書き出す（§0.8-8。重複を避けること） |
-| A-08 `SETUP_VARIABLE` | 🔺 | `YamlFormatWriterTest` には 0 件。`RoundTripTest#yaml_setupVariable_isPreserved` が `YamlFormatWriter` で SETUP_VARIABLE ブロックを実 `.yaml` へ書き出す（§0.8-8。重複を避けること） |
-| A-09 `EXPECTED_VARIABLE` | ✅ | `serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`, `serialize_fieldWithNullType_omitsType` |
-| A-10 `MESSAGE` | ✅ | `serializeMessage_withDirectivesAndFwHeader`, `serializeMessage_emptyBody_emitsIdOnly`, `serialize_multipleSections_...`, `serialize_quotesKeyContainingSpecialChars`, `serialize_emptyKey_isQuoted`, `serialize_keyStartingWithIndicator_isQuoted`, `roundTrip_message_...` |
-| A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField`, `serializeSendSync_allFourSectionKeys`, `roundTrip_sendSync_...` |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `serializeSendSync_allFourSectionKeys` |
-| A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | `serializeSendSync_allFourSectionKeys` |
-| A-14 `RESPONSE_BODY_MESSAGES` | ✅ | `serializeSendSync_allFourSectionKeys` |
-
-**軸B（✅ 4 ／ 4）**
-
-| 要素 | 判定 | 担保テストメソッド（代表） |
-|---|---|---|
-| B-1 `TableDataBlock` | ✅ | `serializeTable_setupNoGroup_...`, `serializeTable_withGroupsSameType_...` ほか 15 件（計 17 件） |
-| B-2 `ListMapBlock` | ✅ | **`serializeListMap_usesIdKeyAndColumnOrder`**（辺④で唯一） |
-| B-3 `FileDataBlock` | ✅ | `serializeFile_fixedWithDirectivesAndOmittedLength`, `serializeFile_variableOmits...` ほか 3 件（計 5 件） |
-| B-4 `MessageDataBlock` | ✅ | `serializeMessage_withDirectivesAndFwHeader`, `serializeMessage_emptyBody_emitsIdOnly` ほか 8 件（計 10 件） |
-
-**軸C（21 フィールド ─ 両状態担保 19 ／ 未担保 2）**
-
-省略可能フィールドは「値あり」「省略」、空許容コレクションは「非空」「空」を別々に評価する。
-n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」という状態を持たない必須スカラー／2 値であり、
-「値あり」の担保をもって両状態担保として数える。
-未担保 2 件は C-02（sections 空・複数が欠）と C-12（records 空が欠）。4 つの辺のなかでもっとも充実している。
-
-| 要素 | 値あり／非空 | 省略／空 | 担保テストメソッド |
-|---|---|---|---|
-| C-01 `TestDataContainer.name` | ✅ | n/a | `write_writesEachSectionAsYamlFileWithSerializedContent`（`td.yaml`） |
-| C-02 `TestDataContainer.sections` | ✅(1件) | ❌ 空／❌ 複数 | `write_writesEachSectionAsYamlFileWithSerializedContent`（辺④は writer 側であり `YamlFormatWriter#write` L74 が `container.getSections()` をループするため、空・複数とも到達可能。§0.8-6） |
-| C-03 `TestDataSection.name` | ✅ | n/a | `write_writesEachSectionAsYamlFileWithSerializedContent` |
-| C-04 `TestDataSection.blocks` | ✅ | ✅ 空 | 空: `serialize_emptySection_isEmptyString` |
-| C-05 `TestDataBlock.dataType` | ✅ | n/a | `serializeTable_completed_...`, `serializeSendSync_allFourSectionKeys` ほか 6 件（計 8 件） |
-| C-06 `TestDataBlock.groupId` | ✅ | ✅ 省略(`""`) | 値あり: `serializeTable_withGroupsSameType_...`, `serializeSendSync_requiresGroupId...`, `serialize_unbracketedGroupId_...`／省略: `serializeTable_setupNoGroup_...` |
-| C-07 `TestDataBlock.identifier` | ✅ | n/a | `serializeTable_setupNoGroup_...`, `serializeListMap_usesIdKeyAndColumnOrder` ほか 8 件（計 10 件） |
-| C-08 `ColumnRowDataBlock.columnNames` | ✅ | ✅ 空 | 空: `serialize_emptyColumnsRow_emitsEmptyFlowMap` |
-| C-09 `ColumnRowDataBlock.rows` | ✅ | ✅ 空 | 空: `serialize_emptyRows_emitsEmptyFlowList` |
-| C-10 `FileDataBlock.fileType` | ✅ FIXED / ✅ VARIABLE | n/a | FIXED: `serializeFile_fixedWithDirectivesAndOmittedLength`（`type: "fixed"`）／VARIABLE: `serializeFile_variableOmits...`（`type: "variable"`） |
-| C-11 `FileDataBlock.directives` | ✅ | ✅ 空 | 非空: `serializeFile_fixedWith...`／空: `serializeFile_variableOmits...`（`directives:` キーが出ない） |
-| C-12 `FileDataBlock.records` | ✅ | ❌ 空 | 非空: `serializeFile_fixedWith...`（2 件） |
-| C-13 `MessageDataBlock.directives` | ✅ | ✅ 空 | 非空: `serializeMessage_withDirectivesAndFwHeader`, `serialize_quotesKeyContainingSpecialChars`, `serialize_emptyKey_isQuoted`, `serialize_keyStartingWithIndicator_isQuoted`／空: `serializeMessage_emptyBody_emitsIdOnly` |
-| C-14 `MessageDataBlock.fwHeaderFields` | ✅ | ✅ 空 | 非空: `serializeMessage_withDirectivesAndFwHeader`, `roundTrip_message_...`／空: `serializeMessage_emptyBody_...`, `serializeSendSync_requiresGroupId...` |
-| C-15 `MessageDataBlock.records` | ✅ | ✅ 空 | 空: `serializeMessage_emptyBody_emitsIdOnly` |
-| C-16 `RecordLayout.recordType` | ✅ | ✅ 省略(null) | 値あり: `serializeFile_fixedWith...`, `serializeMessage_withDirectives...`／省略: `serializeFile_variableOmits...`, `serializeSendSync_requiresGroupId...`, `serialize_recordWithEmptyFieldsAndRows_...` |
-| C-17 `RecordLayout.fields` | ✅ | ✅ 空 | 空: `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` |
-| C-18 `RecordLayout.rows` | ✅ | ✅ 空 | 空: `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` |
-| C-19 `FieldDef.name` | ✅ | n/a | `serializeFile_fixedWith...`, `serializeMessage_withDirectivesAndFwHeader` ほか 3 件（計 5 件） |
-| C-20 `FieldDef.type` | ✅ | ✅ 省略(null) | 省略: `serialize_fieldWithNullType_omitsType` |
-| C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `serializeFile_fixedWith...`（`"5"`）／省略: `serializeFile_fixedWith...`（`f2`）, `serializeFile_variableOmits...` |
-
-**軸D（✅ 4 ／ 🔺 2 ／ ❌ 3 ＝ 9）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| D4-01 `"100"` | 🔺 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`（`"123"` を往復で区別。**出力 YAML の記法（クォート有無）をアサートしていない**）。`RoundTripTest` の YAML 経路も数値文字列を往復させるが記法はアサートしない（§0.8-8） |
-| D4-02 `"true"` | ❌ | — |
-| D4-03 `"null"` | ✅ | `serialize_distinguishesNullFromNullString`（`V: "null"`）, `roundTrip_nullAndNullStringAndNumeric_...` |
-| D4-04 `null` | ✅ | `serializeTable_setupNoGroup_...`（`NOTE: null`）, `serializeListMap_usesIdKeyAndColumnOrder`, `serialize_distinguishesNullFromNullString`, `serialize_rowShorterThanColumns_fillsMissingWithNull` |
-| D4-05 `""` | ✅ | `serializeTable_setupNoGroup_...`（`NAME: ""`）, `serializeFile_fixedWith...`（`[""]`） |
-| D4-06 `"007"` | ❌ | — |
-| D4-07 改行含む | ✅ | `serialize_escapesQuotesBackslashAndControlChars`（`\n`/`\r` を `\\n`/`\\r` へエスケープ） |
-| D4-08 `"2026-08-07"` | ❌ | — |
-| D4-09 コロン・ハイフン・`#` 含む | 🔺 | **キー側のみ**: `serialize_quotesKeyContainingSpecialChars`（`a:b`, `c d`）, `serialize_keyStartingWithIndicator_isQuoted`（`-x`）。**値側は未担保**。`#` はキー・値とも未担保 |
-
-**軸E**
-
-| 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド |
-|---|---|---|---|---|
-| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `serialize_emptySection_isEmptyString`／複数: `serializeTable_withGroupsSameType_...`, `serializeSendSync_allFourSectionKeys`, `serialize_multipleSections_...` |
-| E-2 ブロック内行数 | ✅ | ✅ | ✅ | 0: `serialize_emptyRows_emitsEmptyFlowList`／複数: `serializeTable_setupNoGroup_...`, `serializeFile_fixedWith...`, `roundTrip_nullAndNullStringAndNumeric_...` |
-| E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `serializeMessage_emptyBody_emitsIdOnly`／複数: `serializeFile_fixedWith...`, `roundTrip_fixedFile_...` |
-| E-4 コンテナ内セクション数（辺④の実体: 出力 YAML ファイル数） | n/a | ✅ | ❌ | 1: **`write_writesEachSectionAsYamlFileWithSerializedContent`**（辺④で唯一）。複数は `YamlFormatWriter#write` L74 が `container.getSections()` をループするため到達可能（§0.8-6） |
-
-**軸F（✅ 0 ／ 🔺 1 ／ ❌ 1 ／ 対象外 1 ＝ 3）**
-
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| F4-01 出力先不在 | 🔺 | `write_ioError_throwsUncheckedIOException`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース） |
-| F4-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `YamlFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
-| F4-03 書き込み権限なし | ❌ | — |
-| （steering 外で担保済みの異常系） | ✅ | `serialize_unsupportedDataType_throws`（`DataType.DEFAULT` → `IllegalArgumentException`）、`serialize_rowShorterThanColumns_fillsMissingWithNull`（行と列の数の不一致 → null 補完）、`serialize_unbracketedGroupId_isUsedAsRawValue`（非整形 groupId の防御的経路） |
-
 <a id="s4-3"></a>
 
 ### 4.3 辺④ 未担保一覧（#25 が埋める対象）
@@ -1826,9 +1166,9 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | B | （なし） | — | 0 |
 | C | C-02 sections 空・複数（writer 側は到達可能。§0.8-6）／C-12 FileDataBlock.records 空 | 要追加 | 2 |
 | D | D4-01 `"100"`（記法アサートなしの 🔺）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 要追加 | 5 |
-| E | E-4(複数) — `YamlFormatWriter#write` L74 が sections をループするため到達可能（§0.8-6） | 要追加 | 1 |
+| E | E-4(複数) — `YamlFormatWriter#write` が sections をループするため到達可能（§0.8-6） | 要追加 | 1 |
 | F | F4-01 出力先不在（🔺 のみ）／F4-03 書き込み権限なし | 要追加 | 2 |
-| F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
+| F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
 | **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1** | **13（うち対象外 1）** |
 
 **特に大きな空欄**: 軸D の 5 ケース（特に `"true"`・`"007"`・日付風文字列は、辺②で読み戻したときに
@@ -1940,9 +1280,9 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 
 | # | 論点 | 確定内容 |
 |---|---|---|
-| 1 | 辺①・辺② の `DataType.DEFAULT` | **到達不能**。辺①は `TestCoreReaderAdapter` L362、辺②は `YamlFormatReader` の分岐に `DEFAULT` を返す経路がないこと（§0.8-7）。#20/#24 では理由付きで空欄に残す |
+| 1 | 辺①・辺② の `DataType.DEFAULT` | **到達不能**。辺①は `TestCoreReaderAdapter`、辺②は `YamlFormatReader` の分岐に `DEFAULT` を返す経路がないこと（§0.8-7）。#20/#24 では理由付きで空欄に残す |
 | 2 | E-4「コンテナ内セクション数 複数」／C-02「sections 空・複数」 | 辺①・辺②は **到達不能**（`read` が `Collections.singletonList(section)` を返す 1 リソース単位 API）。辺③・辺④は writer が `container.getSections()` をループするため **要追加**（§0.8-6） |
-| 3 | 辺③／辺④ の `overwrite=false` 衝突（F3-02 / F4-02） | **対象外（衝突検査は上位層）**。`overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` で writer は保持しない。既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が `TestDataConverter#checkOverwrite`（L90-99）を通す。ただし両者とも XLS→YAML であり、**辺④（`.yaml` 出力）は担保されるが辺③（`.xlsx` 出力）は未担保**である（§0.8-5 の訂正） |
+| 3 | 辺③／辺④ の `overwrite=false` 衝突（F3-02 / F4-02） | **対象外（衝突検査は上位層）**。`overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` で writer は保持しない。既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse` と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` が `TestDataConverter#checkOverwrite` を通す。ただし両者とも XLS→YAML であり、**辺④（`.yaml` 出力）は担保されるが辺③（`.xlsx` 出力）は未担保**である（§0.8-5 の訂正） |
 | 4 | 既存の往復テスト（`RoundTripTest` 30 件、`XlsFormatWriterTest#roundTrips*` 8 件、`YamlFormatWriterTest#roundTrip_*` 6 件）の扱い | **🔺弱い担保として計上するが正式担保としては数えず、直接テストの追加対象からも外さない**（steering Rules フェーズ2）。§0.8-8 に `RoundTripTest` 30 件の対応表を置き、未担保一覧に 🔺 の注記を併記した |
 
 #### 未解決（コーディネータの確認が要る）
@@ -1955,7 +1295,7 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
    本棚卸しでは辺② A-01 `DEFAULT` を到達不能と判定した（§0.8-7。辺①については steering #20 が既に到達不能と明記済み）。
    #24 の完了条件を「13 種＋ `DEFAULT` は到達不能として理由付きで空欄」に読み替えてよいか。
    同じく steering #21 は辺① E-4 のみを到達不能としているが、本棚卸しでは C-02「sections 空」も同じ根拠で到達不能と判定した。
-3. **辺③ A-01 `DEFAULT` の扱い**: ~~writer 側は `XlsFormatWriter` L400 がマーカー文字列を
+3. **辺③ A-01 `DEFAULT` の扱い**: ~~writer 側は `XlsFormatWriter#marker` がマーカー文字列を
    `getDataType().getName()` から組み立てるだけなので `DEFAULT` ブロックも書けてしまう（＝到達可能）。
    辺④の `serialize_unsupportedDataType_throws` は `IllegalArgumentException` を投げる挙動を固定しているが、
    辺③に同等のガードはない。#23 で現状挙動を記録して固定する対象としてよいか

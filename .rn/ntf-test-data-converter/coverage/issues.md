@@ -846,3 +846,51 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23）を後
 - **XLS-21 の到達経路は未確認。** カラム名 0 件かつ値を持つデータ行という中間モデルを、辺①・辺②のどちらかが
   生成するかは確かめていない（辺①のマーカー列だけのブロックは値を持たない行になる＝ XLS-08）。
 - **XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認。** 辺①では到達不能である（#20 で確認済み）。
+
+### ヘルパ抽出の要否（#22 からの持ち越し。#23 で判断を確定・2026-08-13）
+
+`checks/task-22.md` が「中間モデル組み立てヘルパの抽出の**要否は #23 で判断する**」と書いて #23 へ委ねていた。
+結論は次のとおり。
+
+| ヘルパ | 本体 | 判断 |
+|---|---|---|
+| `line(Sheet, int)` | `XlsFormatWriterTest` ／ `XlsFormatWriterModelTest` の 2 定義が完全一致 | **`XlsFixture` へ抽出した** |
+| `cell(Sheet, int, int)` | 定義は 1 つ | **`XlsFixture` へ抽出した**（`line` と対のため） |
+| `row(String...)` | `Arrays.asList` 1 行。`xls` / `yaml` / `converter` / `core.reader` の 4 パッケージ 8 ファイルに定義 | **現状維持** |
+| `map(String...)` | 2 定義が完全一致 | **現状維持** |
+| `container(...)` | 引数の形が 5 通り | **現状維持** |
+| 往復（`roundTrip` ／ `writeAndReadBack`） | 2 定義が同一ロジック | **現状維持** |
+| `causeOf(Throwable)` | `XlsFormatReaderInvalidInputTest` ／ `XlsFormatWriterModelTest` の 2 定義が完全一致 | **現状維持** |
+
+**判断の理由**
+
+- **境界は「POI のブック・シートを直接触るか」に引いた。** `XlsFixture` は既に `static Workbook open(Path)` で
+  パッケージの POI 読み出し側を担っている。同クラスの Javadoc が線を引いているのは「**中間モデル**組み立て
+  ヘルパとは対象レイヤが異なる」であって、シート読み出しユーティリティは元から対象外ではない。
+  `line` / `cell` はこちら側に入る。
+- **`cell` は写しが 1 件だったが `line` と一緒に移した。** 対になるアクセサを分けて置くと、
+  次の Writer 系テストクラス（すでに 4 本ある）が `cell` 側の写しを作る。
+- **`row` は抽出しない。** 4 パッケージ 8 ファイルに定着したイディオムで、集約するとパッケージをまたぐ
+  依存が増えるだけである（本体は 1 行）。
+- **`map` は抽出しない。** 写しは 2 件あるが**中間モデル組み立て側**であり、`XlsFixture` の Javadoc が
+  明示する境界の向こうにある。
+- **`container` は抽出しない。** 5 定義はいずれも**そのクラスのブック名・シート名の決め方に合わせた局所版**で
+  あり、共有版へ寄せるとその決め方を呼び出し側の引数へ戻すことになる。具体的には
+  `XlsFormatWriterModelTest#container` は `TemporaryFolder` がメソッドごとに別ディレクトリを与える前提で
+  シート名を定数 `SHEET` に固定した 2 引数版であり、`XlsFormatWriterTest` の 3 引数版へ寄せると
+  **呼び出し 17 か所すべてが同じシート名リテラルを書く**ことになる。
+  `XlsFormatWriterCellTypeTest#container(String)` は検証対象の値 1 個だけを受ける版、
+  `XlsFormatWriterInvalidOutputTest#container(String, String...)` はシート名の並びだけを受ける版で、
+  いずれも同じ理由による。
+- **往復ヘルパも抽出しない。** ロジックは同一だが、`XlsFormatReader` を駆動する＝**辺①側の SUT を呼ぶ**
+  ヘルパであり、`XlsFixture`（POI だけを触る）にも中間モデル組み立てにも属さない。往復は steering Rules
+  フェーズ2 で正式担保に数えない位置づけであり、共通基盤へ格上げすると担保として使われやすくなる副作用がある。
+- **`causeOf` も抽出しない。** 移さない理由は往復ヘルパと同じで、`XlsFixture` にも中間モデル組み立てにも
+  属さないため境界のどちら側でもないこと、および本体が 3 行の「原因例外を 1 段たどるだけ」のアサートで、
+  共有先を新設するほうが読み手の追跡経路を増やすことである。**写しであること自体はソース側の Javadoc でも
+  開示している**（`XlsFormatWriterModelTest#causeOf` の「`XlsFormatReaderInvalidInputTest` の同名ヘルパと同じ」）。
+  3 件目の写しが生まれたときは `XlsFixture` ではなく異常系テスト共通の置き場を新設して判断し直す。
+
+**記録先**: 判断そのものは `XlsFixture` のクラス Javadoc（「本クラスが引き受けるヘルパの範囲」）に置いた。
+`causeOf` は `XlsFixture` の守備範囲外なので同 Javadoc には書かず、本節と
+`XlsFormatWriterModelTest#causeOf` の Javadoc に置いた。
