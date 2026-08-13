@@ -49,14 +49,26 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>ただし上位層の既存テストが担保しているのは Excel を<i>入力</i>とする方向だけである。</b>
+ * <b>ただし上位層の既存テストが担保しているのは、{@code .yaml} を<i>出力</i>側とする衝突だけである。</b>
  * {@code TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse} ／
  * {@code ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict} はどちらも XLS→YAML であり、
  * {@code TestDataConverter#checkOverwrite} が多態で呼ぶ {@code FormatHandler#outputPaths} の実体は
- * {@code YamlFormatHandler#outputPaths} である。<b>辺③で衝突するのは {@code .xlsx} であり、
- * それを算出する {@code XlsFormatHandler#outputPaths} は {@code overwrite=false} 下で 1 件も実行されていない</b>
- * （{@code grep -rn "outputPaths" src/test --include=*.java} は 0 件）。すなわち共通処理である
- * {@code checkOverwrite} の分岐自体は通っているが、<b>{@code .xlsx} を出力側とする衝突は未担保</b>である。
+ * {@code YamlFormatHandler#outputPaths} である。
+ * </p>
+ *
+ * <p>
+ * <b>{@code XlsFormatHandler#outputPaths} 自体は {@code overwrite=false} 下で実行されている。</b>
+ * {@code TestDataConverter.convert(DataFormat, DataFormat, Path, Path)} は {@code overwrite} を
+ * 既定値 {@code false} のままリクエストを組むため（{@code ConversionRequest.Builder#overwrite} を呼ばない）、
+ * {@code checkOverwrite} は早期 return せず {@code outputPaths} を呼ぶ。YAML→XLS ／ XLS→XLS を通す
+ * {@code TestDataConverterTest#convertsYamlToXls} ／ {@code #convertsXlsToXls} ／
+ * {@code #convertsYamlWithFilesToXls} の 3 件がこれに当たる
+ * （実測 2026-08-13: {@code XlsFormatHandler#outputPaths} を送出に変異させると、落ちるのはこの 3 件だけ）。
+ * 1 件も通っていないのは <b>{@code .xlsx} が既存で衝突する分岐</b>
+ * （{@code checkOverwrite} の {@code Files.exists(output)} が真 → {@code ConverterException}）のほうである
+ * （実測 2026-08-13: この分岐を {@code .xlsx} のときだけ {@code AssertionError} に変異させても 0 failures）。
+ * すなわち共通処理 {@code checkOverwrite} の分岐自体は通っているが、
+ * <b>{@code .xlsx} を出力側とする衝突は未担保</b>である。
  * これは辺③（{@code XlsFormatWriter} 単体）の責務ではなく上位層側の穴であり、本クラスでは埋めない。
  * </p>
  *
@@ -70,7 +82,8 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>F3-04 で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
- * 31 文字ちょうど（正常側の境界）である。シート名のアポストロフィ（先頭／末尾）と {@code null} は
+ * 31 文字ちょうど（正常側の境界）・重複判定（切り詰め後の衝突／大文字小文字だけが違う名前）である。
+ * シート名のアポストロフィ（先頭／末尾）と {@code null} は
  * タスク #22 のスコープ外であり、<b>未担保</b>である。
  * </p>
  *
@@ -168,15 +181,24 @@ public class XlsFormatWriterInvalidOutputTest {
      * Excel が禁じる文字を含むシート名が拒否されることを、1 つのシート名ぶん確かめる。
      *
      * <p>
-     * 渡すシート名は 31 文字以下であること。32 文字以上だと切り詰めが先に走り、禁止文字の位置に
-     * よっては検査に到達しない（{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
+     * 組み立てるシート名は {@code "a" + 禁止文字 + "b"} の 3 文字である。31 文字以下なので切り詰めは走らず、
+     * 禁止文字は必ず index 1 で検査に掛かる（32 文字以上だと切り詰めが先に走り、禁止文字の位置に
+     * よっては検査に到達しない。{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
      * </p>
      *
-     * @param sheetName 禁止文字を含むシート名
+     * <p>
+     * メッセージは文字と index まで固定する。対照の
+     * {@code #rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation} が
+     * {@code Invalid char (/) found at index (30)} まで固定しているのに合わせ、
+     * 「どの文字がどの位置で不正か」をメッセージが示すことを同じ粒度で担保するためである。
+     * </p>
+     *
+     * @param forbidden Excel がシート名に禁じる文字
      */
-    private void assertRejectsSheetName(String sheetName) {
+    private void assertRejectsSheetName(char forbidden) {
         // Given
         String book = "Forbidden";
+        String sheetName = "a" + forbidden + "b";
 
         // When
         IllegalArgumentException thrown = assertThrows(sheetName, IllegalArgumentException.class,
@@ -184,7 +206,8 @@ public class XlsFormatWriterInvalidOutputTest {
                         folder.getRoot().getAbsolutePath()));
 
         // Then
-        assertThat(sheetName, thrown.getMessage(), containsString("Invalid char"));
+        assertThat(sheetName, thrown.getMessage(),
+                containsString("Invalid char (" + forbidden + ") found at index (1)"));
         assertThat(sheetName, thrown.getMessage(), containsString("in sheet name '" + sheetName + "'"));
         assertFalse("ブックは作られない: " + sheetName, writtenBook(book).exists());
     }
@@ -198,8 +221,20 @@ public class XlsFormatWriterInvalidOutputTest {
      * 拒否されることを確かめ、拒否されない環境ではテストをスキップさせる。
      * </p>
      *
+     * <p>
+     * <b>拒否のされ方が {@link AccessDeniedException} 以外だった場合もスキップする。</b>
+     * 本テストが固定するのは「書き込みを拒否されたときに {@code UncheckedIOException} が
+     * {@link AccessDeniedException} を包んで送出される」ことであり、書き込み拒否を汎用の
+     * {@code FileSystemException} で返すファイルシステムではその形にならない。
+     * そういう環境で ERROR にすると「権限が効かない環境ではスキップする」という約束に反するため、
+     * {@link Assume#assumeNoException} で逃がす（緑にごまかすのではなく、実行しなかったことを残す）。
+     * </p>
+     *
      * @param dir 対象ディレクトリ
-     * @return 権限が効いている（書き込みが拒否される）なら真
+     * @return 権限が効いていて {@link AccessDeniedException} で拒否されるなら真。
+     *         権限が効いていない（書けてしまう）なら偽。
+     *         それ以外の {@link IOException} で拒否された場合は {@link Assume#assumeNoException} により
+     *         テストをスキップさせるため、値は返らない
      */
     private boolean dropWritePermission(File dir) {
         permissionDroppedDir = dir;
@@ -210,7 +245,10 @@ public class XlsFormatWriterInvalidOutputTest {
         } catch (AccessDeniedException expected) {
             return true;
         } catch (IOException e) {
-            throw new IllegalStateException("権限の実効性を確認できなかった: " + dir, e);
+            // 書き込みは拒否されたが AccessDeniedException ではない環境。ERROR にせずスキップする。
+            Assume.assumeNoException(
+                    "書き込み拒否が AccessDeniedException にならない環境ではスキップする: " + dir, e);
+            return false;
         }
         // 作れてしまった＝権限が効いていない。後片付けだけして偽 PASS を避ける。
         try {
@@ -308,43 +346,43 @@ public class XlsFormatWriterInvalidOutputTest {
     /** シート名に {@code /} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingSlash() {
-        assertRejectsSheetName("a/b");
+        assertRejectsSheetName('/');
     }
 
     /** シート名に {@code \} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingBackslash() {
-        assertRejectsSheetName("a\\b");
+        assertRejectsSheetName('\\');
     }
 
     /** シート名に {@code ?} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingQuestionMark() {
-        assertRejectsSheetName("a?b");
+        assertRejectsSheetName('?');
     }
 
     /** シート名に {@code *} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingAsterisk() {
-        assertRejectsSheetName("a*b");
+        assertRejectsSheetName('*');
     }
 
     /** シート名に {@code [} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingOpeningBracket() {
-        assertRejectsSheetName("a[b");
+        assertRejectsSheetName('[');
     }
 
     /** シート名に {@code ]} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingClosingBracket() {
-        assertRejectsSheetName("a]b");
+        assertRejectsSheetName(']');
     }
 
     /** シート名に {@code :} を含むと拒否される。 */
     @Test
     public void rejectsSheetNameContainingColon() {
-        assertRejectsSheetName("a:b");
+        assertRejectsSheetName(':');
     }
 
     /**
@@ -534,5 +572,41 @@ public class XlsFormatWriterInvalidOutputTest {
         assertThat(thrown.getMessage(), containsString("already contains a sheet of this name"));
         assertFalse("ブックは作られない（1 枚目のシートは作成済みだがファイルは残らない）",
                 writtenBook(book).exists());
+    }
+
+    /**
+     * Given: 大文字小文字だけが違う 2 つのセクション名（{@code abc} と {@code ABC}）。どちらも 31 文字以下。
+     * When : {@code write}。
+     * Then : 重複と判定され、{@code IllegalArgumentException} で失敗する。<b>ブックは作られない。</b>
+     *
+     * <p>
+     * 担保する軸要素: F3-04（シート名の重複判定）。{@code issues.md} <b>XLS-16</b> は原因として
+     * POI 3.8 の {@code Workbook#containsSheet} が「両辺を 31 文字へ切り詰めてから
+     * {@code equalsIgnoreCase} で比べる」ことを挙げている。
+     * {@code #failsWhenTruncatedSheetNamesCollide} が担保するのは<b>切り詰め</b>側だけなので、
+     * 本メソッドが<b>大文字小文字を区別しない</b>側を担保する。
+     * シート名は 3 文字で切り詰めが走らないため、衝突の理由が {@code equalsIgnoreCase} だけに絞られる。
+     * </p>
+     *
+     * <p>
+     * これは Excel 自身の制約（Excel もシート名の大文字小文字を区別しない）と一致するため、
+     * <b>課題ではなく妥当な挙動</b>として記録している（{@code issues.md} の「課題としないと判断した観測結果」）。
+     * 固定する意味は、XLS-16 が原因として引用している機構の両輪を実測で押さえておくことにある。
+     * </p>
+     */
+    @Test
+    public void failsWhenSheetNamesDifferOnlyInCase() {
+        // Given
+        String book = "CaseCollide";
+
+        // When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container(book, "abc", "ABC"),
+                        folder.getRoot().getAbsolutePath()));
+
+        // Then
+        assertThat("大文字小文字だけが違う名前も同名と判定される",
+                thrown.getMessage(), containsString("already contains a sheet of this name"));
+        assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 }

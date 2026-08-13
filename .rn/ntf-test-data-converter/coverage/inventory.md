@@ -266,8 +266,18 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    事実（#18 時点）: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
    `cell`（L100-107）／`line`（L110-121）は `getStringCellValue()` のみを使う。
    判断（#18 時点）: **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**とする。
-   **現在は 0 件ではない（2026-08-13 追記）。** #19 が `XlsFormatReaderCellTypeTest` に 1 件、
-   #22 が `XlsFormatWriterCellTypeTest` に 19 件を入れた。最新の実測値と経緯は §3.2 の軸D 表の直後に記す。
+   **現在は 0 件ではない（2026-08-13 追記。件数の内訳をレビュー指摘により訂正）。**
+   #19 が `XlsFormatReaderCellTypeTest` に、#22 が `XlsFormatWriterCellTypeTest` に入れた。実測は次のとおり。
+
+   | クラス | 追加タスク | `@Test` の数（`grep -c "^    @Test"`） | `getCellType()` を使うアサートの数 |
+   |---|---|---|---|
+   | `XlsFormatReaderCellTypeTest` | #19 | 19 | **1**（`readsTextFormattedNumericCellAsDoubleString` 内の 1 行） |
+   | `XlsFormatWriterCellTypeTest` | #22 | 18 | **17** |
+
+   `grep -c getCellType src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java`
+   は **19** を返すが、これは<b>行数</b>であってアサート数でもテスト数でもない
+   （19 行のうち 2 行はクラス Javadoc の散文）。以前ここに「#22 が 19 件を入れた」と書いていたのは
+   この行数をテスト件数として並べたもので、誤りだった。最新の内訳と経緯は §3.2 の軸D 表の直後に記す。
    上記の「ゼロ」は #18 時点のスナップショットであり、現在形として読んではならない。
 5. **`overwrite` フラグを writer は持たない。**
    事実: `grep -rln "overwrite" src/main/java` の結果、`overwrite` を保持するのは `ConversionRequest` /
@@ -280,19 +290,40 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    判断: 軸F の F3-02 / F4-02 は writer 単体では再現できないため、**辺③／辺④の対象外**
    として分類する（steering #22/#25 の Steps と一致）。
 
-   **担保範囲の訂正（2026-08-13・レビュー指摘による訂正）。** 当初この項と各節は
-   「上位層の既存テストで担保済み」と書いていたが、**担保されているのは Excel を入力とする方向だけ**である。
+   **担保範囲の訂正（2026-08-13・レビュー指摘による訂正。2026-08-13 の第 3 ラウンドで根拠を再訂正）。**
+   当初この項と各節は「上位層の既存テストで担保済み」と書いていたが、
+   **担保されているのは `.yaml` を出力側とする衝突だけ**である。
    事実:
-   - `grep -rn "outputPaths" src/test --include=*.java` → **0 件**（`outputPaths` を直接呼ぶテストは無い）。
    - `checkOverwrite`（L90-99）は `target.outputPaths(container, outputBase)` を多態で呼び分ける。
      引用した 2 件の既存テストは**どちらも XLS→YAML** であり（`TestDataConverter.convert(DataFormat.XLS,
      DataFormat.YAML, ...)` ／ Mojo の `from=xls, to=yaml`。衝突させているのは `BookA/data.yaml`）、
      実行されるのは `YamlFormatHandler#outputPaths`（L63）である。
-   - 辺③で衝突するのは `.xlsx` であり、それを算出する `XlsFormatHandler#outputPaths`（L63-67）は
-     **`overwrite=false` 下で 1 件も実行されていない**。
+   - **`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている。**
+     4 引数入口 `TestDataConverter.convert(DataFormat, DataFormat, Path, Path)`（L49-56）は
+     `Builder#overwrite` を呼ばずにリクエストを組み、`ConversionRequest` の `overwrite` 既定値は
+     `false`（L120 の Javadoc・L128 のフィールド）なので、`checkOverwrite` は早期 return せず
+     `outputPaths` を呼ぶ。実際に通しているのは XLS を出力側とする
+     `TestDataConverterTest#convertsYamlToXls`（L202）／`#convertsXlsToXls`（L224）／
+     `#convertsYamlWithFilesToXls`（L427）の 3 件である。
+   - **1 件も通っていないのは `.xlsx` が既存で衝突する分岐**（`checkOverwrite` の
+     `Files.exists(output)` が真 → `ConverterException`）**のほう**である。
 
-   したがって正確には、**共通処理 `checkOverwrite` の分岐は既存テストが通しているが、
-   `.xlsx` を出力側とする衝突（＝辺③の F3-02 が指す状況）は未担保**である。
+   **確かめ方（変異テスト。2026-08-13 実測。`src/main` は確認後に元へ戻してある）**:
+
+   | 変異 | 結果 |
+   |---|---|
+   | `XlsFormatHandler#outputPaths` の先頭で `IllegalStateException` を送出する | `TestDataConverterTest` の `convertsXlsToXls` / `convertsYamlToXls` / `convertsYamlWithFilesToXls` の **3 件だけが ERROR**（`Tests run: 410, Failures: 0, Errors: 3`）。つまり `outputPaths` は実行されている |
+   | `checkOverwrite` の `Files.exists(output)` が真かつ出力が `.xlsx` のときだけ `AssertionError` を送出する | **410 件すべて PASS**（`Tests run: 410, Failures: 0, Errors: 0`）。つまり `.xlsx` の衝突分岐は 1 件も通っていない |
+
+   以前ここには「`grep -rn "outputPaths" src/test --include=*.java` → **0 件**」と書いていたが、
+   これは誤りだった。このコマンドがヒットするのは `XlsFormatWriterInvalidOutputTest` の
+   クラス Javadoc の記述だけで（確認: `grep -rn "outputPaths" src/test --include=*.java | grep -v
+   XlsFormatWriterInvalidOutputTest` → **0 件**）、当時も 0 件ではなく、自分の書いた記述を数えていた。
+   そもそも `outputPaths` を**直接呼ぶ**テストが無いことと、`outputPaths` が**実行されない**ことは別である
+   （上表の変異のとおり、多態呼び出しで実行されている）。
+
+   したがって正確には、**共通処理 `checkOverwrite` の分岐も `XlsFormatHandler#outputPaths` 自体も
+   既存テストが通しているが、`.xlsx` を出力側とする衝突（＝辺③の F3-02 が指す状況）は未担保**である。
    ただしこれは上位層側の穴であって辺③（`XlsFormatWriter` 単体）の責務ではないため、
    **F3-02 を辺③の対象外とする結論は変えない**（`XlsFormatWriter` は `overwrite` を保持しないので、
    辺③に書いても再現できない）。本書で「上位層で担保済み」と記した箇所はこの但し書きつきで読むこと。
@@ -925,8 +956,10 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 
 | テストクラス | 追加タスク | 件数 | 検証対象 |
 |---|---|---|---|
-| `XlsFormatWriterCellTypeTest` | #22 | 16 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる |
-| `XlsFormatWriterInvalidOutputTest` | #22 | 15 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
+| `XlsFormatWriterCellTypeTest` | #22 | 18 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる（16 件）。加えて ZIP エントリ `xl/sharedStrings.xml` の**生バイト**を検査する（2 件） |
+| `XlsFormatWriterInvalidOutputTest` | #22 | 16 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
+
+件数は `grep -c "^    @Test" src/test/java/nablarch/test/tool/converter/xls/<クラス>.java` の実測（2026-08-13）。
 
 **1 ケース 1 `@Test` で展開している。** 制御文字 6 文字（D3-08）とシート名の禁止文字 7 文字（F3-04）は
 ループで束ねず文字ごとに 1 メソッドへ分けた。姉妹クラス `XlsFormatReaderCellTypeTest`（1 ケース 1 `@Test`）に
@@ -953,10 +986,15 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
   書き出した `.xlsx` を `unzip -p <book>.xlsx xl/sharedStrings.xml | od -An -tx1 -c` で展開して
   生バイトを確かめた結果、**D3-06 の `CR` については誤りだった**。
 
-  | ケース | 課題 | `xl/sharedStrings.xml` の生バイト | 変化が起きる区間 |
-  |---|---|---|---|
-  | D3-08 制御文字 | XLS-17 | `<t>a?b</t>`（`?` ＝ `3f` が焼き込まれている） | **直列化区間** |
-  | D3-06 `CR` | XLS-18 | `<t>a[CR]b</t>`（`CR` ＝ `0d` が生のまま残る。`&#13;` への退避も無い） | **読み戻し（XML パース）区間** |
+  | ケース | 課題 | `xl/sharedStrings.xml` の生バイト | 変化が起きる区間 | 担保テスト（`XlsFormatWriterCellTypeTest#`） |
+  |---|---|---|---|---|
+  | D3-08 制御文字 | XLS-17 | `<t>a?b</t>`（`?` ＝ `3f` が焼き込まれている。`00` はファイルに残らない） | **直列化区間** | `burnsQuestionMarkIntoSharedStringsXmlForControlCharacter` |
+  | D3-06 `CR` | XLS-18 | `<t>a[CR]b</t>`（`CR` ＝ `0d` が生のまま残る。`&#13;` への退避も無い） | **読み戻し（XML パース）区間** | `keepsCarriageReturnRawInSharedStringsXml` |
+
+  **この 2 件はレビュー指摘（第 3 ラウンド）で追加した。** それまで区間の帰属は手作業のダンプでしか
+  確かめておらず、テストは読み戻し値しか見ていなかった。POI／xmlbeans の挙動が変われば
+  セル型・値のテスト 16 件は緑のまま、本書と Javadoc の「区間の帰属」だけが誤りになる状態だった。
+  追加した 2 件は ZIP エントリを直接開き、パースせずバイト列として突き合わせる。
 
   したがって「メモリ上では保たれている」というアサートが示すのは、
   **`XlsFormatWriter` 自身が値を変えていないこと**だけであり、
@@ -969,9 +1007,9 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterInvalidOutputTest#`） | 観測した挙動 |
 |---|---|---|---|---|
 | F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` L105 の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
-| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは Excel を入力とする方向だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`.xlsx` を算出する `XlsFormatHandler#outputPaths`（L63-67）は `overwrite=false` 下で 1 件も実行されていない（§0.8-5 の訂正） |
+| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは `.yaml` を出力側とする衝突だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている（`TestDataConverterTest#convertsYamlToXls` ほか 3 件。変異で実証）が、**`.xlsx` が既存で衝突する分岐**（`checkOverwrite` の `Files.exists(output)` → `ConverterException`）は 1 件も通っていない（§0.8-5 の訂正） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException: failed to write Excel: <出力先パス>` ＋ 原因 `java.nio.file.AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境（root 実行など）では `Assume` でスキップする（確認用ファイルの作成が拒否されることを前提条件として確かめる） |
-| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | 禁止文字 7 件: `rejectsSheetNameContainingSlash`／`rejectsSheetNameContainingBackslash`／`rejectsSheetNameContainingQuestionMark`／`rejectsSheetNameContainingAsterisk`／`rejectsSheetNameContainingOpeningBracket`／`rejectsSheetNameContainingClosingBracket`／`rejectsSheetNameContainingColon`。ほか `rejectsEmptySheetName`／`writesSheetNameOfExcelLimitLengthAsIs`／`truncatesSheetNameLongerThanExcelLimitSilently`／`writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`failsWhenTruncatedSheetNamesCollide` | **31 文字ちょうどはそのまま書かれる**（切り詰めなし）。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name`。空文字は `IllegalArgumentException: sheetName '' is invalid`。禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗するが、**これは切り詰め後の名前に禁止文字が残る場合に限る**（下記） |
+| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | 禁止文字 7 件: `rejectsSheetNameContainingSlash`／`rejectsSheetNameContainingBackslash`／`rejectsSheetNameContainingQuestionMark`／`rejectsSheetNameContainingAsterisk`／`rejectsSheetNameContainingOpeningBracket`／`rejectsSheetNameContainingClosingBracket`／`rejectsSheetNameContainingColon`。ほか `rejectsEmptySheetName`／`writesSheetNameOfExcelLimitLengthAsIs`／`truncatesSheetNameLongerThanExcelLimitSilently`／`writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`failsWhenTruncatedSheetNamesCollide`／`failsWhenSheetNamesDifferOnlyInCase` | **31 文字ちょうどはそのまま書かれる**（切り詰めなし）。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name`（**大文字小文字だけが違う名前も同名と判定される**。切り詰めが走らない 3 文字で実測）。空文字は `IllegalArgumentException: sheetName '' is invalid`。禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗するが、**これは切り詰め後の名前に禁止文字が残る場合に限る**（下記） |
 
 **F3-04 の「禁止文字は必ず失敗する」は無条件では成り立たない。** POI 3.8 の `XSSFWorkbook#createSheet(String)` は
 `substring(0, 31)` による切り詰めを `WorkbookUtil.validateSheetName` **より先に**適用する。したがって
@@ -982,7 +1020,8 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 となり、**メッセージのシート名が切り詰め後の 31 文字である**ことが検査順序の裏づけになる
 （担保テストは `rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`）。
 
-**F3-04 で #22 が担保する範囲**は、31 文字超・禁止文字（`/ \ ? * [ ] :`）・空文字・31 文字ちょうど（正常側の境界）である。
+**F3-04 で #22 が担保する範囲**は、31 文字超・禁止文字（`/ \ ? * [ ] :`）・空文字・31 文字ちょうど（正常側の境界）・
+重複判定（切り詰め後の衝突／大文字小文字だけが違う名前）である。
 **シート名のアポストロフィ（先頭／末尾）と `null` は #22 のスコープ外であり未担保**（タスク #22 の Steps が
 F3-04 の範囲を「31 文字超・禁止文字」と定めているため）。
 
@@ -1088,7 +1127,7 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | F3-01 出力先不在 | 🔺 | ✅ | 🔺: `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない）／✅: `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook`（§3.1-2） |
 | F3-02 `overwrite=false` 衝突 | **対象外（衝突検査は上位層）** | **対象外（変更なし）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。共通処理 `TestDataConverter#checkOverwrite`（L90-99）の分岐は上位層の既存テスト（L336／L267）が通しているが、**両者とも XLS→YAML であり `.xlsx` を出力側とする衝突は未担保**である（§0.8-5 の訂正）。#22 でも辺③の対象外のままとした（`XlsFormatWriter` 単体では再現できない） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`（§3.1-2） |
-| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest` の 13 件（禁止文字 7 件 `#rejectsSheetNameContainingSlash`〜`#rejectsSheetNameContainingColon`／`#rejectsEmptySheetName`／`#writesSheetNameOfExcelLimitLengthAsIs`／`#truncatesSheetNameLongerThanExcelLimitSilently`／`#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`#failsWhenTruncatedSheetNamesCollide`）。全メソッド名と担保範囲（アポストロフィ・`null` は範囲外）は §3.1-2。`issues.md` XLS-16 |
+| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest` の 14 件（禁止文字 7 件 `#rejectsSheetNameContainingSlash`〜`#rejectsSheetNameContainingColon`／`#rejectsEmptySheetName`／`#writesSheetNameOfExcelLimitLengthAsIs`／`#truncatesSheetNameLongerThanExcelLimitSilently`／`#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`#failsWhenTruncatedSheetNamesCollide`／`#failsWhenSheetNamesDifferOnlyInCase`）。全メソッド名と担保範囲（アポストロフィ・`null` は範囲外）は §3.1-2。`issues.md` XLS-16 |
 | （steering 外で担保済みの異常系） | ✅ | `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`（2 レコード目 recordType 空 → `IllegalStateException`）、`rejectsNegativeBlankRows`（設定値負数 → `IllegalArgumentException`） |
 
 <a id="s3-3"></a>

@@ -553,7 +553,7 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 
 ## #22 辺③ 軸D（セル型 8 ケース）・軸F（異常系）で記録した課題
 
-**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（XLS-16）を先に置き、
+**掲載順**: 「凡例 → 並び順の原則」に従い、**衝突しない限り検出できない**もの（XLS-16）を先に置き、
 値が変わるため後段で気づけるもの（XLS-17・XLS-18）、記録のみのもの（XLS-19）を後に置く。
 
 **XLS-18 の訂正（2026-08-13）に伴い掲載順を見直したが、順序は変えない。** XLS-18 は「`CR` が落ちる」ではなく
@@ -570,26 +570,44 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 書き出した `.xlsx` の生バイトを直接確かめた（2026-08-13。レビュー指摘を受けた再実測）。**
 これにより「値が変わるのが直列化区間か読み戻し区間か」を切り分けている（XLS-18 の該当項参照）。
 
-### XLS-16 31 文字を超えるセクション名が黙って 31 文字へ切り詰められる（影響度 中・**検出できない**）
+**この切り分けはテストでも固定してある（2026-08-13・レビュー指摘の第 3 ラウンドで追加）。**
+`XlsFormatWriterCellTypeTest#burnsQuestionMarkIntoSharedStringsXmlForControlCharacter` ／
+`#keepsCarriageReturnRawInSharedStringsXml` が、書き出した `.xlsx` の ZIP エントリ
+`xl/sharedStrings.xml` をパースせず**バイト列として**突き合わせる。
+それまでは手作業のダンプでしか確かめておらず、テストは読み戻し値しか見ていなかったため、
+POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の「区間の帰属」だけが誤りになる**状態だった。
+
+### XLS-16 31 文字を超えるセクション名が黙って 31 文字へ切り詰められる（影響度 中・**衝突しない限り検出できない**）
 
 | 入力 | 書き出されるブック | 担保テスト |
 |---|---|---|
 | セクション名 `a` × 32 文字 | シート名は `a` × **31 文字**。例外も警告も出ない。元の名前では `Workbook#getSheet` が `null` を返し、変換ツール自身の読み戻し（`XlsFormatReader`）も `IllegalArgumentException: sheet not found.` になる | `XlsFormatWriterInvalidOutputTest#truncatesSheetNameLongerThanExcelLimitSilently` |
 | セクション名 `a` × 31 文字（上限ちょうど） | そのまま書かれる（切り詰めなし）。元の名前でシートを引ける | `#writesSheetNameOfExcelLimitLengthAsIs` |
 | 先頭 31 文字が同じで 32 文字目だけ異なる 2 セクション | `IllegalArgumentException: The workbook already contains a sheet of this name`（衝突したときだけ失敗する） | `#failsWhenTruncatedSheetNamesCollide` |
+| 大文字小文字だけが違う 2 セクション（`abc` と `ABC`。どちらも 3 文字で切り詰めは走らない） | 同上（`The workbook already contains a sheet of this name`）。ブックは作られない | `#failsWhenSheetNamesDifferOnlyInCase` |
 | セクション名 `a` × 31 文字 ＋ `/`（32 文字。禁止文字が index 31） | **例外にならず**、`a` × 31 文字のシートを持つブックが書き出される（切り詰めが禁止文字検査を無効化する） | `#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation` |
 | セクション名 `a` × 30 文字 ＋ `/a`（32 文字。禁止文字が index 30） | `IllegalArgumentException: Invalid char (/) found at index (30) in sheet name 'aaa…a/'`。**メッセージのシート名は切り詰め後の 31 文字**である | `#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation` |
 
 - 原因: POI 3.8 の `XSSFWorkbook#createSheet(String)` が、31 文字を超える名前を `substring(0, 31)` で
   切り詰めてから `WorkbookUtil.validateSheetName` に掛ける（`javap -c` で逆アセンブルして確認。
   重複判定 `containsSheet` も両辺を 31 文字へ切り詰めて `equalsIgnoreCase` で比べるため、
-  切り詰め後に同名になる 2 セクションはここで弾かれる）。`XlsFormatWriter#build`（L126）は
+  切り詰め後に同名になる 2 セクションはここで弾かれる）。
+  **引用したこの機構は切り詰め側・`equalsIgnoreCase` 側の両方を実測で押さえてある**:
+  切り詰め側は `#failsWhenTruncatedSheetNamesCollide`、`equalsIgnoreCase` 側は
+  `#failsWhenSheetNamesDifferOnlyInCase`（レビュー指摘・第 3 ラウンドで追加）。`XlsFormatWriter#build`（L126）は
   `workbook.createSheet(section.getName())` をそのまま呼ぶだけで、長さを検査も報告もしない。
 - 実測: 上表のとおり。切り詰めは**メモリ上のブックの時点で**起きている（`build` 直後の `getSheetName(0)` が
   既に 31 文字）。
 - 影響: YAML → Excel 変換で、長いセクション名が変換後のブックでは別名になる。値は失われないが
   **名前が変わったことは変換結果を見比べない限り気づけない**。切り詰め後に衝突した場合だけは
   例外で止まるため、気づけるかどうかは入力次第である。
+- **見出しのラベルを「検出できない」から「衝突しない限り検出できない」へ直した（2026-08-13・
+  レビュー指摘による訂正）。** 上表のとおり本課題は失敗する（＝検出できる）サブケースを 3 つ含む
+  （切り詰め後の衝突／大文字小文字だけが違う名前／切り詰め後も残る禁止文字。加えて読み戻しの
+  `sheet not found.`）。「検出できない」と断言するラベルは、上表と「気づけるかどうかは入力次第」という
+  本文の記述に噛み合っていなかった。**掲載順は変えない。** 「並び順の原則」が問うのは
+  *検出できない経路があるか* であり、本課題の主経路（31 文字超のセクション名が 1 つだけあり衝突しない）は
+  例外も警告も出ないまま名前が変わるためである。
   さらに**切り詰めが先に走ることで、本来なら例外になるはずの入力まで黙って通る**。
   Excel の禁止文字（`/ \ ? * [ ] :`）は POI の `WorkbookUtil.validateSheetName` が弾くが、
   検査が走るのは切り詰めた**後**の 31 文字に対してである。したがって
@@ -699,6 +717,7 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 | 出力先ディレクトリが存在しないとき、黙って作られて書き出しが成功する（F3-01） | 妥当（`Files.createDirectories` による意図した挙動。親に通常ファイルが居座り作れない場合は `UncheckedIOException` になることを `XlsFormatWriterTest#wrapsIoFailure` が固定済み） |
 | 書き込み権限が無いとき `UncheckedIOException: failed to write Excel: <パス>` ＋ 原因 `AccessDeniedException` になる（F3-03） | 妥当（どのファイルを書けなかったかがメッセージから分かる。XLS-14 の読み取り側と対照的に、書き出し側はパスを載せている） |
 | シート名に Excel の禁止文字（`/ \ ? * [ ] :`）があり、**それが切り詰め後の 31 文字に残る**場合は POI の `IllegalArgumentException` で止まり、ブックが作られない（F3-04） | 妥当（不正なブックを黙って書かず、どの文字がどの位置で不正かをメッセージが示す）。ただし**禁止文字が index 31 以降にあると切り詰めで消えて検査に到達しない**。この抜けは課題として XLS-16 の「影響」に記録した |
+| 大文字小文字だけが違うシート名（`abc` と `ABC`）が同名と判定され、`IllegalArgumentException: The workbook already contains a sheet of this name` で止まる。ブックは作られない（F3-04） | 妥当（Microsoft Excel 自身もシート名の大文字小文字を区別しないため、POI の `containsSheet` が `equalsIgnoreCase` で比べるのは Excel の制約に沿っている）。固定する意味は、XLS-16 が原因として引用している機構（切り詰め＋`equalsIgnoreCase`）の両輪を実測で押さえることにある。担保テストは `XlsFormatWriterInvalidOutputTest#failsWhenSheetNamesDifferOnlyInCase` |
 
 ### 未確認（#22）
 
