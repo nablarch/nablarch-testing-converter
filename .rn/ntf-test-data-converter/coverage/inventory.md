@@ -878,6 +878,43 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | 39 | `roundTripsMessage` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-17, C-18, C-19 | — | E-3(1) | — |
 | 40 | `roundTripsSendSyncMessage` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19 | — | E-3(1) | — |
 
+### 3.1-2 #22 が追加したテストクラスの担保（2026-08-13 追記）
+
+**本節は #22 で新設した。** §3.1 は「`XlsFormatWriterTest` 40 件」を対象とした #18 時点の事実であり
+書き換えていない。ここには #22 が追加した**書き出したファイルを開き直して確かめるテストクラス**の担保だけを記す。
+#22 の対象は軸D（セル型 8 ケース）と軸F（異常系）に限る。軸A・軸B・軸C・軸E の欠けは #23 の対象である。
+
+| テストクラス | 追加タスク | 件数 | 検証対象 |
+|---|---|---|---|
+| `XlsFormatWriterCellTypeTest` | #22 | 11 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる |
+| `XlsFormatWriterInvalidOutputTest` | #22 | 6 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
+
+**軸D（辺③ 8 ケース。すべて `getCellType()` をアサート。#18 は ✅ 0 ／ 🔺 2 ／ ❌ 6）**
+
+| 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterCellTypeTest#`） | 観測したセル型・値 |
+|---|---|---|---|---|
+| D3-01 `"100"` | ❌ | ✅ | `writesNumericLookingStringAsStringCell` | `CELL_TYPE_STRING`・`"100"`。数値セルにならない（`getNumericCellValue()` が `IllegalStateException`） |
+| D3-02 `"=1+1"` | ❌ | ✅ | `writesFormulaLookingStringAsStringCell` | `CELL_TYPE_STRING`・`"=1+1"`。数式セルにならない（`getCellFormula()` が `IllegalStateException`。計算結果 `2` にもならない） |
+| D3-03 `"007"` | ❌ | ✅ | `writesLeadingZeroStringAsStringCell` | `CELL_TYPE_STRING`・`"007"`（先頭ゼロが落ちない） |
+| D3-04 `null` | 🔺（値のみ） | ✅ | `writesNullValueAsLiteralNullStringCell` | `CELL_TYPE_STRING`・`"null"`（空白セルにならない） |
+| D3-05 `""` | 🔺（値のみ） | ✅ | `writesEmptyValueAsEmptyStringCell` | `CELL_TYPE_STRING`・長さ 0（`CELL_TYPE_BLANK` へ退化しない） |
+| D3-06 改行含む文字列 | ❌ | ✅ | `writesLineFeedStringAsStringCell`／`dropsCarriageReturnFromCrLfStringCell` | `LF` は原文のまま。`CRLF` は `CR` が落ちて `LF` だけになる（`issues.md` **XLS-18**） |
+| D3-07 32767 文字超 | ❌ | ✅ | `writesStringLongerThanExcelCellLimitAsStringCell`／`writesStringOfExcelCellLimitLengthAsStringCell` | 32768 文字も 32767 文字も `CELL_TYPE_STRING` でそのまま書かれる（切り詰め・例外なし。`issues.md` **XLS-19**） |
+| D3-08 制御文字含む | ❌ | ✅ | `replacesXmlIllegalControlCharactersWithQuestionMark`／`writesXmlLegalControlCharactersAsIs` | XML 1.0 で不正な `U+0000`／`U+0007`／`U+000B`／`U+001F` は `?` へ置換（`issues.md` **XLS-17**）。XML 1.0 で正当な `U+0009`／`U+007F` は原文のまま |
+
+- **すべてファイル経由で確かめている。** メモリ上のブックだけを見ると D3-06（`CRLF`）と D3-08（制御文字）を
+  取り逃す（どちらも `build` 直後は原文のままで、失われるのは `.xlsx` へ直列化する区間である）。
+  この 2 件の担保テストは「メモリ上では保たれている」ことも併せてアサートし、変化の起きる区間を特定している。
+
+**軸F（辺③ 4 ケース中 3 ケースを新規担保。F3-02 は対象外）**
+
+| 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterInvalidOutputTest#`） | 観測した挙動 |
+|---|---|---|---|---|
+| F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` L105 の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
+| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が既存テストで担保しており、辺③で書くと重複テストになる（Rules「重複テストを書かない」） |
+| F3-03 書き込み権限なし | ❌ | ✅ | `wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException: failed to write Excel: <出力先パス>` ＋ 原因 `java.nio.file.AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境（root 実行など）では `Assume` でスキップする（確認用ファイルの作成が拒否されることを前提条件として確かめる） |
+| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `rejectsSheetNameContainingCharacterForbiddenByExcel`／`rejectsEmptySheetName`／`truncatesSheetNameLongerThanExcelLimitSilently`／`failsWhenTruncatedSheetNamesCollide` | 禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗。空文字も `IllegalArgumentException`。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name` |
+
 ### 3.2 軸要素 → 担保テストメソッド
 
 **軸A（✅ 11 ／ 🔺 2 ／ ❌ 1 ＝ 14）**
@@ -938,20 +975,22 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | C-20 `FieldDef.type` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`／省略: `writesOmittedMetaAndFieldAsEmpty` |
 | C-21 `FieldDef.length` | ✅ | ✅ 省略(null) | 値あり: `writesFixedFileBlock`（`"-"`/`"5"`）／省略: `writesVariableFileWithoutLengthRow`, `writesOmittedMetaAndFieldAsEmpty`, `roundTripsVariableFile` |
 
-**軸D（✅ 0 ／ 🔺 2 ／ ❌ 6 ＝ 8。すべて `getCellType()` 観点）**
+**軸D（#18 時点: ✅ 0 ／ 🔺 2 ／ ❌ 6 ＝ 8。すべて `getCellType()` 観点。#22 完了後は ✅ 8）**
 
-| 要素 | 判定 | 備考 |
-|---|---|---|
-| D3-01 `"100"` | ❌ | 数値セルにならないことのアサートなし |
-| D3-02 `"=1+1"` | ❌ | 数式解釈されないことのアサートなし |
-| D3-03 `"007"` | ❌ | — |
-| D3-04 `null` | 🔺 | `writesTableBlock`, `roundTripsNullCellAsLiteralNullString` が値（`"null"` 文字列化）はアサートするが `getCellType()` はしない。`RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` も同じく値のみ（§0.8-8） |
-| D3-05 `""` | 🔺 | `writesTableBlock`, `writesListMapBlock` ほか 1 件が値のみアサート。`RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved` も同じく値のみ（§0.8-8） |
-| D3-06 改行含む文字列 | ❌ | — |
-| D3-07 32767 文字超 | ❌ | — |
-| D3-08 制御文字含む | ❌ | — |
+| 要素 | #18 の判定 | #22 後 | 備考 |
+|---|---|---|---|
+| D3-01 `"100"` | ❌ | ✅ | 数値セルにならないことのアサートなし → `XlsFormatWriterCellTypeTest#writesNumericLookingStringAsStringCell`（§3.1-2） |
+| D3-02 `"=1+1"` | ❌ | ✅ | 数式解釈されないことのアサートなし → `#writesFormulaLookingStringAsStringCell`（§3.1-2） |
+| D3-03 `"007"` | ❌ | ✅ | `#writesLeadingZeroStringAsStringCell` |
+| D3-04 `null` | 🔺 | ✅ | `writesTableBlock`, `roundTripsNullCellAsLiteralNullString` が値（`"null"` 文字列化）はアサートするが `getCellType()` はしない。`RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` も同じく値のみ（§0.8-8）→ セル型は `#writesNullValueAsLiteralNullStringCell` |
+| D3-05 `""` | 🔺 | ✅ | `writesTableBlock`, `writesListMapBlock` ほか 1 件が値のみアサート。`RoundTripTest#xls_setupTable_isPreserved`, `#xls_listMap_isPreserved` も同じく値のみ（§0.8-8）→ セル型は `#writesEmptyValueAsEmptyStringCell` |
+| D3-06 改行含む文字列 | ❌ | ✅ | `#writesLineFeedStringAsStringCell`／`#dropsCarriageReturnFromCrLfStringCell`（`issues.md` XLS-18） |
+| D3-07 32767 文字超 | ❌ | ✅ | `#writesStringLongerThanExcelCellLimitAsStringCell`／`#writesStringOfExcelCellLimitLengthAsStringCell`（`issues.md` XLS-19） |
+| D3-08 制御文字含む | ❌ | ✅ | `#replacesXmlIllegalControlCharactersWithQuestionMark`／`#writesXmlLegalControlCharactersAsIs`（`issues.md` XLS-17） |
 
-`grep -rn "getCellType" src/test/` → **0 件**。セル読み出しヘルパ `cell`（L100-107）/`line`（L110-121）は `getStringCellValue()` 固定。
+`grep -rn "getCellType" src/test/` → #18 時点は **0 件**。セル読み出しヘルパ `cell`（L100-107）/`line`（L110-121）は
+`getStringCellValue()` 固定であり、これは現在も変わっていない（#22 は `XlsFormatWriterTest` を変更していない）。
+`getCellType()` を使うのは #22 が追加した `XlsFormatWriterCellTypeTest` である（観測結果は §3.1-2 の軸D 表）。
 
 **軸E**
 
@@ -962,14 +1001,14 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | E-3 ファイル内レコードレイアウト数 | ❌ | ✅ | ✅ | 1: `writesFixedFileBlock`, `writesVariableFileWithoutLengthRow` ほか 8 件（計 10 件）／複数: `writesMultipleRecordLayouts`, `roundTripsMultipleRecordLayouts` ほか 2 件（計 4 件） |
 | E-4 コンテナ内セクション数（辺③の実体: ブック内シート数） | n/a | ✅ | ✅ | 1: `writesTableBlock`, `writesFixedFileBlock` ほか 35 件（`writesWorkbookFileWithSheetPerSection` を除く 37 件。§3.1 の軸E 欄には E-4(1) を明記していない）／複数: **`writesWorkbookFileWithSheetPerSection`**（辺③で唯一） |
 
-**軸F（✅ 0 ／ 🔺 1 ／ ❌ 2 ／ 対象外 1 ＝ 4）**
+**軸F（#18 時点: ✅ 0 ／ 🔺 1 ／ ❌ 2 ／ 対象外 1 ＝ 4。#22 完了後は ✅ 3 ／ 対象外 1）**
 
-| 要素 | 判定 | 担保テストメソッド |
-|---|---|---|
-| F3-01 出力先不在 | 🔺 | `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない） |
-| F3-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
-| F3-03 書き込み権限なし | ❌ | — |
-| F3-04 シート名が Excel 制約違反 | ❌ | — |
+| 要素 | #18 の判定 | #22 後 | 担保テストメソッド |
+|---|---|---|---|
+| F3-01 出力先不在 | 🔺 | ✅ | 🔺: `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない）／✅: `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook`（§3.1-2） |
+| F3-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | **対象外（変更なし）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5）。#22 でも辺③の対象外のままとした（辺③に書くと重複テストになる） |
+| F3-03 書き込み権限なし | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`（§3.1-2） |
+| F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest#rejectsSheetNameContainingCharacterForbiddenByExcel`／`#rejectsEmptySheetName`／`#truncatesSheetNameLongerThanExcelLimitSilently`／`#failsWhenTruncatedSheetNamesCollide`（§3.1-2。`issues.md` XLS-16） |
 | （steering 外で担保済みの異常系） | ✅ | `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`（2 レコード目 recordType 空 → `IllegalStateException`）、`rejectsNegativeBlankRows`（設定値負数 → `IllegalArgumentException`） |
 
 <a id="s3-3"></a>
@@ -978,19 +1017,30 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 
 計上単位と「状態」の 3 分類は §1.3 の規則に従う。
 
-| 軸 | 未担保要素 | 状態 | 件数 |
-|---|---|---|---|
-| A | A-01 `DEFAULT`（writer 側は到達可能。§0.8-7）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 3 |
-| B | （なし） | — | 0 |
-| C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 9 |
-| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | 8 |
-| E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 3 |
-| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | 3 |
-| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
-| **合計** | | **要追加 26 ／ 到達不能 0 ／ 対象外 1** | **27（うち対象外 1）** |
+**本表は #22 の実測結果に合わせて更新した（2026-08-13）。** #18 時点は「要追加 26 ／ 対象外 1」であった。
+#22 が軸D 8 件・軸F 3 件を埋めたため、残る未担保は **15 件（軸A 3・軸C 9・軸E 3）＝ #23 の対象**である。
+#18 時点の分類は各行の「#18」列に残した。
 
-**特に大きな空欄**: `getCellType()` を使ったテストが 1 件も存在しないため軸D 8 ケース全滅。#22 の主眼。
-次いで `MessageDataBlock.directives` に値を入れて書き出すテストが 0 件（C-13）。
+| 軸 | 未担保要素 | #18 の状態 | #22 後の状態 | 件数 |
+|---|---|---|---|---|
+| A | A-01 `DEFAULT`（writer 側は到達可能。§0.8-7）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 要追加（#23。#22 の対象外） | 3 |
+| B | （なし） | — | — | 0 |
+| C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | 9 |
+| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 11 件（8 ケース＋改行の異表記・上限ちょうど・XML で正当な制御文字の対照 3 件）。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 8 |
+| E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | 3 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 6 件。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 3 |
+| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 対象外（変更なし。#22 でも辺③に書かない） | 1 |
+| **合計** | | **要追加 26 ／ 到達不能 0 ／ 対象外 1** | **要追加 15 ／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **27（うち対象外 1）** |
+
+**合計の検算**（表の「件数」列を上から順に足す）:
+
+- 担保済み: D 8 ＋ F 3 ＝ **11**
+- 要追加: A 3 ＋ C 9 ＋ E 3 ＝ **15**
+- 対象外: F3-02 **1**
+- 総計: 11 ＋ 15 ＋ 1 ＝ **27**（B は 0 件）
+
+**特に大きな空欄**（#18 時点の評価）: `getCellType()` を使ったテストが 1 件も存在しないため軸D 8 ケース全滅。#22 の主眼。
+→ **#22 で解消した。** 次いで `MessageDataBlock.directives` に値を入れて書き出すテストが 0 件（C-13）。これは #23 の対象。
 
 ---
 
@@ -1164,7 +1214,9 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 **本節は #18 時点のスナップショットであり、4 辺を同じ基準で比べるためにその基準を保っている。**
 辺①はその後 #19／#20／#21 で 33 件が担保済みになった（§1.3 の「#21 後の状態」列）。
 辺①の最新の状態別内訳は **要追加 0 ／ 担保済み 33 ／ 到達不能 8 ／ 対象外 0** であり、
-下の表の辺①列（要追加 38 ／ 到達不能 3）は #18 時点の値である。辺②〜辺④は #22〜#25 が未着手のため #18 時点のまま。
+下の表の辺①列（要追加 38 ／ 到達不能 3）は #18 時点の値である。
+辺③は #22 が軸D 8 件・軸F 3 件を埋めたため最新は **要追加 15 ／ 担保済み 11 ／ 対象外 1**（§3.3）であり、
+下の表の辺③列（要追加 26 ／ 対象外 1）も #18 時点の値である。辺②・辺④は #24／#25 が未着手のため #18 時点のまま。
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
@@ -1197,7 +1249,8 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 
 **本節は §5.1 と違い現時点の状態を示す。** 辺①は #20 完了後の値（`XlsFormatReaderRealFileTest` による ✅ 化を反映。§1.2-2）。
 **#21 は軸E・軸F だけを埋めるため、本節（軸A）の判定は #20 完了時点から変わっていない。**
-辺②〜辺④は #22〜#25 が未着手のため #18 時点から変わっていない。
+**#22 も軸D・軸F だけを埋めるため、辺③列の判定は #18 時点から変わっていない**（辺③の軸A は #23 の対象）。
+辺②・辺④は #24／#25 が未着手のため #18 時点から変わっていない。
 
 | DataType | 辺① | 辺② | 辺③ | 辺④ |
 |---|---|---|---|---|

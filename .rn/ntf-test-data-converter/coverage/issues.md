@@ -548,3 +548,105 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 - **XLS-15 は `MESSAGE` で実測した。**送信同期 4 種でも同じかは未確認
   （`SendSyncMessageParser` は `MessageParser` を継承し `onReadingValues` をさらに上書きするため
   同じく断片を増やせないと推定されるが、実行して確かめていない）。
+
+---
+
+## #22 辺③ 軸D（セル型 8 ケース）・軸F（異常系）で記録した課題
+
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（XLS-16）を先に置き、
+値が変わるため後段で気づけるもの（XLS-17・XLS-18）、記録のみのもの（XLS-19）を後に置く。
+
+以下はすべて `XlsFormatWriter` で中間モデルを実 `.xlsx` へ書き出し、書き出したファイルを POI で
+開き直して実測したものである（プローブ実行 2026-08-13 ＋ 担保テストの実行）。
+セル型は `Cell#getCellType()` で確かめている。
+
+### XLS-16 31 文字を超えるセクション名が黙って 31 文字へ切り詰められる（影響度 中・**検出できない**）
+
+| 入力 | 書き出されるブック | 担保テスト |
+|---|---|---|
+| セクション名 `a` × 32 文字 | シート名は `a` × **31 文字**。例外も警告も出ない。元の名前では `Workbook#getSheet` が `null` を返し、変換ツール自身の読み戻し（`XlsFormatReader`）も `IllegalArgumentException: sheet not found.` になる | `XlsFormatWriterInvalidOutputTest#truncatesSheetNameLongerThanExcelLimitSilently` |
+| 先頭 31 文字が同じで 32 文字目だけ異なる 2 セクション | `IllegalArgumentException: The workbook already contains a sheet of this name`（衝突したときだけ失敗する） | `#failsWhenTruncatedSheetNamesCollide` |
+
+- 原因: POI 3.8 の `XSSFWorkbook#createSheet(String)` が、31 文字を超える名前を `substring(0, 31)` で
+  切り詰めてから `WorkbookUtil.validateSheetName` に掛ける（`javap -c` で逆アセンブルして確認。
+  重複判定 `containsSheet` も両辺を 31 文字へ切り詰めて `equalsIgnoreCase` で比べるため、
+  切り詰め後に同名になる 2 セクションはここで弾かれる）。`XlsFormatWriter#build`（L126）は
+  `workbook.createSheet(section.getName())` をそのまま呼ぶだけで、長さを検査も報告もしない。
+- 実測: 上表のとおり。切り詰めは**メモリ上のブックの時点で**起きている（`build` 直後の `getSheetName(0)` が
+  既に 31 文字）。
+- 影響: YAML → Excel 変換で、長いセクション名が変換後のブックでは別名になる。値は失われないが
+  **名前が変わったことは変換結果を見比べない限り気づけない**。切り詰め後に衝突した場合だけは
+  例外で止まるため、気づけるかどうかは入力次第である。
+- 判断: **仕様として不適切**（31 文字超は変換前に弾くか、少なくとも WARN で報せるべき）。
+  Excel の制約であり回避はできないため、黙って変えないことが要点である。修正はこの作業では行わない。
+- **修正するとしたら本リポジトリ内で完結する**（`XlsFormatWriter#build` にシート名の検査を足せばよい）。
+
+### XLS-17 XML で表現できない制御文字が保存時に `?` へ黙って置換される（影響度 中・値が変わるため後段のテスト失敗で検出できる）
+
+| 入力（データ行の値） | 書き出されるセル | 担保テスト |
+|---|---|---|
+| `a` ＋ `U+0000` ／ `U+0007` ／ `U+000B` ／ `U+001F` ＋ `b` | 文字列セル。値は `a?b`（当該文字が `U+003F` へ置換。文字数は変わらない） | `XlsFormatWriterCellTypeTest#replacesXmlIllegalControlCharactersWithQuestionMark` |
+| `a` ＋ `U+0009`（TAB）／ `U+007F`（DEL）＋ `b` | 文字列セル。値は原文のまま（置換されない） | `#writesXmlLegalControlCharactersAsIs` |
+
+- 原因（実測 6 文字からの推定）: 置換されたのは XML 1.0 が文字として認めない符号位置（`U+0000`・`U+0007`・
+  `U+000B`・`U+001F`）だけで、XML 1.0 で正当な TAB・DEL は残った。すなわち「制御文字だから」ではなく
+  「XML で表現できないから」置換されたと読める。`XlsFormatWriter` 自身は値をそのまま `Cell#setCellValue` に渡しており
+  （`build` 直後のメモリ上のブックでは制御文字が保たれていることを担保テストがアサートしている）、
+  置換は `.xlsx` の XML へ直列化する区間で起きる。
+- 実測: 上表のとおり。例外にも警告にもならない。
+- 影響: 制御文字を含むテストデータは変換後に別の値になる。値が変わるため、その値を使う後段のテストが
+  失敗すれば気づける。
+- 判断: 記録に留める（XML 形式である以上、原文のまま保存する手段が無い）。ただし**黙って**置換される点は
+  課題であり、変換ツール側で検知して報せる余地がある。修正はこの作業では行わない。
+
+### XLS-18 `CRLF` 改行の `CR` が保存時に黙って落ちる（影響度 中・値が変わるため後段のテスト失敗で検出できる）
+
+| 入力（データ行の値） | 書き出されるセル | 担保テスト |
+|---|---|---|
+| `a` ＋ `CRLF` ＋ `b`（4 文字） | 文字列セル。値は `a` ＋ `LF` ＋ `b`（3 文字） | `XlsFormatWriterCellTypeTest#dropsCarriageReturnFromCrLfStringCell` |
+| `a` ＋ `LF` ＋ `b` | 文字列セル。値は原文のまま | `#writesLineFeedStringAsStringCell` |
+
+- 原因（推定）: XML の行末正規化（XML パーサは `CRLF` を `LF` として読む）。POI 3.8 は `CR` を
+  数値文字参照（`&#13;`）で退避しないため、書き出したファイルを読み直すと `CR` が消える。
+  XLS-17 と同じく、メモリ上のブックでは `CRLF` が保たれていることを担保テストがアサートしており、
+  **失われるのが直列化区間であることは実測**、**行末正規化がその機構であることは推定**である。
+- 実測: 上表のとおり。例外にも警告にもならない。
+- 影響: `CRLF` を含む複数行のセル値が変換後に `LF` だけになる。値が変わるため後段のテストで気づける。
+- 判断: 記録に留める（XML 形式に由来し、変換ツール側では回避できない）。修正はこの作業では行わない。
+
+### XLS-19 Excel のセル文字数上限（32767）を超える値がそのまま書き出される（影響度 低・記録のみ）
+
+| 入力（データ行の値） | 書き出されるセル | 担保テスト |
+|---|---|---|
+| 32768 文字（上限＋1） | 文字列セル。32768 文字がそのまま書かれ、POI で読み直すと 32768 文字に戻る（切り詰めも例外も無い） | `XlsFormatWriterCellTypeTest#writesStringLongerThanExcelCellLimitAsStringCell` |
+| 32767 文字（上限ちょうど） | 文字列セル。そのまま | `#writesStringOfExcelCellLimitLengthAsStringCell` |
+
+- 原因: POI 3.8 の `XSSFCell#setCellValue(String)` は長さを検査せず、そのまま
+  `XSSFRichTextString` にして `CTCell` へ載せる（`javap -c` で逆アセンブルして確認。上限値との比較が無い）。
+  `XlsFormatWriter` も検査しない。
+- 実測: 上表のとおり。POI での読み直しは成功する。
+- 影響: Excel の仕様上不正な長さのセルを持つブックが生成されうる。**Microsoft Excel が実際に開けるかは未確認**
+  （本リポジトリのテストは POI での読み直しまでしか確かめていない）。
+- 判断: 受容できる（記録のみ）。NTF のテストデータで 32767 文字を超えるセルは現実的でなく、
+  上限は POI と Excel の側の制約である。修正はこの作業では行わない。
+
+### 課題としないと判断した観測結果（#22）
+
+| 観測 | 判断 |
+|---|---|
+| `"100"` ／ `"007"` ／ `"=1+1"` がいずれも文字列セル（`CELL_TYPE_STRING`）で書かれ、数値セル・数式セルにならない | 妥当（`XlsFormatWriter` はすべての値を `setCellValue(String)` で書く。記法をそのまま保つという Writer の設計どおり） |
+| `null` 値がリテラル `"null"` の文字列セルになる（空白セルにならない） | 妥当（Writer の Javadoc に明記された NTF の慣習。読み戻すと文字列 `"null"` になる非可逆は `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString` で固定済み） |
+| 空文字 `""` が長さ 0 の文字列セルになる（`CELL_TYPE_BLANK` へ退化しない） | 妥当（空文字と値なしを Excel 上で区別できる形で保つ） |
+| 出力先ディレクトリが存在しないとき、黙って作られて書き出しが成功する（F3-01） | 妥当（`Files.createDirectories` による意図した挙動。親に通常ファイルが居座り作れない場合は `UncheckedIOException` になることを `XlsFormatWriterTest#wrapsIoFailure` が固定済み） |
+| 書き込み権限が無いとき `UncheckedIOException: failed to write Excel: <パス>` ＋ 原因 `AccessDeniedException` になる（F3-03） | 妥当（どのファイルを書けなかったかがメッセージから分かる。XLS-14 の読み取り側と対照的に、書き出し側はパスを載せている） |
+| シート名に Excel の禁止文字（`/ \ ? * [ ] :`）があると POI の `IllegalArgumentException` で止まり、ブックが作られない（F3-04） | 妥当（不正なブックを黙って書かず、どの文字がどの位置で不正かをメッセージが示す） |
+
+### 未確認（#22）
+
+- **32767 文字超のセルを Microsoft Excel が開けるかは未確認**（XLS-19）。確かめているのは POI での読み直しまでである。
+- **制御文字の置換（XLS-17）は `U+0000` / `U+0007` / `U+000B` / `U+001F` の 4 つで実測した。**
+  XML 1.0 が禁じる符号位置すべてで同じかは未確認（サロゲート単独・`U+FFFE` 等は試していない）。
+- **軸F の書き込み権限（F3-03）は POSIX 権限が効く環境でのみ検証している。**
+  担保テストは確認用ファイルの作成が `AccessDeniedException` で拒否されることを前提条件として確かめ、
+  拒否されない環境（root 実行・権限を無視するファイルシステム）では `Assume` でスキップする。
+  本作業の実行環境（非 root・ext4）では実際に実行され PASS している。
