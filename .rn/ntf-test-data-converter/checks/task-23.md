@@ -8,7 +8,67 @@
 | 辺③④の `DEFAULT` の扱いの非対称（辺③は書き出す／辺④は例外）が `issues.md` に記録され、かつ修正されていない | OK | `issues.md` の **XLS-20**（「`DataType.DEFAULT` の扱いが辺③と辺④で非対称で、辺③が書いたブロックは読み戻すと消える」）に記録した。表に 3 辺の実測を並べてある: 辺③ → `DEFAULT=T` を書き出す（`XlsFormatWriterModelTest#writesDefaultDataTypeMarker` L216）／辺④ → `IllegalArgumentException: unsupported DataType: DEFAULT`（既存 `YamlFormatWriterTest#serialize_unsupportedDataType_throws`。`YamlFormatWriter` L449 の `default:` を自分で読んで確認）／辺① → **ブロックが黙って消える**（`sections` 1 件・`blocks` 0 件。`#dropsDefaultDataTypeBlockWhenReadBack` L669。原因は本リポジトリの `TestCoreReaderAdapter` `HeaderCollector#parse` の `type == DataType.DEFAULT → continue`）。**修正していない**（`git diff HEAD -- src/main \| wc -l` → 0）。`inventory.md` §0.8-7・§3.2 軸A 表・§5.2・§5.3 の未解決 3 からも XLS-20 を参照している | | |
 | #18 の棚卸し表で辺③に残っていた空欄が、埋まったか理由付きで残されたかのいずれかになっている | OK（**レビュー指摘により訂正**） | `inventory.md` §3.3 に「#23 後の状態」列を足した。**レビュー指摘を受けて A-12〜A-14 の 3 件を表に追加**し（#18 は ✅ と誤判定しており行として存在しなかった）、**要追加 0 ／ 担保済み 29 ／ 到達不能 0 ／ 対象外 1（計 30）**へ更新した。検算も表の下に置いた（担保済み: A 3 ＋ A 3 ＋ C 9 ＋ D 8 ＋ E 3 ＋ F 3 ＝ 29／対象外: F3-02 1／29＋0＋1 ＝ 30）。§5.1（#18 スナップショット）には表を書き換えずに補正値（辺③ 軸A は 3 ではなく 6、辺③合計 27→30、全体 107→110）を注記した。理由付きで残したのは **F3-02 `overwrite=false` 衝突の 1 件だけ**。**軸要素の外の担保の穴も開示を維持・追加した**: (1) `XlsFormatWriter#write` の `parent == null` 分岐（§3.1-2）、(2) #23 で JaCoCo で測った未到達 3 箇所（§3.1-3 末尾）、(3) **E-4(0 件) が `n/a` である理由**（§0.6 が E-4 に 0 件を定義していないため。C-02 の ✅ と矛盾に見える点への補足。§3.2 軸E 表の直後）。件数を動かした箇所はすべてコマンドから導き直した: `grep -c '^    @Test' …/XlsFormatWriterModelTest.java` → **18**、`grep -c 'Given:' 同` → **18**、`grep -c '^    @Test' …/XlsFormatWriterTest.java` → **40**、`…/XlsFormatWriterCellTypeTest.java` → **18**、`…/XlsFormatWriterInvalidOutputTest.java` → **16**、`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → **20**（§3.1-2 の 19 は #23 で陳腐化）、`grep -rc "getCellType" src/test --include=*.java | wc -l` → **35**（同 `| grep -c ":0$"` → **32**。§3.2 の 34／32 は #23 で、ラウンド2 の 35／33 は `XlsFixture` の Javadoc に `getCellType()` の語を書いた時点で陳腐化した。台帳側も本コミットで 32 へ直した）（いずれも本コミット時点の実測。台帳の記載と一致） | | |
 | src/main への変更がゼロ | OK | `git diff HEAD -- src/main \| wc -l` → **0**（2026-08-13。レビュー対応で `marker`／`layoutFile` に一時的な変異を 3 回入れたが、毎回 `git diff` で 0 行に戻したことを確認済み）。`git status --short` は `.rn/.../coverage/inventory.md`（M）と `src/test/.../XlsFixture.java`・`XlsFormatWriterTest.java`・`XlsFormatWriterModelTest.java`・`XlsFormatWriterInvalidOutputTest.java`（M）、本ファイル（??）のみ。**ラウンド3 で `layoutMessage` に 4 回目の変異**（送信系のとき `appendKeyValueRows(l, block.getFwHeaderFields())` を呼ばない形）を入れて XLS-24 の担保の穴を実証したが、これも戻して `git diff HEAD -- src/main \| wc -l` → **0** を再確認した。**仕上げラウンド（2026-08-13）でも変異は入れておらず、`git diff HEAD -- src/main \| wc -l` → 0**（変更したのは `src/test` の Javadoc／定数 3 ファイルと `coverage/` の 2 ファイル、本ファイル） | | |
-| `mvn clean test -Djacoco.skip=true` が全テスト PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` → `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`（2026-08-13・レビュー対応後）。#22 完了時点の 410 件 ＋ #23 の 15 件 ＋ レビュー対応の 3 件 ＝ 428。リグレッションなし（`XlsFormatWriterTest` 40・`XlsFormatWriterCellTypeTest` 18・`XlsFormatWriterInvalidOutputTest` 16・`XlsFormatReaderTest` 33 ほか、既存クラスの件数はいずれも不変）。**ラウンド3 の対応後も再実行して `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`**（2026-08-13）。ラウンド3 で変えたのは文言・Javadoc・台帳・課題一覧だけで、`@Test` の増減もアサート内容の変更もしていない。**仕上げラウンドの対応後も再実行して `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`**（2026-08-13）。件数は 428 のまま動いていない | | |
+| `mvn clean test -Djacoco.skip=true` が全テスト PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` → `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`（2026-08-13・レビュー対応後）。#22 完了時点の 410 件 ＋ #23 の 15 件 ＋ レビュー対応の 3 件 ＝ 428。リグレッションなし（`XlsFormatWriterTest` 40・`XlsFormatWriterCellTypeTest` 18・`XlsFormatWriterInvalidOutputTest` 16・`XlsFormatReaderTest` 33 ほか、既存クラスの件数はいずれも不変）。**ラウンド3 の対応後も再実行して `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`**（2026-08-13）。ラウンド3 で変えたのは文言・Javadoc・台帳・課題一覧だけで、`@Test` の増減もアサート内容の変更もしていない。**仕上げラウンドの対応後も再実行して `Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`**（2026-08-13）。件数は 428 のまま動いていない。**この 3 回はいずれも旧 `nablarch-testing-yaml` jar（`.m2` 2026-07-23 09:56 インストール分）を classpath に置いた実測である。**<br>**⚠️ yaml jar 差し替え後の再実測（2026-08-13、`#24` 着手前）で NG に変わった** → `Tests run: 428, Failures: 0, **Errors: 1**, Skipped: 0` / `BUILD FAILURE`。詳細は下の「yaml jar 差し替え後の基準線再取得」節 | | |
+
+### yaml jar 差し替え後の基準線再取得（2026-08-13・`#24` 着手前）
+
+`nablarch-testing-yaml:1.0.0-SNAPSHOT` が `.m2` 上で差し替わったため（`ls -la ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/` →
+`nablarch-testing-yaml-1.0.0-SNAPSHOT.jar` のタイムスタンプが **`8月 13 15:46`**）、
+本ファイルの「428 件全 PASS」は旧 jar 基準の記録になった。classpath が変わった状態で取り直した実測を以下に記録する。
+
+- **実行コマンド**: `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true`
+- **対象**: ワーキングツリー（HEAD `fc59ef5`）。`git diff --stat bb58d05 fc59ef5` → `.rn/ntf-test-data-converter/steering.md | 7 ++++---` の 1 ファイルのみで、
+  `src/` の差分はゼロ。よって `bb58d05` に対する実測と同値である
+- **結果**: **`Tests run: 428, Failures: 0, Errors: 1, Skipped: 0`** / **`BUILD FAILURE`**
+- **旧 jar 基準（本ファイル上部の記録）との差**: 総数 428 は不変（テストの増減なし）。`Errors` が **0 → 1** に変わった
+
+**失敗したテスト**: `nablarch.test.tool.converter.SampleConversionTest#convertsClimanSampleYamlToXls`
+
+**スタックトレース**（`mvn test -Dtest=SampleConversionTest -DtrimStackTrace=false` で取得。フレームワーク側は省略せず先頭 9 フレームを転記）:
+
+```
+java.lang.UnsupportedOperationException: DbInfo#getColumns must not be called on the DB-less converter read path.
+	at nablarch.test.core.reader.StubDbInfo.notOnReadPath(StubDbInfo.java:32)
+	at nablarch.test.core.reader.StubDbInfo.getColumns(StubDbInfo.java:49)
+	at nablarch.test.core.db.TableData.getColumnNames(TableData.java:503)
+	at nablarch.test.tool.converter.yaml.YamlFormatReader.addTableBlocks(YamlFormatReader.java:158)
+	at nablarch.test.tool.converter.yaml.YamlFormatReader.addBlocksForSection(YamlFormatReader.java:109)
+	at nablarch.test.tool.converter.yaml.YamlFormatReader.read(YamlFormatReader.java:91)
+	at nablarch.test.tool.converter.YamlFormatHandler.read(YamlFormatHandler.java:45)
+	at nablarch.test.tool.converter.TestDataConverter.convert(TestDataConverter.java:72)
+	at nablarch.test.tool.converter.SampleConversionTest.convertsClimanSampleYamlToXls(SampleConversionTest.java:43)
+```
+
+**原因の連鎖（すべて一次情報で確認。converter は無変更）**:
+
+1. 新 jar の `YamlTableDataBuilder#buildTableData` が、**データ列 0 件のとき列名を設定しない `TableData` を作る**。
+   出典: `nablarch-testing-yaml-1.0.0-SNAPSHOT-sources.jar` 内 `YamlTableDataBuilder.java` L110-120。
+   同 L112-113 のコメントが意図を明記している — 「列名を未設定（null）にして `TableData.getColumnNames()` の
+   dbInfo フォールバックを効かせる。長さ 0 の配列を渡すと `loadData()` が DB を読まず、空テーブルの検証が素通りする。」
+2. `TableData#getColumnNames()` は `columnNames == null` のとき `dbInfo.getColumns(tableName)` へフォールバックする。
+   出典: `nablarch-testing-6-NEXT-SNAPSHOT-sources.jar` 内 `TableData.java`（`getColumnNames()` 本体）。
+3. converter の `YamlFormatReader#addTableBlocks` は `table.getColumnNames()` を呼ぶ（`YamlFormatReader.java:158`）。
+4. converter が渡す `DbInfo` は `StubDbInfo` であり、`getColumns` は設計上 `UnsupportedOperationException` を投げる
+   （DB を持たない読み取り経路のため）。
+
+つまり **新 jar が期待する dbInfo フォールバックと、converter の DB レス設計（`StubDbInfo`）が正面から衝突している。**
+テスト側の書き方の問題ではない。
+
+**入力側で当たっているケース**: `setup_tables` の `rows: []`（データ行 0 件 → データ列 0 件）。
+`SampleConversionTest` のフィクスチャ内で該当するのは 2 ファイル —
+`SampleConversionTest/ClientActionTest/testFindNoClients.yaml` と
+`SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml`（いずれも 3 行、`rows: []`）。
+`ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml` にも `rows: []` が 2 か所あるが、
+そちらは `expected_files` 配下でありテーブル系ではないため本経路を通らない。
+
+**コーディネータの事前見立てとの差**: 「テーブルは `YamlTestCoreAdapterTest/tables.yaml` の 3 テーブルすべてが
+列を持つため (2) の新分岐に入らない」は `YamlTestCoreAdapterTest` については正しいが、
+`SampleConversionTest` のサンプル YAML が走査対象から漏れていた。**落ちた原因は事前に挙げられた (2) そのものである。**
+
+**未対応**: 修正していない。`git diff HEAD -- src/` → 0 行。対応方針（converter 側で `StubDbInfo#getColumns` を
+空配列返しにするか／`YamlFormatReader` 側で受けるか／yaml 側に差し戻すか）はユーザー判断待ち。
+
+---
 
 ### Method（実行して記録してから固定する）の適用
 

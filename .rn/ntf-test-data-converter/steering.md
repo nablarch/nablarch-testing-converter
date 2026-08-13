@@ -891,11 +891,20 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: paused
+- **Status**: not suspended
 - **Date**: 2026-08-13
 - **Last completed**: #23 辺③ 軸A・B・C・E の欠け補充（`bb58d05`）。レビューはラウンド3（`b86ee3d`）で QA・Craft とも PASS
-- **Next**: #24（辺② 軸D の YAML スカラー10ケース・軸A〜F の欠け補充）。着手可否のユーザー確認を出したところで中断した
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。428 件全 PASS・`src/main` 無変更。
+- **Next**: #24（辺② 軸D の YAML スカラー10ケース・軸A〜F の欠け補充）。**ただし下記ブロッカーの方針決定待ち**
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。`src/main` 無変更（`git diff HEAD -- src/` → 0 行）。
+  **🚫 ブロッカー（2026-08-13。`#24` 着手前の基準線再取得で判明）**: `nablarch-testing-yaml:1.0.0-SNAPSHOT` の `.m2` 差し替え（jar タイムスタンプ `8月 13 15:46`）後、
+  `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` は
+  **`Tests run: 428, Failures: 0, Errors: 1, Skipped: 0` / `BUILD FAILURE`**（旧 jar 基準の「428 件全 PASS」は失効）。
+  失敗は `SampleConversionTest#convertsClimanSampleYamlToXls` の 1 件。
+  原因は新 jar の `YamlTableDataBuilder#buildTableData` がデータ列 0 件のとき列名 null の `TableData` を作り
+  `TableData#getColumnNames()` の `dbInfo` フォールバックへ落ちること。converter の `StubDbInfo#getColumns` は
+  DB レス設計のため `UnsupportedOperationException` を投げる。実測・出典・入力ファイルは `checks/task-23.md` の
+  「yaml jar 差し替え後の基準線再取得」節。**修正していない**（対応方針はユーザー判断待ち）。
+  この分岐は `#24` の未担保要素 `E-2(0 件)`（ブロック内行数 0）そのものであり、方針が決まるまで `#24` の台帳・テストは書かない。
   **#23 の Verification は再実行していない（ユーザー承認・2026-08-13）**: `4905838` で PASS 済み（22 変異・生存ゼロ）。以降 `src/` の差分はコメント／Javadoc のみでコード行の増減 0。
   **台帳の構造見直しで消したもの**: 逆引き表 §1.2／§2.2／§3.2／§4.2、訂正履歴 §3.1-4／§3.1-5、および他ファイルの行番号・ファイル行数。逆引きの正は #27 の `coverage/axis-matrix.md`。規約は Rules（フェーズ2）に 2 項追加し、#24 の Steps に self-check を入れた。**#24 は台帳を書く前にこの規約を読むこと。**
   **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に 1 行も現れない（実体は担保済みだが表の上では穴の形）。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` の 2 クラスに分散している。
