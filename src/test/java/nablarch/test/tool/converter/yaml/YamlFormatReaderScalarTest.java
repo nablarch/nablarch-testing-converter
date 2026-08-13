@@ -1,0 +1,361 @@
+package nablarch.test.tool.converter.yaml;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertThat;
+
+import java.util.Arrays;
+
+import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.TableDataBlock;
+import nablarch.test.tool.converter.model.TestDataBlock;
+import nablarch.test.tool.converter.model.TestDataContainer;
+
+import org.junit.After;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+/**
+ * 辺②（YAML→中間モデル）の軸D — YAML スカラー 12 ケース（D2-01〜D2-12）が中間モデルへどう入るかを
+ * 固定するテスト。
+ *
+ * <p>
+ * {@code YamlFormatReaderTest} が {@code loadRawMap} を in-memory {@code Map} に差し替えて駆動するのに対し、
+ * 本クラスは {@link YamlFixture} が書き出した実 {@code .yaml} を入力にし、本番配線の
+ * {@link YamlFormatReader} を通す。すなわち「YAML テキスト → スカラー解決 → スキーマ検証」の区間を実行する。
+ * 記法そのものが対象である以上、この区間を通さなければ軸D は担保できない。
+ * </p>
+ *
+ * <p>
+ * <b>対象は「NTF が実行できるテストデータ」に限る。</b>本体スキーマ
+ * （yaml jar 内 {@code nablarch/test/ntf-testdata-yaml-schema.json}）の
+ * {@code $defs.table_data.properties.rows.items.additionalProperties.type} が値を
+ * {@code ["string","null"]} に限るため、引用符なしの {@code true} / {@code 123} / {@code 1.50} /
+ * {@code .inf} / {@code .nan} はスキーマ違反で中間モデルへ到達しない。これらは仕様外の入力であり
+ * 担保対象にしない（例外で止まるため黙って壊れることもない）。本クラスが扱うのは
+ * <b>スキーマを通るスカラー記法だけ</b>である。
+ * </p>
+ *
+ * <p>
+ * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
+ * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として
+ * 記録してあり、実装（src/main）は変更していない（{@code YML-01}）。
+ * </p>
+ *
+ * @author kiyobot
+ */
+public class YamlFormatReaderScalarTest {
+
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    /** 実 {@link YamlFormatReader} を通すため、{@link YamlLoader} の LRU キャッシュをテスト間で残さない。 */
+    @After
+    public void clearLoaderCache() {
+        YamlLoader.clearCacheForTest();
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    /**
+     * 検証対象スカラー 1 個を {@code setup_tables} の 1 行 1 カラム（{@code V}）に置いた実 {@code .yaml} を
+     * 書き出し、中間モデルへ入った値を返す。
+     *
+     * @param valueLines 検証対象スカラー。1 要素目は {@code "      - V: "} に続けて書かれ、
+     *                   2 要素目以降（ブロックスカラーの続き）は行としてそのまま連結される。
+     *                   1 要素目が空文字のときは {@code "      - V:"}（値なし）になる
+     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readValue(String... valueLines) {
+        StringBuilder yaml = new StringBuilder()
+                .append("setup_tables:\n")
+                .append("  - table: \"T\"\n")
+                .append("    rows:\n")
+                .append("      - V:")
+                .append(valueLines[0].isEmpty() ? "" : " " + valueLines[0])
+                .append('\n');
+        for (int i = 1; i < valueLines.length; i++) {
+            yaml.append(valueLines[i]).append('\n');
+        }
+        TestDataContainer container = YamlFixture.read(folder.getRoot(), yaml.toString());
+        TestDataBlock block = YamlFixture.blocks(container).get(0);
+        TableDataBlock table = (TableDataBlock) block;
+        assertThat(table.getColumnNames(), is(Arrays.asList("V")));
+        assertThat(table.getRows().size(), is(1));
+        return table.getRows().get(0).get(0);
+    }
+
+    // ------------------------------------------------------------------ D2-01・D2-02
+
+    /**
+     * Given: 引用符なしの文字列 {@code abc}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code "abc"} が入る。
+     */
+    @Test
+    public void readsUnquotedStringAsIs() {
+        assertThat(readValue("abc"), is("abc"));
+    }
+
+    /**
+     * Given: 二重引用符付きの文字列 {@code "abc"}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 引用符は残らず {@code "abc"} が入る（引用符なしと同値）。
+     */
+    @Test
+    public void readsDoubleQuotedStringWithoutQuotes() {
+        assertThat(readValue("\"abc\""), is("abc"));
+    }
+
+    /**
+     * Given: 一重引用符付きの文字列 {@code 'abc'}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 引用符は残らず {@code "abc"} が入る（二重引用符と同値）。
+     */
+    @Test
+    public void readsSingleQuotedStringWithoutQuotes() {
+        assertThat(readValue("'abc'"), is("abc"));
+    }
+
+    // ------------------------------------------------------------------ D2-03・D2-04
+
+    /**
+     * Given: 引用符付きの数値 {@code "123"}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 文字列 {@code "123"} が入る（数値へ解決されない）。
+     *
+     * <p>
+     * 引用符<b>なし</b>の {@code 123} は整数へ解決されスキーマ違反になるため対象外である
+     * （{@link YamlFormatReaderInvalidInputTest} が扱う軸F の範囲でもない ——
+     * 仕様外の入力として固定しないことが確定している）。
+     * </p>
+     */
+    @Test
+    public void readsQuotedNumberAsString() {
+        assertThat(readValue("\"123\""), is("123"));
+    }
+
+    /**
+     * Given: 引用符付きの末尾ゼロ小数 {@code "1.50"}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 末尾ゼロを保った文字列 {@code "1.50"} が入る。
+     */
+    @Test
+    public void readsQuotedTrailingZeroDecimalAsString() {
+        assertThat(readValue("\"1.50\""), is("1.50"));
+    }
+
+    // ------------------------------------------------------------------ D2-05
+
+    /**
+     * Given: 引用符付きの {@code "true"}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 文字列 {@code "true"} が入る。
+     */
+    @Test
+    public void readsQuotedTrueAsString() {
+        assertThat(readValue("\"true\""), is("true"));
+    }
+
+    /**
+     * Given: 引用符なしの {@code TRUE}（大文字）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 文字列 {@code "TRUE"} が入る。
+     *
+     * <p>
+     * 真偽値として解決されるのは小文字の {@code true} / {@code false} だけである
+     * （{@code org.snakeyaml.engine.v2.resolver.JsonScalarResolver} の {@code BOOL} が
+     * {@code ^(?:true|false)$}）。そのため {@code TRUE} は引用符なしでもスキーマを通る。
+     * </p>
+     */
+    @Test
+    public void readsUppercaseTrueAsString() {
+        assertThat(readValue("TRUE"), is("TRUE"));
+    }
+
+    /**
+     * Given: 引用符なしの {@code yes}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 文字列 {@code "yes"} が入る（YAML 1.1 の真偽値変換は行われない）。
+     */
+    @Test
+    public void readsYesAsString() {
+        assertThat(readValue("yes"), is("yes"));
+    }
+
+    // ------------------------------------------------------------------ D2-06（NULL）
+
+    /**
+     * Given: 引用符なしの {@code null}（小文字）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : Java の {@code null} が入る。
+     */
+    @Test
+    public void readsUnquotedNullAsJavaNull() {
+        assertThat(readValue("null"), is(nullValue()));
+    }
+
+    /**
+     * Given: 値を書かない行 {@code - V:}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : Java の {@code null} が入る（引用符なし {@code null} と同値）。
+     */
+    @Test
+    public void readsOmittedValueAsJavaNull() {
+        assertThat(readValue(""), is(nullValue()));
+    }
+
+    // ------------------------------------------------------------------ D2-07（NULL に見える文字列）
+
+    /**
+     * Given: 引用符付きの {@code "null"}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 文字列 {@code "null"} が入る（Java の {@code null} にはならない）。
+     */
+    @Test
+    public void readsQuotedNullAsString() {
+        assertThat(readValue("\"null\""), is("null"));
+    }
+
+    /**
+     * Given: 引用符なしの {@code ~}（YAML の標準的な null 記法）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>Java の {@code null} ではなく文字列 {@code "~"}</b> が入る。
+     *
+     * <p>
+     * 引用符なし {@code null} が Java {@code null} になるのに {@code ~} は文字列になる、という非対称は
+     * {@code coverage/issues.md} の <b>YML-01</b> に記録した（帰属は converter ではなく yaml 側）。
+     * ここでは現状の挙動として固定するにとどめる。
+     * </p>
+     */
+    @Test
+    public void readsTildeAsString() {
+        assertThat(readValue("~"), is("~"));
+    }
+
+    /**
+     * Given: 引用符なしの {@code NULL}（大文字）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>Java の {@code null} ではなく文字列 {@code "NULL"}</b> が入る。
+     */
+    @Test
+    public void readsUppercaseNullAsString() {
+        assertThat(readValue("NULL"), is("NULL"));
+    }
+
+    // ------------------------------------------------------------------ D2-08
+
+    /**
+     * Given: 引用符なしの日付風文字列 {@code 2026-08-07}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 記法どおりの文字列が入る（日付型へ解決されない）。
+     */
+    @Test
+    public void readsDateLikeStringAsIs() {
+        assertThat(readValue("2026-08-07"), is("2026-08-07"));
+    }
+
+    /**
+     * Given: 引用符なしの日時風文字列 {@code 2026-08-07T12:34:56}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 記法どおりの文字列が入る（日時型へ解決されない）。
+     */
+    @Test
+    public void readsDateTimeLikeStringAsIs() {
+        assertThat(readValue("2026-08-07T12:34:56"), is("2026-08-07T12:34:56"));
+    }
+
+    // ------------------------------------------------------------------ D2-09（複数行）
+
+    /**
+     * Given: リテラルブロックスカラー（{@code |}）で書いた 2 行。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 改行を保った 1 値になり、<b>末尾に改行が付く</b>（{@code "l1\nl2\n"}）。
+     */
+    @Test
+    public void readsLiteralBlockScalarKeepingNewlines() {
+        assertThat(readValue("|", "          l1", "          l2"), is("l1\nl2\n"));
+    }
+
+    /**
+     * Given: フォールドブロックスカラー（{@code >}）で書いた 2 行。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 行間の改行が半角空白へ畳まれ、<b>末尾に改行が付く</b>（{@code "l1 l2\n"}）。
+     */
+    @Test
+    public void readsFoldedBlockScalarFoldingNewlinesIntoSpaces() {
+        assertThat(readValue(">", "          l1", "          l2"), is("l1 l2\n"));
+    }
+
+    // ------------------------------------------------------------------ D2-10
+
+    /**
+     * Given: 引用符なしの先頭ゼロ数値 {@code 007}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 先頭ゼロを保った文字列 {@code "007"} が入る。
+     *
+     * <p>
+     * 整数へ解決されるのは {@code ^-?(0|[1-9][0-9]*)$}（{@code JsonScalarResolver} の {@code INT}）に
+     * 一致する記法だけであり、先頭ゼロを持つ {@code 007} は一致しないため文字列のままスキーマを通る。
+     * </p>
+     */
+    @Test
+    public void readsLeadingZeroNumberAsString() {
+        assertThat(readValue("007"), is("007"));
+    }
+
+    /**
+     * Given: 引用符なしの 16 進記法 {@code 0x1F}（JSON 数値記法ではない）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 記法どおりの文字列 {@code "0x1F"} が入る。
+     */
+    @Test
+    public void readsHexNotationAsString() {
+        assertThat(readValue("0x1F"), is("0x1F"));
+    }
+
+    // ------------------------------------------------------------------ D2-11
+
+    /**
+     * Given: 引用符付きの空文字 {@code ""}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 空文字が入る（値なし＝Java {@code null} とは区別される）。
+     */
+    @Test
+    public void readsEmptyStringAsIs() {
+        assertThat(readValue("\"\""), is(""));
+    }
+
+    /**
+     * Given: 引用符付きの前後空白を持つ文字列 {@code "  pad  "}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 前後空白が保たれる（トリムされない）。
+     */
+    @Test
+    public void readsSurroundingWhitespacePreserved() {
+        assertThat(readValue("\"  pad  \""), is("  pad  "));
+    }
+
+    // ------------------------------------------------------------------ D2-12
+
+    /**
+     * Given: コロンと空白を含む文字列 {@code "a: b"}（引用符が無ければマッピングと解釈される記法）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code "a: b"} が 1 つの値として入る。
+     */
+    @Test
+    public void readsColonContainingStringAsIs() {
+        assertThat(readValue("\"a: b\""), is("a: b"));
+    }
+
+    /**
+     * Given: {@code #} を含む文字列 {@code "a #b"}（引用符が無ければコメントとして落ちる記法）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code "a #b"} が 1 つの値として入る（コメントとして切り落とされない）。
+     */
+    @Test
+    public void readsHashContainingStringAsIs() {
+        assertThat(readValue("\"a #b\""), is("a #b"));
+    }
+}

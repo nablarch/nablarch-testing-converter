@@ -49,9 +49,19 @@
 >   （挙動が `getStringCellValue()` 固定である点は #18 から変わっていない）。
 > - **§3.3** — **辺③では軸B が軸A から独立していない**ことを開示した（判定 ✅ 4/4 と件数 0 は変えない）。
 >
-> **上記以外（§2・§4・§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§3.3 の更新を
+> **辺②（#24 辺② 軸D・軸F・軸A/B/C/E。2026-08-14）**
+>
+> - **§2.1-2（新設）** — #24 が追加したテストクラス（`YamlFormatReaderScalarTest` /
+>   `YamlFormatReaderInvalidInputTest` / `YamlFormatReaderRealFileTest`。いずれも実 `.yaml` を入力とする）の
+>   担保を軸要素別に記す。
+>   §2.1 は「`YamlFormatReaderTest` 20 件」を対象とした #18 時点の事実として**そのまま残す**。
+> - **§2.3** — 辺② 未担保一覧に「#24 後の状態」列を足した。
+> - **§0.5** — 軸D 辺②を 10 ケース → **12 ケース**（D2-01〜D2-12。ユーザー確定・2026-08-14）へ改めた。
+> - **§0.8-3 / §5.2** — 辺②の軸D 件数と、軸A の辺②列（実 `.yaml` 経路でも ✅ になったこと）を追記した。
+>
+> **上記以外（§4・§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
-> **§5.2 だけは §1.2-2 の #20 実績を反映した現時点ビューである。**
+> **§5.2 だけは §1.2-2 の #20 実績と §2.1-2 の #24 実績を反映した現時点ビューである。**
 >
 > **§0（前提の実測）は原則として #18 時点のスナップショットである。** その後の変化は
 > 各項の中に日付つきで追記してある（§0.8-4 の `getCellType()` 件数など）。
@@ -238,8 +248,21 @@ RoundTripTest.java             30 @Test
   （ユーザー確定・2026-08-13）。**タグは振り直さないため番号に欠番が出る。**
   D1-17 だけは表示形式 `@` ＝ 文字列書式で但し書きを満たしながらセル種別が数値であり、
   前提の内側で値が変わる唯一のケースのため残す。
-- **辺② YAML スカラー 10 ケース**: D2-01 引用符なし文字列／D2-02 引用符あり／D2-03 数値／D2-04 末尾ゼロ小数／
-  D2-05 `true`・`TRUE`・`yes`／D2-06 `null`・`~`・値なし／D2-07 `"null"`／D2-08 日付風／D2-09 複数行 `|`・`>`／D2-10 先頭ゼロ
+- **辺② YAML スカラー 12 ケース（2026-08-14・ユーザー確定。#18 時点の 10 ケース定義から改めた）**:
+  D2-01 引用符なし文字列（`abc`）／D2-02 引用符あり（`"abc"`・`'abc'`）／D2-03 引用符付き数値（`"123"`）／
+  D2-04 引用符付き末尾ゼロ小数（`"1.50"`）／D2-05 真偽値に見える文字列（`"true"`・`TRUE`・`yes`）／
+  D2-06 NULL（`null`・値なし）／D2-07 NULL に見える文字列（`"null"`・`~`・`NULL`）／
+  D2-08 日付・日時風文字列／D2-09 複数行（`|`・`>`）／D2-10 先頭ゼロ・非 JSON 数値記法（`007`・`0x1F`）／
+  D2-11 空文字・前後空白（`""`・`"  pad  "`）／D2-12 特殊文字を含む文字列（`"a: b"`・`"a #b"`）
+
+  **#18 時点の定義との差**: D2-06 が `null`・`~`・値なし を 1 ケースにまとめていたのに対し、
+  実測では `~` だけが文字列になる（`coverage/issues.md` **YML-01**）ため D2-06（NULL になるもの）と
+  D2-07（文字列になるもの）へ分けた。あわせて D2-11・D2-12 を足して 12 ケースになった。
+
+  対象は **NTF が実行できるテストデータ**に限る。YAML 側の条件は本体スキーマ
+  （yaml jar 内 `nablarch/test/ntf-testdata-yaml-schema.json`）であり、値の型を `["string","null"]` に
+  限るため、引用符なしの `true` / `123` / `1.50` / `.inf` / `.nan` は担保対象でも記録対象でもない
+  （`coverage/issues.md`「対象としない入力（辺②）」。ユーザー確定・2026-08-14）。
 - **辺③ セル型 8 ケース（`getCellType()` をアサート）**: D3-01 `"100"`／D3-02 `"=1+1"`／D3-03 `"007"`／
   D3-04 `null`／D3-05 `""`／D3-06 改行含む文字列／D3-07 32767 文字超／D3-08 制御文字含む
 - **辺④ YAML 表現 9 ケース**: D4-01 `"100"`／D4-02 `"true"`／D4-03 `"null"`／D4-04 `null`／D4-05 `""`／
@@ -283,7 +306,9 @@ RoundTripTest.java             30 @Test
    事実: `YamlFormatReaderTest#reader` は `YamlTestCoreAdapter#loadRawMap` を in-memory
    `LinkedHashMap` に差し替える。YAML パーサ（SnakeYAML Engine）は通らない。一方、辺④の往復テスト 6 件
    （`roundTrip_*`）は `writer.write(...)` で実 YAML ファイルを書き `new YamlFormatReader()` で読み戻す。
-   判断: **軸D 辺②（10 ケース）は 20 件からは全て未担保**とし、往復 6 件が通す分は 🔺 で計上する。
+   判断: **軸D 辺②（#18 時点の定義で 10 ケース）は 20 件からは全て未担保**とし、往復 6 件が通す分は 🔺 で計上する。
+   **#24 で解消した（2026-08-14 追記）**: 実 `.yaml` を入力とする 3 クラスを追加し、
+   現在の定義（12 ケース。§0.5）をすべて担保した（§2.1-2）。
 4. **`getCellType()` をアサートしているテストは #18 時点では src/test 全体でゼロだった。**
    事実（#18 時点）: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
    `cell` ／ `line` は `getStringCellValue()` のみを使う。
@@ -733,27 +758,143 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | 19 | `read_containerCountMismatch_failsFast` | A-06 | B-3 | — | — | — | ✅ 器↔原文の件数不整合 → `IllegalStateException` |
 | 20 | `read_fragmentRecordMismatch_failsFast` | A-06 | B-3 | — | — | — | ✅ 器の断片構造↔原文レコード不整合 → `IllegalStateException` |
 
+<a id="s2-1-2"></a>
+
+### 2.1-2 #24 が追加したテストクラスの担保（2026-08-14 追記）
+
+**本節は #24 で新設した。** §2.1 は「`YamlFormatReaderTest` 20 件」を対象とした #18 時点の事実であり
+書き換えていない。ここには #24 が追加した**実 `.yaml` を入力とするテストクラス**の担保だけを記す。
+
+| テストクラス | 件数 | 導出コマンド | 入力 |
+|---|---|---|---|
+| `YamlFormatReaderScalarTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
+| `YamlFormatReaderInvalidInputTest` | 8 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（意図的にスキーマ違反・不正 YAML にした入力） |
+| `YamlFormatReaderRealFileTest` | 11 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
+
+3 クラスとも `new YamlFormatReader().read(...)` を本番配線で呼ぶ。`YamlFormatReaderTest` 20 件が
+`loadRawMap` を in-memory `Map` へ差し替えて**スカラー解決もスキーマ検証も通らない**のに対し、
+本 3 クラスはその区間を実行する（§0.8-3）。
+
+**軸D（`YamlFormatReaderScalarTest`。§0.5 の 12 ケース）**
+
+| 要素 | 担保テストメソッド | 観測した値 |
+|---|---|---|
+| D2-01 引用符なし文字列 | `readsUnquotedStringAsIs` | `abc` → `"abc"` |
+| D2-02 引用符あり | `readsDoubleQuotedStringWithoutQuotes` ／ `readsSingleQuotedStringWithoutQuotes` | `"abc"` / `'abc'` → `"abc"`（引用の別は残らない） |
+| D2-03 引用符付き数値 | `readsQuotedNumberAsString` | `"123"` → `"123"` |
+| D2-04 引用符付き末尾ゼロ小数 | `readsQuotedTrailingZeroDecimalAsString` | `"1.50"` → `"1.50"` |
+| D2-05 真偽値に見える文字列 | `readsQuotedTrueAsString` ／ `readsUppercaseTrueAsString` ／ `readsYesAsString` | `"true"` / `TRUE` / `yes` → いずれも記法どおりの文字列 |
+| D2-06 NULL | `readsUnquotedNullAsJavaNull` ／ `readsOmittedValueAsJavaNull` | `null`（引用符なし）・値なし（`- V:`）→ **Java `null`** |
+| D2-07 NULL に見える文字列 | `readsQuotedNullAsString` ／ `readsTildeAsString` ／ `readsUppercaseNullAsString` | `"null"` / `~` / `NULL` → **いずれも文字列**（`issues.md` **YML-01**） |
+| D2-08 日付・日時風文字列 | `readsDateLikeStringAsIs` ／ `readsDateTimeLikeStringAsIs` | `2026-08-07` / `2026-08-07T12:34:56` → 記法どおりの文字列 |
+| D2-09 複数行 | `readsLiteralBlockScalarKeepingNewlines` ／ `readsFoldedBlockScalarFoldingNewlinesIntoSpaces` | `\|` → `"l1\nl2\n"`、`>` → `"l1 l2\n"`（いずれも末尾に改行が付く） |
+| D2-10 先頭ゼロ・非 JSON 数値記法 | `readsLeadingZeroNumberAsString` ／ `readsHexNotationAsString` | `007` / `0x1F` → 記法どおりの文字列 |
+| D2-11 空文字・前後空白 | `readsEmptyStringAsIs` ／ `readsSurroundingWhitespacePreserved` | `""` → `""`、`"  pad  "` → 前後空白を保つ |
+| D2-12 特殊文字を含む文字列 | `readsColonContainingStringAsIs` ／ `readsHashContainingStringAsIs` | `"a: b"` / `"a #b"` → 1 値として入る |
+
+12 ケースすべてを ✅ とする。#18 が 🔺 としていた D2-02／D2-03／D2-06／D2-07（往復テスト経由。§0.8-8）は
+本クラスの直接テストで ✅ になった。**D2-06 と D2-07 の分かれ方（`null`・値なし だけが Java `null` になり、
+`~`・`NULL`・`"null"` は文字列になる）が本タスクで固定した中心の事実である。**
+
+**軸F（`YamlFormatReaderInvalidInputTest`。§0.7 の 5 ケース）**
+
+| 要素 | 判定 | 担保テストメソッド | 観測した挙動 |
+|---|---|---|---|
+| F2-01 スキーマ違反 | ✅ | `failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum` ／ `failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern` | `YamlSchemaValidationException`。違反のキーワード（`enum` / `pattern`）と位置をアサートする。**入力に仕様外の引用符なしスカラー記法は使っていない**（`issues.md`「対象としない入力（辺②）」） |
+| F2-02 YAML として不正 | ✅ | `failsWithParseErrorWhenYamlIsMalformed` | `IllegalStateException`（メッセージは `Failed to parse YAML file: <path>` で始まる）。原因例外は `YamlEngineException`。パースで止まるためスキーマ検証には到達しない |
+| F2-03 未知のキー | ✅ | `failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown` | `YamlSchemaValidationException`（`additionalProperties` 違反）。**in-memory 経路（`YamlFormatReaderTest#read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys`）が固定している「未知キーは無視」とは結果が異なる**。スキーマのルートが `additionalProperties: false` であるため、実ファイルでは読み込みごと失敗する |
+| F2-04 必須構造の欠落 | ✅ | `failsWithSchemaValidationExceptionWhenRequiredRowsIsMissing` ／ `failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` | `YamlSchemaValidationException`（`required` / `minItems`）。後ろ 2 件は軸C の **C-17／C-20 が到達不能である根拠**でもある |
+| F2-05 空ファイル | ✅ | `readsEmptyFileAsContainerWithoutBlocks` | 例外にならず、リソース名のコンテナ 1 件・セクション 1 件・ブロック 0 件になる |
+
+**軸A（`YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml`）** — 1 ファイルに 11 セクションキー・
+13 エントリを書き、`DEFAULT` を除く 13 種すべてが記述順に生成されることを `getDataType()` の並びでアサートする。
+#18 時点で既に ✅ だった（in-memory 経路）が、**実 `.yaml` 経路でも ✅ になった**。
+A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
+
+**軸B（`#readsFourBlockImplementationsFromOneRealYaml`）** — `TableDataBlock` / `ListMapBlock` /
+`FileDataBlock` / `MessageDataBlock` の 4 種を 1 ファイルから生成し、実装クラスと識別子
+（`T` / `lm` / `f.dat` / `RM01`）を突き合わせる。#18 時点で既に ✅ だったものを実 `.yaml` 経路でも通した。
+
+**軸C（#18 時点から状態が変わったものだけ）**
+
+| 要素 | #18 の判定 | #24 後 | 担保テストメソッド（`YamlFormatReaderRealFileTest#`）／根拠 |
+|---|---|---|---|
+| C-08 `columnNames` 空 | ❌ | ✅ | `readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `readsEmptyColumnNamesAndRowsFromListMapWithoutRows`（`rows: []` で到達） |
+| C-09 `rows` 空 | ❌ | ✅ | 同上（C-08 と同じ入力） |
+| C-12 `FileDataBlock.records` 空 | ❌ | ✅ | `readsEmptyRecordsFromFixedFileWithoutRecords`（`records: []`。スキーマ `file_data` は `minItems: 0`） |
+| C-18 `RecordLayout.rows` 空 | ❌ | ✅ | `readsEmptyRowsFromRecordLayoutWithoutRows` |
+| C-13 `MessageDataBlock.directives` 値あり | ❌ | ✅ | `readsMessageDirectivesFromRealYaml` |
+| C-11 `FileDataBlock.directives` 空 | ❌ | **到達不能** | `issues.md` **XLS-07** と同じ器。根拠テスト `readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` |
+| C-13 `MessageDataBlock.directives` 空 | ❌ | **到達不能** | 同上。根拠テスト `readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage` |
+| C-17 `RecordLayout.fields` 空 | ❌ | **到達不能** | スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` |
+| C-20 `FieldDef.type` 省略 | ❌ | **到達不能** | スキーマ `$defs.field_def.required` が `type` を必須とする。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` |
+
+**軸E（#24。0 件・複数件を実 `.yaml` 経路で担保した）**
+
+| 要素 | 0 件 | 1 件 | 複数件 | 担保テストメソッド（`YamlFormatReaderRealFileTest#`） |
+|---|---|---|---|---|
+| E-1 セクション内ブロック数 | ✅ | ✅ | ✅ | 0: `namesContainerAndSectionByResourceNameWithoutBlocks`／1: `readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか（ヘルパ `onlyBlock` が `blocks.size()==1` をアサート）／複数: `readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml`（3 件）・`readsAllThirteenDataTypesFromRealYaml`（13 件） |
+| E-2 ブロック内行数 | ✅（**#24**） | ✅ | ✅ | 0: `readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `readsEmptyColumnNamesAndRowsFromListMapWithoutRows`／1: `readsFourBlockImplementationsFromOneRealYaml`／複数: `readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml`（2 行） |
+| E-3 ファイル内レコードレイアウト数 | ✅ | ✅ | ✅ | 0: `readsEmptyRecordsFromFixedFileWithoutRecords`／1: `readsEmptyRowsFromRecordLayoutWithoutRows`／複数: `readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml`（断片 2 件） |
+| E-4 コンテナ内セクション数 | n/a | ✅ | ❌（**到達不能**） | 1: `namesContainerAndSectionByResourceNameWithoutBlocks`。複数は `YamlFormatReader#read` が `Collections.singletonList(section)` を返すため構造上到達不能（§0.8-6） |
+
+**開示（テストを足していない担保の穴）**
+
+- **`YamlFormatReader#normalizeRecordType` の `"default"`（小文字）分岐が未到達である。**
+  JaCoCo 実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` →
+  `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）で
+  `YamlFormatReader` は**行 201/201（100%）・分岐 107/108（99.07%）**であり、唯一の未到達分岐が
+  `if ("Default".equals(recordType) || "default".equals(recordType))` の後段である
+  （`"Default"` 側は `YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull` が通す）。
+  軸A〜F のどの要素にも属さないため #24 ではテストを足していない。**#26（カバレッジ計測と未到達分岐の列挙）で扱うこと。**
+- **軸C の C-15（`MessageDataBlock.records` 空）は実 `.yaml` 経路では到達不能である。**
+  スキーマ `$defs.message_data.properties.records.minItems` ＝ 1 のため。#18 が ✅ としているのは
+  in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）であり、
+  **実ファイル経路での担保は無い**（`issues.md`「到達不能と判定した軸要素（#24）」）。
+
 <a id="s2-3"></a>
 
-### 2.3 辺② 未担保一覧（#24 が埋める対象）
+### 2.3 辺② 未担保一覧（#24 が埋めた対象）
 
 計上単位と「状態」の 3 分類は §1.3 の規則に従う。
 
-| 軸 | 未担保要素 | 状態 | 件数 |
-|---|---|---|---|
-| A | （要追加はなし） | — | 0 |
-| A | A-01 `DEFAULT` — `YamlFormatReader` の分岐に `DEFAULT` を返す経路がない（§0.8-7） | 到達不能 | 1 |
-| B | （なし） | — | 0 |
-| C | C-08 columnNames 空／C-09 rows 空／C-11 FileDataBlock.directives 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives（値あり・空の双方が欠）**／C-17 fields 空／C-18 RecordLayout.rows 空／C-20 FieldDef.type 省略 | 要追加 | 8 |
-| C | C-02 sections 空 — `YamlFormatReader#read` が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 1 |
-| D | D2-01〜D2-10 全 10 ケース（うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 あり。§0.8-8 と上の「軸D」節を参照し重複を避けること） | 要追加 | 10 |
-| E | E-2(0 件) | 要追加 | 1 |
-| E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落（🔺 のみ）／F2-05 空ファイル（🔺 のみ） | 要追加 | 4 |
-| **合計** | | **要追加 23 ／ 到達不能 3 ／ 対象外 0** | **26（うち到達不能 3）** |
+**本表は #24 の実測結果に合わせて「#24 後の状態」列を足した（2026-08-14）。** #18 時点は
+「要追加 23 ／ 到達不能 3」であった。軸D の定義が 10 ケース → **12 ケース**へ改まった（§0.5）ため
+総計は 26 → **28**、#18 基準の要追加は 23 → **25** になる。#18 時点の分類は「#18 の状態」列に残した。
 
-**特に大きな空欄**: 軸D 10 ケース全滅（実 YAML テキストを一度も通らないため）と、
-`MessageDataBlock.directives`（C-13）が値あり・空の両方とも 0 件。
+| 軸 | 未担保要素 | #18 の状態 | #24 後の状態 | 件数 |
+|---|---|---|---|---|
+| A | （要追加はなし） | — | — | 0 |
+| A | A-01 `DEFAULT` — `YamlFormatReader` の分岐に `DEFAULT` を返す経路がない（§0.8-7） | 到達不能 | 到達不能（変更なし） | 1 |
+| B | （なし） | — | — | 0 |
+| C | C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／C-18 RecordLayout.rows 空／C-13 MessageDataBlock.directives（値あり） | 要追加 | **担保済み（#24）** — 順に `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows`（C-08／C-09。LIST_MAP 経路は `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows`）／`#readsEmptyRecordsFromFixedFileWithoutRecords`（C-12）／`#readsEmptyRowsFromRecordLayoutWithoutRows`（C-18）／`#readsMessageDirectivesFromRealYaml`（C-13） | 5 |
+| C | C-11 FileDataBlock.directives 空 | 要追加 | **到達不能** — 本体 `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` **XLS-07**）。根拠は `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` がテストで示す | 1 |
+| C | C-17 fields 空／C-20 FieldDef.type 省略 | 要追加 | **到達不能** — スキーマが `fields` に `minItems: 1` を、`field_def` に `type` 必須を課す。根拠は `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty`／`#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` がテストで示す | 2 |
+| C | C-02 sections 空 — `YamlFormatReader#read` が `Collections.singletonList(section)` を返すため sections は常に 1 件（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
+| D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 23 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **23**）。要素別の担保テストメソッドは §2.1-2 の軸D 表 | 12 |
+| E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
+| E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落（🔺 のみ）／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — `YamlFormatReaderInvalidInputTest` 8 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **8**。内訳: 本 4 ケースが 6 件、C-17／C-20 到達不能の根拠が 2 件）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
+
+**C-13 の数え方**: C-13 は「値あり」を #24 で担保し、「空」は到達不能である（§2.1-2 の軸C 表）。
+計上単位は「軸要素 1 件を 1 件」（§1.3）であるため、**C-13 は担保済み側で 1 件だけ数え**、
+到達不能側には計上しない。
+
+**合計の検算**（表の「件数」列を上から順に足す）:
+
+- 担保済み: C 5 ＋ D 12 ＋ E-2(0) 1 ＋ F 4 ＝ **22**
+- 到達不能: A-01 1 ＋ C-11 1 ＋ C-17/C-20 2 ＋ C-02 1 ＋ E-4(複数) 1 ＝ **6**
+- 要追加: **0**
+- 総計: 22 ＋ 6 ＝ **28**（B は 0 件）
+
+**#18 時点の「特に大きな空欄」**（軸D 全滅 ——当時の定義では 10 ケース、現在の定義では 12 ケース—— と、
+`MessageDataBlock.directives` が値あり・空の両方とも 0 件）は #24 で解消した。
+**辺②の「要追加」は 0 件**である。残る到達不能 6 件のうち 3 件（C-11／C-17／C-20）は根拠テストを持ち、
+3 件（A-01／C-02／E-4(複数)）は `YamlFormatReader#read` と `addBlocksForSection` の構造そのものが根拠である。
+
+**ただし「未担保 0 件」は本書の計上単位（§1.3 冒頭）での話である。** §2.1-2 末尾の「開示」2 点
+（`normalizeRecordType` の `"default"` 分岐が未到達／C-15 は実ファイル経路では到達不能）は空欄として残る。
 
 ---
 
@@ -1331,7 +1472,13 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 [§3.1-3](#s3-1-3-sendsync)、影響範囲は §3.3）。
 本節は #18 時点のスナップショットとして数字を保存する節であるため**表そのものは書き換えない**。
 比較に使うときはこの補正を当てること。
-辺②・辺④は #24／#25 が未着手のため #18 時点のまま。
+辺②は #24 が軸C 5 件・軸D 12 件・軸E 1 件・軸F 4 件を埋めたため最新は
+**要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0**（§2.3）であり、
+下の表の辺②列（要追加 23 ／ 到達不能 3）は #18 時点の値である。
+**下の 2 表の辺②の軸D も #18 時点の定義（10 ケース）による。** 軸D 辺② は 2026-08-14 のユーザー確定で
+**12 ケース**になった（§0.5）。補正を当てると辺② 軸D は「10」ではなく **12**、
+辺②の合計は「26」ではなく **28**、状態別の辺②「要追加 23」は **25** が正しい。
+辺④は #25 が未着手のため #18 時点のまま。
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
@@ -1368,7 +1515,10 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 （A-01／A-07／A-09）を埋めたため辺③列を更新した**（2026-08-13。担保テストメソッドは §3.1-3）。
 **さらに #23 のレビューで A-12／A-13／A-14 の辺③が 🔺 だったことが判明し、テスト 3 件を追加して ✅ にした**
 （変異による実測は [§3.1-3](#s3-1-3-sendsync)）。
-辺②・辺④は #24／#25 が未着手のため #18 時点から変わっていない。
+**辺②列は #24 で判定そのものは変わっていない（13/14 のまま）が、担保の経路が変わった。**
+#18 時点は in-memory 経路（`YamlFormatReaderTest`）だけだったのに対し、#24 で
+`YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` が実 `.yaml` 経路でも
+13 種すべてを通した（§2.1-2）。辺④は #25 が未着手のため #18 時点から変わっていない。
 
 | DataType | 辺① | 辺② | 辺③ | 辺④ |
 |---|---|---|---|---|
@@ -1426,6 +1576,10 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
    本棚卸しでは辺② A-01 `DEFAULT` を到達不能と判定した（§0.8-7。辺①については steering #20 が既に到達不能と明記済み）。
    #24 の完了条件を「13 種＋ `DEFAULT` は到達不能として理由付きで空欄」に読み替えてよいか。
    同じく steering #21 は辺① E-4 のみを到達不能としているが、本棚卸しでは C-02「sections 空」も同じ根拠で到達不能と判定した。
+   **#24 の分は解決済み（2026-08-14）**: steering #24 の Completion criteria が
+   「軸A の 13 種（`DEFAULT` を除く。… `DEFAULT` を生成しないため到達不能。根拠付きで空欄に残す）」と
+   明記され、`sections` 空・E-4(複数) も「到達不能として根拠付きで空欄」と明記された。
+   本書 §2.1-2 / §2.3 はこの読み替えどおりに記している。辺①（steering #21）側は未解決のまま。
 3. **辺③ A-01 `DEFAULT` の扱い**: ~~writer 側は `XlsFormatWriter#marker` がマーカー文字列を
    `getDataType().getName()` から組み立てるだけなので `DEFAULT` ブロックも書けてしまう（＝到達可能）。
    辺④の `serialize_unsupportedDataType_throws` は `IllegalArgumentException` を投げる挙動を固定しているが、

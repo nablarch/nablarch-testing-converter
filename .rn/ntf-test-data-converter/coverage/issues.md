@@ -914,3 +914,158 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   「送信系の版面」を確かめたい読み手は 2 クラスを開くことになる。
 - 申し送り: 将来 4 種を 1 か所へ揃えることを **#27 以降の候補**とする。#23 で動かさないのは、
   レビュー対応でアサート内容を変えない方針を採っているためである。
+
+---
+
+## #24 辺② 軸D（YAML スカラー 12 ケース）・軸F（異常系 5 ケース）で記録した課題
+
+**課題 ID は `YML-nn`（Excel 側の `XLS-nn` とは別系列）を用いる。** 既存 24 件はすべて Excel 経路の課題であり、
+YAML 経路の課題を同じ系列に続けると読み手が Excel 側の課題と取り違えるためである。
+ID は発見順に振り、振り直さない。
+
+以下はすべて `YamlFixture` が書き出した実 `.yaml` を `new YamlFormatReader().read(...)` に渡して
+実測した結果である（`loadRawMap` を差し替える in-memory 経路ではスカラー解決もスキーマ検証も通らない）。
+
+### YML-01 `~` ／ `NULL` は NULL にならず文字列になる（**変換時には検出できない**／帰属は yaml 側）
+
+| 入力（`rows` の値） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderScalarTest#`） |
+|---|---|---|
+| `null`（引用符なし・小文字） | **Java `null`** | `readsUnquotedNullAsJavaNull` |
+| 値なし（`- V:`） | **Java `null`** | `readsOmittedValueAsJavaNull` |
+| `~` | **文字列 `"~"`** | `readsTildeAsString` |
+| `NULL`（大文字） | **文字列 `"NULL"`** | `readsUppercaseNullAsString` |
+| `"null"`（引用符あり） | 文字列 `"null"` | `readsQuotedNullAsString` |
+
+- **5 者はいずれもスキーマを通る仕様内の入力である。** 値に課される型は
+  `$defs.table_data.properties.rows.items.additionalProperties.type` ＝ `["string","null"]`
+  （`list_map_data` も同じパス。`record_fragment` は `$defs.record_fragment.properties.rows.items.items.type`）で、
+  文字列も `null` も許される。にもかかわらず Java `null` になるのは前 2 者だけで、
+  **`~` / `NULL` / `Null` は文字列としてテストデータへ入る**。作成者が NULL のつもりで書いた値が黙って文字列になる。
+- **`~` が NULL にならないのは YAML の標準的な null タグ解決と異なる。** どのコードがそうしているかは次のとおり
+  （4 段すべてを一次情報で確認した）。
+
+  | # | 位置 | 事実 |
+  |---|---|---|
+  | 1 | `nablarch/test/core/reader/yaml/YamlLoader.java#load`（yaml の sources jar 内） | `LoadSettings.builder().setAllowDuplicateKeys(false).build()` を使い、**`setSchema` を呼んでいない**（＝ SnakeYAML Engine の既定スキーマがそのまま効く） |
+  | 2 | `org.snakeyaml.engine.v2.api.LoadSettingsBuilder` の引数なしコンストラクタ | フィールド `schema` に `new JsonSchema()` を代入する（既定値） |
+  | 3 | `org.snakeyaml.engine.v2.schema.JsonSchema` のコンストラクタ | フィールド `scalarResolver` に `new JsonScalarResolver()` を代入する |
+  | 4 | `org.snakeyaml.engine.v2.resolver.JsonScalarResolver` の静的初期化子 | `NULL` ＝ `^(?:null)$`（対して同パッケージの `CoreScalarResolver` は `^(?:~\|null\|Null\|NULL\| )$`）。`BOOL` ＝ `^(?:true\|false)$`、`INT` ＝ `^-?(0\|[1-9][0-9]*)$` |
+
+  再現コマンド（2〜4）:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/org/snakeyaml/snakeyaml-engine/3.0.1/snakeyaml-engine-3.0.1.jar \
+    && /usr/lib/jvm/temurin-17-jdk-amd64/bin/javap -p -c \
+         org/snakeyaml/engine/v2/api/LoadSettingsBuilder.class \
+         org/snakeyaml/engine/v2/schema/JsonSchema.class \
+         org/snakeyaml/engine/v2/resolver/JsonScalarResolver.class \
+         org/snakeyaml/engine/v2/resolver/CoreScalarResolver.class \
+       | grep -E 'JsonSchema|JsonScalarResolver|String \^'
+  ```
+
+  再現コマンド（1）。**`setSchema` が 1 行もヒットしないこと**が事実そのものである
+  （ヒットするのは `LoadSettings` の import と `LoadSettings.builder()` の 2 行、および下の Javadoc 1 行）:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT-sources.jar \
+    && grep -n 'LoadSettings\|setSchema\|Core Schema' nablarch/test/core/reader/yaml/YamlLoader.java
+  ```
+
+- **`YamlLoader` のクラス Javadoc は実挙動と食い違っている。** 同 Javadoc は
+  「デフォルトの Core Schema（YAML 1.2）が適用されるため、`no`/`yes`/`on`/`off` は文字列として扱われる」と
+  書いているが、上の 2〜3 のとおり実際に適用されるのは **`JsonSchema`（＝ `JsonScalarResolver`）**である。
+  `yes` などが文字列になる結論は両スキーマで同じだが、**`~` / `Null` / `NULL` の扱いは両者で異なる**
+  （Core なら NULL、Json なら文字列）。Javadoc の記述どおりであればこの課題は起きない。
+- **帰属は converter ではなく yaml 側である。** converter（`YamlFormatReader`）は
+  `YamlTestCoreAdapter#loadRawMap` → `YamlLoader#load` が解決した値を受け取るだけで、
+  スカラー解決には関与しない。したがって修正するとすれば yaml 側（`YamlLoader` の
+  `LoadSettings` 構成、またはスキーマ／Javadoc）である。
+- **影響度の欄を置いていない理由**: 本書の凡例（高／中／低）は「変換結果が入力と一致するか」で定義されているが、
+  本課題では**変換結果は入力と一致する**（文字列 `"~"` が入り文字列 `"~"` が出る）。食い違うのは
+  作成者の意図と NTF 実行時の解釈の側であり、既存の 3 段階では捉えられない。凡例を拡張するかは
+  コーディネータの判断に委ね、ここでは「**変換時には検出できない**」とだけ書く。
+- 判断: **仕様として不適切**（NULL のつもりの記述が黙って文字列になる）。ただし帰属は yaml 側であり、
+  本作業では修正しない（`src/main` 無変更）。
+
+### 対象としない入力（辺②）
+
+converter の入出力は **NTF が実行できるテストデータ**に限る。#19 の「対象としない入力」が Excel 側の
+但し書き（`PoiXlsReader` の「全セルが文字列書式」）で線を引いたのに対し、YAML 側で線を引くのは
+**本体スキーマ**（yaml jar 内 `nablarch/test/ntf-testdata-yaml-schema.json`）である。
+`YamlLoader#load` はパース直後に `JSON_SCHEMA.validate(...)` を実行し、違反があれば
+`YamlSchemaValidationException` を投げるため、**スキーマ違反の YAML は中間モデルへ到達しない**。
+
+値に課される型は次のパスで `["string","null"]` に限られる。
+
+| 定義 | 型を課すパス |
+|---|---|
+| `table_data` ／ `list_map_data` | `$defs.<定義>.properties.rows.items.additionalProperties.type` |
+| `record_fragment` | `$defs.record_fragment.properties.rows.items.items.type` |
+
+再現コマンド:
+
+```sh
+python3 -c "
+import json,zipfile,os
+z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
+for k in ['table_data','list_map_data','record_fragment']:
+    print(k, json.dumps(d['\$defs'][k]['properties']['rows']['items'], ensure_ascii=False))
+"
+```
+
+したがって次の**引用符なし**スカラー記法は本書の対象外とする — `true` / `false`（真偽値へ解決）、
+`123`（整数へ解決）、`1.50` / `.inf` / `.nan`（浮動小数へ解決）。
+いずれも読み込みが例外で止まるため、黙って壊れることはない。**これらの例外の形はテストで固定しない**
+（不正な入力にどこまで対応するかに線は引けないため。ユーザー確定・2026-08-14）。
+
+**引用符を付ければ同じ見た目の値はすべて仕様内である**（`"true"` / `"123"` / `"1.50"`）。
+これらは `YamlFormatReaderScalarTest` が D2-03（`readsQuotedNumberAsString`）／
+D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAsString`）として担保している。
+スキーマ違反が例外になること自体は軸F の F2-01 で担保するが、**その入力には上記の記法を使わず**、
+`type` の列挙違反（`YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum`）と
+`length` のパターン違反（`#failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern`）を用いている。
+
+### 課題としないと判断した観測結果（#24）
+
+| 観測 | 判断 |
+|---|---|
+| 引用符なしの `TRUE` / `True` / `yes` / `on` が文字列になる | 妥当。スキーマが値を `["string","null"]` に限る以上そのとおりの挙動であり、**真偽値を表現する手段自体が無い**。作成者が真偽値のつもりで書く余地が無いため YML-01 とは性質が違う（担保: `readsUppercaseTrueAsString` ／ `readsYesAsString`） |
+| 引用符なしの `true` がスキーマ違反で例外になる | 仕様外の入力（上記「対象としない入力」）。例外で止まるので黙って壊れない |
+| 引用の別（`abc` ／ `"abc"` ／ `'abc'`）が中間モデルに残らない | 妥当（3 記法とも `"abc"`。YAML の記法差であって値の差ではない） |
+| `\|`（リテラル）が `"l1\nl2\n"`、`>`（フォールド）が `"l1 l2\n"` になる（末尾に改行が付く） | 妥当（YAML のブロックスカラー仕様どおり。担保: `readsLiteralBlockScalarKeepingNewlines` ／ `readsFoldedBlockScalarFoldingNewlinesIntoSpaces`） |
+| `007` / `0x1F` / 日付風 `2026-08-07` が記法どおりの文字列になる | 妥当（`JsonScalarResolver` の `INT` / `FLOAT` に一致せず、日付タグの解決も持たないため） |
+| 空文字 `""` と値なし（Java `null`）が区別される | 妥当（Excel 経路が両者を区別できない XLS-04 とは対照的だが、YAML では区別できる） |
+| 未知のトップレベルキーが**実ファイル経路では例外**になる（in-memory 経路では無視される） | 妥当。スキーマのルートが `additionalProperties: false` であるため。`YamlFormatReader#addBlocksForSection` の「未知キーは無視」は**スキーマが許す範囲にしか効かない**。loud に失敗するので黙って壊れない（担保: `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown`） |
+| 空ファイルが例外にならず、ブロック 0 件のコンテナになる | 妥当（`YamlLoader#load` が `loaded == null` のとき空 Map を返す。トップレベルに必須キーは無いためスキーマ上も適合する。担保: `#readsEmptyFileAsContainerWithoutBlocks`） |
+| `directives` を書かなくても中間モデルに `file-type` が現れる | 既知（**XLS-07**）。同じ本体器（`DataFile`）を使うため辺①と同じ挙動になる（担保: `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage`） |
+| `record_type` を書かないと `RecordLayout.recordType` が `null` になる | 妥当（`RecordLayout` の Javadoc「省略時は null」どおり。辺①の実 `.xlsx` 経路が `""` になる **XLS-06** とは非対称だが、YAML 側は仕様どおりである。担保: `#readsEmptyRowsFromRecordLayoutWithoutRows`） |
+
+### 到達不能と判定した軸要素（#24）
+
+`inventory.md` §2.3 では「要追加」に分類されていたが、実 `.yaml` 経路では生成できないことが判明したもの。
+
+| 軸要素 | 根拠 | 根拠テスト |
+|---|---|---|
+| C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | **XLS-07** と同じ（本体 `DataFile` のコンストラクタが `file-type` を必ず注入する）。YAML で `directives` を 1 つも書かなくても空 Map にならない | `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage` |
+| C-17 `RecordLayout.fields` 空 | スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1。`fields: []` はスキーマ違反となり中間モデルへ到達しない | `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` |
+| C-20 `FieldDef.type` 省略（`null`） | スキーマ `$defs.field_def.required` が `type` を必須とする。型を書かないフィールド定義は中間モデルへ到達しない | `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` |
+| C-15 `MessageDataBlock.records` 空 | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | —（スキーマの記述が根拠。テストは足していない） |
+
+**#23 の「未確認」への回答**: `issues.md` の「未確認（#23）」に
+「**XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認**」と残していた。
+**書けない**（上表 C-17）。したがって XLS-22（フィールド 0 件のレコードレイアウトは書けるが読み戻せない）の
+入力を辺②が作ることはない。辺③が書き出した `.xlsx` を辺①で読み戻す経路でのみ現れる。
+
+### 未確認（#24）
+
+- **`YamlLoader` の LRU キャッシュ（`YAML_CACHE`、最大 8 エントリ）が converter の実運用で
+  どう効くかは未確認である。** テストでは `YamlLoader.clearCacheForTest()` をテストごとに呼んで
+  影響を排除しており、同一パスのファイルを書き換えて 2 回読む経路は確かめていない。
+- **NTF 実行時の `NullInterpreter` による解釈は未確認である。** スキーマの `table_data.rows` の
+  description は「`null`（クォートなし）および `"null"`（クォートあり）はともに NullInterpreter により
+  Java null に変換される」と書いているが、converter は `InterpreterResolver.raw()` で配線しているため
+  中間モデルには `"null"` が文字列のまま入る（実測済み）。**NTF 本体の実行時に本当に両者が同じ扱いになるかは
+  確かめていない**（確かめるには NTF の実行が要る）。
