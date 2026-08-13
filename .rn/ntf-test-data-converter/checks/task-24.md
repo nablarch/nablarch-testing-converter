@@ -111,3 +111,23 @@ converter は `YamlFormatReader#read` → `YamlTestCoreAdapter#loadRawMap` → `
 **対象にしない**: 引用符なしの `123` / `1.50` / `true`、および `.inf` / `.nan`。
 いずれもスキーマ違反で中間モデルへ到達しないため（＝ NTF が実行できないテストデータ）。
 これらが例外になること自体は軸F（F2-01 スキーマ違反）で担保する。
+
+### 5. 再検証（2026-08-14・セッション再開時）
+
+上の 1〜3 を、記録を根拠にせず自分で実行し直した。
+
+- **スキーマ制約（1 節）**: 再現コマンドをそのまま実行。`table_data` / `list_map_data` は
+  `additionalProperties.type` = `["string","null"]`、`record_fragment` は `items.type` = `["string","null"]`。記録どおり。
+- **実測（3 節）**: 一時プローブ（`src/test/.../yaml/ScalarProbeTest.java`。実行後に削除）で 37 記法を
+  実ファイル経由 `new YamlFormatReader().read(...)` に通した。3 節の表と全件一致。特に:
+  - `null`（引用符なし）・値なし（`- V:`） → **Java `null`**
+  - `~` → **文字列 `"~"`**、`"~"` → 文字列 `"~"`
+  - `Null` / `NULL` → 文字列、`"null"` → 文字列 `"null"`
+  - `TRUE` / `True` / `yes` / `on` → 文字列。引用符なし `true` は `YamlSchemaValidationException`
+    （`boolean が見つかりました、[string, null] が予期されました`）
+  - `123` / `1.50` / `.inf` / `.nan` → いずれもスキーマ違反で例外（`integer` / `number` と判定される）
+  - `007` / `"007"` / `0x1F` / `0o17` / `1_000` → いずれも記法どおりの文字列
+  - `|` → `"l1\nl2\n"`、`>` → `"l1 l2\n"`
+- スキーマ `table_data.rows` の description には「`null`（クォートなし）および `"null"`（クォートあり）は
+  ともに NullInterpreter により Java null に変換される」とあるが、これは NTF 実行時の解釈であり、
+  converter は `InterpreterResolver.raw()` で配線しているため `"null"` は文字列のまま入る（上の実測どおり）。
