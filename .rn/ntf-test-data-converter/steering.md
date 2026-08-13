@@ -895,28 +895,8 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-08-13
-- **Last completed**: #23 辺③ 軸A・B・C・E の欠け補充（`bb58d05`）。その後 軸D 辺① の絞り込み（`227adc1`）と追随修正（`a51a8b3`）を実施
-- **Next**: #24（辺② 軸D・軸A〜F の欠け補充）。**軸D のケース定義をユーザーに提示したところで中断した**
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。`src/main` 無変更（`git diff HEAD -- src/main` → 0 行）。
-  **基準線**: `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` →
-  **`Tests run: 419, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`**
-  （yaml jar は 2026-08-13 17:04 インストールの `190cc9a` 差し戻し版。428 → 419 は軸D 辺① の絞り込みで 9 件削除したため）。
-  **🚦 再開時に最初にすること — ユーザーの回答待ちが 2 件ある**（`checks/task-24.md` に導出と根拠を記録済み）:
-  (1) 辺② 軸D の 10 ケース定義でよいか。特に **`~` を D2-06(NULL) から D2-07(NULL に見える文字列) へ移した**点と、
-  **D2-10 に `0x1F` を足した**点。実測では引用符なしの `null`・値なしは Java `null` だが `~` は文字列 `"~"` になる。
-  (2) 大文字小文字で挙動が割れる件（`true` はスキーマ違反だが `TRUE`／`yes` は文字列として通る。
-  `null` は Java `null` だが `Null`／`NULL` は文字列）を `issues.md` の課題として記録するか、スキーマ仕様どおりとして記録しないか。
-  **回答が出るまで #24 のテストと台帳は書かない**（定義が変わると全部書き直しになるため）。
-  **#24 の Steps 1 行目に残る旧 10 ケース表（引用符なしの `true`・`123` を含む）は実測でスキーマ違反と判明している。**
-  上記 (1) の確定後に現行定義へ揃えること。
-  **文書の揃え方（ユーザー確定・2026-08-13）**: 定義を変えたら `steering.md`／`inventory.md`／`issues.md` は
-  指示に列挙が無くても現行定義へ揃えてよい。揃えないのは `checks/` だけ（時点の証拠記録）。
-  **converter 側では扱わない件**: `rows: []` の期待値検証が素通りする（偽陰性）問題は yaml 側の FIXME として
-  本体対応後に再検討される。converter 側で直さない・触らない。
-  **#23 の Verification は再実行していない（ユーザー承認・2026-08-13）**: `4905838` で PASS 済み（22 変異・生存ゼロ）。以降 `src/` の差分はコメント／Javadoc のみでコード行の増減 0。
-  **台帳の構造見直しで消したもの**: 逆引き表 §1.2／§2.2／§3.2／§4.2、訂正履歴 §3.1-4／§3.1-5、および他ファイルの行番号・ファイル行数。逆引きの正は #27 の `coverage/axis-matrix.md`。規約は Rules（フェーズ2）に 2 項追加し、#24 の Steps に self-check を入れた。**#24 は台帳を書く前にこの規約を読むこと。**
-  **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に 1 行も現れない（実体は担保済みだが表の上では穴の形）。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` の 2 クラスに分散している。
-  **決着済み（ユーザー判断・2026-08-13）**: 「件数にコマンドを併記」の既存記述への遡及適用は行わない。#24 以降の新規記述に self-check で効かせる。
-  **レビュー運用（#23 で確立）**: レビュア subagent には `isolation: worktree` を使う。#23 で QA に `src/main` への一時変異を許可したまま Craft と同じ作業ツリーで並走させ、Craft のテスト実行が変異を踏んだ。
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
