@@ -739,14 +739,14 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] #18 の棚卸し表で辺③の空欄となっている軸A・B・C・E の要素を確認する
-- [ ] 空欄の要素それぞれについてテストを追加する（軸C は省略可能フィールドの「値あり」「省略」双方）
-- [ ] `DataType.DEFAULT` は辺③では到達可能（`XlsFormatWriter#marker` L399-400 が `getDataType().getName()` からマーカーを組み立てるだけでタイプを絞らない）。現状の挙動をまず実行して記録してから固定する。辺④は `serialize_unsupportedDataType_throws` のとおり `DEFAULT` を例外で弾くため、**辺③④で扱いが非対称**である。この非対称を `issues.md` に課題として記録する（**修正しない**）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-23.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] #18 の棚卸し表で辺③の空欄となっている軸A・B・C・E の要素を確認する（A 3／B 0／C 9／E 3 ＝ 15 要素）
+- [x] 空欄の要素それぞれについてテストを追加する（軸C は省略可能フィールドの「値あり」「省略」双方）
+- [x] `DataType.DEFAULT` は辺③では到達可能（`XlsFormatWriter#marker` が `getDataType().getName()` からマーカーを組み立てるだけでタイプを絞らない）。現状の挙動をまず実行して記録してから固定する。辺④は `serialize_unsupportedDataType_throws` のとおり `DEFAULT` を例外で弾くため、**辺③④で扱いが非対称**である。この非対称を `issues.md` に課題として記録する（**修正しない**）— XLS-20
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（428 件 PASS）
+- [x] self-check（OK/NG per completion criterion、checks/task-23.md に記録）
+- [ ] QA expert review（subagent） — ラウンド1・2 とも FAIL（いずれも台帳の記述精度）。ラウンド2 の修正 `63c3f9b` は**未レビュー**
+- [ ] Craft expert review（subagent, coding） — ラウンド1・2 とも FAIL（同上）。`63c3f9b` は**未レビュー**
+- [ ] Verification expert review（subagent, test） — `4905838` で PASS（22 変異・生存ゼロ）。`63c3f9b` は**未レビュー**（差分は台帳とコメントのみ）
 
 **Completion criteria**:
 
@@ -888,8 +888,13 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-13
+- **Last completed**: #22 辺③ 軸D・軸F（`d9b03f6`）。#23 は実装＋修正ラウンド2 まで完了（`63c3f9b`）だが**未チェックオフ**
+- **Next**: **ユーザー判断待ち**（下記）を解消してから #23 のレビューを再実行しチェックオフ。その後 #24（辺②）へ
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。428 件全 PASS・`src/main` 無変更。
+  **ユーザーの指示待ち（これが来るまでレビューを回さない・2026-08-13）**: 台帳 `coverage/inventory.md` の方針は**ユーザーが指示を出す**。それまで #23 のレビュー再実行もチェックオフもしない。
+  背景（判断材料として提示済み）: 台帳（約 21 万バイト）が他ファイルの行番号・ファイル行数・「現在も変わっていない」式の現在形の主張を多数抱えており、**台帳を編集するたびに同じ台帳の別箇所が自己無効化する**。#22 と #23 で計 5 ラウンドの修正を回し、そのほぼ全部がこの理由で FAIL した（テストの担保内容は毎回「欠陥なし」判定）。ラウンド2 では実装担当が**自分がそのラウンド中に陳腐化させた数字を 3 件**自己検出しており（うち 1 件は行番号をまた引き算で導出）、1 ラウンドの内側でも循環が起きている。#24・#25 も同じ台帳を触る。
+  **#23 の残り**: `63c3f9b`（ラウンド2 の修正）が未レビュー。QA・Craft はラウンド2 で FAIL のまま、Verification は `4905838` で PASS 済み。ラウンド2 の差分は台帳とコメント／Javadoc のみでアサート無変更（`src/main` diff 0）。修正ラウンドは 3 回上限のうち 2 回を消化。
+  **#23 の成果**: テスト 18 件追加（`XlsFormatWriterModelTest`）、辺③の未担保 0 件（担保済み 29 ／ 対象外 1）。課題は `issues.md` に **XLS-20〜XLS-23** を追加（すべて未修正）。前回レビューで見つかった穴（送信同期 3 種 A-12/A-13/A-14 の識別セルが往復テストしか通していなかった）は直接テスト 3 件で解消済み。
+  **`checks/task-23.md`**: ユーザー承認のうえ中断コミットに含めた（Self-check 列・Evidence 列・Method の適用のみ記入済み。**レビュー結果欄は空**で、チェックオフ時にコーディネータが埋める）。 (that lives in `git log`)
