@@ -891,12 +891,13 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 # State
 
-- **Status**: in progress
+- **Status**: paused
 - **Date**: 2026-08-13
-- **Last completed**: #23 辺③ 軸A・B・C・E の欠け補充。レビューはラウンド3（`b86ee3d`）で QA・Craft とも PASS
-- **Next**: #24（辺② 軸D の YAML スカラー10ケース・軸A〜F の欠け補充）
+- **Last completed**: #23 辺③ 軸A・B・C・E の欠け補充（`bb58d05`）。レビューはラウンド3（`b86ee3d`）で QA・Craft とも PASS
+- **Next**: #24（辺② 軸D の YAML スカラー10ケース・軸A〜F の欠け補充）。着手可否のユーザー確認を出したところで中断した
 - **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。428 件全 PASS・`src/main` 無変更。
   **#23 の Verification は再実行していない（ユーザー承認・2026-08-13）**: `4905838` で PASS 済み（22 変異・生存ゼロ）。以降 `src/` の差分はコメント／Javadoc のみでコード行の増減 0。
   **台帳の構造見直しで消したもの**: 逆引き表 §1.2／§2.2／§3.2／§4.2、訂正履歴 §3.1-4／§3.1-5、および他ファイルの行番号・ファイル行数。逆引きの正は #27 の `coverage/axis-matrix.md`。規約は Rules（フェーズ2）に 2 項追加し、#24 の Steps に self-check を入れた。**#24 は台帳を書く前にこの規約を読むこと。**
   **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に 1 行も現れない（実体は担保済みだが表の上では穴の形）。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` の 2 クラスに分散している。
   **決着済み（ユーザー判断・2026-08-13）**: 「件数にコマンドを併記」の既存記述への遡及適用は行わない。#24 以降の新規記述に self-check で効かせる。
+  **レビュー運用（#23 で確立）**: レビュア subagent には `isolation: worktree` を使う。#23 で QA に `src/main` への一時変異を許可したまま Craft と同じ作業ツリーで並走させ、Craft のテスト実行が変異を踏んだ。
