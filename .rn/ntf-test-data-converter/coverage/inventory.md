@@ -11,12 +11,13 @@
 - 判定方法: 全テストメソッドのテスト本文を読み、実際にアサートしている対象のみを「担保」とした。
   推測で埋めていない。アサートが間接的・副次的なものは 🔺 で区別した。
 
-> **#20／#21 による更新について（2026-08-12）**
+> **#19〜#22 による更新について（最終更新 2026-08-13）**
 >
-> 本書は #18 時点の棚卸し結果である。その後 #19（辺① 軸D）・#20（辺① 軸A・B・C）・
-> #21（辺① 軸E・軸F）が実 `.xlsx` を
-> 入力とするテストを追加し、**辺①（§1）の未担保状況が変わった**。本書では #18 時点の記述を消さずに
-> 次の 2 箇所へ反映してある。
+> 本書は #18 時点の棚卸し結果である。その後の各タスクが実ファイルを経路に含むテストを追加し、
+> **辺①（§1）と辺③（§3）の未担保状況が変わった**。本書では #18 時点の記述を消さずに
+> 次の箇所へ反映してある。
+>
+> **辺①（#19 辺① 軸D／#20 辺① 軸A・B・C／#21 辺① 軸E・軸F。2026-08-12）**
 >
 > - **§1.2-2（新設）** — #19／#20／#21 が追加したテストクラス（`XlsFormatReaderCellTypeTest` /
 >   `XlsReferenceFixtureTest` / `XlsFormatReaderRealFileTest` / `XlsFormatReaderInvalidInputTest`）の
@@ -25,9 +26,21 @@
 > - **§1.3** — 未担保一覧を #19／#20／#21 の実測結果に合わせて更新した。分類を変更した行には
 >   根拠（`coverage/issues.md` の課題 ID）を併記してある。
 >
-> §2〜§4 と §5.1 は #18 時点のままである（§5.1 の未担保件数も §1.3 の更新を反映していない。
-> 4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。**§5.2 だけは §1.2-2 の #20 実績を
-> 反映した現時点ビューである。**
+> **辺③（#22 辺③ 軸D・軸F。2026-08-13）**
+>
+> - **§3.1-2（新設）** — #22 が追加したテストクラス（`XlsFormatWriterCellTypeTest` /
+>   `XlsFormatWriterInvalidOutputTest`）の担保を軸要素別に記す。
+>   §3.1 は「`XlsFormatWriterTest` 40 件」を対象とした #18 時点の事実として**そのまま残す**。
+> - **§3.2** — 軸D 表・軸F 表に「#22 後」列を足し、`getCellType()` の件数に関する記述を
+>   #18 時点のスナップショットと現時点の実測とに書き分けた。軸A・軸B・軸C・軸E の各表は #18 時点のままである。
+> - **§3.3** — 辺③ 未担保一覧を #22 の実測結果に合わせて更新した。
+>
+> **上記以外（§2・§4・§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§3.3 の更新を
+> 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
+> **§5.2 だけは §1.2-2 の #20 実績を反映した現時点ビューである。**
+>
+> **§0（前提の実測）は原則として #18 時点のスナップショットである。** その後の変化は
+> 各項の中に日付つきで追記してある（§0.8-4 の `getCellType()` 件数など）。
 
 ### 判定基準
 
@@ -249,19 +262,42 @@ C-06 は TestDataBlock L27/L41、C-16 は RecordLayout L26/L36、C-20 は FieldD
    `LinkedHashMap` に差し替える。YAML パーサ（SnakeYAML Engine）は通らない。一方、辺④の往復テスト 6 件
    （`roundTrip_*`）は `writer.write(...)` で実 YAML ファイルを書き `new YamlFormatReader()` で読み戻す。
    判断: **軸D 辺②（10 ケース）は 20 件からは全て未担保**とし、往復 6 件が通す分は 🔺 で計上する。
-4. **`getCellType()` をアサートしているテストは src/test 全体でゼロ。**
-   事実: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
+4. **`getCellType()` をアサートしているテストは #18 時点では src/test 全体でゼロだった。**
+   事実（#18 時点）: `grep -rn "getCellType" src/test/` → 0 件。`XlsFormatWriterTest` のセル読み出しヘルパ
    `cell`（L100-107）／`line`（L110-121）は `getStringCellValue()` のみを使う。
-   判断: **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**とする。
+   判断（#18 時点）: **軸D 辺③（8 ケース）は `getCellType()` 観点では全て未担保**とする。
+   **現在は 0 件ではない（2026-08-13 追記）。** #19 が `XlsFormatReaderCellTypeTest` に 1 件、
+   #22 が `XlsFormatWriterCellTypeTest` に 19 件を入れた。最新の実測値と経緯は §3.2 の軸D 表の直後に記す。
+   上記の「ゼロ」は #18 時点のスナップショットであり、現在形として読んではならない。
 5. **`overwrite` フラグを writer は持たない。**
    事実: `grep -rln "overwrite" src/main/java` の結果、`overwrite` を保持するのは `ConversionRequest` /
    `TestDataConverter` / `ConverterMojo` の 3 クラスのみで、`XlsFormatWriter` / `YamlFormatWriter` は保持しない。
-   `overwrite=false` 衝突は上位層の既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`
-   （L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済みである
+   `overwrite=false` 衝突を検査するのは `TestDataConverter#checkOverwrite`（L90-99）であり、
+   上位層の既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と
+   `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が通している
    （いずれも出力先に既存ファイルを置いた状態で変換し、`ConverterException` ／ `MojoExecutionException` を
    アサートしている）。
-   判断: 軸F の F3-02 / F4-02 は writer 単体では再現できないため、**辺③／辺④の対象外（上位層で担保済み）**
+   判断: 軸F の F3-02 / F4-02 は writer 単体では再現できないため、**辺③／辺④の対象外**
    として分類する（steering #22/#25 の Steps と一致）。
+
+   **担保範囲の訂正（2026-08-13・レビュー指摘による訂正）。** 当初この項と各節は
+   「上位層の既存テストで担保済み」と書いていたが、**担保されているのは Excel を入力とする方向だけ**である。
+   事実:
+   - `grep -rn "outputPaths" src/test --include=*.java` → **0 件**（`outputPaths` を直接呼ぶテストは無い）。
+   - `checkOverwrite`（L90-99）は `target.outputPaths(container, outputBase)` を多態で呼び分ける。
+     引用した 2 件の既存テストは**どちらも XLS→YAML** であり（`TestDataConverter.convert(DataFormat.XLS,
+     DataFormat.YAML, ...)` ／ Mojo の `from=xls, to=yaml`。衝突させているのは `BookA/data.yaml`）、
+     実行されるのは `YamlFormatHandler#outputPaths`（L63）である。
+   - 辺③で衝突するのは `.xlsx` であり、それを算出する `XlsFormatHandler#outputPaths`（L63-67）は
+     **`overwrite=false` 下で 1 件も実行されていない**。
+
+   したがって正確には、**共通処理 `checkOverwrite` の分岐は既存テストが通しているが、
+   `.xlsx` を出力側とする衝突（＝辺③の F3-02 が指す状況）は未担保**である。
+   ただしこれは上位層側の穴であって辺③（`XlsFormatWriter` 単体）の責務ではないため、
+   **F3-02 を辺③の対象外とする結論は変えない**（`XlsFormatWriter` は `overwrite` を保持しないので、
+   辺③に書いても再現できない）。本書で「上位層で担保済み」と記した箇所はこの但し書きつきで読むこと。
+   辺④（YAML 出力）の F4-02 については、上記 2 件がまさに `.yaml` を出力側とする衝突であり、
+   この但し書きは当たらない。
 6. **1 リソース単位 API のため、辺①・辺②では「セクション複数」「セクション 0」が構造上生成されない。**
    事実: `XlsFormatReader#read`（L101-133）は `Collections.singletonList(section)` を返し、
    `YamlFormatReader#read`（L87-95）も同じく `Collections.singletonList(section)` を返す。
@@ -600,7 +636,10 @@ D1-01〜D1-17 すべて ❌。理由: 既存 33 件は `FakeTestDataReader`（`X
 - `要追加` — テストを書く対象。**#19／#20／#21 の完了により 0 件になった。**
 - `担保済み` — #19／#20／#21 が実 `.xlsx` を入力とするテストで埋めた。担保テストメソッド名を併記する。
 - `到達不能` — 構造上その状態が生成されない。根拠を併記する。テストは書かず、理由付きで空欄に残す。
-- `対象外（上位層で担保済み）` — 辺の担当クラスの関心事ではなく、上位層の既存テストで担保済み。
+- `対象外` — 辺の担当クラスの関心事ではなく、上位層の関心事であるもの。理由を併記する。
+  §5.1 では `対象外（上位層で担保済み）` と表記しているが、**辺③の F3-02 についてはこの表記は正確でない**
+  （上位層の既存テストが通すのは XLS→YAML の経路だけで、`.xlsx` を出力側とする衝突は未担保）。
+  §3.1-2／§3.2／§3.3 では `対象外（衝突検査は上位層）` へ改めた。詳細は §0.8-5 の訂正欄。
 
 **本表は #21 の実測結果に合わせて更新した（2026-08-12）。** #18 時点は「要追加 38 ／ 到達不能 3」、
 #20 完了時点は「要追加 11 ／ 担保済み 22 ／ 到達不能 8」であった。#21 が残る 11 件（C 4 件・E 2 件・F 5 件）を
@@ -907,15 +946,30 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | D3-08 制御文字含む | ❌ | ✅ | `replacesNulCharacterWithQuestionMark`／`replacesBellCharacterWithQuestionMark`／`replacesVerticalTabCharacterWithQuestionMark`／`replacesUnitSeparatorCharacterWithQuestionMark`／`writesTabCharacterAsIs`／`writesDeleteCharacterAsIs` | XML 1.0 で不正な `U+0000`／`U+0007`／`U+000B`／`U+001F` は `?` へ置換（`issues.md` **XLS-17**）。XML 1.0 で正当な `U+0009`／`U+007F` は原文のまま |
 
 - **すべてファイル経由で確かめている。** メモリ上のブックだけを見ると D3-06（`CR` を含む改行）と
-  D3-08（制御文字）を取り逃す（どちらも `build` 直後は原文のままで、変わるのは `.xlsx` へ直列化する区間である）。
-  該当する担保テストは「メモリ上では保たれている」ことも併せてアサートし、変化の起きる区間を特定している。
+  D3-08（制御文字）を取り逃す（どちらも `build` 直後は原文のままである）。
+  該当する担保テストは「メモリ上では保たれている」ことも併せてアサートしている。
+- **ただし D3-06 と D3-08 では変化の起きる区間が違う（2026-08-13・レビュー指摘による訂正）。**
+  当初この節は両者をまとめて「変わるのは `.xlsx` へ直列化する区間である」と書いていたが、
+  書き出した `.xlsx` を `unzip -p <book>.xlsx xl/sharedStrings.xml | od -An -tx1 -c` で展開して
+  生バイトを確かめた結果、**D3-06 の `CR` については誤りだった**。
+
+  | ケース | 課題 | `xl/sharedStrings.xml` の生バイト | 変化が起きる区間 |
+  |---|---|---|---|
+  | D3-08 制御文字 | XLS-17 | `<t>a?b</t>`（`?` ＝ `3f` が焼き込まれている） | **直列化区間** |
+  | D3-06 `CR` | XLS-18 | `<t>a[CR]b</t>`（`CR` ＝ `0d` が生のまま残る。`&#13;` への退避も無い） | **読み戻し（XML パース）区間** |
+
+  したがって「メモリ上では保たれている」というアサートが示すのは、
+  **`XlsFormatWriter` 自身が値を変えていないこと**だけであり、
+  D3-06 について「直列化で失われた」ことの証明にはならない（ファイルにも残っているため）。
+  読み手への影響は、**`.xlsx` をバイトで比較しても `CR` は残って見えるため探す場所を間違える**点である
+  （`issues.md` XLS-18 の「影響」欄）。
 
 **軸F（辺③ 4 ケース中 3 ケースを新規担保。F3-02 は対象外）**
 
 | 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterInvalidOutputTest#`） | 観測した挙動 |
 |---|---|---|---|---|
 | F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` L105 の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
-| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が既存テストで担保しており、辺③で書くと重複テストになる（Rules「重複テストを書かない」） |
+| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは Excel を入力とする方向だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`.xlsx` を算出する `XlsFormatHandler#outputPaths`（L63-67）は `overwrite=false` 下で 1 件も実行されていない（§0.8-5 の訂正） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException: failed to write Excel: <出力先パス>` ＋ 原因 `java.nio.file.AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境（root 実行など）では `Assume` でスキップする（確認用ファイルの作成が拒否されることを前提条件として確かめる） |
 | F3-04 シート名が Excel 制約違反 | ❌ | ✅ | 禁止文字 7 件: `rejectsSheetNameContainingSlash`／`rejectsSheetNameContainingBackslash`／`rejectsSheetNameContainingQuestionMark`／`rejectsSheetNameContainingAsterisk`／`rejectsSheetNameContainingOpeningBracket`／`rejectsSheetNameContainingClosingBracket`／`rejectsSheetNameContainingColon`。ほか `rejectsEmptySheetName`／`writesSheetNameOfExcelLimitLengthAsIs`／`truncatesSheetNameLongerThanExcelLimitSilently`／`writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`failsWhenTruncatedSheetNamesCollide` | **31 文字ちょうどはそのまま書かれる**（切り詰めなし）。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name`。空文字は `IllegalArgumentException: sheetName '' is invalid`。禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗するが、**これは切り詰め後の名前に禁止文字が残る場合に限る**（下記） |
 
@@ -1032,7 +1086,7 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | 要素 | #18 の判定 | #22 後 | 担保テストメソッド |
 |---|---|---|---|
 | F3-01 出力先不在 | 🔺 | ✅ | 🔺: `wrapsIoFailure`（正確には「親に通常ファイルが居座り親ディレクトリを作れない」ケース。「出力先不在」そのものではない）／✅: `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook`（§3.1-2） |
-| F3-02 `overwrite=false` 衝突 | **対象外（上位層で担保済み）** | **対象外（変更なし）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。上位層の `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5）。#22 でも辺③の対象外のままとした（辺③に書くと重複テストになる） |
+| F3-02 `overwrite=false` 衝突 | **対象外（衝突検査は上位層）** | **対象外（変更なし）** | `overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` であり `XlsFormatWriter` は保持しない。共通処理 `TestDataConverter#checkOverwrite`（L90-99）の分岐は上位層の既存テスト（L336／L267）が通しているが、**両者とも XLS→YAML であり `.xlsx` を出力側とする衝突は未担保**である（§0.8-5 の訂正）。#22 でも辺③の対象外のままとした（`XlsFormatWriter` 単体では再現できない） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`（§3.1-2） |
 | F3-04 シート名が Excel 制約違反 | ❌ | ✅ | `XlsFormatWriterInvalidOutputTest` の 13 件（禁止文字 7 件 `#rejectsSheetNameContainingSlash`〜`#rejectsSheetNameContainingColon`／`#rejectsEmptySheetName`／`#writesSheetNameOfExcelLimitLengthAsIs`／`#truncatesSheetNameLongerThanExcelLimitSilently`／`#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`#failsWhenTruncatedSheetNamesCollide`）。全メソッド名と担保範囲（アポストロフィ・`null` は範囲外）は §3.1-2。`issues.md` XLS-16 |
 | （steering 外で担保済みの異常系） | ✅ | `rejectsNullRecordTypeOnSecondRecord`, `rejectsEmptyRecordTypeOnSecondRecord`（2 レコード目 recordType 空 → `IllegalStateException`）、`rejectsNegativeBlankRows`（設定値負数 → `IllegalArgumentException`） |
@@ -1055,7 +1109,7 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 16 件（8 ケース＋改行の異表記 2 件・上限ちょうど・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分・XML で正当な制御文字の対照 2 件）。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | 3 |
 | F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 15 件（禁止文字を 1 文字 1 メソッドへ展開し、シート名 31 文字ちょうど・切り詰めが禁止文字検査を無効化する境界を追加した）。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 3 |
-| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 対象外（変更なし。#22 でも辺③に書かない） | 1 |
+| F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite`（L90-99）で完結する。既存テスト（L336／L267）が通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 1 |
 | **合計** | | **要追加 26 ／ 到達不能 0 ／ 対象外 1** | **要追加 15 ／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **27（うち対象外 1）** |
 
 **合計の検算**（表の「件数」列を上から順に足す）:
@@ -1313,7 +1367,7 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 |---|---|---|
 | 1 | 辺①・辺② の `DataType.DEFAULT` | **到達不能**。辺①は `TestCoreReaderAdapter` L362、辺②は `YamlFormatReader` の分岐に `DEFAULT` を返す経路がないこと（§0.8-7）。#20/#24 では理由付きで空欄に残す |
 | 2 | E-4「コンテナ内セクション数 複数」／C-02「sections 空・複数」 | 辺①・辺②は **到達不能**（`read` が `Collections.singletonList(section)` を返す 1 リソース単位 API）。辺③・辺④は writer が `container.getSections()` をループするため **要追加**（§0.8-6） |
-| 3 | 辺③／辺④ の `overwrite=false` 衝突（F3-02 / F4-02） | **対象外（上位層で担保済み）**。`overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` で writer は保持しない。既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）で担保済み（§0.8-5） |
+| 3 | 辺③／辺④ の `overwrite=false` 衝突（F3-02 / F4-02） | **対象外（衝突検査は上位層）**。`overwrite` を保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo` で writer は保持しない。既存テスト `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）と `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）が `TestDataConverter#checkOverwrite`（L90-99）を通す。ただし両者とも XLS→YAML であり、**辺④（`.yaml` 出力）は担保されるが辺③（`.xlsx` 出力）は未担保**である（§0.8-5 の訂正） |
 | 4 | 既存の往復テスト（`RoundTripTest` 30 件、`XlsFormatWriterTest#roundTrips*` 8 件、`YamlFormatWriterTest#roundTrip_*` 6 件）の扱い | **🔺弱い担保として計上するが正式担保としては数えず、直接テストの追加対象からも外さない**（steering Rules フェーズ2）。§0.8-8 に `RoundTripTest` 30 件の対応表を置き、未担保一覧に 🔺 の注記を併記した |
 
 #### 未解決（コーディネータの確認が要る）

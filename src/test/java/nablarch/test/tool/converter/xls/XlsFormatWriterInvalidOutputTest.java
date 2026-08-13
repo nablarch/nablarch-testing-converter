@@ -16,8 +16,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.tool.converter.model.TableDataBlock;
@@ -25,6 +26,9 @@ import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.After;
 import org.junit.Assume;
@@ -40,10 +44,20 @@ import org.junit.rules.TemporaryFolder;
  * （F3-01 出力先不在／F3-03 書き込み権限なし／F3-04 シート名が Excel 制約違反）である。
  * 残る <b>F3-02（同名ファイル既存かつ {@code overwrite=false}）は辺③の対象外</b>とする。
  * {@link XlsFormatWriter} は {@code overwrite} を保持せず（保持するのは {@code ConversionRequest} /
- * {@code TestDataConverter} / {@code ConverterMojo}）、衝突時の振る舞いは上位層の既存テスト
+ * {@code TestDataConverter} / {@code ConverterMojo}）、衝突検査は {@code XlsFormatWriter} を呼ぶ前に
+ * 上位層で完結するためである（棚卸し §0.8-5）。
+ * </p>
+ *
+ * <p>
+ * <b>ただし上位層の既存テストが担保しているのは Excel を<i>入力</i>とする方向だけである。</b>
  * {@code TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse} ／
- * {@code ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict} が担保しているためである
- * （棚卸し §0.8-5）。
+ * {@code ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict} はどちらも XLS→YAML であり、
+ * {@code TestDataConverter#checkOverwrite} が多態で呼ぶ {@code FormatHandler#outputPaths} の実体は
+ * {@code YamlFormatHandler#outputPaths} である。<b>辺③で衝突するのは {@code .xlsx} であり、
+ * それを算出する {@code XlsFormatHandler#outputPaths} は {@code overwrite=false} 下で 1 件も実行されていない</b>
+ * （{@code grep -rn "outputPaths" src/test --include=*.java} は 0 件）。すなわち共通処理である
+ * {@code checkOverwrite} の分岐自体は通っているが、<b>{@code .xlsx} を出力側とする衝突は未担保</b>である。
+ * これは辺③（{@code XlsFormatWriter} 単体）の責務ではなく上位層側の穴であり、本クラスでは埋めない。
  * </p>
  *
  * <p>
@@ -73,6 +87,9 @@ public class XlsFormatWriterInvalidOutputTest {
     /** 既定のシート名。 */
     private static final String SHEET = "s";
 
+    /** 出力されるブックの拡張子（{@link XlsFormatWriter} が付ける）。 */
+    private static final String EXTENSION = ".xlsx";
+
     /** Excel がシート名に許す最大文字数。 */
     private static final int EXCEL_MAX_SHEET_NAME_LENGTH = 31;
 
@@ -85,6 +102,12 @@ public class XlsFormatWriterInvalidOutputTest {
 
     /**
      * 権限を落としたディレクトリがあれば書き込み可能へ戻す。
+     *
+     * <p>
+     * 落とすときは {@code setWritable(false, false)}（所有者・グループ・その他すべてから剥奪）だが、
+     * 戻すのは所有者ぶんだけでよい。{@link TemporaryFolder} の後片付けはテストプロセス自身
+     * （＝所有者）が行うため、所有者に書き込み権限が戻れば削除できる。
+     * </p>
      */
     @After
     public void restorePermission() {
@@ -96,19 +119,49 @@ public class XlsFormatWriterInvalidOutputTest {
     // ------------------------------------------------------------------ helpers
 
     /**
-     * 1 ブロック 1 セクションのコンテナを組み立てる。
+     * セクションごとに 1 ブロックを持つコンテナを組み立てる。
      *
-     * @param book      ブック名
-     * @param sheetName シート名
+     * @param book       ブック名
+     * @param sheetNames シート名（渡した順に 1 セクションずつ）
      * @return コンテナ
      */
-    private static TestDataContainer container(String book, String sheetName) {
+    private static TestDataContainer container(String book, String... sheetNames) {
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 Collections.singletonList("C"),
                 Collections.singletonList(Collections.singletonList("v")));
-        TestDataSection section = new TestDataSection(sheetName,
-                Collections.<TestDataBlock>singletonList(table));
-        return new TestDataContainer(book, Collections.singletonList(section));
+        List<TestDataSection> sections = new ArrayList<>();
+        for (String sheetName : sheetNames) {
+            sections.add(new TestDataSection(sheetName,
+                    Collections.<TestDataBlock>singletonList(table)));
+        }
+        return new TestDataContainer(book, sections);
+    }
+
+    /**
+     * ブック名から、書き出されるはずのファイルを求める。
+     *
+     * <p>
+     * ブック名を {@code container(...)} 側と {@code new File(...)} 側に別々のリテラルで書くと、
+     * 片方だけを書き換えたときに「存在しないファイルを見て {@code assertFalse} が無条件に通る」ため、
+     * 名前を 1 箇所に束ねるためのヘルパである。
+     * </p>
+     *
+     * @param dir  出力先ディレクトリ
+     * @param book ブック名
+     * @return 書き出されるはずのファイル
+     */
+    private static File writtenBook(File dir, String book) {
+        return new File(dir, book + EXTENSION);
+    }
+
+    /**
+     * ブック名から、既定の出力先（{@link #folder} 直下）に書き出されるはずのファイルを求める。
+     *
+     * @param book ブック名
+     * @return 書き出されるはずのファイル
+     */
+    private File writtenBook(String book) {
+        return writtenBook(folder.getRoot(), book);
     }
 
     /**
@@ -122,16 +175,18 @@ public class XlsFormatWriterInvalidOutputTest {
      * @param sheetName 禁止文字を含むシート名
      */
     private void assertRejectsSheetName(String sheetName) {
+        // Given
+        String book = "Forbidden";
+
         // When
         IllegalArgumentException thrown = assertThrows(sheetName, IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container("Forbidden", sheetName),
+                () -> new XlsFormatWriter().write(container(book, sheetName),
                         folder.getRoot().getAbsolutePath()));
 
         // Then
         assertThat(sheetName, thrown.getMessage(), containsString("Invalid char"));
         assertThat(sheetName, thrown.getMessage(), containsString("in sheet name '" + sheetName + "'"));
-        assertFalse("ブックは作られない: " + sheetName,
-                new File(folder.getRoot(), "Forbidden.xlsx").exists());
+        assertFalse("ブックは作られない: " + sheetName, writtenBook(book).exists());
     }
 
     /**
@@ -183,19 +238,25 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void createsMissingOutputDirectoriesAndWritesWorkbook() {
         // Given
+        String book = "Missing";
         File missing = new File(folder.getRoot(), "no/such/dir");
         assertFalse("前提: 出力先はまだ存在しない", missing.exists());
 
         // When
-        new XlsFormatWriter().write(container("Missing", SHEET), missing.getAbsolutePath());
+        new XlsFormatWriter().write(container(book, SHEET), missing.getAbsolutePath());
 
         // Then
         assertTrue("出力先ディレクトリが作られる", missing.isDirectory());
-        File written = new File(missing, "Missing.xlsx");
+        File written = writtenBook(missing, book);
         assertTrue("ブックが書き出される", written.exists());
         Workbook workbook = XlsFixture.open(written.toPath());
-        assertThat(workbook.getSheet(SHEET), is(notNullValue()));
-        assertThat(workbook.getSheet(SHEET).getRow(0).getCell(0).getStringCellValue(), is("SETUP_TABLE=T"));
+        Sheet sheet = workbook.getSheet(SHEET);
+        assertThat("出力先シートがあること", sheet, is(notNullValue()));
+        Row row = sheet.getRow(0);
+        assertThat("識別行が書かれていること", row, is(notNullValue()));
+        Cell cell = row.getCell(0);
+        assertThat("識別セルが書かれていること", cell, is(notNullValue()));
+        assertThat(cell.getStringCellValue(), is("SETUP_TABLE=T"));
     }
 
     // ------------------------------------------------------------------ F3-03 書き込み権限なし
@@ -214,19 +275,21 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable() throws IOException {
         // Given
+        String book = "Denied";
         File readOnly = folder.newFolder("readonly");
         Assume.assumeTrue("書き込み権限が効かない環境ではスキップする（root 実行・権限を無視する FS など）",
                 dropWritePermission(readOnly));
 
         // When
         UncheckedIOException thrown = assertThrows(UncheckedIOException.class,
-                () -> new XlsFormatWriter().write(container("Denied", SHEET), readOnly.getAbsolutePath()));
+                () -> new XlsFormatWriter().write(container(book, SHEET), readOnly.getAbsolutePath()));
 
         // Then
         assertThat(thrown.getMessage(), containsString("failed to write Excel:"));
-        assertThat("どのファイルを書けなかったかが分かる", thrown.getMessage(), containsString("Denied.xlsx"));
+        assertThat("どのファイルを書けなかったかが分かる",
+                thrown.getMessage(), containsString(book + EXTENSION));
         assertThat(thrown.getCause(), is(instanceOf(AccessDeniedException.class)));
-        assertFalse("ファイルは作られない", new File(readOnly, "Denied.xlsx").exists());
+        assertFalse("ファイルは作られない", writtenBook(readOnly, book).exists());
     }
 
     // ------------------------------------------------------------------ F3-04 シート名が Excel 制約違反
@@ -293,14 +356,17 @@ public class XlsFormatWriterInvalidOutputTest {
      */
     @Test
     public void rejectsEmptySheetName() {
+        // Given
+        String book = "Empty";
+
         // When
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container("Empty", ""),
+                () -> new XlsFormatWriter().write(container(book, ""),
                         folder.getRoot().getAbsolutePath()));
 
         // Then
         assertThat(thrown.getMessage(), containsString("sheetName '' is invalid"));
-        assertFalse("ブックは作られない", new File(folder.getRoot(), "Empty.xlsx").exists());
+        assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 
     /**
@@ -318,13 +384,14 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void writesSheetNameOfExcelLimitLengthAsIs() {
         // Given
+        String book = "AtLimit";
         String atLimit = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
 
         // When
-        new XlsFormatWriter().write(container("AtLimit", atLimit), folder.getRoot().getAbsolutePath());
+        new XlsFormatWriter().write(container(book, atLimit), folder.getRoot().getAbsolutePath());
 
         // Then
-        Workbook workbook = XlsFixture.open(folder.getRoot().toPath().resolve("AtLimit.xlsx"));
+        Workbook workbook = XlsFixture.open(writtenBook(book).toPath());
         assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
         assertThat("31 文字はそのまま保たれる", workbook.getSheetName(0), is(atLimit));
         assertThat("元のセクション名でシートを引ける", workbook.getSheet(atLimit), is(notNullValue()));
@@ -346,16 +413,17 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void truncatesSheetNameLongerThanExcelLimitSilently() {
         // Given
+        String book = "TooLong";
         String tooLong = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH + 1);
 
         // When
-        new XlsFormatWriter().write(container("TooLong", tooLong), folder.getRoot().getAbsolutePath());
+        String inMemorySheetName = new XlsFormatWriter().build(container(book, tooLong)).getSheetName(0);
+        new XlsFormatWriter().write(container(book, tooLong), folder.getRoot().getAbsolutePath());
 
         // Then
         assertThat("切り詰めはメモリ上のブックの時点で起きている",
-                new XlsFormatWriter().build(container("TooLong", tooLong)).getSheetName(0).length(),
-                is(EXCEL_MAX_SHEET_NAME_LENGTH));
-        Workbook workbook = XlsFixture.open(folder.getRoot().toPath().resolve("TooLong.xlsx"));
+                inMemorySheetName.length(), is(EXCEL_MAX_SHEET_NAME_LENGTH));
+        Workbook workbook = XlsFixture.open(writtenBook(book).toPath());
         assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
         assertThat("31 文字へ切り詰められる（issues.md XLS-16）",
                 workbook.getSheetName(0), is("a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH)));
@@ -363,7 +431,7 @@ public class XlsFormatWriterInvalidOutputTest {
         // 変換ツール自身の読み戻しも元の名前では失敗する
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
                 () -> new XlsFormatReader().read(folder.getRoot().getAbsolutePath(),
-                        "TooLong/" + tooLong));
+                        book + "/" + tooLong));
         assertThat(thrown.getMessage(), containsString("sheet not found."));
     }
 
@@ -387,13 +455,14 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation() {
         // Given
+        String book = "Hidden";
         String hidden = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH) + "/";
 
         // When
-        new XlsFormatWriter().write(container("Hidden", hidden), folder.getRoot().getAbsolutePath());
+        new XlsFormatWriter().write(container(book, hidden), folder.getRoot().getAbsolutePath());
 
         // Then
-        File written = new File(folder.getRoot(), "Hidden.xlsx");
+        File written = writtenBook(book);
         assertTrue("禁止文字を含む名前なのにブックが書かれる（issues.md XLS-16）", written.exists());
         Workbook workbook = XlsFixture.open(written.toPath());
         assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
@@ -416,11 +485,12 @@ public class XlsFormatWriterInvalidOutputTest {
     @Test
     public void rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation() {
         // Given
+        String book = "Surviving";
         String surviving = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/a";
 
         // When
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container("Surviving", surviving),
+                () -> new XlsFormatWriter().write(container(book, surviving),
                         folder.getRoot().getAbsolutePath()));
 
         // Then
@@ -428,37 +498,41 @@ public class XlsFormatWriterInvalidOutputTest {
         assertThat("メッセージのシート名は切り詰め後の 31 文字（＝検査は切り詰めの後に走る）",
                 thrown.getMessage(),
                 containsString("in sheet name '" + "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/'"));
-        assertFalse("ブックは作られない", new File(folder.getRoot(), "Surviving.xlsx").exists());
+        assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 
     /**
      * Given: 先頭 31 文字が同じで 32 文字目だけが違う 2 つのセクション名。
      * When : {@code write}。
      * Then : 切り詰めた結果が衝突し、{@code IllegalArgumentException} で失敗する。
+     *        <b>ブックは作られない。</b>
      *
      * <p>
      * 担保する軸要素: F3-04（切り詰めの帰結）。切り詰めそのものは黙って起こるが、
      * 衝突した場合だけは失敗する（{@code issues.md} XLS-16 の境界）。
      * </p>
+     *
+     * <p>
+     * 1 枚目のシートは作成済みで例外は 2 枚目で出るため、ファイルが書かれないことは自明ではない。
+     * 実行して観測した結果、ファイルは作られなかった。{@link XlsFormatWriter#write} が
+     * ブックをすべてメモリ上に組み立ててから出力ストリームを開くため、途中で失敗すると
+     * 半端なブックが残らない（出力先ディレクトリは {@code Files.createDirectories} で先に作られる）。
+     * </p>
      */
     @Test
     public void failsWhenTruncatedSheetNamesCollide() {
         // Given
+        String book = "Collide";
         String base = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
-        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                Collections.singletonList("C"),
-                Collections.singletonList(Collections.singletonList("v")));
-        TestDataSection first = new TestDataSection(base + "1",
-                Collections.<TestDataBlock>singletonList(table));
-        TestDataSection second = new TestDataSection(base + "2",
-                Collections.<TestDataBlock>singletonList(table));
-        TestDataContainer container = new TestDataContainer("Collide", Arrays.asList(first, second));
 
         // When
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath()));
+                () -> new XlsFormatWriter().write(container(book, base + "1", base + "2"),
+                        folder.getRoot().getAbsolutePath()));
 
         // Then
         assertThat(thrown.getMessage(), containsString("already contains a sheet of this name"));
+        assertFalse("ブックは作られない（1 枚目のシートは作成済みだがファイルは残らない）",
+                writtenBook(book).exists());
     }
 }

@@ -33,12 +33,33 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * {@code XlsFormatWriterTest} が {@code build}（メモリ上のブック）のセル<b>値</b>を
- * {@code getStringCellValue()} で見るのに対し、本クラスは {@link XlsFormatWriter#write} で実
- * {@code .xlsx} を書き、それを POI で開き直して {@link Cell#getCellType()} を突き合わせる。
- * すなわち「値 → セル → ファイル」の直列化区間を実行し、<b>数値・数式として解釈されないこと</b>を
- * セル型で固定する。ファイルを経由するのは、直列化（XML 書き出し）で値が変わるケースが実在するためである
- * （下記 D3-06・D3-08。メモリ上のブックだけを見ていると気づけない）。
+ * {@code XlsFormatWriterTest} はセルの<b>値</b>だけを {@code getStringCellValue()} で見る。
+ * 実 {@code .xlsx} を書いて開き直すこと自体は同クラスの
+ * {@code #writesWorkbookFileWithSheetPerSection} が既に行っているため、本クラスの新規性は
+ * ファイルを経由すること<b>ではなく</b>、{@link Cell#getCellType()} を突き合わせることである。
+ * すなわち「値 → セル → ファイル → 読み戻し」を通したうえで、
+ * <b>数値・数式として解釈されないこと</b>をセル型で固定する。
+ * </p>
+ *
+ * <p>
+ * <b>ファイルを経由する理由。</b>メモリ上のブックだけを見ていると値が変わることに気づけないケースが
+ * 実在する（下記 D3-06・D3-08）。ただし<b>変化の起きる区間は 2 つあり、両者は違う</b>。
+ * </p>
+ * <ul>
+ *   <li><b>D3-08 制御文字（{@code issues.md} XLS-17）— 直列化区間。</b>
+ *       書き出した {@code .xlsx} の {@code xl/sharedStrings.xml} を展開すると
+ *       {@code <t>a?b</t>} となっており、{@code ?}（{@code U+003F}）が<b>ファイルに焼き込まれている</b>。</li>
+ *   <li><b>D3-06 の {@code CR}（{@code issues.md} XLS-18）— 読み戻し（XML パース）区間。</b>
+ *       同じダンプで {@code CR} は {@code <t>a[CR][CR]b</t>} と<b>生のまま保存されており</b>
+ *       （数値文字参照 {@code &#13;} への退避も無い）、{@code LF} へ変わるのは XML を読み直すときである。
+ *       したがって<b>{@code .xlsx} をバイトで比較しても {@code CR} は残って見え</b>、
+ *       ファイルを探しても変化の原因は見つからない。</li>
+ * </ul>
+ *
+ * <p>
+ * この違いにより、本クラスの CR 系メソッドが置く「メモリ上のブックでは保たれている」というアサートは、
+ * 「直列化で失われた」ことの証明<b>ではない</b>（ファイルにも残っているため）。
+ * 証明しているのは「{@code XlsFormatWriter} 自身は値を変えていない」ことだけである。
  * </p>
  *
  * <p>
@@ -47,9 +68,12 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>アサートの読み方。</b>{@code getCellType()} が返すのは排他的な {@code int} 定数
- * （{@code CELL_TYPE_NUMERIC=0}／{@code CELL_TYPE_STRING=1}／{@code CELL_TYPE_FORMULA=2}／
- * {@code CELL_TYPE_BLANK=3}）である。したがって {@code is(CELL_TYPE_STRING)} が通れば、
+ * <b>アサートの読み方。</b>{@code getCellType()} が返すのは排他的な {@code int} 定数であり、
+ * 本クラスで現れうるのは次の 4 つである（POI 3.8 はほかに {@code CELL_TYPE_BOOLEAN=4}／
+ * {@code CELL_TYPE_ERROR=5} も定義するが、{@link XlsFormatWriter} は
+ * {@code Cell#setCellValue(String)} しか呼ばないため本クラスでは現れない）:
+ * {@code CELL_TYPE_NUMERIC=0}／{@code CELL_TYPE_STRING=1}／{@code CELL_TYPE_FORMULA=2}／
+ * {@code CELL_TYPE_BLANK=3}。したがって {@code is(CELL_TYPE_STRING)} が通れば、
  * 同じセルに対する {@code is(not(CELL_TYPE_NUMERIC))} などの否定形も、
  * {@code getNumericCellValue()} ／ {@code getCellFormula()} が {@code IllegalStateException} に
  * なることも<b>必ず成り立つ</b>。本クラスの否定形アサートと {@code assertThrows} は、
@@ -104,7 +128,7 @@ public class XlsFormatWriterCellTypeTest {
     private static TestDataContainer container(String value) {
         // D3-04（value == null）を通すため Arrays.asList を使う。List.of は null 要素を拒否するので
         // ここを List.of へ置き換えると writesNullValueAsLiteralNullStringCell が壊れる
-        // （同趣旨の注意書きが XlsFormatWriterTest#row（L63）の Javadoc にもある）。
+        // （同趣旨の注意書きが XlsFormatWriterTest#row の Javadoc にもある）。
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 Arrays.asList("KEY", "V"),
                 Collections.singletonList(Arrays.asList("k", value)));
@@ -324,7 +348,9 @@ public class XlsFormatWriterCellTypeTest {
      *
      * <p>
      * 担保する軸要素: D3-06（改行の異表記）。メモリ上のブックでは {@code CRLF} が保たれており
-     * （{@code XlsFormatWriter#build} 直後の値は 4 文字）、変わるのはファイルへ直列化する区間である。
+     * （{@code XlsFormatWriter#build} 直後の値は 4 文字）、書き出した {@code .xlsx} の
+     * {@code xl/sharedStrings.xml} にも {@code CR} は<b>生のまま保存されている</b>（実測）。
+     * したがって<b>変わるのは読み戻し（XML パース）区間</b>であって直列化区間ではない。
      * XML の行末正規化は「{@code CR} を捨てる」のではなく「{@code CR} を {@code LF} へ置き換える」
      * 規則であり、{@code CRLF} の場合だけ 2 文字が 1 文字にまとまるため長さが減る
      * （{@code CR} 単独では長さが変わらない。{@code #replacesLoneCarriageReturnWithLineFeedInStringCell}）。
@@ -338,7 +364,8 @@ public class XlsFormatWriterCellTypeTest {
         Cell cell = writeAndReopen("a\r\nb");
 
         // Then
-        assertThat("メモリ上のブックでは CRLF が保たれている（変わるのは直列化区間）", inMemory, is("a\r\nb"));
+        assertThat("メモリ上のブックでは CRLF が保たれている（CR はファイルにも残る。変わるのは読み戻し区間）",
+                inMemory, is("a\r\nb"));
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
         assertThat("CRLF が LF 1 文字へまとまる（issues.md XLS-18）",
                 cell.getStringCellValue(), is("a\nb"));
@@ -354,7 +381,8 @@ public class XlsFormatWriterCellTypeTest {
      * 担保する軸要素: D3-06（改行の異表記）。{@code CRLF}（{@code #replacesCrLfWithSingleLineFeedInStringCell}）
      * では 4 文字が 3 文字になるため長さの差で気づけるが、単独 {@code CR} では長さが変わらないため
      * 差分の長さでは気づけない。すなわち XML の行末正規化は削除ではなく<b>置換</b>である
-     * （{@code issues.md} <b>XLS-18</b>）。
+     * （{@code issues.md} <b>XLS-18</b>）。書き出した {@code .xlsx} の {@code xl/sharedStrings.xml} には
+     * {@code CR} が生のまま入っており（実測）、<b>変わるのは読み戻し（XML パース）区間</b>である。
      * </p>
      */
     @Test
@@ -364,11 +392,11 @@ public class XlsFormatWriterCellTypeTest {
         Cell cell = writeAndReopen("a\rb");
 
         // Then
-        assertThat("メモリ上のブックでは CR が保たれている（変わるのは直列化区間）", inMemory, is("a\rb"));
+        assertThat("メモリ上のブックでは CR が保たれている（CR はファイルにも残る。変わるのは読み戻し区間）",
+                inMemory, is("a\rb"));
         assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
-        assertThat("CR が LF へ置き換わる（issues.md XLS-18）", cell.getStringCellValue(), is("a\nb"));
-        assertThat("長さは変わらないため差分の長さでは気づけない",
-                cell.getStringCellValue().length(), is("a\rb".length()));
+        assertThat("CR が LF へ置き換わる（長さは変わらないため差分の長さでは気づけない。issues.md XLS-18）",
+                cell.getStringCellValue(), is("a\nb"));
     }
 
     // ------------------------------------------------------------------ D3-07 32767 文字超
@@ -422,12 +450,14 @@ public class XlsFormatWriterCellTypeTest {
 
     /*
      * D3-08 は文字ごとに 1 メソッドへ分けてある（姉妹クラス XlsFormatReaderCellTypeTest が
-     * 17 ケースを 1 ケース 1 @Test で展開しているのに合わせた）。ループで束ねると最初の 1 文字が
-     * 落ちた時点で残りが実行されず、どの文字で挙動が違うのかが分からなくなるためである。
+     * 1 ケース 1 @Test で展開しているのに合わせた。同クラスの @Test は 19 個）。ループで束ねると
+     * 最初の 1 文字が落ちた時点で残りが実行されず、どの文字で挙動が違うのかが分からなくなるためである。
      *
      * 以下 4 件（NUL／BEL／VT／US）は XML 1.0 で表現できない制御文字。
      * 実 .xlsx へ書き出すと当該文字が黙って ?（U+003F）へ置き換わる（文字数は変わらない）。
-     * メモリ上のブックでは保たれており、置換されるのはファイルへ直列化する区間である。
+     * メモリ上のブックでは保たれており、置換されるのはファイルへ直列化する区間である
+     * （xl/sharedStrings.xml に <t>a?b</t> と ? が焼き込まれていることを実測。CR とは違い、
+     *   ファイルを見れば変化が分かる。クラス Javadoc「ファイルを経由する理由」参照）。
      * 変換前後で値が変わるため issues.md の XLS-17 に課題として記録した（修正はしない）。
      * 担保する軸要素: D3-08。
      */
