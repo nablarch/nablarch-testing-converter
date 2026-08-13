@@ -2,6 +2,9 @@
 
 ## Completion Criteria
 
+> 軸D 辺① の対象範囲はその後変更された。現行の定義は `coverage/inventory.md` §0.5 と
+> `steering.md` の Decisions が正。以下は #19 完了時点の記録である。
+
 | Criterion | Self-check | Evidence | QA | QA Evidence |
 |---|---|---|---|---|
 | 実 `.xlsx` ファイルを入力として `XlsFormatReader` を駆動するテストが存在し、`FakeTestDataReader` を経由していない | OK | 新規 2 クラス 21 件はすべて `new XlsFormatReader()`（本番配線＝`PoiXlsReader`）に実ファイルパスを渡す。`FakeTestDataReader` は `XlsFormatReaderTest` の private 内部クラスであり新規クラスからは参照不能（詳細は Evidence 1） | | |
