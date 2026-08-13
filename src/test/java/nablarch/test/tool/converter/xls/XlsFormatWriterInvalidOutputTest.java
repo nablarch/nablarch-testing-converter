@@ -343,43 +343,99 @@ public class XlsFormatWriterInvalidOutputTest {
      * 担保する軸要素: F3-04（禁止文字）。
      */
 
-    /** シート名に {@code /} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code /} を index 1 に持つ 3 文字のシート名 {@code a/b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (/) found at index (1)} と {@code in sheet name 'a/b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingSlash() {
         assertRejectsSheetName('/');
     }
 
-    /** シート名に {@code \} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code \} を index 1 に持つ 3 文字のシート名 {@code a\b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (\) found at index (1)} と {@code in sheet name 'a\b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingBackslash() {
         assertRejectsSheetName('\\');
     }
 
-    /** シート名に {@code ?} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code ?} を index 1 に持つ 3 文字のシート名 {@code a?b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (?) found at index (1)} と {@code in sheet name 'a?b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingQuestionMark() {
         assertRejectsSheetName('?');
     }
 
-    /** シート名に {@code *} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code *} を index 1 に持つ 3 文字のシート名 {@code a*b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (*) found at index (1)} と {@code in sheet name 'a*b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingAsterisk() {
         assertRejectsSheetName('*');
     }
 
-    /** シート名に {@code [} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code [} を index 1 に持つ 3 文字のシート名 {@code a[b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char ([) found at index (1)} と {@code in sheet name 'a[b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingOpeningBracket() {
         assertRejectsSheetName('[');
     }
 
-    /** シート名に {@code ]} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code ]} を index 1 に持つ 3 文字のシート名 {@code a]b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (]) found at index (1)} と {@code in sheet name 'a]b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingClosingBracket() {
         assertRejectsSheetName(']');
     }
 
-    /** シート名に {@code :} を含むと拒否される。 */
+    /**
+     * Given: 禁止文字 {@code :} を index 1 に持つ 3 文字のシート名 {@code a:b}。
+     * When : {@code write}。
+     * Then : POI の {@code IllegalArgumentException} が
+     *        {@code Invalid char (:) found at index (1)} と {@code in sheet name 'a:b'} を伴って送出され、
+     *        ブックは作られない。
+     *
+     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     */
     @Test
     public void rejectsSheetNameContainingColon() {
         assertRejectsSheetName(':');

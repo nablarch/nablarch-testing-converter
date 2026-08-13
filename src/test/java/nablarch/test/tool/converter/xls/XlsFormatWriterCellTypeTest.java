@@ -549,7 +549,10 @@ public class XlsFormatWriterCellTypeTest {
      */
 
     /**
-     * {@code NUL}（{@code U+0000}）を含む値が {@code ?} へ置換されて書かれる。
+     * Given: {@code NUL}（{@code U+0000}）を挟んだ値 {@code "a" + U+0000 + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、値が {@code "a?b"} になる（{@code NUL} が {@code ?} へ置換）。
+     *        メモリ上のブックでは {@code U+0000} が保たれている。
      */
     @Test
     public void replacesNulCharacterWithQuestionMark() {
@@ -557,7 +560,10 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * {@code BEL}（{@code U+0007}）を含む値が {@code ?} へ置換されて書かれる。
+     * Given: {@code BEL}（{@code U+0007}）を挟んだ値 {@code "a" + U+0007 + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、値が {@code "a?b"} になる（{@code BEL} が {@code ?} へ置換）。
+     *        メモリ上のブックでは {@code U+0007} が保たれている。
      */
     @Test
     public void replacesBellCharacterWithQuestionMark() {
@@ -565,7 +571,10 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * {@code VT}（{@code U+000B}）を含む値が {@code ?} へ置換されて書かれる。
+     * Given: {@code VT}（{@code U+000B}）を挟んだ値 {@code "a" + U+000B + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、値が {@code "a?b"} になる（{@code VT} が {@code ?} へ置換）。
+     *        メモリ上のブックでは {@code U+000B} が保たれている。
      */
     @Test
     public void replacesVerticalTabCharacterWithQuestionMark() {
@@ -573,7 +582,10 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * {@code US}（{@code U+001F}）を含む値が {@code ?} へ置換されて書かれる。
+     * Given: {@code US}（{@code U+001F}）を挟んだ値 {@code "a" + U+001F + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、値が {@code "a?b"} になる（{@code US} が {@code ?} へ置換）。
+     *        メモリ上のブックでは {@code U+001F} が保たれている。
      */
     @Test
     public void replacesUnitSeparatorCharacterWithQuestionMark() {
@@ -587,7 +599,9 @@ public class XlsFormatWriterCellTypeTest {
      */
 
     /**
-     * {@code TAB}（{@code U+0009}）を含む値はそのまま書かれる（置換されない）。
+     * Given: {@code TAB}（{@code U+0009}）を挟んだ値 {@code "a" + U+0009 + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、{@code TAB} がそのまま保たれる（{@code ?} へ置換されない）。
      */
     @Test
     public void writesTabCharacterAsIs() {
@@ -595,7 +609,9 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * {@code DEL}（{@code U+007F}）を含む値はそのまま書かれる（置換されない）。
+     * Given: {@code DEL}（{@code U+007F}）を挟んだ値 {@code "a" + U+007F + "b"} を持つデータ行。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : <b>文字列セル</b>になり、{@code DEL} がそのまま保たれる（{@code ?} へ置換されない）。
      */
     @Test
     public void writesDeleteCharacterAsIs() {

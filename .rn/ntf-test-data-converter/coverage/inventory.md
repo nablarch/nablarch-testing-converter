@@ -1007,7 +1007,7 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 | 要素 | #18 | #22 後 | 担保テストメソッド（`XlsFormatWriterInvalidOutputTest#`） | 観測した挙動 |
 |---|---|---|---|---|
 | F3-01 出力先不在 | 🔺 | ✅ | `createsMissingOutputDirectoriesAndWritesWorkbook` | 例外にならず多階層の出力先が作られ、ブックが書き出される（`XlsFormatWriter#write` L105 の `Files.createDirectories`）。既存の 🔺 `XlsFormatWriterTest#wrapsIoFailure` は「親に通常ファイルが居座りディレクトリを作れない」別ケース（`UncheckedIOException`）であり、両方で出力先まわりが揃う |
-| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは `.yaml` を出力側とする衝突だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている（`TestDataConverterTest#convertsYamlToXls` ほか 3 件。変異で実証）が、**`.xlsx` が既存で衝突する分岐**（`checkOverwrite` の `Files.exists(output)` → `ConverterException`）は 1 件も通っていない（§0.8-5 の訂正） |
+| F3-02 `overwrite=false` 衝突 | 対象外 | **対象外（変更なし）** | —（本クラスに該当テストは無い） | `XlsFormatWriter` は `overwrite` を保持しない（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`。§0.8-5）。衝突検査は `XlsFormatWriter` を呼ぶ前に上位層（`TestDataConverter#checkOverwrite` L90-99）で完結するため、辺③ では再現できない。**ただし「上位層の既存テストが担保している」のは `.yaml` を出力側とする衝突だけである**: `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`（L336）／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict`（L267）はどちらも XLS→YAML であり、通るのは `YamlFormatHandler#outputPaths`（L63）。`XlsFormatHandler#outputPaths`（L63-67）自体は `overwrite=false` 下で実行されている（`TestDataConverterTest#convertsYamlToXls`, `#convertsXlsToXls` ほか 1 件（計 3 件）。変異で実証。§0.8-5 と同じ 3 件）が、**`.xlsx` が既存で衝突する分岐**（`checkOverwrite` の `Files.exists(output)` → `ConverterException`）は 1 件も通っていない（§0.8-5 の訂正） |
 | F3-03 書き込み権限なし | ❌ | ✅ | `wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException: failed to write Excel: <出力先パス>` ＋ 原因 `java.nio.file.AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境（root 実行など）では `Assume` でスキップする（確認用ファイルの作成が拒否されることを前提条件として確かめる） |
 | F3-04 シート名が Excel 制約違反 | ❌ | ✅ | 禁止文字 7 件: `rejectsSheetNameContainingSlash`／`rejectsSheetNameContainingBackslash`／`rejectsSheetNameContainingQuestionMark`／`rejectsSheetNameContainingAsterisk`／`rejectsSheetNameContainingOpeningBracket`／`rejectsSheetNameContainingClosingBracket`／`rejectsSheetNameContainingColon`。ほか `rejectsEmptySheetName`／`writesSheetNameOfExcelLimitLengthAsIs`／`truncatesSheetNameLongerThanExcelLimitSilently`／`writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`／`rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`／`failsWhenTruncatedSheetNamesCollide`／`failsWhenSheetNamesDifferOnlyInCase` | **31 文字ちょうどはそのまま書かれる**（切り詰めなし）。**31 文字超は例外にならず黙って 31 文字へ切り詰められる**（`issues.md` **XLS-16**）。切り詰め後に衝突したときだけ `IllegalArgumentException: The workbook already contains a sheet of this name`（**大文字小文字だけが違う名前も同名と判定される**。切り詰めが走らない 3 文字で実測）。空文字は `IllegalArgumentException: sheetName '' is invalid`。禁止文字（`/ \ ? * [ ] :`）は POI の `IllegalArgumentException: Invalid char (x) found at index (i) in sheet name '...'` でブックを作らずに失敗するが、**これは切り詰め後の名前に禁止文字が残る場合に限る**（下記） |
 
@@ -1024,6 +1024,34 @@ in-memory `LinkedHashMap` に差し替えるため、YAML テキストのパー�
 重複判定（切り詰め後の衝突／大文字小文字だけが違う名前）である。
 **シート名のアポストロフィ（先頭／末尾）と `null` は #22 のスコープ外であり未担保**（タスク #22 の Steps が
 F3-04 の範囲を「31 文字超・禁止文字」と定めているため）。
+
+<a id="s3-1-2-parent-null"></a>
+
+**F3-01 の隣接領域に、src/test 全体で一度も通っていない分岐が 1 つある（2026-08-13・第 3 ラウンドの指摘により開示）。**
+上表の F3-01 行は「出力先まわりが揃う」と書いているが、`XlsFormatWriter#write` の
+**`parent == null` 分岐（L102-106）は未担保**である。`src/main` のコメント（L103）が
+「親ディレクトリを持たない相対パス（例: `"foo.xlsx"`）が生成されると `getParent()` は `null` を返すため、
+null チェックが必須」と明記している分岐であるため、担保の穴としてここに開示する。
+
+- **成立条件**: `Paths.get(basePath, container.getName() + ".xlsx").getParent()` が `null` になるのは
+  `basePath` が空文字のときだけである（`jshell` で実測（2026-08-13）:
+  `Paths.get("", "Book.xlsx").getParent()` → `null` ／
+  `Paths.get(".output/SampleConversionTest", "Book.xlsx").getParent()` → `.output/SampleConversionTest` ／
+  `Paths.get("/tmp/junit123", "Book.xlsx").getParent()` → `/tmp/junit123`）。
+- **到達経路の全数**: `XlsFormatWriter#write` が呼ばれるのは src/test では次の 2 経路しかない。
+  1. 直接呼び出し **19 か所**（`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → 19。
+     内訳は `grep -rc` で `XlsFormatWriterInvalidOutputTest:10`／`XlsFormatWriterTest:3`／
+     `XlsFormatWriterCellTypeTest:2`／`TestDataConverterTest:2`／`RoundTripTest:1`／`ConverterMojoTest:1`）。
+     19 か所の `basePath` 実引数はすべて `folder.getRoot().getAbsolutePath()` ／ `<File>.getAbsolutePath()` ／
+     `<Path>.toString()` であり、空文字にならない。
+  2. 本番配線 `TestDataConverter#convert`（L75 `writer.write(container, outputBase.toString())`）。
+     `outputBase` は `XlsFormatHandler#resolveOutputBase`（L58-60）が `request.getOutputPath()` から組む。
+     テストが渡す出力先は `TemporaryFolder` 由来の絶対パス（`TestDataConverterTest` L69 `out = folder.newFolder("out").toPath()`／
+     `ConverterMojoTest` の `inject(mojo, "output", out.toFile())`）と、`SampleConversionTest` の
+     `OUTPUT_BASE = Paths.get(".output/SampleConversionTest")`（L34）だけで、いずれも空文字にならない。
+- **#22 では埋めない。** #22 の軸F の定義は F3-01 出力先不在／F3-02 `overwrite=false` 衝突／F3-03 書き込み権限なし／
+  F3-04 シート名制約違反の 4 要素（§0.7）であり、この分岐はいずれにも当たらない。
+  本書の軸要素ではないため §3.3 の件数（要追加 15 ／担保済み 11 ／対象外 1 ＝ 27）には算入しない。
 
 ### 3.2 軸要素 → 担保テストメソッド
 
@@ -1108,8 +1136,13 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 `git blame -L 478,478` で **`c04261d`**（"test(xls): #19 の4レビュー指摘を修正 …"）であり、#18 完了コミット
 `5bf7048` より後である（2026-08-13 に実物で確認して訂正。当初この節は「`getCellType()` を使うのは
 #22 が追加した `XlsFormatWriterCellTypeTest` である」と現在形で断定していたが事実に反していた）。
-現在の `grep -rc "getCellType" src/test --include=*.java` は `XlsFormatReaderCellTypeTest:1` と
-`XlsFormatWriterCellTypeTest:19` を返す。
+現在の `grep -rc "getCellType" src/test --include=*.java | grep -v ":0$"` は `XlsFormatReaderCellTypeTest:1` と
+`XlsFormatWriterCellTypeTest:19` を返す（2026-08-13 実測）。
+`| grep -v ":0$"` を落とすと `grep -rc` は走査した全 34 ファイルを返し、うち 32 行が `:0` である
+（`grep -rc "getCellType" src/test --include=*.java | wc -l` → 34）。以前ここには `| grep -v ":0$"` 無しの
+コマンドを載せたうえで上記 2 行だけを結果として書いていたが、これは出力そのものではなく部分集合であった
+（2026-08-13・第 3 ラウンドの指摘により訂正）。なお `XlsFormatWriterCellTypeTest:19` は<b>行数</b>であって
+アサート数ではない（§0.8-4 のとおり 19 行のうち 2 行はクラス Javadoc の散文で、アサートは 17 行）。
 
 **軸E**
 
@@ -1145,9 +1178,9 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 | A | A-01 `DEFAULT`（writer 側は到達可能。§0.8-7）／A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#xls_expectedFixed_isPreserved`）／A-09 `EXPECTED_VARIABLE`（🔺 `RoundTripTest#xls_expectedVariable_isPreserved`） | 要追加 | 要追加（#23。#22 の対象外） | 3 |
 | B | （なし） | — | — | 0 |
 | C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | 9 |
-| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 16 件（8 ケース＋改行の異表記 2 件・上限ちょうど・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分・XML で正当な制御文字の対照 2 件）。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 8 |
+| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 18 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 18）。内訳は **8 ケース**＋改行の異表記 **2 件**・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋2＋1＋3＋2＋2 ＝ **18**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | 3 |
-| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 15 件（禁止文字を 1 文字 1 メソッドへ展開し、シート名 31 文字ちょうど・切り詰めが禁止文字検査を無効化する境界を追加した）。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 3 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の黙った切り詰め **1 件**＋切り詰めが禁止文字検査を無効化する境界 **2 件**＋切り詰め後の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.2 の軸F 表）＝ 1＋1＋14 ＝ **16**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16** | 3 |
 | F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite`（L90-99）で完結する。既存テスト（L336／L267）が通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 1 |
 | **合計** | | **要追加 26 ／ 到達不能 0 ／ 対象外 1** | **要追加 15 ／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **27（うち対象外 1）** |
 
@@ -1157,6 +1190,11 @@ n/a 6 件（C-01, C-03, C-05, C-07, C-10, C-19）は「省略」「空」とい�
 - 要追加: A 3 ＋ C 9 ＋ E 3 ＝ **15**
 - 対象外: F3-02 **1**
 - 総計: 11 ＋ 15 ＋ 1 ＝ **27**（B は 0 件）
+
+**軸要素の外に、開示すべき担保の穴が 1 つある。** `XlsFormatWriter#write` の `parent == null` 分岐（L102-106）は
+src/test 全体で一度も通っていない。§0.7 の軸F 4 要素のいずれにも当たらないため上表には算入していないが、
+F3-01 の隣接領域であり `src/main` のコメントが「null チェックが必須」と明記している分岐であるため開示する。
+到達経路の全数と実測は [§3.1-2 の該当項](#s3-1-2-parent-null)。
 
 **特に大きな空欄**（#18 時点の評価）: `getCellType()` を使ったテストが 1 件も存在しないため軸D 8 ケース全滅。#22 の主眼。
 → **#22 で解消した。** 次いで `MessageDataBlock.directives` に値を入れて書き出すテストが 0 件（C-13）。これは #23 の対象。
