@@ -39,7 +39,7 @@ XLS-20（ブロックが消える・検出できない）→ XLS-22（loud に�
 **読み戻しの側にもテストを置いた（3 件）。** `#dropsDefaultDataTypeBlockWhenReadBack`（L669）／
 `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`（L695）／
 `#failsToReadBackRecordWithoutFields`（L722）。これらは**軸要素の担保に数えていない**
-（steering Rules フェーズ2 の「往復テストで担保を代替しない」）。置いた理由は #22 が生バイト検査 2 件を
+（steering Rules フェーズ2（往復テストの扱い））。置いた理由は #22 が生バイト検査 2 件を
 置いたのと同じで、本体パーサ・`PoiXlsReader` の挙動が変わったときに**担保テストは緑のまま
 `issues.md` の XLS-20／XLS-21／XLS-22 の記述だけが誤りになる**状態を防ぐためである。
 この扱いはクラス Javadoc・`inventory.md` §3.1-3・`issues.md` の #23 節の 3 箇所に明記した。
@@ -75,7 +75,7 @@ BRANCH covered 97 ／ missed 3、LINE covered 150 ／ missed 1）。#23 が足�
 
 | Aspect | Verdict | Evidence / Improvement |
 |---|---|---|
-| Verification approach meaningful to the objective (checks the right thing, not just "passed") | | |
+| Verification approach meaningful to the objective (checks the right thing, not just "passed") | OK（ラウンド3・`b86ee3d`） | ラウンド1・2 は FAIL（いずれも台帳の記述精度）。**ラウンド3 で PASS。** 検証の中身: 担保テスト 15 件すべてに変異で歯があることを実証（9 種類の構造変異＝`marker` の 6 タイプ別文字列／`build` が sections 空でシート追加／`writeSection` が blocks 空で行追加／`layoutColumnRow` が空カラム名行を出さない・rows 空でダミー行／`appendRecords` が records 空でダミー行／`layoutMessage` の directives と fwHeader を入れ替え／`appendRecord` が fields 空で型行を出さない・rows 空でダミー行。**生存ゼロ**、かつ落ちたのは新規テストだけ）。台帳の併記コマンド 5 本を全再実行して記録値と完全一致。参照先・識別子を全数照合し実在しないもの 0 件。「到達不能」「対象外」の根拠（`HeaderCollector#parse` の `DEFAULT` → `continue`／`XlsFormatReader`・`YamlFormatReader` の `Collections.singletonList`／F3-02）も一次情報で確認。**`issues.md` XLS-24 の「未担保である」という主張自体を、記載どおりの変異（`layoutMessage` が送信系のとき `fwHeaderFields` を出力しない）で再現し `Tests run: 428, Failures: 0` ＝ 1 件も落ちないことを確認**。往復テストでしか通っていない担保済み要素は C-10(FIXED) のタグ漏れ 1 件のみで、実体は `writesFixedFileBlock` が非往復で担保（`8d7312c` で §3.1-3 に注記）。ラウンド2 の FAIL 要因（削除済み §3.1-4／§3.1-5 参照、「FW 制御ヘッダ行は無く」の観測事実書き）はいずれも `b86ee3d` で解消を確認 |
 
 ## Expert Reviews (axes the task needs)
 
@@ -83,8 +83,8 @@ BRANCH covered 97 ／ missed 3、LINE covered 150 ／ missed 1）。#23 が足�
 
 | Aspect | Verdict | Evidence / Improvement |
 |---|---|---|
-| Medium-specific best practice | | |
-| Consistency with existing style | | |
+| Medium-specific best practice | OK（ラウンド3・`b86ee3d`） | ラウンド1・2 は FAIL。**ラウンド3 で PASS。** `TemporaryFolder` によりメソッド間で出力先が独立、静的可変状態なし、実行順依存なし、ロケール／TZ／OS 依存なし。`XlsFixture.open` は `InputStream` を try-with-resources で閉じる（POI 3.8 の `Workbook` に `close()` は無いため未クローズは不可避で、姉妹クラスと同一方針）。`causeOf` は `getCause()` の null を先に検査。JaCoCo をレビュア自身が取り直し、`XlsFormatWriter` 命令 8/782・分岐 3/100・行 1/151 未到達と未到達 3 箇所の内訳が台帳と一致 |
+| Consistency with existing style | OK（ラウンド3・`b86ee3d`） | `Given:/When :/Then :` Javadoc ＋ `// Given` `// When` `// Then`、`@author`、1 ケース 1 `@Test`、行単位 `line(...)` 突き合わせのアサート粒度がいずれも `XlsFormatWriterTest`／`XlsFormatWriterCellTypeTest` と揃っている。ヘルパの写しは `XlsFixture` の Javadoc と `issues.md`「ヘルパ抽出の要否」で境界（POI を直接触るか否か）とともに「移さない」判断が明示され、根拠の実測値もレビュアの grep と一致。**PASS 後に残った記述精度 7 件は `8d7312c` で修正**（送信同期 Javadoc の係り受け 2 文化／`XlsFormatWriterTest` に残っていた「FW ヘッダ無し」1 行／`XlsFixture.EXTENSION` の別名参照を `".xlsx"` リテラルへ差し戻し ＋ `private` へ復帰／`XlsFixture` Javadoc の分類から `EXTENSION` を除去／steering Rules の非逐語引用を参照へ／`row` の Javadoc 圧縮／C-10(FIXED) タグ漏れの注記） |
 
 ### Verification Expert (test)
 
@@ -202,9 +202,9 @@ BRANCH covered 97 ／ missed 3、LINE covered 150 ／ missed 1）。#23 が足�
   台帳に載っている件数の導出コマンド（`grep -c '^    @Test'` の 4 クラス分、`grep -c 'Given:'`、
   `grep -c 'EXPECTED_FIXED\|EXPECTED_VARIABLE'`、§3.1 末尾の awk）をすべて再実行し、記載どおり
   **18／18／40／0／18／16／`@Test=40 build=28 write=10 neither=2`** になることを確かめた。
-- QA:
+- QA: **OK**（ラウンド3・`b86ee3d`。ラウンド1・2 は FAIL。担保テスト 15 件を変異で生存ゼロ確認、台帳の併記コマンド全再実行一致、XLS-24 の主張を変異で実証。残る指摘 4 件はすべて「些細／記述精度」で `8d7312c` にて対応）
 - Design expert: N/A（既存クラス構成の中でテストクラスを 1 つ追加するタスクであり、構造・アプローチを新設していない。
   実 `.xlsx` を書いて開き直す方式は #22 の `XlsFormatWriterCellTypeTest` で確立済みのものを踏襲している）
-- Craft expert (coding):
-- Verification expert (test):
-- Ready to check off:
+- Craft expert (coding): **OK**（ラウンド3・`b86ee3d`。ラウンド1・2 は FAIL。参照先の実在を全数照合し 0 件の欠落、`@Test` 40 件の `build`／`write` 分類をメソッド本体 1 件ずつで再実測、JaCoCo を取り直して台帳と一致。残る指摘 3 件はすべて「些細／記述精度」で `8d7312c` にて対応）
+- Verification expert (test): **OK**（`4905838` で PASS ＝ 22 変異・生存ゼロ。以降 HEAD まで `src/` の差分はコメント／Javadoc のみでコード行増減 0 のため再実行しない。ユーザー判断・2026-08-13。根拠: `git diff --numstat 4905838 63c3f9b -- src/` → 106/24 で非コメント行 0、`63c3f9b`..`b86ee3d` は `src/` 差分なし。`8d7312c` で `src/test` に入ったコード変更は `EXTENSION` 定数の定義位置のみで値・matcher・`@Test` 数は不変）
+- Ready to check off: **Yes**。QA・Craft ともラウンド3 で PASS、Verification は上記の根拠で再実行免除。Completion criteria 5 項目すべて OK（両レビュアが独立に確認）。`src/main` 無変更（`git diff d9b03f6 8d7312c -- src/main` → 0 行）、`mvn clean test -Djacoco.skip=true` → 428 件全 PASS

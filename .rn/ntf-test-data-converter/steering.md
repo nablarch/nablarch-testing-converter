@@ -746,9 +746,9 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 - [x] `DataType.DEFAULT` は辺③では到達可能（`XlsFormatWriter#marker` が `getDataType().getName()` からマーカーを組み立てるだけでタイプを絞らない）。現状の挙動をまず実行して記録してから固定する。辺④は `serialize_unsupportedDataType_throws` のとおり `DEFAULT` を例外で弾くため、**辺③④で扱いが非対称**である。この非対称を `issues.md` に課題として記録する（**修正しない**）— XLS-20
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（428 件 PASS）
 - [x] self-check（OK/NG per completion criterion、checks/task-23.md に記録）
-- [ ] QA expert review（subagent） — ラウンド1・2 とも FAIL（いずれも台帳の記述精度）。ラウンド2 の修正 `63c3f9b` は**未レビュー**
-- [ ] Craft expert review（subagent, coding） — ラウンド1・2 とも FAIL（同上）。`63c3f9b` は**未レビュー**
-- [ ] Verification expert review（subagent, test） — `4905838` で PASS（22 変異・生存ゼロ）。`63c3f9b` は**未レビュー**（差分は台帳とコメントのみ）
+- [x] QA expert review（subagent） — ラウンド3 で PASS（`b86ee3d`）。担保テスト 15 件を変異で生存ゼロ確認
+- [x] Craft expert review（subagent, coding） — ラウンド3 で PASS（`b86ee3d`）
+- [x] Verification expert review（subagent, test） — `4905838` で PASS（22 変異・生存ゼロ）。以降 `src/` の差分はコメントのみ（コード行増減 0）につき再実行せず（ユーザー判断・2026-08-13）
 
 **Completion criteria**:
 
@@ -893,11 +893,10 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 - **Status**: in progress
 - **Date**: 2026-08-13
-- **Last completed**: 台帳の構造見直し（`c126856` ＋ `3f9e665`）。タスクとしては #22（`d9b03f6`）まで。#23 は実装＋修正ラウンド2（`63c3f9b`）まで完了だが**未チェックオフ**
-- **Next**: #23 のレビューを **QA・Craft の 2 本だけ**、本コミット時点の HEAD に対して再実行する（ユーザー承認・2026-08-13）。PASS ならチェックオフし #24（辺②）へ
+- **Last completed**: #23 辺③ 軸A・B・C・E の欠け補充。レビューはラウンド3（`b86ee3d`）で QA・Craft とも PASS
+- **Next**: #24（辺② 軸D の YAML スカラー10ケース・軸A〜F の欠け補充）
 - **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。428 件全 PASS・`src/main` 無変更。
-  **Verification は再実行しない（ユーザー承認・2026-08-13）**: `4905838` で PASS 済み（22 変異・生存ゼロ）。以降 HEAD まで `src/` の差分はコメント／Javadoc のみでコード行の増減 0（`git diff --numstat 4905838 HEAD -- src/` → 106/24、うち非コメント行 0）。変異テストの結果が変わる余地がない。
-  **台帳の構造見直しで消したもの（削除のみのためレビューは回していない）**: 逆引き表 §1.2／§2.2／§3.2／§4.2、訂正履歴 §3.1-4／§3.1-5、および他ファイルの行番号・ファイル行数。逆引きの正は #27 の `coverage/axis-matrix.md`。規約は Rules（フェーズ2）に 2 項追加し、#24 の Steps に self-check を入れた。
-  **決着済み（ユーザー判断・2026-08-13）**: (1) §3.3 軸B の根拠 1 文（`layout` が 3 分岐しか持たず `TableDataBlock` と `ListMapBlock` はどちらも `layoutColumnRow` を通る）は残す。(2) 「件数にコマンドを併記」の既存記述への遡及適用は行わない。別タスクにも切らない。逆引き表の削除で件数の二重管理は解消済みで、#24 以降の新規記述に self-check で効かせる。
-  **3 ラウンド目 FAIL 時の扱い（ユーザー事前決定・2026-08-13）**: FAIL の内容が台帳の記述精度で `src/test` に欠陥がない場合は #23 のブロッカーにしない。`issues.md` に記録してチェックオフし #24 へ進む（#23 の Completion criteria は辺③の軸担保であり台帳の完璧さではない。担保の正は #27 の `axis-matrix.md`）。`src/test` の欠陥（アサート不足・穴の見落とし）が出た場合は通常どおり修正する。
-  **`checks/task-23.md`**: レビュー結果欄は空。チェックオフ時にコーディネータが埋める。
+  **#23 の Verification は再実行していない（ユーザー承認・2026-08-13）**: `4905838` で PASS 済み（22 変異・生存ゼロ）。以降 `src/` の差分はコメント／Javadoc のみでコード行の増減 0。
+  **台帳の構造見直しで消したもの**: 逆引き表 §1.2／§2.2／§3.2／§4.2、訂正履歴 §3.1-4／§3.1-5、および他ファイルの行番号・ファイル行数。逆引きの正は #27 の `coverage/axis-matrix.md`。規約は Rules（フェーズ2）に 2 項追加し、#24 の Steps に self-check を入れた。**#24 は台帳を書く前にこの規約を読むこと。**
+  **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に 1 行も現れない（実体は担保済みだが表の上では穴の形）。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` の 2 クラスに分散している。
+  **決着済み（ユーザー判断・2026-08-13）**: 「件数にコマンドを併記」の既存記述への遡及適用は行わない。#24 以降の新規記述に self-check で効かせる。
