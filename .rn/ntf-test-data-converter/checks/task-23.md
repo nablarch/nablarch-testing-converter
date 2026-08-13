@@ -90,8 +90,8 @@ BRANCH covered 97 ／ missed 3、LINE covered 150 ／ missed 1）。#23 が足�
 
 | Aspect | Verdict | Evidence / Improvement |
 |---|---|---|
-| Artifact actually checked (tests run / claims verified / flow traced) | | |
-| Coverage (edge cases / claims / steps) | | |
+| Artifact actually checked (tests run / claims verified / flow traced) | OK | `4905838` で PASS。以降 `src/` の差分はコメントのみ（コード行増減 0）につき再実行せず |
+| Coverage (edge cases / claims / steps) | OK | 同上。`git diff --numstat 4905838 HEAD -- src/` → 106 追加 / 24 削除、うち非コメント行 **0**。`63c3f9b`..HEAD は `src/` 差分なし。変異テスト（22 変異・生存ゼロ）の結果が変わる余地がないため再実行しない（ユーザー判断・2026-08-13） |
 
 ## Overall Verdict
 
