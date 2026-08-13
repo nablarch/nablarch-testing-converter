@@ -50,7 +50,7 @@ import org.junit.rules.TemporaryFolder;
  *       書き出した {@code .xlsx} の {@code xl/sharedStrings.xml} を展開すると
  *       {@code <t>a?b</t>} となっており、{@code ?}（{@code U+003F}）が<b>ファイルに焼き込まれている</b>。</li>
  *   <li><b>D3-06 の {@code CR}（{@code issues.md} XLS-18）— 読み戻し（XML パース）区間。</b>
- *       同じダンプで {@code CR} は {@code <t>a[CR][CR]b</t>} と<b>生のまま保存されており</b>
+ *       同じダンプで {@code CR} は {@code <t>a[CR]b</t>} と<b>生のまま保存されており</b>
  *       （数値文字参照 {@code &#13;} への退避も無い）、{@code LF} へ変わるのは XML を読み直すときである。
  *       したがって<b>{@code .xlsx} をバイトで比較しても {@code CR} は残って見え</b>、
  *       ファイルを探しても変化の原因は見つからない。</li>
