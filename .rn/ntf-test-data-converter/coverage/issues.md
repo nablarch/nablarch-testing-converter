@@ -728,3 +728,121 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
   担保テストは確認用ファイルの作成が `AccessDeniedException` で拒否されることを前提条件として確かめ、
   拒否されない環境（root 実行・権限を無視するファイルシステム）では `Assume` でスキップする。
   本作業の実行環境（非 root・ext4）では実際に実行され PASS している。
+
+---
+
+## #23 辺③ 軸A・B・C・E の欠け補充で記録した課題
+
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（XLS-21・XLS-20）を先に置き、
+loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23）を後に置く。
+
+以下はすべて中間モデルを `new XlsFormatWriter().write(...)` で実 `.xlsx` へ書き出し、
+書き出したファイルを POI で開き直して（読み戻しの記述は `new XlsFormatReader().read(...)` で）
+実測したものである（プローブ実行 2026-08-13 ＋ 担保テストの実行）。
+
+**読み戻しの側も担保テストを持たせてある。** 下表の「読み戻すとどうなるか」は辺③の担保ではないが、
+テストを置かないと本体パーサ・`PoiXlsReader` の挙動が変わったときに**辺③の担保テストは緑のまま
+本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 3 件
+（`#dropsDefaultDataTypeBlockWhenReadBack` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` ／
+`#failsToReadBackRecordWithoutFields`）が読み戻しを実検査する。
+これらは軸要素の担保としては数えない（steering Rules フェーズ2 の「往復テストで担保を代替しない」）。
+
+### XLS-21 カラム名 0 件のブロックを書き出すと、読み戻しでデータ行がカラム名へ昇格し値が消える（影響度 中・**検出できない**）
+
+| 入力（中間モデル） | 書き出される版面 | 読み戻した中間モデル | 担保テスト |
+|---|---|---|---|
+| `SETUP_TABLE=T`／`columnNames=[]`／`rows=[[v1, v2]]` | 識別行 `SETUP_TABLE=T`／カラム名行 **空セル 2 個**（データ行の幅へ矩形整形される）／データ行 `v1`, `v2` | `columnNames=[V1, V2]`（値がカラム名になり、テーブル経路の大文字化が掛かる）／`rows=[]`（**データ行 0 件**） | 版面: `XlsFormatWriterModelTest#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／読み戻し: `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` |
+
+- 原因: `XlsFormatWriter#render` はカラム名行を版面幅へ矩形整形するため、カラム名 0 件でも
+  **空セルだけの行**が出る。この行は `PoiXlsReader#isBlankLine` が空行として読み飛ばすため
+  （`issues.md` **XLS-05** と同じ機構）、次の行＝先頭のデータ行がカラム名行として解釈される。
+- 実測: 上表のとおり。例外にも警告にもならない。
+- 影響: 値がカラム名へ化け、データ行がすべて消える。変換後にテストが通ってしまえば発見できない。
+- **到達経路は未確認。** 中間モデル上は表現できる（`ColumnRowDataBlock` の `columnNames` は空許容）が、
+  辺①・辺②のどちらかがこの形（カラム名 0 件かつ値を持つデータ行）を生むかは確かめていない。
+  辺①でカラム名が 0 件になるのはマーカー列だけのブロック（**XLS-08**）だが、そのときのデータ行は
+  セルを 1 つも持たない行であり、本課題の入力とは異なる。
+- 判断: **仕様として不適切**（データ損失）。XLS-05／XLS-08 と同じ「空行として読み飛ばされる」機構の派生であり、
+  単独で直すものではない。XLS-05 の対応を検討する際に併せて判断すること。修正はこの作業では行わない。
+
+### XLS-20 `DataType.DEFAULT` の扱いが辺③と辺④で非対称で、辺③が書いたブロックは読み戻すと消える（影響度 中・**検出できない**）
+
+| 辺 | `DataType.DEFAULT` のブロックを渡したときの挙動 | 担保テスト |
+|---|---|---|
+| 辺③ 中間モデル→Excel | **そのまま書き出す。** 識別セルは `DEFAULT=T`（グループ ID 付きなら `DEFAULT[g1]=T`）。ヘッダ色はその他グループ | `XlsFormatWriterModelTest#writesDefaultDataTypeMarker` |
+| 辺④ 中間モデル→YAML | **例外で弾く。** `IllegalArgumentException: unsupported DataType: DEFAULT` | `YamlFormatWriterTest#serialize_unsupportedDataType_throws` |
+| 辺① Excel→中間モデル（辺③の出力を読み戻した場合） | **ブロックが黙って消える**（`sections` は 1 件、`blocks` は 0 件）。例外も警告も無い | `XlsFormatWriterModelTest#dropsDefaultDataTypeBlockWhenReadBack` |
+
+- 原因:
+  - 辺③ — `XlsFormatWriter#marker` が `block.getDataType().getName() + getGroupId() + "=" + getIdentifier()` を
+    組み立てるだけで、タイプを絞る分岐を持たない。
+  - 辺④ — `YamlFormatWriter` の `DataType` → セクションキー変換が既知 13 種の `switch` で、
+    `default:` が `IllegalArgumentException("unsupported DataType: " + type)` を送出する。
+  - 辺① — `src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java` の
+    `HeaderCollector#parse` が、先頭セルから判定したデータタイプが `DEFAULT` の行を `continue` で読み飛ばす
+    （`issues.md` **XLS-10** と同じ機構。`DEFAULT` は「既知のどの名前にも一致しない」の意味でも使われる）。
+- 実測: 上表のとおり。
+- 影響: 同じ中間モデルが出力形式によって「書ける」「例外」に分かれる。さらに辺③で書けた `.xlsx` は
+  読み戻すとブロックごと消えるため、Excel→YAML と Excel→Excel で結果が変わる。
+  ただし `DEFAULT` を持つブロックが中間モデルに現れる経路は辺①・辺②のいずれにも無い（§0.8-7）ため、
+  現実に踏むのは中間モデルを手で組み立てた場合に限られる。
+- 判断: **仕様として不適切**（非対称）。揃えるなら辺③も辺④と同じく弾くのが筋である
+  （書けても読み戻せないため、書ける側に価値が無い）。修正はこの作業では行わない。
+
+### XLS-22 フィールド 0 件のレコードレイアウトは、書き出せるが読み戻せない `.xlsx` になる（影響度 低・例外で止まるため検出できる）
+
+| 入力（中間モデル） | 書き出される版面 | 読み戻し | 担保テスト |
+|---|---|---|---|
+| `SETUP_FIXED=f.dat`／`RecordLayout("data", fields=[], rows=[[v]])` | 識別行／名前行 `data`, 空セル／型行 空セル 2 個／長さ行 空セル 2 個／データ行 空セル, `v` | `IllegalStateException: can't get data. …` ← 原因 `IllegalStateException: directive or data names row must have two columns at least. [data]` | 版面: `XlsFormatWriterModelTest#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`／読み戻し: `#failsToReadBackRecordWithoutFields` |
+
+- 原因: フィールドが 0 件だと名前行がレコード種別セル 1 個だけになる（版面幅への矩形整形で右は空セルになるが、
+  本体パーサは空セルを行の使用範囲に数えない）。本体 `DataFileParser` が名前行に 2 列以上を要求するため弾かれる。
+  これは辺①で C-17（`RecordLayout.fields` 空）を**到達不能**と判定した根拠と同じ機構である
+  （「到達不能と判定した軸要素（#20 で新たに判明したもの）」の C-17 行）。
+- 実測: 上表のとおり。書き出し自体は成功し、例外になるのは読み戻し側である。
+- 影響: `XlsFormatWriter` の Javadoc は「本体パーサが読み戻せる版面で書く」と謳っているが、この入力では
+  成り立たない。ただし読み戻しは loud に失敗するため、黙って壊れることはない。
+  また辺①はこの形の中間モデルを生成できない（上記のとおり到達不能）ため、辺②由来の YAML で
+  `fields: []` を書いた場合だけが到達経路になる（辺②側の到達可否は **未確認**）。
+- 判断: 記録に留める。**同種の前提崩れを書き出し時に弾く番人は既に 1 つある**
+  （`XlsFormatWriter#appendRecords` は 2 レコード目以降のレコード種別が空だと `IllegalStateException` を送出する）。
+  フィールド 0 件も同じ思想で書き出し時に弾くのが筋だが、修正はこの作業では行わない。
+
+### XLS-23 セクション 0 件のコンテナから、シートを 1 枚も持たない `.xlsx` が黙って書き出される（影響度 低・記録のみ）
+
+| 入力（中間モデル） | 書き出されるブック | 担保テスト |
+|---|---|---|
+| `sections=[]` のコンテナ | 例外にならずファイルが作られる（POI で開き直すと `getNumberOfSheets()` が **0**） | `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections` |
+
+- 原因: `XlsFormatWriter#build` は `container.getSections()` をループするだけで、空を弾かない。
+  POI 3.8 の `XSSFWorkbook#write` もシート 0 枚を拒否しない。
+- 実測: 上表のとおり。書き出したファイルを `XlsFormatReader#read` で読むと
+  `IllegalArgumentException: sheet not found. path=[…] sheet=[s]` になる（プローブ実測。担保テストは置いていない
+  — シート名の指定が要る API であり「シートが無い」ことと「そのシートが無い」ことを区別できないため）。
+- 影響: **Microsoft Excel がシート 0 枚のブックを開けるかは未確認**（本リポジトリのテストは POI での
+  読み直しまでしか確かめていない）。Excel のブックは最低 1 シートを要するのが通例であり、
+  開けない可能性がある。
+- 判断: 受容できる（記録のみ）。セクション 0 件のコンテナは辺①・辺②のいずれも生成しない
+  （どちらも `Collections.singletonList(section)` を返す。§0.8-6）ため、現実には中間モデルを
+  手で組み立てた場合に限られる。修正はこの作業では行わない。
+
+### 課題としないと判断した観測結果（#23）
+
+| 観測 | 判断 |
+|---|---|
+| `EXPECTED_FIXED` の識別セルが `EXPECTED_FIXED=exp.dat` になり、固定長なので長さ行が出る | 妥当（`marker` と `layoutFile` の設計どおり） |
+| `EXPECTED_VARIABLE` の識別セルが `EXPECTED_VARIABLE[g2]=exp.csv` になり、可変長なので長さ行が出ない | 妥当（同上。グループ ID は中間モデルが整形済みの `[g2]` を保持しそのまま連結される） |
+| `DataType.DEFAULT` のヘッダ色がその他グループ（`HEADER_OTHER`）になる | 妥当（`BlockLayout#headerFill` の Javadoc が `DEFAULT` を「それ以外」に明記している） |
+| ブロック 0 件のセクションが、行を 1 行も持たないシートになる（C-04 / E-1(0)） | 妥当（読み戻すとブロック 0 件のセクションに戻る＝往復が安定する。実測） |
+| データ行 0 件のブロックが識別行とカラム名行だけになる（C-09 / E-2(0)） | 妥当（読み戻すと `rows=[]` に戻る。実測） |
+| レコードレイアウト 0 件のファイル／メッセージが識別行とディレクティブ行（FW 制御ヘッダ行）だけになる（C-12 / C-15 / E-3(0)） | 妥当（読み戻すと `records=[]` に戻る。実測） |
+| 値行 0 件のレコードレイアウトが名前行・型行・長さ行だけになる（C-18） | 妥当（読み戻すと `rows=[]` に戻る。実測） |
+| `MessageDataBlock.directives` に値があると、ディレクティブ行が FW 制御ヘッダ行の**上**に出る（C-13） | 妥当（`layoutMessage` の記述順どおり。読み戻すと `directives` と `fwHeaderFields` に分かれて戻ることを実測） |
+| C-12 の入力に書いていない `file-type` が、読み戻した `directives` に現れる | 既知（**XLS-07**。器が既定ディレクティブを注入する） |
+
+### 未確認（#23）
+
+- **シート 0 枚のブックを Microsoft Excel が開けるかは未確認**（XLS-23）。確かめているのは POI での読み直しまでである。
+- **XLS-21 の到達経路は未確認。** カラム名 0 件かつ値を持つデータ行という中間モデルを、辺①・辺②のどちらかが
+  生成するかは確かめていない（辺①のマーカー列だけのブロックは値を持たない行になる＝ XLS-08）。
+- **XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認。** 辺①では到達不能である（#20 で確認済み）。
