@@ -1,5 +1,7 @@
 package nablarch.test.tool.converter.xls;
 
+import static nablarch.test.tool.converter.xls.XlsFixture.line;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -8,7 +10,6 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -26,8 +27,6 @@ import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Rule;
@@ -39,11 +38,14 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.3 が
- * 「#23 の対象」として残していた 15 要素である。
+ * 「#23 の対象」として残していた 15 要素と、#23 のレビューで<b>担保の穴</b>として判明した軸A 3 要素である。
  * </p>
  * <ul>
  *   <li><b>軸A 3 件</b>: A-01 {@code DEFAULT}（辺③では到達可能）／A-07 {@code EXPECTED_FIXED}／
  *       A-09 {@code EXPECTED_VARIABLE}（後 2 者は {@code RoundTripTest} 経由の 🔺 しか無かった）</li>
+ *   <li><b>軸A 送信同期 3 件（レビュー指摘で追加）</b>: A-12 {@code EXPECTED_REQUEST_BODY_MESSAGES}／
+ *       A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}。
+ *       識別セルを固定するテストが辺③に 1 件も無かった（詳細は該当セクションのコメント）</li>
  *   <li><b>軸C 9 件</b>: C-02 {@code sections} 空／C-04 {@code blocks} 空／C-08 {@code columnNames} 空／
  *       C-09 {@code rows} 空／C-12 {@code FileDataBlock.records} 空／
  *       C-13 {@code MessageDataBlock.directives} 値あり／C-15 {@code MessageDataBlock.records} 空／
@@ -53,10 +55,12 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * <b>実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} は {@code build}（メモリ上のブック）を
- * 見るが、本クラスが扱うのは「空のコレクションが版面のどこに現れる／現れないか」であり、
- * 行やセルが直列化で落ちないことまで含めて確かめたいので、{@code write} が実際に作ったファイルを
- * 検証対象にする（{@code XlsFormatWriterCellTypeTest} と同じ方針）。
+ * <b>本クラスは全件が実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} は 40 件のうち
+ * <b>30 件</b>が {@code build}（メモリ上のブック）を見て、実ファイルを書くのは 10 件だけである
+ * （往復テスト 8 件＋{@code writesWorkbookFileWithSheetPerSection}＋{@code wrapsIoFailure}）。
+ * 本クラスが扱うのは「空のコレクションが版面のどこに現れる／現れないか」であり、行やセルが直列化で
+ * 落ちないことまで含めて確かめたいので、{@code write} が実際に作ったファイルを検証対象にする
+ * （{@code XlsFormatWriterCellTypeTest} と同じ方針）。
  * </p>
  *
  * <p>
@@ -95,7 +99,7 @@ public class XlsFormatWriterModelTest {
     // ------------------------------------------------------------------ helpers
 
     /**
-     * {@code null} を含められるよう {@link Arrays#asList} で行を組み立てる。
+     * 可変長引数で行を組み立てる。
      *
      * @param cells セル
      * @return 行
@@ -138,7 +142,7 @@ public class XlsFormatWriterModelTest {
      */
     private File write(TestDataContainer container) {
         new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
-        return new File(folder.getRoot(), container.getName() + ".xlsx");
+        return new File(folder.getRoot(), container.getName() + XlsFixture.EXTENSION);
     }
 
     /**
@@ -177,25 +181,7 @@ public class XlsFormatWriterModelTest {
                 container.getName() + "/" + SHEET);
     }
 
-    /**
-     * 1 行を文字列リストとして取り出す（行が無ければ {@code null}）。
-     *
-     * @param sheet シート
-     * @param r     行番号
-     * @return セル値のリスト
-     */
-    private static List<String> line(Sheet sheet, int r) {
-        Row row = sheet.getRow(r);
-        if (row == null) {
-            return null;
-        }
-        List<String> cells = new ArrayList<String>();
-        for (int c = 0; c < row.getLastCellNum(); c++) {
-            Cell cell = row.getCell(c);
-            cells.add(cell == null ? null : cell.getStringCellValue());
-        }
-        return cells;
-    }
+    // 1 行の取り出し（line）は XlsFixture の static メソッドを使う（本ファイル冒頭で static import）。
 
     // ------------------------------------------------------------------ 軸A の欠け 3 件
 
@@ -297,6 +283,113 @@ public class XlsFormatWriterModelTest {
         assertThat("可変長なので長さ行は出ず、3 行目がデータ行", line(sheet, 3), is(Arrays.asList("", "abcde")));
     }
 
+    // ------------------------------------------------- 軸A 送信同期 3 種の識別セル（#23 レビュー指摘で追加）
+
+    /*
+     * 以下 3 件は A-12／A-13／A-14 の識別セル（マーカー文字列）を 1 タイプ 1 メソッドで固定する。
+     *
+     * 追加前、この 3 タイプを辺③で通していたのは XlsFormatWriterTest#writesSequenceNoForAllSendSyncTypes
+     * だけで、同メソッドがアサートするのはデータ行の列 0 の連番 "1"（4 タイプ共通の値）であり、
+     * タイプを区別する出力は 1 つも固定していなかった。実測（2026-08-13）: XlsFormatWriter#marker が
+     * この 3 タイプにだけ別文字列 "MUTATED" を返すよう src/main を一時的に変異させて全件実行したところ、
+     * 落ちたのは RoundTripTest の 3 件（xls_expectedRequestBodyMessages_isPreserved／
+     * xls_responseHeaderMessages_isPreserved／xls_responseBodyMessages_isPreserved）だけで、
+     * XlsFormatWriterTest 40 件は全緑だった（変異は確認後に戻し、src/main は無変更）。
+     * 往復テストは steering Rules フェーズ2 により正式な担保に数えないため、テストを足して埋める。
+     *
+     * 粒度は XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo（A-11）に揃え、
+     * グループ ID と識別子を含むマーカー全体と、送信系の版面（FW ヘッダ無し・データ行の列 0 に連番）を固定する。
+     */
+
+    /**
+     * Given: グループ ID 付き {@code EXPECTED_REQUEST_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
+     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
+     * Then : 識別セルが {@code EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01}。
+     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *
+     * <p>担保する軸要素: A-12。</p>
+     */
+    @Test
+    public void writesExpectedRequestBodyMessagesMarker() {
+        // Given
+        MessageDataBlock message = sendSyncMessage(DataType.EXPECTED_REQUEST_BODY_MESSAGES);
+
+        // When
+        Sheet sheet = writeAndReopenSheet(container("expectedRequestBody", message));
+
+        // Then
+        assertSendSyncLayout(sheet, "EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01");
+    }
+
+    /**
+     * Given: グループ ID 付き {@code RESPONSE_HEADER_MESSAGES}（送信系・no 列）のメッセージブロック。
+     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
+     * Then : 識別セルが {@code RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01}。
+     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *
+     * <p>担保する軸要素: A-13。</p>
+     */
+    @Test
+    public void writesResponseHeaderMessagesMarker() {
+        // Given
+        MessageDataBlock message = sendSyncMessage(DataType.RESPONSE_HEADER_MESSAGES);
+
+        // When
+        Sheet sheet = writeAndReopenSheet(container("responseHeader", message));
+
+        // Then
+        assertSendSyncLayout(sheet, "RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01");
+    }
+
+    /**
+     * Given: グループ ID 付き {@code RESPONSE_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
+     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
+     * Then : 識別セルが {@code RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01}。
+     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *
+     * <p>担保する軸要素: A-14。</p>
+     */
+    @Test
+    public void writesResponseBodyMessagesMarker() {
+        // Given
+        MessageDataBlock message = sendSyncMessage(DataType.RESPONSE_BODY_MESSAGES);
+
+        // When
+        Sheet sheet = writeAndReopenSheet(container("responseBody", message));
+
+        // Then
+        assertSendSyncLayout(sheet, "RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01");
+    }
+
+    /**
+     * 送信同期の 3 テストが共有する入力（データタイプだけが違う）。
+     *
+     * @param type データタイプ（送信系）
+     * @return メッセージブロック
+     */
+    private static MessageDataBlock sendSyncMessage(DataType type) {
+        RecordLayout record = new RecordLayout("no",
+                Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
+                Arrays.asList(row("RM21AA0104_01", "0"), row("RM21AA0104_02", "1")));
+        return new MessageDataBlock(type, "[case1]", "RM21AA0104_01",
+                map(), map(), Collections.singletonList(record));
+    }
+
+    /**
+     * 送信系の版面をアサートする（識別セルだけがタイプごとに違う）。
+     *
+     * @param sheet  読み直したシート
+     * @param marker 期待する識別セル文字列
+     */
+    private static void assertSendSyncLayout(Sheet sheet, String marker) {
+        assertThat("識別セルはタイプ名＋グループ ID＋識別子", line(sheet, 0), is(Arrays.asList(marker)));
+        assertThat("FW 制御ヘッダ行は無く、次は名前行", line(sheet, 1), is(Arrays.asList("no", "requestId", "resendFlag")));
+        assertThat(line(sheet, 2), is(Arrays.asList("", "半角", "半角")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "20", "1")));
+        assertThat("送信系なのでデータ行の列 0 は連番", line(sheet, 4), is(Arrays.asList("1", "RM21AA0104_01", "0")));
+        assertThat(line(sheet, 5), is(Arrays.asList("2", "RM21AA0104_02", "1")));
+    }
+
     // ------------------------------------------------------------------ 軸C・軸E の「空」
 
     /**
@@ -333,9 +426,8 @@ public class XlsFormatWriterModelTest {
      */
     @Test
     public void writesEmptySheetWhenSectionHasNoBlocks() {
-        // Given
-        TestDataContainer container = new TestDataContainer("noBlocks",
-                Collections.singletonList(new TestDataSection(SHEET, Collections.<TestDataBlock>emptyList())));
+        // Given（container の可変長引数にブロックを 1 件も渡さない＝ブロック 0 件のセクション）
+        TestDataContainer container = container("noBlocks");
 
         // When
         Sheet sheet = writeAndReopenSheet(container);
@@ -624,11 +716,28 @@ public class XlsFormatWriterModelTest {
         TestDataContainer container = container("noFieldsReadBack", file);
 
         // When / Then
-        IllegalStateException e = assertThrows(IllegalStateException.class,
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
                 () -> writeAndReadBack(container));
-        assertTrue("読み戻しに失敗する（issues.md XLS-22）: " + e.getMessage(),
-                e.getMessage().contains("can't get data"));
-        assertTrue("原因は名前行の列数（本体パーサ）: " + e.getCause(),
-                e.getCause().getMessage().contains("names row must have two columns at least"));
+        assertThat("読み戻しに失敗する（issues.md XLS-22）",
+                thrown.getMessage(), containsString("can't get data"));
+        assertThat("原因は名前行の列数（本体パーサ）",
+                causeOf(thrown).getMessage(), containsString("names row must have two columns at least"));
+    }
+
+    /**
+     * 例外連鎖の原因例外を 1 段たどる。
+     *
+     * <p>
+     * 原因例外の有無を先に確かめてから返す。{@code thrown.getCause().getMessage()} を直に書くと、
+     * 連鎖が変わったときに「読める失敗」ではなく {@link NullPointerException} で落ちるためである
+     * （{@code XlsFormatReaderInvalidInputTest} の同名ヘルパと同じ）。
+     * </p>
+     *
+     * @param thrown 例外
+     * @return 原因例外
+     */
+    private static Throwable causeOf(Throwable thrown) {
+        assertThat("原因例外が連鎖していること", thrown.getCause(), is(notNullValue()));
+        return thrown.getCause();
     }
 }

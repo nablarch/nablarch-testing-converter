@@ -100,8 +100,8 @@ public class XlsFormatWriterInvalidOutputTest {
     /** 既定のシート名。 */
     private static final String SHEET = "s";
 
-    /** 出力されるブックの拡張子（{@link XlsFormatWriter} が付ける）。 */
-    private static final String EXTENSION = ".xlsx";
+    /** 出力されるブックの拡張子（{@link XlsFormatWriter} が付ける）。定義は {@link XlsFixture#EXTENSION} 1 か所。 */
+    private static final String EXTENSION = XlsFixture.EXTENSION;
 
     /** Excel がシート名に許す最大文字数。 */
     private static final int EXCEL_MAX_SHEET_NAME_LENGTH = 31;

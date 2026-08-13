@@ -1,5 +1,7 @@
 package nablarch.test.tool.converter.xls;
 
+import static nablarch.test.tool.converter.xls.XlsFixture.cell;
+import static nablarch.test.tool.converter.xls.XlsFixture.line;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -26,9 +28,7 @@ import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
 
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Rule;
@@ -39,9 +39,14 @@ import org.junit.rules.TemporaryFolder;
  * {@link XlsFormatWriter} のテストクラス。
  *
  * <p>
- * {@code build}（メモリ上のブック）でセル値・背景色・罫線・列幅を直接アサートし、{@code write} ＋ 実
- * {@link XlsFormatReader} で往復（モデル → Excel → モデル）の同値を検証する。本体パーサのキャッシュ衝突を
- * 避けるため、往復テストはテストごとに一意のブック名・{@link TemporaryFolder} を使う。
+ * 40 件のうち<b>30 件は {@code build}（メモリ上のブック）</b>を見てセル値・背景色・罫線・列幅を直接
+ * アサートする。<b>残る 10 件は {@code write} で実 {@code .xlsx} を書く</b>:
+ * 往復テスト 8 件（{@code roundTrips*}。{@link #roundTrip} 経由で書き出し、実 {@link XlsFormatReader} で
+ * モデル → Excel → モデルの同値を検証する）と、{@link #writesWorkbookFileWithSheetPerSection}
+ * （ファイルとシートの生成を確かめる）・{@link #wrapsIoFailure}（書き出し失敗の例外）である
+ * （{@code grep -n "new XlsFormatWriter()\.write(" <本ファイル>} → 3 か所。うち 1 か所は
+ * {@link #roundTrip} ヘルパで 8 件が共有する）。本体パーサのキャッシュ衝突を避けるため、
+ * 往復テストはテストごとに一意のブック名・{@link TemporaryFolder} を使う。
  * </p>
  *
  * @author kiyobot
@@ -96,29 +101,7 @@ public class XlsFormatWriterTest {
         return wb.getSheet(name);
     }
 
-    /** セル文字列（行・セルが無ければ null）。 */
-    private static String cell(Sheet sheet, int r, int c) {
-        Row row = sheet.getRow(r);
-        if (row == null) {
-            return null;
-        }
-        Cell cell = row.getCell(c);
-        return cell == null ? null : cell.getStringCellValue();
-    }
-
-    /** 1 行を文字列リストとして取り出す（trailing 含む。行が無ければ null）。 */
-    private static List<String> line(Sheet sheet, int r) {
-        Row row = sheet.getRow(r);
-        if (row == null) {
-            return null;
-        }
-        List<String> cells = new ArrayList<String>();
-        for (int c = 0; c < row.getLastCellNum(); c++) {
-            Cell cell = row.getCell(c);
-            cells.add(cell == null ? null : cell.getStringCellValue());
-        }
-        return cells;
-    }
+    // セル読み出し（cell / line）は XlsFixture の static メソッドを使う（本ファイル冒頭で static import）。
 
     // ------------------------------------------------------------------ table
 

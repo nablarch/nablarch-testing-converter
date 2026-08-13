@@ -6,8 +6,10 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
@@ -54,12 +56,36 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * POI は 3.8 を使う。{@code CellType} enum は POI 4 以降のため、本クラスは 3.8 で利用できる API のみを使う。
  * </p>
  *
+ * <p>
+ * <b>本クラスが引き受けるヘルパの範囲（#22 から持ち越した判断を #23 で確定。2026-08-13）。</b>
+ * 引き受けるのは<b>POI のブック・シートを直接触る</b>ユーティリティだけである
+ * （{@link #open}／{@link #cell}／{@link #line}／{@link #EXTENSION}）。
+ * <b>中間モデルを組み立てるヘルパ（{@code row} / {@code map} / {@code container}）は引き受けない。</b>
+ * 上段の「本クラスは中間モデル組み立てヘルパとは対象レイヤが異なる」という線引きをそのまま境界に使う。
+ * </p>
+ * <ul>
+ *   <li><b>移した</b>: {@code line} は {@code XlsFormatWriterTest} と {@code XlsFormatWriterModelTest} に
+ *       本体が完全一致した写しとして存在していた。Writer 系のテストクラスは 4 本あり、次の 1 本も同じ写しを
+ *       持つ見込みが高い。{@code cell} は写しこそ 1 件だったが {@code line} と対になるシート読み出しであり、
+ *       離すと次の写しが {@code cell} 側に生まれるため同時に移した。</li>
+ *   <li><b>移さない</b>: {@code row} はリポジトリの複数パッケージ（{@code xls} / {@code yaml} /
+ *       {@code converter} / {@code core.reader}）に定着したイディオムで、集約するとパッケージをまたぐ依存が
+ *       増えるだけである（本体は {@link Arrays#asList} 1 行）。{@code map} は写しが 2 件あるが中間モデル
+ *       組み立て側で境界の向こうにある。{@code container} は定義が 5 か所あるが引数の形も 5 通りで、
+ *       そもそも重複ではない。</li>
+ * </ul>
+ *
+ * <p>
+ * 判断の根拠になった実測値（写しの数・定義の位置・引数の形）と、それを導いたコマンドは
+ * {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-5 に記録した。
+ * </p>
+ *
  * @author kiyobot
  */
 final class XlsFixture {
 
     /** 出力拡張子。{@code PoiXlsReader} は {@code .xls} → {@code .xlsx} の順に探す。 */
-    private static final String EXTENSION = ".xlsx";
+    static final String EXTENSION = ".xlsx";
 
     /** ブック名（出力ファイル名から拡張子を除いたもの）。 */
     private final String bookName;
@@ -166,6 +192,43 @@ final class XlsFixture {
         } catch (IOException | InvalidFormatException e) {
             throw new IllegalStateException("failed to open workbook: " + file, e);
         }
+    }
+
+    /**
+     * 1 セルの文字列値を取り出す。
+     *
+     * @param sheet シート
+     * @param r     行番号（0 始まり）
+     * @param c     列番号（0 始まり）
+     * @return セルの文字列値。行またはセルが存在しなければ {@code null}
+     */
+    static String cell(Sheet sheet, int r, int c) {
+        Row row = sheet.getRow(r);
+        if (row == null) {
+            return null;
+        }
+        Cell cell = row.getCell(c);
+        return cell == null ? null : cell.getStringCellValue();
+    }
+
+    /**
+     * 1 行を文字列リストとして取り出す（末尾の空セルも含む）。
+     *
+     * @param sheet シート
+     * @param r     行番号（0 始まり）
+     * @return セル値のリスト。セルが存在しない位置は {@code null}。行が存在しなければ {@code null}
+     */
+    static List<String> line(Sheet sheet, int r) {
+        Row row = sheet.getRow(r);
+        if (row == null) {
+            return null;
+        }
+        List<String> cells = new ArrayList<>();
+        for (int c = 0; c < row.getLastCellNum(); c++) {
+            Cell cell = row.getCell(c);
+            cells.add(cell == null ? null : cell.getStringCellValue());
+        }
+        return cells;
     }
 
     // ------------------------------------------------------------------ セル指定
