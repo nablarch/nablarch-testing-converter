@@ -49,6 +49,9 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない。ただし**既存**の往復テスト（`RoundTripTest` 30件、`XlsFormatWriterTest#roundTrips*` 8件、`YamlFormatWriterTest#roundTrip_*` 6件）が実ファイル経由で通している軸要素は、棚卸しに「🔺弱い担保」として必ず計上する（重複テストを書かないため）。正式担保としては数えず、直接テストの追加対象からは外さない
 - 既存テストを軸で棚卸ししてから新規テストを足す。棚卸しなしの新規追加はしない
 - 対応表・カバレッジを示さずに「網羅した」と報告しない
+- **テストメソッドを増減させたら、`inventory.md` 内の該当する件数を「記憶している箇所を直す」のではなく、コマンドから導き直す。各件数にはそれを導いたコマンドを併記する**（#22 で確定・2026-08-13）。#22 ではラウンド3 で 3 テストを追加した際、`§3.1-2`・Javadoc・`issues.md` は更新されたのに `§3.3` の件数だけが取り残され、同一文書内で 16 と 18 が矛盾した。#23・#24・#25 はいずれもテストを追加して同じ `inventory.md` を更新するため、同じ取り残しが起きる
+- **台帳に載せる出典コマンドは、そのまま実行して同じ結果が出ること。** 誤った結果を返すコマンドは件数の誤記と同じ扱いとする（#22 で確定・2026-08-13。`grep -rc` の `| grep -v ":0$"` 欠落、および自分自身がヒットして主張を反証する grep が実際に発生した）
+- **担保の穴は、テストを足さない場合でも台帳に開示する。** 開示しないのは件数を誤るのと同じ性質の誤りとする（#22 で確定・2026-08-13）
 
 # Tasks
 
@@ -709,14 +712,14 @@ mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 
 **Steps**:
 
-- [ ] 軸D の8ケース（`"100"` ／ `"=1+1"` ／ `"007"` ／ `null` ／ `""` ／改行含む文字列／32767文字超／制御文字含む）を書き出し、読み返して `getCellType()` をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
-- [ ] 軸F: 出力先不在／書き込み権限なし／シート名が Excel 制約違反（31文字超・禁止文字）のテストを追加する。`overwrite=false` 衝突は `XlsFormatWriter` が `overwrite` を保持せず（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`）、上位層の既存テスト（`TestDataConverterTest` L331・`ConverterMojoTest` L262）で担保済みのため辺③の対象外とし、根拠を対応表に記録する
-- [ ] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-22.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] 軸D の8ケース（`"100"` ／ `"=1+1"` ／ `"007"` ／ `null` ／ `""` ／改行含む文字列／32767文字超／制御文字含む）を書き出し、読み返して `getCellType()` をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
+- [x] 軸F: 出力先不在／書き込み権限なし／シート名が Excel 制約違反（31文字超・禁止文字）のテストを追加する。`overwrite=false` 衝突は `XlsFormatWriter` が `overwrite` を保持せず（保持するのは `ConversionRequest` / `TestDataConverter` / `ConverterMojo`）、上位層の既存テスト（`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse` L336・`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` L267）が衝突検査を通しているため辺③の対象外とし、根拠を対応表に記録する（**#22 で判明**: 当初この Steps に書いていた L331／L262 は実測とズレていた。また「上位層で担保済み」は担保範囲を広く言いすぎで、正確には `XlsFormatHandler#outputPaths` は実行されているが `.xlsx` が既存で**衝突する分岐**は未担保。詳細は `checks/task-22.md`）
+- [x] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）— XLS-16〜XLS-19 の4件
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する（410 件 PASS）
+- [x] self-check（OK/NG per completion criterion、checks/task-22.md に記録）
+- [x] QA expert review（subagent） — ラウンド4 で PASS
+- [x] Craft expert review（subagent, coding） — ラウンド4 で PASS
+- [x] Verification expert review（subagent, test） — ラウンド2 で PASS
 
 **Completion criteria**:
 
