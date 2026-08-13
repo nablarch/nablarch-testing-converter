@@ -23,19 +23,30 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
- * 実 {@code .xlsx} を POI で組み立てるテストフィクスチャビルダ。
+ * {@code xls} パッケージのテストが共有する POI ユーティリティ。実 {@code .xlsx} を組み立てる
+ * フィクスチャビルダ（{@link #book}／{@link #sheet}／{@link #row}／{@link #writeTo}）と、
+ * 書き出したブックを読む側のヘルパ（{@link #open}／{@link #cell}／{@link #line}／{@link #EXTENSION}）から成る。
  *
  * <p>
- * 既存のテストヘルパ（{@code XlsFormatWriterTest} ／ {@code RoundTripTest} が持つ private static の
- * {@code container} / {@code table} / {@code row} など）は<b>中間モデル</b>を組み立て、Excel が要るときは
- * {@link XlsFormatWriter} に書かせる。{@link XlsFormatWriter} はすべての値を文字列セルとして書くため、
- * 数値セル・日付書式セル・数式セル・真偽値セル・エラーセル・表示形式といった<b>セル種別</b>を表現できない。
- * 本クラスはその表現できない軸だけを受け持つ。中間モデル組み立てヘルパとは対象レイヤが異なるため
- * 重複しない。
+ * <b>ビルダ側の存在理由。</b>既存のテストヘルパ（{@code XlsFormatWriterTest} ／ {@code RoundTripTest} が
+ * 持つ private static の {@code container} / {@code table} / {@code row} など）は<b>中間モデル</b>を
+ * 組み立て、Excel が要るときは {@link XlsFormatWriter} に書かせる。{@link XlsFormatWriter} はすべての値を
+ * 文字列セルとして書くため、数値セル・日付書式セル・数式セル・真偽値セル・エラーセル・表示形式といった
+ * <b>セル種別</b>を表現できない。ビルダはその表現できない軸を受け持つ。
  * </p>
  *
  * <p>
- * 使い方（{@link #sheet} でシートを開き、{@link #row} で行を上から順に追加する。{@link #sheet} は
+ * <b>読み出し側の存在理由。</b>{@link #open}／{@link #cell}／{@link #line} は、書き出した実 {@code .xlsx} を
+ * 開いて版面を突き合わせる操作を 1 か所へ集めたものである。ビルダを使わないテストクラスからも使う
+ * （下の「本クラスが引き受けるヘルパの範囲」）。
+ * </p>
+ *
+ * <p>
+ * どちらも<b>中間モデル組み立てヘルパとは対象レイヤが異なる</b>ため重複しない。
+ * </p>
+ *
+ * <p>
+ * ビルダの使い方（{@link #sheet} でシートを開き、{@link #row} で行を上から順に追加する。{@link #sheet} は
  * 続けて呼べ、呼ぶたびにシートが末尾に追加されて以降の {@link #row} の出力先が切り替わる）:
  * </p>
  * <pre>{@code
@@ -70,9 +81,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *       離すと次の写しが {@code cell} 側に生まれるため同時に移した。</li>
  *   <li><b>移さない</b>: {@code row} はリポジトリの複数パッケージ（{@code xls} / {@code yaml} /
  *       {@code converter} / {@code core.reader}）に定着したイディオムで、集約するとパッケージをまたぐ依存が
- *       増えるだけである（本体は {@link Arrays#asList} 1 行）。{@code map} は写しが 2 件あるが中間モデル
- *       組み立て側で境界の向こうにある。{@code container} は定義が 5 か所あるが引数の形も 5 通りで、
- *       そもそも重複ではない。</li>
+ *       増えるだけである（本体は {@code Arrays.asList} 1 行）。{@code map} は写しが 2 件あるが中間モデル
+ *       組み立て側で境界の向こうにある。{@code container} は 5 定義とも<b>各クラスのシート名・ブック名の
+ *       決め方に合わせた局所版</b>であり、共有すると各クラスがその決め方を引数へ戻すことになる
+ *       （例: {@code XlsFormatWriterModelTest#container} はシート名を定数 {@code SHEET} に固定した 2 引数版で、
+ *       共有版に合わせると呼び出し 17 か所すべてがシート名を書くことになる）。</li>
  * </ul>
  *
  * <p>
@@ -84,7 +97,17 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 final class XlsFixture {
 
-    /** 出力拡張子。{@code PoiXlsReader} は {@code .xls} → {@code .xlsx} の順に探す。 */
+    /**
+     * {@link #writeTo} が付ける出力拡張子。{@code PoiXlsReader} は {@code .xls} → {@code .xlsx} の順に探す。
+     *
+     * <p>
+     * {@link XlsFormatWriter} が付ける拡張子と同じ値であり、SUT の出力ファイル名を組み立てる用途にも
+     * 使える（{@code XlsFormatWriterModelTest#write} ／ {@code XlsFormatWriterInvalidOutputTest#EXTENSION}）。
+     * ただし SUT 側の定義は {@code XlsFormatWriter} の {@code private static final String EXTENSION}
+     * （src/main L71）であってテストからは参照できないため、<b>本定数は同じ値を独立に持っているだけ</b>で、
+     * 両者が一致していることを担保するものではない。
+     * </p>
+     */
     static final String EXTENSION = ".xlsx";
 
     /** ブック名（出力ファイル名から拡張子を除いたもの）。 */
@@ -197,10 +220,22 @@ final class XlsFixture {
     /**
      * 1 セルの文字列値を取り出す。
      *
+     * <p>
+     * <b>文字列セル専用である。</b>{@code getStringCellValue()} 固定なので、本クラスのビルダが作る
+     * 非文字列セル（{@link #number} / {@link #date} / {@link #formula} / {@link #bool} / {@link #error}）に
+     * 当てると例外になる。空白セル（{@link #blank}）は空文字を返すため例外にならない。
+     * セル種別そのものを見たいときは {@link #open} で得たブックから素の {@code getRow} / {@code getCell} を
+     * たどる（{@code XlsFormatReaderCellTypeTest#writtenSheet} の 3 か所の呼び出しがその形。
+     * うち {@code readsTextFormattedNumericCellAsDoubleString} は数値セルの {@code getCellType()} を
+     * アサートするため本メソッドでは書けない）。
+     * </p>
+     *
      * @param sheet シート
      * @param r     行番号（0 始まり）
      * @param c     列番号（0 始まり）
      * @return セルの文字列値。行またはセルが存在しなければ {@code null}
+     * @throws IllegalStateException 対象セルが文字列セルでない場合
+     *                               （POI 3.8 は {@code Cannot get a text value from a numeric cell} 等を投げる）
      */
     static String cell(Sheet sheet, int r, int c) {
         Row row = sheet.getRow(r);
@@ -214,9 +249,16 @@ final class XlsFixture {
     /**
      * 1 行を文字列リストとして取り出す（末尾の空セルも含む）。
      *
+     * <p>
+     * <b>文字列セル専用である。</b>前提は {@link #cell} と同じ（行内に非文字列セルが 1 つでもあると
+     * そこで例外になる）。
+     * </p>
+     *
      * @param sheet シート
      * @param r     行番号（0 始まり）
      * @return セル値のリスト。セルが存在しない位置は {@code null}。行が存在しなければ {@code null}
+     * @throws IllegalStateException 行内に文字列セルでないセルがある場合
+     *                               （POI 3.8 は {@code Cannot get a text value from a numeric cell} 等を投げる）
      */
     static List<String> line(Sheet sheet, int r) {
         Row row = sheet.getRow(r);

@@ -39,14 +39,27 @@ import org.junit.rules.TemporaryFolder;
  * {@link XlsFormatWriter} のテストクラス。
  *
  * <p>
- * 40 件のうち<b>30 件は {@code build}（メモリ上のブック）</b>を見てセル値・背景色・罫線・列幅を直接
- * アサートする。<b>残る 10 件は {@code write} で実 {@code .xlsx} を書く</b>:
- * 往復テスト 8 件（{@code roundTrips*}。{@link #roundTrip} 経由で書き出し、実 {@link XlsFormatReader} で
- * モデル → Excel → モデルの同値を検証する）と、{@link #writesWorkbookFileWithSheetPerSection}
- * （ファイルとシートの生成を確かめる）・{@link #wrapsIoFailure}（書き出し失敗の例外）である
- * （{@code grep -n "new XlsFormatWriter()\.write(" <本ファイル>} → 3 か所。うち 1 か所は
- * {@link #roundTrip} ヘルパで 8 件が共有する）。本体パーサのキャッシュ衝突を避けるため、
- * 往復テストはテストごとに一意のブック名・{@link TemporaryFolder} を使う。
+ * 40 件の内訳は <b>{@code build}（メモリ上のブック）を見る 28 件</b>・
+ * <b>{@code write} で実 {@code .xlsx} を書く 10 件</b>・
+ * <b>SUT のブックを作らない 2 件</b>である（28 ＋ 10 ＋ 2 ＝ 40）。
+ * </p>
+ * <ul>
+ *   <li><b>{@code build} 28 件</b> — メモリ上のブックからセル値・背景色・罫線・列幅を直接アサートする。</li>
+ *   <li><b>{@code write} 10 件</b> — 往復テスト 8 件（{@code roundTrips*}。{@link #roundTrip} 経由で
+ *       書き出し、実 {@link XlsFormatReader} でモデル → Excel → モデルの同値を検証する）と、
+ *       {@link #writesWorkbookFileWithSheetPerSection}（ファイルとシートの生成を確かめる）・
+ *       {@link #wrapsIoFailure}（書き出し失敗の例外）。
+ *       {@code grep -n "new XlsFormatWriter()\.write(" <本ファイル>} は 3 か所を返し、うち 1 か所が
+ *       {@link #roundTrip} ヘルパで 8 件が共有する。</li>
+ *   <li><b>どちらも呼ばない 2 件</b> — {@link #eachGroupHasDistinctDefaultColor} と
+ *       {@link #rejectsNegativeBlankRows}。{@link ExcelFormatConfig} だけを叩くため
+ *       {@link XlsFormatWriter} のブックを作らない。</li>
+ * </ul>
+ *
+ * <p>
+ * 件数の導出コマンドと実測は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-4 にある。
+ * 本体パーサのキャッシュ衝突を避けるため、往復テストはテストごとに一意のブック名・
+ * {@link TemporaryFolder} を使う。
  * </p>
  *
  * @author kiyobot

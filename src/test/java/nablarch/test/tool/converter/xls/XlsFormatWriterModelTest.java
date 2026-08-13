@@ -55,9 +55,13 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * <b>本クラスは全件が実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} は 40 件のうち
- * <b>30 件</b>が {@code build}（メモリ上のブック）を見て、実ファイルを書くのは 10 件だけである
- * （往復テスト 8 件＋{@code writesWorkbookFileWithSheetPerSection}＋{@code wrapsIoFailure}）。
+ * <b>本クラスは全件が実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} の 40 件は
+ * <b>{@code build}（メモリ上のブック）を見る 28 件</b>・<b>実ファイルを書く 10 件</b>
+ * （往復テスト 8 件＋{@code writesWorkbookFileWithSheetPerSection}＋{@code wrapsIoFailure}）・
+ * <b>SUT のブックを作らない 2 件</b>（{@code eachGroupHasDistinctDefaultColor}／
+ * {@code rejectsNegativeBlankRows}。{@code ExcelFormatConfig} だけを叩く）に分かれる
+ * （28 ＋ 10 ＋ 2 ＝ 40。導出コマンドは
+ * {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-4）。
  * 本クラスが扱うのは「空のコレクションが版面のどこに現れる／現れないか」であり、行やセルが直列化で
  * 落ちないことまで含めて確かめたいので、{@code write} が実際に作ったファイルを検証対象にする
  * （{@code XlsFormatWriterCellTypeTest} と同じ方針）。
@@ -100,6 +104,14 @@ public class XlsFormatWriterModelTest {
 
     /**
      * 可変長引数で行を組み立てる。
+     *
+     * <p>
+     * {@code Arrays.asList} を使うのは null セルを含められるようにするためであり、
+     * {@code List.of} へ置き換えると null 要素が拒否される。本クラスは現時点で null セルを
+     * 渡していないので実害は無いが、写し元（{@code XlsFormatWriterTest#row} の Javadoc
+     * 「null を含められるよう」／{@code XlsFormatWriterCellTypeTest#row} 直前のコメント
+     * 「List.of は null 要素を拒否する」）の注意書きをそのまま持ち込んである。
+     * </p>
      *
      * @param cells セル
      * @return 行
