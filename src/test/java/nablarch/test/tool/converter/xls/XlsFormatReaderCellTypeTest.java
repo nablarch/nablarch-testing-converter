@@ -2,10 +2,6 @@ package nablarch.test.tool.converter.xls;
 
 import static nablarch.test.tool.converter.xls.XlsFixture.absent;
 import static nablarch.test.tool.converter.xls.XlsFixture.blank;
-import static nablarch.test.tool.converter.xls.XlsFixture.bool;
-import static nablarch.test.tool.converter.xls.XlsFixture.date;
-import static nablarch.test.tool.converter.xls.XlsFixture.error;
-import static nablarch.test.tool.converter.xls.XlsFixture.formula;
 import static nablarch.test.tool.converter.xls.XlsFixture.number;
 import static nablarch.test.tool.converter.xls.XlsFixture.text;
 import static org.hamcrest.CoreMatchers.is;
@@ -13,40 +9,36 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.FormulaError;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
 
 /**
- * 辺①（Excel→中間モデル）の軸D — セル種別 17 ケースが中間モデルへどう入るかを固定するテスト。
+ * 辺①（Excel→中間モデル）の軸D — セル種別 8 ケースが中間モデルへどう入るかを固定するテスト。
  *
  * <p>
  * {@code XlsFormatReaderTest} が Fake リーダ（{@code List<List<String>>} の canned 行）で駆動するのに対し、
  * 本クラスは {@link XlsFixture} が POI で組み立てた実 {@code .xlsx} を入力にし、本番配線の
  * {@link XlsFormatReader}（{@code PoiXlsReader}）を通す。すなわち「実セル → 文字列行」の区間を実行する。
+ * </p>
+ *
+ * <p>
+ * <b>対象は「NTF が実行できるテストデータ」に限る。</b>{@code PoiXlsReader} のクラス Javadoc が
+ * 「全セルが文字列書式であること」を前提として明示しているため、それを外れる入力
+ * （表示形式を持たない数値セル・日付／時刻／日時書式セル・数式セル・真偽値セル・エラー値セル）は
+ * 担保対象にしない。ただし<b>値が数値で表示形式が {@code @}（文字列書式）のセル</b>は前提の内側であり、
+ * 参照フィクスチャの実物にも存在するため {@link #readsTextFormattedNumericCellAsDoubleString()} で固定する。
  * </p>
  *
  * <p>
@@ -87,63 +79,6 @@ public class XlsFormatReaderCellTypeTest {
      */
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
-
-    /**
-     * {@link EnglishLocale} を付けたテストの実行中だけ、プラットフォーム既定ロケールを
-     * {@link Locale#ENGLISH} に固定する（終了時に元へ戻す）。
-     *
-     * <p>
-     * 日付・時刻・日時セルの文字列化は POI の {@code XSSFCell#toString()} が
-     * {@code new SimpleDateFormat("dd-MMM-yyyy")} を使うため既定ロケールに依存する
-     * （{@code -Duser.language=ja -Duser.country=JP} で実行すると {@code 07-8-2026} になることを実測）。
-     * {@link Locale#setDefault} は JVM グローバルな変更のため、必要な 3 件（D1-06〜D1-08）だけに
-     * 掛かるようこのルールで絞る。
-     * </p>
-     *
-     * <p>
-     * <b>タイムゾーンは固定しない。</b>POI は日付セルの往復（{@code DateUtil#getExcelDate} ↔
-     * {@code DateUtil#getJavaDate}）に同一の既定タイムゾーンを使い、書き込み時と読み取り時のずれが
-     * 相殺されるため、既定タイムゾーンが何であっても結果は変わらない
-     * （{@code UTC}／{@code America/Los_Angeles}／{@code Pacific/Kiritimati}／{@code Europe/Istanbul}
-     * で本クラス 19 件が全 PASS することを実測して確認済み）。将来この固定を足す必要はない。
-     * </p>
-     */
-    @Rule
-    public final TestRule englishLocale = new TestRule() {
-
-        /** 既定ロケールの退避・固定・復元。 */
-        private final ExternalResource fixLocale = new ExternalResource() {
-
-            /** 退避した既定ロケール。 */
-            private Locale original;
-
-            @Override
-            protected void before() {
-                original = Locale.getDefault();
-                Locale.setDefault(Locale.ENGLISH);
-            }
-
-            @Override
-            protected void after() {
-                Locale.setDefault(original);
-            }
-        };
-
-        @Override
-        public Statement apply(Statement base, Description description) {
-            return description.getAnnotation(EnglishLocale.class) == null
-                    ? base
-                    : fixLocale.apply(base, description);
-        }
-    };
-
-    /**
-     * 既定ロケールを {@link Locale#ENGLISH} に固定して実行すべきテストに付ける印。
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.METHOD)
-    @interface EnglishLocale {
-    }
 
     // ------------------------------------------------------------------ helpers
 
@@ -202,25 +137,7 @@ public class XlsFormatReaderCellTypeTest {
         return sheet;
     }
 
-    /**
-     * 日時を組み立てる。
-     *
-     * @param year   年
-     * @param month  月（1 始まり）
-     * @param day    日
-     * @param hour   時
-     * @param minute 分
-     * @param second 秒
-     * @return 日時
-     */
-    private static Date at(int year, int month, int day, int hour, int minute, int second) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.clear();
-        calendar.set(year, month - 1, day, hour, minute, second);
-        return calendar.getTime();
-    }
-
-    // ------------------------------------------------------------------ D1-01〜D1-05（最優先）
+    // ------------------------------------------------------------------ D1-01・D1-05
 
     /**
      * Given: 文字列セル {@code abc}。
@@ -233,37 +150,6 @@ public class XlsFormatReaderCellTypeTest {
     }
 
     /**
-     * Given: 整数値 {@code 1} の数値セル（表示形式なし）。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : {@code "1.0"} が入る（POI の {@code toString()} が {@code double} を文字列化するため）。
-     *        整数として記述した値が {@code .0} 付きに変わる。
-     */
-    @Test
-    public void readsIntegerNumericCellAsDoubleString() {
-        assertThat(readValue(number(1)), is("1.0"));
-    }
-
-    /**
-     * Given: 小数値 {@code 1.5} の数値セル。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : {@code "1.5"} が入る。
-     */
-    @Test
-    public void readsDecimalNumericCellAsDoubleString() {
-        assertThat(readValue(number(1.5)), is("1.5"));
-    }
-
-    /**
-     * Given: {@code double} の有効桁を超える大きい数値セル。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 指数表記の文字列が入る（元の桁は復元できない）。
-     */
-    @Test
-    public void readsLargeNumericCellAsScientificNotation() {
-        assertThat(readValue(number(12345678901234567890d)), is("1.2345678901234567E19"));
-    }
-
-    /**
      * Given: 先頭ゼロを保った文字列セル {@code 007}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@code 007} のまま入る（先頭ゼロが落ちない）。
@@ -273,74 +159,7 @@ public class XlsFormatReaderCellTypeTest {
         assertThat(readValue(text("007")), is("007"));
     }
 
-    // ------------------------------------------------------------------ D1-06〜D1-08（日付・時刻・日時）
-
-    /**
-     * Given: 表示形式 {@code yyyy/mm/dd} を持つ日付セル（2026-08-07）。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : セルの表示形式ではなく POI 既定の {@code dd-MMM-yyyy} 表記になる（既定ロケール依存）。
-     */
-    @Test
-    @EnglishLocale
-    public void readsDateFormattedCellAsPoiDefaultDatePattern() {
-        assertThat(readValue(date(at(2026, 8, 7, 0, 0, 0), "yyyy/mm/dd")), is("07-Aug-2026"));
-    }
-
-    /**
-     * Given: 表示形式 {@code hh:mm:ss} を持つ時刻セル（シリアル値 0.5 ＝ 12:00:00）。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 時刻成分が捨てられ、Excel シリアル値の日付部（1899-12-31）だけが残る。
-     */
-    @Test
-    @EnglishLocale
-    public void readsTimeFormattedCellLosingTimeComponent() {
-        assertThat(readValue(number(0.5, "hh:mm:ss")), is("31-Dec-1899"));
-    }
-
-    /**
-     * Given: 表示形式 {@code yyyy/mm/dd hh:mm:ss} を持つ日時セル（2026-08-07 12:34:56）。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 日付部だけが残り、時刻部は失われる。
-     */
-    @Test
-    @EnglishLocale
-    public void readsDateTimeFormattedCellLosingTimeComponent() {
-        assertThat(readValue(date(at(2026, 8, 7, 12, 34, 56), "yyyy/mm/dd hh:mm:ss")), is("07-Aug-2026"));
-    }
-
-    // ------------------------------------------------------------------ D1-09〜D1-11（数式・真偽値・エラー）
-
-    /**
-     * Given: 数式セル {@code =1+1}。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 計算結果 {@code 2} ではなく数式文字列 {@code 1+1} が入る。
-     */
-    @Test
-    public void readsFormulaCellAsFormulaText() {
-        assertThat(readValue(formula("1+1")), is("1+1"));
-    }
-
-    /**
-     * Given: 真偽値セル {@code TRUE}。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 大文字の {@code TRUE} が入る。
-     */
-    @Test
-    public void readsBooleanCellAsUpperCaseLiteral() {
-        assertThat(readValue(bool(true)), is("TRUE"));
-    }
-
-    /**
-     * Given: エラー値セル {@code #DIV/0!}。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 例外にはならず、エラー表示文字列がそのまま入る。
-     */
-    @Test
-    public void readsErrorCellAsErrorText() {
-        assertThat(readValue(error(FormulaError.DIV0)), is("#DIV/0!"));
-    }
-
-    // ------------------------------------------------------------------ D1-12〜D1-13（空セル・最優先）
+    // ------------------------------------------------------------------ D1-12〜D1-13（空セル）
 
     /**
      * Given: 行末（最終列）にセルが存在しない行。
@@ -451,17 +270,24 @@ public class XlsFormatReaderCellTypeTest {
         assertThat(readValue(text("null")), is("null"));
     }
 
-    // ------------------------------------------------------------------ D1-17（最優先）
+    // ------------------------------------------------------------------ D1-17
 
     /**
-     * Given: 値が数値 {@code 1}・表示形式が {@code @}（テキスト）のセル。
-     *        実プロジェクトの Excel テストデータに実在するパターン。
+     * Given: 値が数値 {@code 1}・表示形式が {@code @}（文字列書式）のセル。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : 表示形式 {@code @} は考慮されず {@code "1.0"} が入る（画面表示 {@code 1} と一致しない）。
      *
      * <p>
+     * 全セルが文字列書式という前提の内側にありながら値が変わる唯一のケースであるため、
+     * 本クラスで担保する数値セルはこれだけである。参照フィクスチャ
+     * {@code ProjectActionRequestTest.xlsx} の {@code downloadNormal} シート {@code A19} が
+     * この形（{@code t} 属性なしの数値セルで、適用スタイルの {@code numFmtId} が 49 ＝ {@code @}）であり、
+     * Excel が実際に保存した版面に存在するパターンであることを確認している。
+     * </p>
+     *
+     * <p>
      * 「表示形式が無視される」という主張を立てるには、そのセルが実際に表示形式 {@code @} を
-     * 持っていなければならない。読み取り値だけでは表示形式なしの数値セル（D1-02）と区別できないため、
+     * 持っていなければならない。読み取り値だけでは表示形式を持たない数値セルと区別できないため、
      * 書き出した {@code .xlsx} を読み戻して当該セルが数値セルかつ {@code getDataFormatString()} が
      * {@code "@"} であることも確認する。
      * </p>

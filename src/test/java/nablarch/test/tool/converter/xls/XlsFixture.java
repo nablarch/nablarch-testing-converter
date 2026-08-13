@@ -7,7 +7,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +14,6 @@ import java.util.Map;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.FormulaError;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -59,8 +57,16 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *
  * <p>
  * セルは {@link CellSpec} で指定する。ファクトリは本クラスの static メソッド
- * （{@link #text} / {@link #number} / {@link #date} / {@link #formula} / {@link #bool} /
- * {@link #error} / {@link #blank} / {@link #absent}）で、テスト側から static import して使う。
+ * （{@link #text} / {@link #number} / {@link #blank} / {@link #absent}）で、
+ * テスト側から static import して使う。
+ * </p>
+ *
+ * <p>
+ * <b>数値セル以外の非文字列セル（日付・時刻・日時・数式・真偽値・エラー値）のファクトリは持たない。</b>
+ * converter が入出力の対象とする Excel は全セルが文字列書式であり
+ * （{@code PoiXlsReader} のクラス Javadoc が前提として明示）、それらは前提の外にあるため。
+ * {@link #number} を残すのは、値が数値で表示形式が {@code @} のセルが前提の内側に存在し、
+ * かつそこだけ値が変わるためである。
  * </p>
  *
  * <p>
@@ -349,68 +355,6 @@ final class XlsFixture {
             void write(XlsFixture fixture, Cell cell) {
                 cell.setCellValue(value);
                 cell.setCellStyle(fixture.styleFor(displayFormat));
-            }
-        };
-    }
-
-    /**
-     * 日付・時刻・日時セル（Excel では表示形式付きの数値セル）。
-     *
-     * @param value         値
-     * @param displayFormat 表示形式（例: {@code "yyyy/mm/dd"}・{@code "hh:mm:ss"}）
-     * @return セル指定
-     */
-    static CellSpec date(final Date value, final String displayFormat) {
-        return new CellSpec() {
-            @Override
-            void write(XlsFixture fixture, Cell cell) {
-                cell.setCellValue(value);
-                cell.setCellStyle(fixture.styleFor(displayFormat));
-            }
-        };
-    }
-
-    /**
-     * 数式セル。
-     *
-     * @param expression 数式（先頭の {@code =} は付けない。例: {@code "1+1"}）
-     * @return セル指定
-     */
-    static CellSpec formula(final String expression) {
-        return new CellSpec() {
-            @Override
-            void write(XlsFixture fixture, Cell cell) {
-                cell.setCellFormula(expression);
-            }
-        };
-    }
-
-    /**
-     * 真偽値セル。
-     *
-     * @param value 値
-     * @return セル指定
-     */
-    static CellSpec bool(final boolean value) {
-        return new CellSpec() {
-            @Override
-            void write(XlsFixture fixture, Cell cell) {
-                cell.setCellValue(value);
-            }
-        };
-    }
-
-    /**
-     * エラー値セル（{@code #DIV/0!} 等）。
-     *
-     * @param value エラー種別
-     * @return セル指定
-     */
-    static CellSpec error(final FormulaError value) {
-        return new CellSpec() {
-            @Override
-            void write(XlsFixture fixture, Cell cell) {
-                cell.setCellErrorValue(value.getCode());
             }
         };
     }
