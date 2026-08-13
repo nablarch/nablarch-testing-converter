@@ -986,9 +986,14 @@ A-07／A-09 が同クラスに 0 件であることは
 | A-01 `DEFAULT` | ❌ | ✅ | `writesDefaultDataTypeMarker` | 識別セル `DEFAULT=T`（例外にならない）。ヘッダ色はその他グループ。読み戻すとブロックが消える（`issues.md` **XLS-20**。`#dropsDefaultDataTypeBlockWhenReadBack`） |
 | A-07 `EXPECTED_FIXED` | 🔺 | ✅ | `writesExpectedFixedFileBlockWithLengthRow` | 識別セル `EXPECTED_FIXED=exp.dat`。識別行 → ディレクティブ行 → 名前行 → 型行 → **長さ行** → データ行 |
 | A-09 `EXPECTED_VARIABLE` | 🔺 | ✅ | `writesExpectedVariableFileBlockWithoutLengthRow` | 識別セル `EXPECTED_VARIABLE[g2]=exp.csv`。可変長なので**長さ行なし** |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesExpectedRequestBodyMessagesMarker` | 識別セル `EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01`。FW ヘッダ行なし・データ行の列 0 に連番 |
+| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesExpectedRequestBodyMessagesMarker` | 識別セル `EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01`。**入力の FW 制御ヘッダが空 Map のため**識別行の次は名前行・データ行の列 0 に連番 |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseHeaderMessagesMarker` | 識別セル `RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01`。同上 |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseBodyMessagesMarker` | 識別セル `RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01`。同上 |
+
+**上表の「入力の FW 制御ヘッダが空 Map のため」は言い換えではなく、書ける事実の限界である。**
+当初は 3 行とも「FW ヘッダ行なし」と書いていたが、これは「送信系だから出ない」と読める記述であり、
+テストが確かめていない性質を観測事実として記録していた（2026-08-13・#23 レビュー ラウンド3 指摘）。
+担保の穴として §3.1-3 末尾（下記「送信系の FW 制御ヘッダ」）と `issues.md` **XLS-24** に開示した。
 
 **A-12／A-13／A-14 の ✅ は #18 以来（#23 の当初版を含め）誤りだった。**
 この 3 タイプを辺③で通していたのは `XlsFormatWriterTest#writesSequenceNoForAllSendSyncTypes` だけで、
@@ -1008,6 +1013,101 @@ A-07／A-09 が同クラスに 0 件であることは
 - **歯があることの実証**: 同じ変異を再度入れて全件実行し、`XlsFormatWriterModelTest` の該当 3 件が
   落ちることを確認した（`Tests run: 428, Failures: 6` ＝ 新規 3 件 ＋ `RoundTripTest` 3 件）。
   変異は確認後に戻し、`git diff HEAD -- src/main` が 0 行であることを確かめた。
+
+**担保の穴: 「送信系は FW 制御ヘッダを書かない」は未担保である（2026-08-13・#23 レビュー ラウンド3 で判明）**
+
+`XlsFormatWriter` のクラス Javadoc は「**送信系 4 種**: MESSAGE と同型だが FW 制御ヘッダは無く、
+データ行の列 0 は `no`（連番）」と書いている。しかしこの「FW 制御ヘッダは無く」を担保するテストは
+辺③に 1 件も無い。
+
+- `XlsFormatWriter#layoutMessage` は `appendKeyValueRows(l, block.getFwHeaderFields())` を
+  **データタイプで分岐せず無条件に**呼ぶ（同メソッドを読んだ結果）。送信系だから FW 制御ヘッダ行が
+  出ないのではなく、テスト入力の `fwHeaderFields` が空 Map だから出ていないだけである。
+- **変異による実測**: `layoutMessage` を「送信系のときだけ `appendKeyValueRows(l, block.getFwHeaderFields())`
+  を呼ばない」——すなわち Javadoc が謳う性質を `src/main` に実装した形——へ一時的に変異させて全件実行したところ、
+  **`Tests run: 428, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`** であった。
+  1 件も落ちない＝ `src/test` に両者を区別するテストが存在しない。変異は確認後に戻し、
+  `git diff HEAD -- src/main | wc -l` → **0** を確かめた。
+
+  ```sh
+  cd /home/tie303177/work/nablarch/nablarch-testing-converter
+  # XlsFormatWriter#layoutMessage の
+  #   appendKeyValueRows(l, block.getFwHeaderFields());
+  #   boolean sendSync = XlsDataTypeUtil.isSendSyncType(block.getDataType());
+  # を次へ置き換えて全件実行し、確認後 git checkout -- src/main で戻す
+  #   boolean sendSync = XlsDataTypeUtil.isSendSyncType(block.getDataType());
+  #   if (!sendSync) {
+  #       appendKeyValueRows(l, block.getFwHeaderFields());
+  #   }
+  JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
+  ```
+
+- **静的な裏取り**: 送信同期の `MessageDataBlock` に非空の `fwHeaderFields` を渡すテストは `src/test` に
+  **0 件**である。`MessageDataBlock` の構築サイトを全数取り、第 1 引数（データタイプ）と第 5 引数
+  （`fwHeaderFields`）の組を数える。
+
+  ```sh
+  cd /home/tie303177/work/nablarch/nablarch-testing-converter
+  perl -0777 -ne '
+    while (/(?:new\s+MessageDataBlock|\bmessage)\s*\(/g) {
+      my $p = pos($_); my $d = 1; my @a = (""); my $i = $p;
+      while ($d > 0 && $i < length($_)) {
+        my $c = substr($_, $i, 1);
+        if ($c eq "(") { $d++ } elsif ($c eq ")") { $d--; last if $d == 0 }
+        if ($c eq "," && $d == 1) { push @a, "" } else { $a[-1] .= $c }
+        $i++;
+      }
+      next unless @a >= 6;
+      my ($t, $fw) = ($a[0], $a[4]);
+      $t =~ s/\s+//g; $fw =~ s/\s+//g;
+      print "$t\t$fw\n";
+    }
+  ' $(grep -rl "MessageDataBlock" src/test --include=*.java) | sort | uniq -c
+  ```
+
+  実測（2026-08-13）:
+
+  ```
+        2 DataType.EXPECTED_REQUEST_BODY_MESSAGES	fwHeader()
+        1 DataType.EXPECTED_REQUEST_BODY_MESSAGES	newLinkedHashMap<>()
+        4 DataType.EXPECTED_REQUEST_HEADER_MESSAGES	fwHeader()
+        2 DataType.EXPECTED_REQUEST_HEADER_MESSAGES	map()
+        1 DataType.MESSAGE	fwHeader
+        2 DataType.MESSAGE	fwHeader("requestId","RM01","userId","${user}")
+        2 DataType.MESSAGE	fwHeader("requestId","RM01","userId","${u}")
+        5 DataType.MESSAGE	fwHeader()
+        2 DataType.MESSAGE	map("requestId","${rid}")
+        3 DataType.MESSAGE	map("requestId","R01")
+        1 DataType.MESSAGE	newLinkedHashMap<>()
+        2 DataType.RESPONSE_BODY_MESSAGES	fwHeader()
+        2 DataType.RESPONSE_HEADER_MESSAGES	fwHeader()
+        1 DataTypetype	String>directives
+        1 dt	newLinkedHashMap<>()
+        1 type	fwHeader
+        1 type	fwHeader()
+        2 type	map()
+  ```
+
+  **送信同期 4 種の行は 13 件あり、第 5 引数はすべて空 Map**（`fwHeader()` ／ `map()` ／
+  `new LinkedHashMap<>()`）である。非空（引数付きの `fwHeader(...)` ／ `map(...)`）は
+  **すべて `DataType.MESSAGE`** に限られる。
+
+  末尾 5 行はデータタイプをリテラルで書いていない構築サイトで、このコマンドでは型が解決できない。
+  それぞれ現物を開いて確かめた: `type` の 4 件は `fwHeader()` ／ `map()` ／呼び出し元から渡された
+  `fwHeader` 変数（`RoundTripTest#message` ヘルパ。その呼び出し元は上表の `DataType.*` 行として
+  解決済み）であり、`dt` の 1 件は送信同期 4 種を回す `MessageDataBlockTest` のループで
+  `new LinkedHashMap<>()` を渡す。`DataTypetype` の 1 行はヘルパの**宣言**が引っ掛かったものである。
+
+  **上の変異による実測のほうが上位の根拠**であり、静的な数え上げはその裏取りである
+  （静的走査はデータタイプが変数で渡る経路を機械的には追えないが、変異は経路によらず効く）。
+
+- したがって「送信系は FW 制御ヘッダを書かない」という性質は **未担保**である。
+  `XlsFormatWriter` のクラス Javadoc の当該記述は、中間モデル側の契約
+  （`MessageDataBlock` の Javadoc「`expected_request_*`／`response_*` 経路は空 Map とする（仕様 MS-04）」・
+  `XlsFormatReader`／`YamlFormatReader`／`TestCoreReaderAdapter`／`YamlTestCoreAdapter` の
+  「FW 制御ヘッダは送信系では常に空」）に依存した記述であり、`XlsFormatWriter` 自身が保証しているわけではない。
+- **今回はテストを足さず開示のみ**とした（steering Rules フェーズ2「担保の穴は、テストを足さない場合でも
+  台帳に開示する」）。課題としての記録は `issues.md` **XLS-24**。`src/main` は変更していない。
 
 **軸C（#18 は未担保 9。#23 完了後は 0）**
 

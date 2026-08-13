@@ -89,8 +89,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * </ul>
  *
  * <p>
- * 判断の根拠になった実測値（写しの数・定義の位置・引数の形）と、それを導いたコマンドは
- * {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-5 に記録した。
+ * 判断の根拠になった実測値（写しの数・定義の位置・引数の形）は
+ * {@code .rn/ntf-test-data-converter/coverage/issues.md} の「ヘルパ抽出の要否」節に記録した。
  * </p>
  *
  * @author kiyobot
@@ -102,9 +102,9 @@ final class XlsFixture {
      *
      * <p>
      * {@link XlsFormatWriter} が付ける拡張子と同じ値であり、SUT の出力ファイル名を組み立てる用途にも
-     * 使える（{@code XlsFormatWriterModelTest#write} ／ {@code XlsFormatWriterInvalidOutputTest#EXTENSION}）。
+     * 使える（{@code XlsFormatWriterModelTest#write}）。
      * ただし SUT 側の定義は {@code XlsFormatWriter} の {@code private static final String EXTENSION}
-     * （src/main L71）であってテストからは参照できないため、<b>本定数は同じ値を独立に持っているだけ</b>で、
+     * であってテストからは参照できないため、<b>本定数は同じ値を独立に持っているだけ</b>で、
      * 両者が一致していることを担保するものではない。
      * </p>
      */

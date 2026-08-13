@@ -55,13 +55,10 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * <b>本クラスは全件が実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} の 40 件は
- * <b>{@code build}（メモリ上のブック）を見る 28 件</b>・<b>実ファイルを書く 10 件</b>
- * （往復テスト 8 件＋{@code writesWorkbookFileWithSheetPerSection}＋{@code wrapsIoFailure}）・
- * <b>SUT のブックを作らない 2 件</b>（{@code eachGroupHasDistinctDefaultColor}／
- * {@code rejectsNegativeBlankRows}。{@code ExcelFormatConfig} だけを叩く）に分かれる
- * （28 ＋ 10 ＋ 2 ＝ 40。導出コマンドは
- * {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-4）。
+ * <b>本クラスは全件が実 {@code .xlsx} を書いて開き直す。</b>{@code XlsFormatWriterTest} は
+ * {@code build}（メモリ上のブック）を見るものと実ファイルを書くものが混在するが、本クラスは
+ * <b>全件が実ファイル経路</b>である点が違う（同クラスの内訳と導出コマンドは
+ * {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1 の末尾にある）。
  * 本クラスが扱うのは「空のコレクションが版面のどこに現れる／現れないか」であり、行やセルが直列化で
  * 落ちないことまで含めて確かめたいので、{@code write} が実際に作ったファイルを検証対象にする
  * （{@code XlsFormatWriterCellTypeTest} と同じ方針）。
@@ -103,15 +100,7 @@ public class XlsFormatWriterModelTest {
     // ------------------------------------------------------------------ helpers
 
     /**
-     * 可変長引数で行を組み立てる。
-     *
-     * <p>
-     * {@code Arrays.asList} を使うのは null セルを含められるようにするためであり、
-     * {@code List.of} へ置き換えると null 要素が拒否される。本クラスは現時点で null セルを
-     * 渡していないので実害は無いが、写し元（{@code XlsFormatWriterTest#row} の Javadoc
-     * 「null を含められるよう」／{@code XlsFormatWriterCellTypeTest#row} 直前のコメント
-     * 「List.of は null 要素を拒否する」）の注意書きをそのまま持ち込んである。
-     * </p>
+     * null を含められるよう {@link Arrays#asList} で行を組み立てる。
      *
      * @param cells セル
      * @return 行
@@ -310,14 +299,20 @@ public class XlsFormatWriterModelTest {
      * 往復テストは steering Rules フェーズ2 により正式な担保に数えないため、テストを足して埋める。
      *
      * 粒度は XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo（A-11）に揃え、
-     * グループ ID と識別子を含むマーカー全体と、送信系の版面（FW ヘッダ無し・データ行の列 0 に連番）を固定する。
+     * グループ ID と識別子を含むマーカー全体と、データ行の列 0 に連番が入る版面を固定する。
+     *
+     * 版面に FW 制御ヘッダ行が出ないのは「送信系だから」ではなく、下の sendSyncMessage が渡す
+     * fwHeaderFields が空 Map だからである。XlsFormatWriter#layoutMessage は fwHeaderFields を
+     * データタイプで分岐せず無条件に出力する（同メソッドを読んで確認）。
+     * 「送信系は FW 制御ヘッダを書かない」という性質は本クラスでも src/test 全体でも未担保であり、
+     * issues.md の XLS-24 と inventory.md §3.1-3 に担保の穴として開示した。
      */
 
     /**
      * Given: グループ ID 付き {@code EXPECTED_REQUEST_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code EXPECTED_REQUEST_BODY_MESSAGES[case1]=RM21AA0104_01}。
-     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
      *
      * <p>担保する軸要素: A-12。</p>
      */
@@ -337,7 +332,7 @@ public class XlsFormatWriterModelTest {
      * Given: グループ ID 付き {@code RESPONSE_HEADER_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code RESPONSE_HEADER_MESSAGES[case1]=RM21AA0104_01}。
-     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
      *
      * <p>担保する軸要素: A-13。</p>
      */
@@ -357,7 +352,7 @@ public class XlsFormatWriterModelTest {
      * Given: グループ ID 付き {@code RESPONSE_BODY_MESSAGES}（送信系・no 列）のメッセージブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別セルが {@code RESPONSE_BODY_MESSAGES[case1]=RM21AA0104_01}。
-     *        FW 制御ヘッダ行は無く、データ行の列 0 に連番が入る。
+     *        <b>本テストの入力が FW 制御ヘッダを持たない（空 Map）ため</b>次は名前行で、データ行の列 0 に連番が入る。
      *
      * <p>担保する軸要素: A-14。</p>
      */
@@ -395,7 +390,8 @@ public class XlsFormatWriterModelTest {
      */
     private static void assertSendSyncLayout(Sheet sheet, String marker) {
         assertThat("識別セルはタイプ名＋グループ ID＋識別子", line(sheet, 0), is(Arrays.asList(marker)));
-        assertThat("FW 制御ヘッダ行は無く、次は名前行", line(sheet, 1), is(Arrays.asList("no", "requestId", "resendFlag")));
+        assertThat("入力の FW 制御ヘッダが空 Map なので次は名前行",
+                line(sheet, 1), is(Arrays.asList("no", "requestId", "resendFlag")));
         assertThat(line(sheet, 2), is(Arrays.asList("", "半角", "半角")));
         assertThat(line(sheet, 3), is(Arrays.asList("", "20", "1")));
         assertThat("送信系なのでデータ行の列 0 は連番", line(sheet, 4), is(Arrays.asList("1", "RM21AA0104_01", "0")));

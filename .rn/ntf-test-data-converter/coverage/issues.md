@@ -734,7 +734,9 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
 ## #23 辺③ 軸A・B・C・E の欠け補充で記録した課題
 
 **掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（XLS-21・XLS-20）を先に置き、
-loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23）を後に置く。
+loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24）を後に置く。
+**XLS-24 は #23 のレビュー ラウンド3 で追加した**（挙動の不具合ではなく、Javadoc の主張と実装・担保の
+食い違いの記録である。発見順のまま最後の ID になっている）。
 
 以下はすべて中間モデルを `new XlsFormatWriter().write(...)` で実 `.xlsx` へ書き出し、
 書き出したファイルを POI で開き直して（読み戻しの記述は `new XlsFormatReader().read(...)` で）
@@ -826,6 +828,37 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23）を後
   （どちらも `Collections.singletonList(section)` を返す。§0.8-6）ため、現実には中間モデルを
   手で組み立てた場合に限られる。修正はこの作業では行わない。
 
+### XLS-24 `XlsFormatWriter` は「送信系は FW 制御ヘッダを書かない」を実装しておらず、その性質は未担保である（影響度 低・記録のみ／`src/main` は無変更）
+
+**本項は #23 のレビュー ラウンド3 の指摘で判明した（2026-08-13）。** 挙動の不具合の記録ではなく、
+**Javadoc の主張と実装・担保の食い違いの記録**である。
+
+| 主張している場所 | 主張の内容 | 実装 |
+|---|---|---|
+| `XlsFormatWriter` のクラス Javadoc の版面一覧 | 「**送信系 4 種**: MESSAGE と同型だが FW 制御ヘッダは無く、データ行の列 0 は `no`（連番）」 | `layoutMessage` は `appendKeyValueRows(l, block.getFwHeaderFields())` を**データタイプで分岐せず無条件に**呼ぶ。分岐しているのは `no` 列（`sendSync`）だけである |
+
+- **原因ではなく前提**: 送信系のブロックに FW 制御ヘッダ行が出ないのは「送信系だから」ではなく、
+  中間モデル側の契約で `fwHeaderFields` が常に空 Map になるからである。契約を書いているのは
+  `MessageDataBlock` の Javadoc（「`expected_request_*`／`response_*` 経路は空 Map とする（仕様 MS-04）」）と、
+  `XlsFormatReader`／`YamlFormatReader`／`TestCoreReaderAdapter`／`YamlTestCoreAdapter` の
+  「FW 制御ヘッダは送信系では常に空」である。**`XlsFormatWriter` 自身は何も保証していない。**
+- **未担保であることの実測（変異・2026-08-13）**: `layoutMessage` を「送信系のときだけ
+  `appendKeyValueRows(l, block.getFwHeaderFields())` を呼ばない」——すなわち Javadoc が謳う性質を
+  実装した形——へ一時的に変異させて全件実行したところ、**`Tests run: 428, Failures: 0, Errors: 0, Skipped: 0`**
+  であった。**1 件も落ちない＝ `src/test` に両者を区別するテストが存在しない**。
+  変異は確認後に戻し、`git diff HEAD -- src/main | wc -l` → **0** を確かめた。
+  変異の手順と、送信同期の `MessageDataBlock` に非空 `fwHeaderFields` を渡すテストが `src/test` に
+  0 件であることの静的な裏取りコマンドは `inventory.md` **§3.1-3 の「担保の穴: 送信系の FW 制御ヘッダ」**にある。
+- **影響**: 送信系のブロックに非空の `fwHeaderFields` を持つ中間モデルを渡すと、
+  `XlsFormatWriter` は Javadoc の主張に反して FW 制御ヘッダ行を書き出す。この版面を
+  `XlsFormatReader` が読み戻せるかは**未確認**である（読み手側は送信系に FW 制御ヘッダ行が
+  来ることを想定していない旨を Javadoc に書いている）。ただしこの入力は現状のどの経路でも生じない。
+- **判断**: 受容できる（記録のみ）。到達経路が無く、修正すると「契約の二重実装」になる。
+  ただし**担保の穴としては開示する**（steering Rules フェーズ2）。修正はこの作業では行わない。
+  テストも足していない（足すなら「送信系に非空 `fwHeaderFields` を渡すと何が起きるか」を
+  現状挙動として固定する 1 件になるが、それは中間モデルの契約が禁じている入力を作ることになるため、
+  足すかどうかは辺③以外の辺（辺②・辺④）の扱いと揃えて判断すべきである）。
+
 ### 課題としないと判断した観測結果（#23）
 
 | 観測 | 判断 |
@@ -894,3 +927,49 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23）を後
 **記録先**: 判断そのものは `XlsFixture` のクラス Javadoc（「本クラスが引き受けるヘルパの範囲」）に置いた。
 `causeOf` は `XlsFixture` の守備範囲外なので同 Javadoc には書かず、本節と
 `XlsFormatWriterModelTest#causeOf` の Javadoc に置いた。
+
+### #27 への申し送り（#23 のレビュー ラウンド3 で判明・2026-08-13）
+
+以下 2 件は **#23 では直さない**（テストも台帳の表も変えていない）。逆引きの正である
+`coverage/axis-matrix.md` を作る #27 で、実物を確認したうえで扱うこと。
+
+**1. 辺③の軸E で `E-1(1 件)` と `E-4(1 件)` が台帳のどこにも現れない**
+
+- 事実: §3.1 の 40 行の軸E 欄に現れる値は `E-1(複数)`／`E-2(1)`／`E-2(複数)`／`E-3(1)`／`E-3(複数)`／
+  `E-4(複数)` だけで、**`E-1(1)` と `E-4(1)` は 1 行も無い**。
+  導出コマンド（§3.1 の表本体 40 行から軸E 欄だけを取り出して数える。行範囲は
+  `grep -n "^### 3.1 " <台帳>` で見出しを引き、表本体はその 4 行後から 40 行である）:
+
+  ```sh
+  cd /home/tie303177/work/nablarch/nablarch-testing-converter
+  h=$(grep -n "^### 3.1 " .rn/ntf-test-data-converter/coverage/inventory.md | cut -d: -f1)
+  awk -v s=$((h+4)) 'NR>=s && NR<s+40' .rn/ntf-test-data-converter/coverage/inventory.md \
+    | awk -F'|' '{print $8}' | sort | uniq -c
+  ```
+
+- 事実: §3.3（辺③ 未担保一覧）の軸E 行が挙げているのは `E-1(0 件)`／`E-2(0 件)`／`E-3(0 件)` の
+  3 要素だけで、**`E-1(1)`／`E-4(1)` は未担保一覧にも載っていない**。
+- したがって台帳の上では「**担保テストが挙がっていないのに、未担保一覧にも載っていない**」という
+  穴の形になっている。#23 のレビューで A-12〜A-14 が見つかったのとまったく同じ形である。
+- **実体としては担保されている見込みが高い。** 1 セクション 1 ブロックを渡すテスト（`container(...)` を
+  使う辺③のテストの大半。例: `XlsFormatWriterTest#writesMessageBlock` は
+  `container("book", "sheet", message)` ＝ セクション 1・ブロック 1）が `E-1(1)` と `E-4(1)` の
+  両方を通している。ただし**#23 では変異で確かめていない**ため「見込み」であり、
+  #27 で実物にあたって埋めること。
+
+**2. 送信同期 4 種の担保が 2 クラスに分かれ、フィクスチャがほぼ複製されている**
+
+- 事実: A-11（`EXPECTED_REQUEST_HEADER_MESSAGES`）を担保するのは
+  `XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo`、A-12〜A-14 を担保するのは
+  `XlsFormatWriterModelTest#writesExpectedRequestBodyMessagesMarker` ／
+  `#writesResponseHeaderMessagesMarker` ／ `#writesResponseBodyMessagesMarker` である。
+- 事実: 両者の入力はほぼ複製である。レコード種別 `no`、フィールド定義
+  （`requestId` 半角 20 ／ `resendFlag` 半角 1）、データ行 2 行（`RM21AA0104_01`, `0` ／
+  `RM21AA0104_02`, `1`）、グループ ID `[case1]`、識別子 `RM21AA0104_01` がすべて一致し、
+  違うのは**データタイプと、`build`（メモリ上のブック）か `write`＋開き直しか**だけである
+  （`XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo` と
+  `XlsFormatWriterModelTest#sendSyncMessage` を並べて確認）。
+- 問題: **5 種目の送信系が増えたときにどちらへ足すか決まらない。** 4 種が 1 か所に揃っていないため、
+  「送信系の版面」を確かめたい読み手は 2 クラスを開くことになる。
+- 申し送り: 将来 4 種を 1 か所へ揃えることを **#27 以降の候補**とする。#23 で動かさないのは、
+  レビュー対応でアサート内容を変えない方針を採っているためである。

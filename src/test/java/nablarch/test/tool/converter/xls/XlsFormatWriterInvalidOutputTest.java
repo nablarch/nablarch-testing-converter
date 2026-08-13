@@ -100,23 +100,8 @@ public class XlsFormatWriterInvalidOutputTest {
     /** 既定のシート名。 */
     private static final String SHEET = "s";
 
-    /**
-     * 出力されるブックの拡張子（{@link XlsFormatWriter} が付ける）。値は {@link XlsFixture#EXTENSION} から取る。
-     *
-     * <p>
-     * 本クラスは期待パスを 2 か所（{@link #writtenBook} と例外メッセージの照合）で組むためこの定数を置くが、
-     * <b>拡張子の文字列リテラルを {@code xls} パッケージから一掃したわけではない。</b>
-     * {@code grep -rn '"\.xlsx"' src/test/java/nablarch/test/tool/converter/xls/ --include=*.java} は
-     * {@link XlsFixture} の定義（1 か所）に加えて<b>使用側 4 か所</b>を返す ─
-     * {@code XlsFormatWriterCellTypeTest} L181・L207 ／ {@code XlsFormatReaderCellTypeTest} L200 ／
-     * {@code XlsReferenceFixtureTest} L125（この Javadoc 自身は上のコマンドにヒットしない）。
-     * さらに {@code XlsFormatWriterTest} L732 は {@code "MyBook.xlsx"} という 1 個のファイル名リテラルとして
-     * 拡張子を含んでいる。いずれもブック名と連結して 1 個のパスを作るだけの局所的な用法で、
-     * 定数化しても読み手の得が無いため置き換えていない。
-     * <b>したがって「定義が 1 か所」ではなく「本クラスの中では 1 か所」である。</b>
-     * </p>
-     */
-    private static final String EXTENSION = XlsFixture.EXTENSION;
+    /** {@link XlsFormatWriter} が付ける拡張子。 */
+    private static final String EXTENSION = ".xlsx";
 
     /** Excel がシート名に許す最大文字数。 */
     private static final int EXCEL_MAX_SHEET_NAME_LENGTH = 31;

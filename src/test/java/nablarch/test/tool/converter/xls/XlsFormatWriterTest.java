@@ -57,7 +57,7 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * 件数の導出コマンドと実測は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1-4 にある。
+ * 件数の導出コマンドと実測は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1 の末尾にある。
  * 本体パーサのキャッシュ衝突を避けるため、往復テストはテストごとに一意のブック名・
  * {@link TemporaryFolder} を使う。
  * </p>
