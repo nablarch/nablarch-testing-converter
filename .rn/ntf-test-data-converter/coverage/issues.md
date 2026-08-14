@@ -43,7 +43,13 @@
 食い違う 13 件（XLS-05・XLS-10・XLS-12・XLS-14・XLS-20・XLS-21・YML-01・YML-04・YML-05・YML-06・YML-07・
 YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判断」欄は 1 件も取り消していないので、両方を読むこと。**
 
-内訳は **要対応 6 件**（YML-02・YML-12・XLS-16・XLS-06・YML-08・YML-03）／**対応不要 29 件**である。
+内訳は **要対応 6 件**（YML-02・YML-12・XLS-16・XLS-06・YML-08・YML-03）／**対応不要 30 件**である。
+
+> **対応不要は 29 件から 30 件に増えた（#25.5 レビュー 1 巡目）。** レビューで指摘された
+> 「辺③④の番人の例外型が `ConverterException` に揃っていない」を **XLS-25** として新規に記録し、
+> その判定が **対応不要**（今回は直さない）になったためである。**既存 35 件の判定は 1 件も変えていない。**
+> なお XLS-22 の判定（`対応不要`／`要対応`）はレビューで論点が挙がっており、
+> ユーザー確認待ちのため触っていない。
 要対応のうち 5 件は #25.5 で修正済み、YML-03 は帰属が nablarch-testing-yaml 側のため
 `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いて待つ
 （steering Decisions「不具合修正の対象と手順（#25.5）」）。
@@ -53,9 +59,15 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 の行番号（`nablarch-document` の `df7bff7` 時点。`df7bff7..HEAD` で同ファイルに変更が無いことを
 `git diff --stat` で確認済み）。`tsrc L…` は本体 `nablarch-testing` の sources jar を展開した原文の行番号である。
 
-**「判断」欄の書式が 1 件だけ違う。** XLS-24 は `- **判断**: `（太字）で、残る 34 件は `- 判断: ` である。
-`grep -c '^- 判断: ' issues.md` が **34** しか返さないのはこのためであり、**判断が欠けている課題は無い**
-（`grep -c '^- \*\*判断\*\*: '` → **1**）。
+**「判断」欄の書式は全件そろっている。** #25.5 のレビュー 1 巡目で XLS-24 だけが
+`- **判断**: `（太字）だったのを `- 判断: ` へ揃えた。
+
+```
+$ grep -c '^- 判断: ' .rn/ntf-test-data-converter/coverage/issues.md
+36
+$ grep -c '^- NTF 仕様としての判定' .rn/ntf-test-data-converter/coverage/issues.md
+36
+```
 
 ### 並び順の原則（2026-08-12・ユーザー指摘による訂正）
 
@@ -935,7 +947,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   `XlsFormatWriter` は Javadoc の主張に反して FW 制御ヘッダ行を書き出す。この版面を
   `XlsFormatReader` が読み戻せるかは**未確認**である（読み手側は送信系に FW 制御ヘッダ行が
   来ることを想定していない旨を Javadoc に書いている）。ただしこの入力は現状のどの経路でも生じない。
-- **判断**: 受容できる（記録のみ）。到達経路が無く、修正すると「契約の二重実装」になる。
+- 判断: 受容できる（記録のみ）。到達経路が無く、修正すると「契約の二重実装」になる。
   ただし**担保の穴としては開示する**（steering Rules フェーズ2）。修正はこの作業では行わない。
   テストも足していない（足すなら「送信系に非空 `fwHeaderFields` を渡すと何が起きるか」を
   現状挙動として固定する 1 件になるが、それは中間モデルの契約が禁じている入力を作ることになるため、
@@ -2033,3 +2045,66 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   残る 7 ケースがレコード断片経路でも同じ記法（フロー list の中のダブルクォート）で書かれ、
   同じく往復することはプローブで確認したがテストにはしていない。
   **LIST_MAP 経路（`list_maps`）は 9 ケースとも観測していない。**
+
+---
+
+## #25.5 不具合修正で記録した課題
+
+### XLS-25 辺③④の番人が送出する例外型が `ConverterException` に揃っておらず、Maven 実行で利用者に生スタックトレースが残る（影響度 低・loud に失敗するため検出できる）
+
+- 観測（2026-08-14・#25.5 のレビュー指摘）: `XlsFormatWriter` が入力を弾く番人は
+  `IllegalArgumentException`／`IllegalStateException` を送出する。
+  一方 `ConverterMojo` が包むのは `catch (ConverterException | UncheckedIOException)` の 2 種だけである
+  （`src/main/java/nablarch/test/tool/converter/ConverterMojo.java:99`）。
+  したがってこれらは `MojoExecutionException` に包まれず、Maven 実行では利用者に生のスタックトレースが出る。
+- 該当箇所（実測。`grep -n "throw new Illegal" src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java`）:
+  - `requireValidSheetNameLength` の 2 本（シート名が null ／ 31 文字超）。**#25.5 の XLS-16 修正で足したもの**
+  - `appendRecords` の 1 本（2 レコード目以降のレコード種別が空）。**#25.5 より前から在る**
+  - `layout` の 1 本（未知のブロック実装）。到達不能（`inventory.md` §3.1-3 の未到達分岐表）
+- 影響: シート名の長さは**利用者が書いたテストデータ**に由来する入力ミスであり、
+  本来は「どのシート名がなぜ駄目か」を Maven のエラーとして示すべきものである。
+  ただし変換は中止されるため、**壊れた成果物が黙って残ることはない**。
+- 判断: 仕様として不適切。番人の例外型は `ConverterException` に揃えるべきである。
+  **ただし #25.5 では直さない。** XLS-16 で足した 2 本だけを `ConverterException` にすると、
+  同じ性質の既存の番人（`appendRecords` の `IllegalStateException`）が取り残され、
+  **同一ファイルの中に新しい不揃いを作る**。揃えるなら辺③④の番人を一度に扱うべきで、
+  それは #25.5 のスコープ（ユーザー確定の 5 件）に含まれない。
+- NTF 仕様としての判定: **対応不要**（記法に明文が無い）。
+  記法（`testdata_notation.rst`）は変換ツールが送出する例外型を規定していない。
+  上の「判断」（仕様として不適切）とは食い違う。**改善提案であって記法違反ではない。**
+- 次タスクの候補: **「辺③④の番人の例外型を `ConverterException` に揃える」**。
+  対象は上記 4 本と、辺④（`YamlFormatWriter`）の同種の番人である。
+
+---
+
+## #25.5 の記録
+
+### `@Ignore` 一覧（`cdbcf63`）の導出方法と、そこから漏れた 2 件
+
+`cdbcf63` で `@Ignore` を付けた 10 本は、**本ファイルの各課題の「担保テスト」欄からの機械的な導出**である。
+したがって**担保テスト欄に載っていないテストは漏れる**。実際に 2 件漏れており、いずれも修正コミットで
+赤になって顕在化し、その場で期待値を直した。
+
+| 漏れたテスト | 課題 | 顕在化したコミット |
+|---|---|---|
+| `YamlFormatReaderTest#readSendSync_entryWithoutGroupId_isDropped` | YML-02 | `36e94a4`（コミットメッセージに漏れとして記載済み） |
+| `YamlFormatReaderInvalidInputTest#readsFieldSeparatorWrittenAsEscapedTabNotation` | YML-08 | `6c8d90e`（「期待値更新」とだけ書いており、漏れであることを書いていなかった。本節が記録） |
+
+**新たな漏れは無いことを QA が全数実験で確認済み**（`git checkout 8c327d0 -- src/test` を HEAD の
+`src/main` へ重ねて実行し、失敗 13 件＝置き換えた 13 本と一致）。
+
+### 残置している「緑の嘘」
+
+次の 4 本は `mvn test` で緑になるが、**固定しているのは「スキーマや本体パーサが認めない形を書けてしまう」
+という現状の記録であって NTF の仕様ではない。実行結果からは「仕様どおり」と区別がつかない。**
+ユーザー確定のスコープ外のため #25.5 では修正せず、各テストの Javadoc に
+（XLS-01 と同じ粒度で）その旨を書き足した。
+
+| テスト | 課題 | 何を現状として固定しているか |
+|---|---|---|
+| `YamlFormatWriterModelTest#failsToReadBackMessageBlockWithoutRecords` | YML-12（2 形目） | メッセージブロックの `records` 欠落 |
+| `YamlFormatWriterModelTest#failsToReadBackRecordWithoutFields` | YML-12（3 形目） | レコードの `fields` 欠落 |
+| `YamlFormatWriterModelTest#failsToReadBackFieldWithoutType` | YML-12（4 形目） | フィールドの `type` 欠落 |
+| `XlsFormatWriterModelTest#failsToReadBackRecordWithoutFields` | XLS-22 | 辺③で同じ形（フィールド 0 件）を書くと本体パーサが読み戻せない |
+
+**#25.5 で直したのは YML-12 の 1 形目（ファイルブロックの `records` 欠落）だけである。**

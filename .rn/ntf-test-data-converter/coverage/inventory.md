@@ -37,8 +37,8 @@
 >
 > - **§3.1-3（新設）** — #23 が追加したテストクラス（`XlsFormatWriterModelTest`）の担保を軸要素別に記す。
 >   §3.1（`XlsFormatWriterTest` 40 件）と §3.1-2（#22 の 2 クラス）は**そのまま残す**。
->   `XlsFormatWriter` の JaCoCo 実測（#23 時点の未到達 3 箇所。#25.5 で取り直して 4 箇所になった）も
->   本節末尾に置いた。
+>   `XlsFormatWriter` の JaCoCo 実測（#23 時点の未到達 3 箇所。#25.5 でいったん 4 箇所になり、
+>   レビュー 1 巡目の B-2 で 3 箇所に戻した）も本節末尾に置いた。
 > - **§3.3** — 辺③ 未担保一覧に「#23 後の状態」列を足し、**要追加 0 ／ 担保済み 29 ／ 対象外 1**
 >   （総計 30）に更新した。#23 のレビュー対応で送信同期 3 件（A-12〜A-14）を足した分を含む。
 > - **§0.8-6 / §0.8-7 / §5.2 / §5.3** — 辺③の C-02「sections 空」と A-01 `DEFAULT` が
@@ -82,8 +82,9 @@
 >
 > **#25.5（不具合修正・TDD。2026-08-14）**
 >
-> - **§0.1-2（新設）** — #25.5 後のテストメソッド件数（**536**。#25 完了時点と同数）・`@Ignore` 2 件・
->   `Tests run: 536, Failures: 0, Errors: 0, Skipped: 2`・`src/main` に手を入れたファイルと課題 ID を、
+> - **§0.1-2（新設）** — #25.5 後のテストメソッド件数（**540**。不具合修正そのものは総数を変えておらず、
+>   #25 完了時点の 536 との差 4 件はレビュー指摘で足した担保である）・`@Ignore` 2 件・
+>   `Tests run: 540, Failures: 0, Errors: 0, Skipped: 2`・`src/main` に手を入れたファイルと課題 ID を、
 >   そのまま実行できる導出コマンドつきで記す。
 > - **§1.2-2 / §1.3** — 辺① C-16「`recordType` 省略（`null`）」を**到達不能 → 担保済み**へ移した
 >   （`issues.md` **XLS-06** の修正で `null` が入るようになったため）。§1.3 の合計は
@@ -93,11 +94,15 @@
 > - **§1.3 / §2.3 / §3.3 / §4.3** — 4 節すべての合計に、**そのまま実行すれば同じ数になる導出コマンド**を
 >   併記した（順に 32 ／ 28 ／ 30 ／ 16）。§1.3 の検算ブロックは表と食い違っていた（41 と 32 の併存）ため直した。
 > - **§0.1-2 / §3.1-3 / §4.1-2 の JaCoCo** — 修正で分岐・行の総数が変わったため取り直した。
->   `XlsFormatWriter` は `line 155/156 branch 100/104`（未到達 3 → **4** 箇所。増えたのは XLS-16 で
->   足した `requireValidSheetNameLength` の `sheetName == null` 側）、`YamlFormatWriter` は
+>   **数値はレビュー 1 巡目（2026-08-14）に取り直したもので、B-2 の修正を含む。**
+>   `XlsFormatWriter` は `line 157/158 branch 101/104`（未到達 **3** 箇所。XLS-16 の修正でいったん
+>   4 箇所へ増えた `requireValidSheetNameLength` の `sheetName == null` 側は、レビュー B-2 で
+>   null を同じ番人が落とすようにし担保テストを足したため閉じた）、`YamlFormatWriter` は
 >   `line 158/159 branch 89/92` → **`line 160/161 branch 91/94`**（YML-12 で足した分岐は到達済み。
->   未到達 3 箇所は変わらず）、`YamlFormatReader` は `line 201/201 branch 108/108` のまま。
->   新規クラス `DirectiveUtil` の `line 20/20 branch 17/18`（未到達 1 分岐）は §0.1-2 に開示した。
+>   未到達 3 箇所は変わらず）、`YamlFormatReader` は `line 200/200 branch 106/106`。
+>   `DirectiveUtil` の `line 20/20 branch 17/18`（未到達 1 分岐）は §0.1-2 に開示した。
+>   **`DirectiveUtil` は新規クラスではない**（#25.5 が足したのは `normalizeSeparator` 1 メソッド）。
+>   YML-02 で新設した `YamlTestCoreAdapter#defaultGroupOnlyYaml` の未到達分岐も §0.1-2 に開示した。
 > - **テストメソッド名の追随** — #25.5 で改名・書き直したテスト（辺① C-16 ／ 辺③ F3-04 の 4 件 ／
 >   辺④ C-12 ／ 辺② 送信系 `group_id` 省略 ／ YML-03 の待機テスト 2 件）を、本書の該当行すべてで
 >   現在の名前へ直し、旧名を併記した。**軸要素の判定は C-16 以外は変えていない。**
@@ -208,8 +213,11 @@ RoundTripTest.java             30 @Test
 
 ### 0.1-2 #25.5（不具合修正）後の件数（2026-08-14 実測）
 
-**#25.5 はテストメソッドの総数を変えていない。** 現状挙動を固定していたテストを仕様どおりの
-期待値へ書き直す（＝同じメソッドの中身を入れ替える／改名する）修正だったためである。
+**#25.5 の不具合修正そのものはテストメソッドの総数を変えていない。** 現状挙動を固定していたテストを
+仕様どおりの期待値へ書き直す（＝同じメソッドの中身を入れ替える／改名する）修正だったためである。
+総数が 536 から 540 へ増えた 4 件は、レビュー指摘を受けて**後から足した担保**であり、
+不具合修正の副産物ではない（`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName` 1 件と
+`YamlTestCoreAdapterTest` のデフォルトグループ直接テスト 3 件）。
 下の 3 つのコマンドはそのまま実行すれば同じ結果が出る。
 
 ```sh
@@ -225,25 +233,26 @@ done
 ```
 
 ```
-① 536
-② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java:634:    @Ignore("YML-03: yaml側の修正待ち")
-   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java:997:    @Ignore("YML-03: yaml側の修正待ち")
+① 540
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java:638:    @Ignore("YML-03: yaml側の修正待ち")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java:1001:    @Ignore("YML-03: yaml側の修正待ち")
 ③ 8c327d0: 536
-   HEAD: 536
+   HEAD: 540
 ```
 
-`@Ignore` の 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（L635）と
-`keepsFwHeaderNamedRecordInMessageFromRealYaml`（L998）で、いずれも **YML-03**（本体側 yaml の修正待ち）の
+`@Ignore` の 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（L639）と
+`keepsFwHeaderNamedRecordInMessageFromRealYaml`（L1002）で、いずれも **YML-03**（本体側 yaml の修正待ち）の
 **待機テスト**である。仕様どおりの期待値を書いてあるので、本体側が直った日に `@Ignore` を外せば通る。
 
 ビルド全体の実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true`）:
 
 ```
-Tests run: 536, Failures: 0, Errors: 0, Skipped: 2
+Tests run: 540, Failures: 0, Errors: 0, Skipped: 2
 ```
 
-`Skipped: 2` は上の `@Ignore` 2 件である。#25 完了時点（8c327d0）の
-`Tests run: 536, Failures: 0, Errors: 0, Skipped: 0` との差はこの 2 件だけである。
+`Skipped: 2` は上の `@Ignore` 2 件である。#25 完了時点（8c327d0）は
+`Tests run: 536, Failures: 0, Errors: 0, Skipped: 0` で、差は `@Ignore` 2 件と
+レビュー指摘で足した担保 4 件である。
 
 **#25.5 で `src/main` に手を入れたファイル**（`git diff --stat 8c327d0 HEAD -- src/main` で確認できる）:
 
@@ -254,9 +263,9 @@ Tests run: 536, Failures: 0, Errors: 0, Skipped: 2
 | `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` | **YML-12** | レコードが空のファイルブロックへ `records: []` を出力する |
 | `src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` | **XLS-16** | シート名 31 文字超を切り詰めず `IllegalArgumentException` で落とす |
 | `src/main/java/nablarch/test/tool/converter/xls/XlsFormatReader.java` | **XLS-06**／**YML-08** | レコード種別の空セルを `null` にする＋逆正規化を `DirectiveUtil` へ切り出す |
-| `src/main/java/nablarch/test/tool/converter/DirectiveUtil.java`（新規） | **YML-08** | 辺①・辺②が共有するディレクティブ値の逆正規化 |
+| `src/main/java/nablarch/test/tool/converter/DirectiveUtil.java` | **YML-08** | 辺①・辺②が共有するディレクティブ値の逆正規化（`normalizeSeparator` を追加。**クラス自体は #25.5 以前から在る**） |
 
-**開示（新規クラス `DirectiveUtil` に残した未到達分岐 1 件）**
+**開示（`DirectiveUtil` に残る未到達分岐 1 件 —— #25.5 で足した箇所ではない）**
 
 JaCoCo 実測は **行 20/20（100%）・分岐 17/18（94.4%）** である。導出コマンド:
 
@@ -268,8 +277,16 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
        target/site/jacoco/jacoco.csv
 ```
 
-出力は `line 20/20 branch 17/18`。未到達は `DirectiveUtil.java:41` の
-`value == null ? null : valueMapper.map(...)` の **`null` 側 1 分岐**である
+出力は `line 20/20 branch 17/18`。未到達は `DirectiveUtil.java:45` の
+`value == null ? null : valueMapper.map(...)` の **`null` 側 1 分岐**である。
+
+**この分岐は既存メソッド `toStringDirectives` の中にあり、#25.5 で足した `normalizeSeparator` では
+ない。** `DirectiveUtil` は `8c327d0` の時点で存在し（`git cat-file -e
+8c327d0:src/main/java/nablarch/test/tool/converter/DirectiveUtil.java` → exit 0。
+`git diff --diff-filter=A --name-only 8c327d0..HEAD` は 1 件も返さない）、#25.5 が足したのは
+`normalizeSeparator` 1 メソッドだけである（`git diff --numstat 8c327d0..HEAD --
+src/main/java/nablarch/test/tool/converter/DirectiveUtil.java` → `42  0`）。
+`normalizeSeparator` の分岐は全数到達済みである（下記 `jacoco.xml` の走査で未到達行は L45 のみ）
 （`target/site/jacoco/nablarch.test.tool.converter/DirectiveUtil.java.html` の当該行が
 `title="1 of 2 branches missed."`、`jacoco.xml` の `toStringDirectives` が
 `INSTRUCTION missed="2"`。この 2 命令は
@@ -288,6 +305,35 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
   `null` を許すものは無い（`nablarch/test/ntf-testdata-yaml-schema.json`）。
 
 したがってこの枝は、`Map` に `null` 値を直接入れた in-memory 入力でしか通らない安全網である。
+
+**開示（`YamlTestCoreAdapter#defaultGroupOnlyYaml` に残る未到達分岐 1 件 —— #25.5 で新設した箇所）**
+
+YML-02 の修正で新設した `defaultGroupOnlyYaml` に、当初は未到達分岐が 2 本残っていた
+（レビュー 1 巡目の実測で発見。それまで本書に開示が無かった）。
+うち 1 本は担保テストを足して閉じ、残る 1 本は到達不能であることを実測で確かめた。
+現在の JaCoCo 実測は **行 49/50・分岐 18/19** である。導出コマンド:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test jacoco:restore-instrumented-classes \
+  && JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec \
+  && awk -F, 'NR > 1 && $3 == "YamlTestCoreAdapter" { print "line " $9 "/" ($8 + $9) " branch " $7 "/" ($6 + $7) }' \
+       target/site/jacoco/jacoco.csv
+```
+
+出力は `line 49/50 branch 18/19`。
+
+| 分岐 | 状態 |
+|---|---|
+| `if (sectionObj instanceof List)` の false 側（対象セクションが YAML に無い） | **閉じた。** `YamlTestCoreAdapterTest#readSendSyncMessages_nullGroupId_sectionAbsent_returnsEmpty` が通す |
+| `if (!(entryObj instanceof Map))` の true 側（エントリがスカラー） | **到達不能。** 公開 API から届かない |
+
+到達不能の実測: `expected_request_header_messages: ["not a map"]` だけを書いた `.yaml` を
+`YamlTestCoreAdapter#readSendSyncMessages(..., null, ...)` へ食わせて実行したところ、
+`loadRawMap` が委譲する `YamlLoader.load` のスキーマ検証が
+`nablarch.test.core.reader.yaml.YamlSchemaValidationException: YAML file failed schema validation`
+を送出し、`defaultGroupOnlyYaml` に制御が届かなかった。
+残る 1 行の未到達（`continue`）も同じ枝の中にある。防御ガードであり軸要素ではない。
 
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
@@ -1092,7 +1138,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
   修正ラウンド 2 で `YamlFormatReaderRealFileTest#normalizesLowercaseDefaultRecordTypeToNull` を足して閉じた
   （`"Default"` 側は `YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull` が通す）。
   **修正ラウンド 3（2026-08-14）で JaCoCo を取り直した結果、`YamlFormatReader` は
-  行 201/201（100%）・分岐 108/108（100%）である。** 修正ラウンド 2 の時点で記していた
+  行 200/200（100%）・分岐 106/106（100%）である。** 修正ラウンド 2 の時点で記していた
   「分岐 107/108（99.07%）・唯一の未到達分岐は `"default"` 側」は、**その分岐を閉じたあとの数値ではなく
   再実行しても再現しない**ため、実測値へ差し替えた（3 巡目レビュー指摘）。導出コマンド
   （**オフラインで実行できる形に直した**。JaCoCo 手順は steering Decisions のとおり）:
@@ -1104,9 +1150,13 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
          target/site/jacoco/jacoco.csv
   ```
 
-  出力は `line 201/201 branch 108/108`。**#25.5（不具合修正）後に同じコマンドで取り直しても同値である**
-  （YML-02 の `rawGroupsInOrder` 化と YML-08 の `DirectiveUtil` 切り出しは、
-  いずれも既存テストが通る経路に入った）。**この数値は `YamlFormatReader` 1 クラスぶんであり、
+  出力は `line 200/200 branch 106/106`（**レビュー 1 巡目まで反映・2026-08-14**）。
+  **依然として未到達は 0 である。** #25 時点は `line 201/201 branch 108/108` だった。
+  不具合修正（YML-02 の `rawGroupsInOrder` 化・YML-08 の `DirectiveUtil` 切り出し）はいずれも
+  既存テストが通る経路に入って同値のままだったが、レビュー 1 巡目の B-3 で
+  `addSendSyncBlocks` の `formattedGroup`（`rawGroup != null ? "[" + rawGroup + "]" : ""`）を
+  既存ヘルパ `formatGroup(entry)` の呼び出しへ置き換えたため、**行が 1・分岐が 2 減った**。
+  **この数値は `YamlFormatReader` 1 クラスぶんであり、
   4 辺の担当クラス全体の計測と未到達分岐の列挙は #26 の仕事である。**
 - **軸C の C-15（`MessageDataBlock.records` 空）は実 `.yaml` 経路では到達不能である。**
   スキーマ `$defs.message_data.properties.records.minItems` ＝ 1 のため、
@@ -1469,9 +1519,11 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 | テストクラス | 追加タスク | 件数 | 検証対象 |
 |---|---|---|---|
 | `XlsFormatWriterCellTypeTest` | #22 | 18 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる（16 件）。加えて ZIP エントリ `xl/sharedStrings.xml` の**生バイト**を検査する（2 件） |
-| `XlsFormatWriterInvalidOutputTest` | #22 | 16 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
+| `XlsFormatWriterInvalidOutputTest` | #22 | 17 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
 
-件数は `grep -c "^    @Test" src/test/java/nablarch/test/tool/converter/xls/<クラス>.java` の実測（2026-08-13）。
+件数は `grep -c "^    @Test" src/test/java/nablarch/test/tool/converter/xls/<クラス>.java` の実測。
+`XlsFormatWriterInvalidOutputTest` は #22 時点で 16 件、#25.5 のレビュー対応で
+`rejectsNullSheetName` 1 件を足して **17** 件になった（2026-08-14 実測）。
 
 **1 ケース 1 `@Test` で展開している。** 制御文字 6 文字（D3-08）とシート名の禁止文字 7 文字（F3-04）は
 ループで束ねず文字ごとに 1 メソッドへ分けた。姉妹クラス `XlsFormatReaderCellTypeTest`（1 ケース 1 `@Test`）に
@@ -1532,7 +1584,7 @@ POI 3.8 の `XSSFWorkbook#createSheet(String)` は `substring(0, 31)` による�
 となり、**メッセージのシート名が切り詰め後の 31 文字である**ことが検査順序の裏づけになっていた。
 
 **#25.5 で `XlsFormatWriter` が `createSheet` を呼ぶ前に文字数を検査するようにした**ため
-（`XlsFormatWriter#requireValidSheetNameLength`。L150）、32 文字以上の名前は切り詰めに到達せず
+（`XlsFormatWriter#requireValidSheetNameLength`。L155）、32 文字以上の名前は切り詰めに到達せず
 `IllegalArgumentException: シート名が Excel の上限 31 文字を超えています。… sheetName='…', length=32` で落ちる。
 上の 2 ケースは、切り詰めの抜けが閉じたことを固定する形へ書き直した
 （`rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation` は 32 文字なので**文字数**で落ち、
@@ -1541,8 +1593,14 @@ POI 3.8 の `XSSFWorkbook#createSheet(String)` は `substring(0, 31)` による�
 
 **F3-04 で #22 が担保する範囲**は、31 文字超・禁止文字（`/ \ ? * [ ] :`）・空文字・31 文字ちょうど（正常側の境界）・
 重複判定（同名 2 枚／大文字小文字だけが違う名前）である。
-**シート名のアポストロフィ（先頭／末尾）と `null` は #22 のスコープ外であり未担保**（タスク #22 の Steps が
+**シート名のアポストロフィ（先頭／末尾）は #22 のスコープ外であり未担保**（タスク #22 の Steps が
 F3-04 の範囲を「31 文字超・禁止文字」と定めているため）。
+**`null` は #25.5 のレビュー対応（B-2）で閉じた** —— `requireValidSheetNameLength` が `sheetName == null` を
+文字数検査の**前に**、専用のメッセージ（`シート名（セクション名）が null です。…`）で落とす。担保は
+`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName`（`container(book, (String) null)` を渡す）。
+これは #25.5 の XLS-16 修正が `sheetName.length()` を先に呼ぶ形だったため `null` が
+`NullPointerException` になっていた（＝到達不能ではなく**未到達分岐**だった）のを、
+同じ番人の下へ寄せて閉じたものである。
 
 <a id="s3-1-2-parent-null"></a>
 
@@ -1558,15 +1616,17 @@ null チェックが必須」と明記している分岐であるため、担保
   `Paths.get(".output/SampleConversionTest", "Book.xlsx").getParent()` → `.output/SampleConversionTest` ／
   `Paths.get("/tmp/junit123", "Book.xlsx").getParent()` → `/tmp/junit123`）。
 - **到達経路の全数**: `XlsFormatWriter#write` が呼ばれるのは src/test では次の 2 経路しかない。
-  1. 直接呼び出し **20 か所**（`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → 20。
-     内訳は `grep -rc` で `XlsFormatWriterInvalidOutputTest:10`／`XlsFormatWriterTest:3`／
+  1. 直接呼び出し **21 か所**（`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → 21。
+     内訳は `grep -rc` で `XlsFormatWriterInvalidOutputTest:11`／`XlsFormatWriterTest:3`／
      `XlsFormatWriterCellTypeTest:2`／`TestDataConverterTest:2`／`XlsFormatWriterModelTest:1`／
      `RoundTripTest:1`／`ConverterMojoTest:1`）。
-     20 か所の `basePath` 実引数はすべて `folder.getRoot().getAbsolutePath()` ／ `<File>.getAbsolutePath()` ／
+     21 か所の `basePath` 実引数はすべて `folder.getRoot().getAbsolutePath()` ／ `<File>.getAbsolutePath()` ／
      `<Path>.toString()` であり、空文字にならない。
      **#22 時点は 19 か所だった**（内訳に `XlsFormatWriterModelTest` が無かった）。#23 が
      `XlsFormatWriterModelTest` を追加したことで 20 になり、この記述は陳腐化していた
      （2026-08-13・#23 レビュー対応で訂正。増えた 1 か所も `basePath` は絶対パスであり結論は変わらない）。
+     **#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を足して 21 になった**（2026-08-14 実測。
+     この 1 か所も `folder.getRoot().getAbsolutePath()` であり結論は変わらない）。
   2. 本番配線 `TestDataConverter#convert`（`writer.write(container, outputBase.toString())`）。
      `outputBase` は `XlsFormatHandler#resolveOutputBase` が `request.getOutputPath()` から組む。
      テストが渡す出力先は `TemporaryFolder` 由来の絶対パス（`TestDataConverterTest` の `out = folder.newFolder("out").toPath()`／
@@ -1786,8 +1846,8 @@ A-07／A-09 が同クラスに 0 件であることは
 状態を防ぐためである。したがって **12 件（#23 当初の担保）＋ 3 件（#23 レビュー対応の送信同期の担保）
 ＋ 3 件（issues 検査）＝ 18 件**である。
 
-**JaCoCo 実測（#25.5 の不具合修正後・2026-08-14）**: `XlsFormatWriter` は
-分岐 **100 / 104**（4 未到達）・行 **155 / 156**（1 未到達）である。導出コマンド:
+**JaCoCo 実測（#25.5 のレビュー 1 巡目まで反映・2026-08-14）**: `XlsFormatWriter` は
+分岐 **101 / 104**（3 未到達）・行 **157 / 158**（1 未到達）である。導出コマンド:
 
 ```sh
 cd /home/tie303177/work/nablarch/nablarch-testing-converter
@@ -1797,18 +1857,19 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
        target/site/jacoco/jacoco.csv
 ```
 
-出力は `line 155/156 branch 100/104`。**#23 完了時点（2026-08-13）の実測は
+出力は `line 157/158 branch 101/104`。**#23 完了時点（2026-08-13）の実測は
 命令 98%（8 / 782 未到達）・分岐 3 / 100 未到達・行 1 / 151 未到達で、未到達は下表の 3 箇所だった。**
 #25.5 の XLS-16 修正（`requireValidSheetNameLength` の追加）で分岐の総数が 4 増え、
-そのうち 1 つが未到達として残ったため **未到達は 4 箇所**になった（行の未到達は 1 のままである）。
-いずれも軸A〜F の要素ではない。
+そのうち `sheetName == null` 側がいったん未到達として残って 4 箇所になったが、
+**レビュー 1 巡目（B-2）で null を同じ番人が落とすようにし担保テスト
+（`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName`）を足したため、未到達は 3 箇所に戻った。**
+行の未到達は一貫して 1 である。残る 3 箇所はいずれも軸A〜F の要素ではない。
 
 | 箇所 | 未到達の内容 | 扱い |
 |---|---|---|
 | `write` の `if (parent != null)`（L107） | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
-| `requireValidSheetNameLength` の `if (sheetName != null && …)`（L151） | `sheetName == null` 側の分岐（1 / 4） | **#25.5 で増えた**。唯一の呼び出し元は `build`（L129）で、渡すのは `TestDataSection#getName()` である。中間モデルを作る 2 箇所（`XlsFormatReader.java:132` はシート名、`YamlFormatReader.java:94` はリソース名）はどちらも `null` を入れないため、この枝を通せるのはセクション名に `null` を入れた in-memory モデルだけである。防御ガードであり軸要素ではない |
-| `layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw`（L197・L200） | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
-| `isMarkerColumn` の `columnName != null`（L436） | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
+| `layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw`（L207・L210） | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
+| `isMarkerColumn` の `columnName != null`（L446） | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
 
 <a id="s3-3"></a>
 
@@ -1835,7 +1896,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 | C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — 順に `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`／`#writesEmptySheetWhenSectionHasNoBlocks`／`#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／`#writesTableWithoutDataRowsWhenRowsAreEmpty`／`#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`／`#writesDirectiveRowsBeforeFwHeaderRowsInMessage`／`#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`／`#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`／`#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（§3.1-3）。記録した課題は `issues.md` **XLS-21〜XLS-23** | 9 |
 | D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 18 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 18）。内訳は **8 ケース**＋改行の異表記 **2 件**・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋2＋1＋3＋2＋2 ＝ **18**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 担保済み（変更なし） | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — E-1(0) は C-04、E-2(0) は C-09／C-18、E-3(0) は C-12／C-15 と同じ入力（上の C 行のテストメソッド。§3.1-3 の軸E 表） | 3 |
-| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の拒否 **1 件**＋切り詰めと禁止文字検査の境界 **2 件**＋同名 2 枚の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＝ 1＋1＋14 ＝ **16**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16**（**#25.5 で修正済み**。31 文字超は黙って切り詰めるのをやめて拒否するようになり、上記 4 件を改名・書き直した。件数 16 は変わらない） | 担保済み（変更なし） | 3 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 17 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 17。#22 時点は 16 件で、#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を 1 件足した）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の拒否 **1 件**＋切り詰めと禁止文字検査の境界 **2 件**＋同名 2 枚の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＋ `null` **1 件**（`rejectsNullSheetName`。#25.5 の B-2）＝ 1＋1＋14＋1 ＝ **17**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16**（**#25.5 で修正済み**。31 文字超は黙って切り詰めるのをやめて拒否するようになり、上記 4 件を改名・書き直した。この改名で件数は増えていない） | 担保済み（変更なし） | 3 |
 | F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite` で完結する。上に挙げた既存テストが通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 対象外（変更なし。#23 でも辺③に書かない） | 1 |
 | **合計** | | **要追加 26（実際は 29）／ 到達不能 0 ／ 対象外 1** | **要追加 15（実際は 18）／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **要追加 0 ／ 担保済み 29 ／ 到達不能 0 ／ 対象外 1** | **30（うち対象外 1）** |
 
@@ -1960,7 +2021,7 @@ done
 
 出力は順に **16** ／ **17** ／ **2**（合計 **35**）。全体は `mvn clean test -Djacoco.skip=true` で
 **501 → 536**（Failures 0 ／ Errors 0 ／ Skipped 0。**これは #25 完了時点の値**。#25.5 後は
-`Tests run: 536, Failures: 0, Errors: 0, Skipped: 2` である —— [§0.1-2](#s0-1-2)）。
+`Tests run: 540, Failures: 0, Errors: 0, Skipped: 2` である —— [§0.1-2](#s0-1-2)）。
 **うち 5 件は #25 のレビュー対応で足した**（A-12〜A-14 の 3 件、キーのクォート 1 件、
 `emitMap` 経路の記法 1 件。いずれも `YamlFormatWriterModelTest`。当初版は 30 件・531 件、
 レビュー修正ラウンド 1 の時点では 32 件・535 件だった）。
