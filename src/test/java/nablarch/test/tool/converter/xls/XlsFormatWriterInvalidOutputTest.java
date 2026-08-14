@@ -32,7 +32,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.After;
 import org.junit.Assume;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -74,24 +73,27 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 異常系は<b>例外になるもの</b>（F3-03・F3-04 の禁止文字・空文字）と<b>例外にならず書けてしまうもの</b>
- * （F3-01・F3-04 の 31 文字超）に分かれる。後者は「書けてしまった結果」をそのまま固定する。
- * ただしこの区別は無条件ではない。POI が切り詰めを禁止文字検査より先に適用するため、
- * <b>禁止文字が index 31 以降にある 32 文字以上のシート名は例外にならず黙って書き出される</b>
- * （{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
+ * 異常系は<b>例外になるもの</b>（F3-03・F3-04 の禁止文字・空文字・31 文字超）と
+ * <b>例外にならず書けてしまうもの</b>（F3-01）に分かれる。後者は「書けてしまった結果」をそのまま固定する。
+ * シート名の 31 文字超は、かつて POI が黙って切り詰めていた（切り詰めを禁止文字検査より先に適用するため、
+ * 禁止文字が index 31 以降にある 32 文字以上の名前は検査に到達しなかった）が、
+ * {@code issues.md} <b>XLS-16</b> の修正で {@link XlsFormatWriter} が {@code createSheet} の前に
+ * 文字数を検査するようになり、いずれも例外になる
+ * （{@code #rejectsSheetNameLongerThanExcelLimit}／
+ * {@code #rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation}）。
  * </p>
  *
  * <p>
  * <b>F3-04 で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
- * 31 文字ちょうど（正常側の境界）・重複判定（切り詰め後の衝突／大文字小文字だけが違う名前）である。
+ * 31 文字ちょうど（正常側の境界）・重複判定（同名／大文字小文字だけが違う名前）である。
  * シート名のアポストロフィ（先頭／末尾）と {@code null} は
  * タスク #22 のスコープ外であり、<b>未担保</b>である。
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題（XLS-16）
- * として記録してあり、実装（src/main）は変更していない。
+ * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>
+ * ただしシート名の文字数上限だけは例外で、{@code issues.md} の課題（XLS-16）として
+ * {@link XlsFormatWriter} を修正したうえで、仕様どおりの期待値を置いている。
  * </p>
  *
  * @author kiyobot
@@ -184,12 +186,12 @@ public class XlsFormatWriterInvalidOutputTest {
      * <p>
      * 組み立てるシート名は {@code "a" + 禁止文字 + "b"} の 3 文字である。31 文字以下なので切り詰めは走らず、
      * 禁止文字は必ず index 1 で検査に掛かる（32 文字以上だと切り詰めが先に走り、禁止文字の位置に
-     * よっては検査に到達しない。{@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation}）。
+     * よっては検査に到達しない。{@code #rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation}）。
      * </p>
      *
      * <p>
      * メッセージは文字と index まで固定する。対照の
-     * {@code #rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation} が
+     * {@code #rejectsSheetNameWhoseForbiddenCharacterIsAtTheLastPosition} が
      * {@code Invalid char (/) found at index (30)} まで固定しているのに合わせ、
      * 「どの文字がどの位置で不正か」をメッセージが示すことを同じ粒度で担保するためである。
      * </p>
@@ -472,8 +474,8 @@ public class XlsFormatWriterInvalidOutputTest {
      *
      * <p>
      * 担保する軸要素: F3-04（文字数の上限の正常側の境界）。超過側
-     * （{@code #truncatesSheetNameLongerThanExcelLimitSilently}）と対にして、
-     * 切り詰めが起きる境界が 31／32 のどちらであるかを固定する。
+     * （{@code #rejectsSheetNameLongerThanExcelLimit}）と対にして、
+     * 許容と拒否の境界が 31／32 のどちらであるかを固定する。
      * </p>
      */
     @Test
@@ -495,95 +497,89 @@ public class XlsFormatWriterInvalidOutputTest {
     /**
      * Given: Excel の上限（31 文字）を 1 文字超える 32 文字のセクション名。
      * When : {@code write}。
-     * Then : 例外にならず、シート名が<b>黙って 31 文字へ切り詰められて</b>書き出される。
-     *        元の名前ではシートを引けず、変換ツール自身の読み戻し（{@link XlsFormatReader}）は
-     *        {@code sheet not found} で失敗する。
+     * Then : {@code IllegalArgumentException} で失敗する。メッセージは渡された名前と文字数を示す。
+     *        <b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（文字数の上限）。切り詰めは POI の {@code Workbook#createSheet} が
-     * メモリ上のブックの時点で行う。セクション名が変換後のブックで変わってしまうため、
-     * {@code issues.md} の <b>XLS-16</b> に課題として記録した（修正はしない）。
+     * シート名は呼び出し側が渡す引き当てキーである（{@code testdata_notation.rst:588}
+     * 「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
+     * List 形式または Map 形式でデータを取得できる」、
+     * 続く {@code TestSupport#getListMap(String sheetName, String id)}）。
+     * 黙って別名へ切り詰めると呼び出し側から引けなくなるため、切り詰めずに落とす
+     * （{@code issues.md} <b>XLS-16</b>）。
      * </p>
+     *
+     * <p>担保する軸要素: F3-04（文字数の上限）。正常側の境界は
+     * {@code #writesSheetNameOfExcelLimitLengthAsIs} が担保する。</p>
      */
     @Test
-    @Ignore("XLS-16: 31 文字超のシート名が黙って切り詰められる現状挙動を固定していた")
-    public void truncatesSheetNameLongerThanExcelLimitSilently() {
+    public void rejectsSheetNameLongerThanExcelLimit() {
         // Given
         String book = "TooLong";
         String tooLong = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH + 1);
 
         // When
-        String inMemorySheetName = new XlsFormatWriter().build(container(book, tooLong)).getSheetName(0);
-        new XlsFormatWriter().write(container(book, tooLong), folder.getRoot().getAbsolutePath());
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container(book, tooLong),
+                        folder.getRoot().getAbsolutePath()));
 
         // Then
-        assertThat("切り詰めはメモリ上のブックの時点で起きている",
-                inMemorySheetName.length(), is(EXCEL_MAX_SHEET_NAME_LENGTH));
-        Workbook workbook = XlsFixture.open(writtenBook(book).toPath());
-        assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
-        assertThat("31 文字へ切り詰められる（issues.md XLS-16）",
-                workbook.getSheetName(0), is("a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH)));
-        assertThat("元のセクション名ではシートを引けない", workbook.getSheet(tooLong), is(nullValue()));
-        // 変換ツール自身の読み戻しも元の名前では失敗する
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatReader().read(folder.getRoot().getAbsolutePath(),
-                        book + "/" + tooLong));
-        assertThat(thrown.getMessage(), containsString("sheet not found."));
+        assertThat(thrown.getMessage(),
+                containsString("シート名が Excel の上限 31 文字を超えています"));
+        assertThat(thrown.getMessage(), containsString("sheetName='" + tooLong + "'"));
+        assertThat(thrown.getMessage(), containsString("length=32"));
+        assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 
     /**
      * Given: 32 文字目（index 31）に Excel の禁止文字 {@code /} を置いた 32 文字のセクション名。
      * When : {@code write}。
-     * Then : <b>例外にならず</b>、禁止文字が切り詰めで消えたシート名（{@code a} × 31）のブックが
-     *        黙って書き出される。
+     * Then : {@code IllegalArgumentException}（文字数超過）で失敗する。<b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（切り詰めと禁止文字検査の順序）。POI 3.8 の
-     * {@code XSSFWorkbook#createSheet(String)} は {@code substring(0, 31)} による切り詰めを
-     * {@code WorkbookUtil.validateSheetName} <b>より先に</b>適用する。したがって
-     * 「禁止文字を含むシート名は必ず例外になる」とは言えず、<b>禁止文字が index 31 以降にある
-     * 32 文字以上の名前では検査に到達せず黙って書き出される</b>。
-     * 検査そのものは効いていること（切り詰め後の名前に禁止文字が残れば失敗すること）は
-     * {@code #rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation} が示す。
-     * {@code issues.md} の <b>XLS-16</b> の帰結の一つである。
+     * 担保する軸要素: F3-04（切り詰めが禁止文字検査を無効化する抜けが閉じていること）。
+     * POI 3.8 の {@code XSSFWorkbook#createSheet(String)} は {@code substring(0, 31)} による
+     * 切り詰めを {@code WorkbookUtil.validateSheetName} <b>より先に</b>適用するため、
+     * 禁止文字が index 31 以降にある 32 文字以上の名前は検査に到達せず黙って書き出されていた
+     * （{@code issues.md} <b>XLS-16</b>）。{@link XlsFormatWriter} が {@code createSheet} の前に
+     * 文字数を検査するようにしたため、この形は {@code createSheet} へ渡る前に落ちる。
      * </p>
      */
     @Test
-    @Ignore("XLS-16: 切り詰めで禁止文字が消え検査に到達しないまま書き出される現状挙動を固定していた")
-    public void writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation() {
+    public void rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation() {
         // Given
         String book = "Hidden";
         String hidden = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH) + "/";
 
         // When
-        new XlsFormatWriter().write(container(book, hidden), folder.getRoot().getAbsolutePath());
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container(book, hidden),
+                        folder.getRoot().getAbsolutePath()));
 
         // Then
-        File written = writtenBook(book);
-        assertTrue("禁止文字を含む名前なのにブックが書かれる（issues.md XLS-16）", written.exists());
-        Workbook workbook = XlsFixture.open(written.toPath());
-        assertThat("シートは 1 枚だけ", workbook.getNumberOfSheets(), is(1));
-        assertThat("禁止文字は切り詰めで消え、検査に到達しない",
-                workbook.getSheetName(0), is("a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH)));
+        assertThat("禁止文字が切り詰めで消える前に、文字数で落ちる",
+                thrown.getMessage(), containsString("シート名が Excel の上限 31 文字を超えています"));
+        assertThat(thrown.getMessage(), containsString("sheetName='" + hidden + "'"));
+        assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 
     /**
-     * Given: 31 文字目（index 30）に Excel の禁止文字 {@code /} を置いた 32 文字のセクション名。
+     * Given: 31 文字目（index 30）に Excel の禁止文字 {@code /} を置いた<b>31 文字</b>のセクション名。
      * When : {@code write}。
-     * Then : {@code IllegalArgumentException} で失敗する。メッセージが示すシート名は
-     *        <b>切り詰め後の 31 文字</b>であり、渡した 32 文字ではない。
+     * Then : {@code IllegalArgumentException} で失敗する。メッセージは文字と位置を示す。
      *
      * <p>
-     * 担保する軸要素: F3-04（切り詰めと禁止文字検査の順序）。
-     * {@code #writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation} の対照であり、
-     * 「切り詰めてから検査する」という順序を、例外メッセージに現れる名前で裏づける。
+     * 担保する軸要素: F3-04（禁止文字の検査が上限ちょうどの長さでも効くこと）。
+     * {@code #rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation} の対照であり、
+     * 文字数検査を通る名前では POI の禁止文字検査に到達することを示す。
+     * 文字数が 31 なので切り詰めは起こらず、メッセージのシート名は渡した名前そのものである。
      * </p>
      */
     @Test
-    public void rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation() {
+    public void rejectsSheetNameWhoseForbiddenCharacterIsAtTheLastPosition() {
         // Given
         String book = "Surviving";
-        String surviving = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/a";
+        String surviving = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/";
 
         // When
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
@@ -592,21 +588,22 @@ public class XlsFormatWriterInvalidOutputTest {
 
         // Then
         assertThat(thrown.getMessage(), containsString("Invalid char (/) found at index (30)"));
-        assertThat("メッセージのシート名は切り詰め後の 31 文字（＝検査は切り詰めの後に走る）",
-                thrown.getMessage(),
-                containsString("in sheet name '" + "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH - 1) + "/'"));
+        assertThat("メッセージのシート名は渡した名前そのもの（切り詰めは起きない）",
+                thrown.getMessage(), containsString("in sheet name '" + surviving + "'"));
         assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 
     /**
-     * Given: 先頭 31 文字が同じで 32 文字目だけが違う 2 つのセクション名。
+     * Given: まったく同じ 31 文字のセクション名 2 つ。
      * When : {@code write}。
-     * Then : 切り詰めた結果が衝突し、{@code IllegalArgumentException} で失敗する。
+     * Then : 重複と判定され、{@code IllegalArgumentException} で失敗する。
      *        <b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（切り詰めの帰結）。切り詰めそのものは黙って起こるが、
-     * 衝突した場合だけは失敗する（{@code issues.md} XLS-16 の境界）。
+     * 担保する軸要素: F3-04（シート名の重複判定）。
+     * 元は「先頭 31 文字が同じで 32 文字目だけが違う 2 名が切り詰めで衝突する」ことを固定していたが、
+     * 31 文字超を {@link XlsFormatWriter} が拒否するようになった（{@code issues.md} <b>XLS-16</b>）ため
+     * その前提が無くなった。上限ちょうどの長さでの重複検出として書き直してある。
      * </p>
      *
      * <p>
@@ -617,14 +614,14 @@ public class XlsFormatWriterInvalidOutputTest {
      * </p>
      */
     @Test
-    public void failsWhenTruncatedSheetNamesCollide() {
+    public void failsWhenSameSheetNameOfLimitLengthIsUsedTwice() {
         // Given
         String book = "Collide";
-        String base = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
+        String atLimit = "a".repeat(EXCEL_MAX_SHEET_NAME_LENGTH);
 
         // When
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container(book, base + "1", base + "2"),
+                () -> new XlsFormatWriter().write(container(book, atLimit, atLimit),
                         folder.getRoot().getAbsolutePath()));
 
         // Then
@@ -642,7 +639,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * 担保する軸要素: F3-04（シート名の重複判定）。{@code issues.md} <b>XLS-16</b> は原因として
      * POI 3.8 の {@code Workbook#containsSheet} が「両辺を 31 文字へ切り詰めてから
      * {@code equalsIgnoreCase} で比べる」ことを挙げている。
-     * {@code #failsWhenTruncatedSheetNamesCollide} が担保するのは<b>切り詰め</b>側だけなので、
+     * {@code #failsWhenSameSheetNameOfLimitLengthIsUsedTwice} が担保するのは<b>完全同名</b>だけなので、
      * 本メソッドが<b>大文字小文字を区別しない</b>側を担保する。
      * シート名は 3 文字で切り詰めが走らないため、衝突の理由が {@code equalsIgnoreCase} だけに絞られる。
      * </p>

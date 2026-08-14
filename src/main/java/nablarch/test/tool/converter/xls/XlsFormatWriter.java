@@ -70,6 +70,9 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     /** 出力拡張子。 */
     private static final String EXTENSION = ".xlsx";
 
+    /** Excel がシート名に許す最大文字数。 */
+    private static final int MAX_SHEET_NAME_LENGTH = 31;
+
     /** 整形設定。 */
     private final ExcelFormatConfig config;
 
@@ -123,11 +126,34 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         XSSFWorkbook workbook = new XSSFWorkbook();
         Styles styles = new Styles(workbook, config);
         for (TestDataSection section : container.getSections()) {
+            requireValidSheetNameLength(section.getName());
             Sheet sheet = workbook.createSheet(section.getName());
             sheet.setDisplayGridlines(config.isDisplayGridlines());
             writeSection(sheet, section, styles);
         }
         return workbook;
+    }
+
+    /**
+     * シート名の文字数が Excel の上限（31 文字）以内であることを検査する。
+     * <p>
+     * POI の {@code XSSFWorkbook#createSheet(String)} は 31 文字を超える名前を
+     * {@code substring(0, 31)} で黙って切り詰めてから禁止文字を検査する。シート名は呼び出し側が
+     * データを引き当てるためのキーであり（{@code testdata_notation.rst:588}）、別名へ変わると引けなくなる。
+     * また切り詰めが先に走ることで、禁止文字が 32 文字目以降にある名前は禁止文字検査に到達しない。
+     * どちらも {@code createSheet} の前に文字数を検査すれば閉じる（{@code issues.md} XLS-16）。
+     * </p>
+     *
+     * @param sheetName シート名（＝セクション名）
+     * @throws IllegalArgumentException 31 文字を超える場合
+     */
+    private static void requireValidSheetNameLength(String sheetName) {
+        if (sheetName != null && sheetName.length() > MAX_SHEET_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    "シート名が Excel の上限 " + MAX_SHEET_NAME_LENGTH + " 文字を超えています。"
+                            + "切り詰めると別名になり読み込み単位を引き当てられなくなるため、変換を中止しました。"
+                            + " sheetName='" + sheetName + "', length=" + sheetName.length());
+        }
     }
 
     /**
