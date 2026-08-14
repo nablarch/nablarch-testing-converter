@@ -37,8 +37,12 @@ import org.junit.rules.TemporaryFolder;
  * <b>対象は「NTF が実行できるテストデータ」に限る。</b>{@code PoiXlsReader} のクラス Javadoc が
  * 「全セルが文字列書式であること」を前提として明示しているため、それを外れる入力
  * （表示形式を持たない数値セル・日付／時刻／日時書式セル・数式セル・真偽値セル・エラー値セル）は
- * 担保対象にしない。ただし<b>値が数値で表示形式が {@code @}（文字列書式）のセル</b>は前提の内側であり、
- * 参照フィクスチャの実物にも存在するため {@link #readsTextFormattedNumericCellAsDoubleString()} で固定する。
+ * 担保対象にしない。<b>値が数値で表示形式が {@code @}（文字列書式）のセル</b>も同じく仕様外である
+ * （解説書 {@code testdata_notation.rst:75} と直後の {@code important}。
+ * {@code coverage/issues.md} <b>XLS-01</b>）。ただし作成者から見れば文字列書式であり
+ * 参照フィクスチャの実物にも存在する形であるため、
+ * {@link #readsTextFormattedNumericCellAsDoubleString()} を<b>実挙動の記録として</b>残す
+ * （担保ではない。同テストの Javadoc を参照）。
  * </p>
  *
  * <p>
@@ -275,21 +279,36 @@ public class XlsFormatReaderCellTypeTest {
     /**
      * Given: 値が数値 {@code 1}・表示形式が {@code @}（文字列書式）のセル。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 表示形式 {@code @} は考慮されず {@code "1.0"} が入る（画面表示 {@code 1} と一致しない）。
+     * Then : <b>値は保証しない。</b>実測では表示形式 {@code @} は考慮されず {@code "1.0"} が入る
+     *        （画面表示 {@code 1} と一致しない）。
      *
      * <p>
-     * 全セルが文字列書式という前提の内側にありながら値が変わる唯一のケースであるため、
-     * 本クラスで担保する数値セルはこれだけである。参照フィクスチャ
-     * {@code ProjectActionRequestTest.xlsx} の {@code downloadNormal} シート {@code A19} が
-     * この形（{@code t} 属性なしの数値セルで、適用スタイルの {@code numFmtId} が 49 ＝ {@code @}）であり、
-     * Excel が実際に保存した版面に存在するパターンであることを確認している。
+     * <b>これは仕様外入力であり、converter は対応しない（{@code coverage/issues.md} <b>XLS-01</b>）。</b>
+     * 解説書 {@code testdata_notation.rst:75} は「Excelのセルの書式は、必ず文字列書式に統一して
+     * おく必要がある」と定め、直後の {@code important}（{@code :79}）は
+     * 「Excelファイルに文字列以外の書式でデータを記述すると、Excelがセルの値を自動的に変換して
+     * しまう（例えば数値書式では先頭の {@code 0} が消えて {@code 0001} が {@code 1} になる、
+     * 日付書式では表示形式が変わるなど）ため、正しくデータを読み取れなくなる」と明言している。
+     * セル種別が数値である本ケースは「文字列以外の書式でデータを記述した」状態であり、
+     * 解説書自身が読み取れないと言っている入力である。converter の入出力は
+     * NTF が実行できるテストデータに限るため、正しい値を決めることができない。
      * </p>
      *
      * <p>
-     * 「表示形式が無視される」という主張を立てるには、そのセルが実際に表示形式 {@code @} を
-     * 持っていなければならない。読み取り値だけでは表示形式を持たない数値セルと区別できないため、
-     * 書き出した {@code .xlsx} を読み戻して当該セルが数値セルかつ {@code getDataFormatString()} が
-     * {@code "@"} であることも確認する。
+     * <b>したがって本テストは要件ではなく実挙動の記録である。</b>下のアサートが将来 {@code "1.0"} 以外へ
+     * 変わっても不具合ではない。値を仕様どおりに直す修正を入れたときは、期待値を書き換えて
+     * 記録を更新すればよい（表示形式 {@code @} が文字列書式である以上、
+     * 作成者が仕様どおりのつもりで書ける形であるため、記録そのものは残す価値がある）。
+     * 参照フィクスチャ {@code ProjectActionRequestTest.xlsx} の {@code downloadNormal} シート
+     * {@code A19} がこの形（{@code t} 属性なしの数値セルで、適用スタイルの {@code numFmtId} が
+     * 49 ＝ {@code @}）であり、Excel が実際に保存した版面に存在するパターンである。
+     * </p>
+     *
+     * <p>
+     * 「数値セルである」という前提を立てるには、そのセルが実際に数値セルかつ表示形式 {@code @} を
+     * 持っていなければならない。読み取り値だけでは区別できないため、書き出した {@code .xlsx} を
+     * 読み戻して当該セルの種別と {@code getDataFormatString()} も確認する（こちらは前提の確認であり、
+     * 記録ではなく担保である）。
      * </p>
      */
     @Test
@@ -298,7 +317,8 @@ public class XlsFormatReaderCellTypeTest {
         String value = readValue(number(1, "@"));
 
         // Then
-        assertThat(value, is("1.0"));
+        assertThat("仕様外入力（セル種別が数値）のため値は保証しない。これは要件ではなく実挙動の記録である",
+                value, is("1.0"));
 
         Cell cell = writtenSheet().getRow(2).getCell(1);
         assertThat("検証対象セルが数値セルであること", cell.getCellType(), is(Cell.CELL_TYPE_NUMERIC));
