@@ -1659,3 +1659,99 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 - 影響: 変換が失敗するので気づけるが、**どのファイルのどのフィールドが原因かが分からない**（XLS-14 と同じ性質）。
 - 判断: 変換ツール側で読み取り例外にリソース名を添えて包み直すのがあるべき姿である（XLS-14 と同じ結論）。
   本作業では修正しない（`src/main` 無変更）。
+
+---
+
+## #25 辺④ 軸D（YAML 表現 9 ケース）・軸A〜F の欠け補充で記録した課題
+
+**軸D の 9 ケース（D4-01〜D4-09）はすべて往復できた。** 中間モデル → `YamlFormatWriter#write` →
+実 `YamlFormatReader` の順に通し、9 ケースとも元の文字列（`null` は Java `null`）へ復元されることを
+実測した（担保テストは `inventory.md` §4.1-2 の軸D 表）。**したがって軸D 由来の課題は無い。**
+本節に記録する 2 件はいずれも軸D ではなく、**辺④が「本体スキーマに適合しない YAML」を
+黙って書き出す**ことに由来する。
+
+掲載順は本ファイルの原則どおり「検出できないものを上」である。2 件とも
+**変換時には検出できず、読み戻しのときに loud に失敗する**（値が黙って変わるものではない）。
+
+### YML-12 スキーマが禁じる形の中間モデルを渡すと、読み戻せない YAML が黙って書き出される（影響度 中・**変換時には検出できない**／読み戻し時に loud）
+
+`YamlFormatWriter` は本体スキーマ（yaml jar 内 `nablarch/test/ntf-testdata-yaml-schema.json`）を
+参照しない。以下の 4 つの形は書き出しに成功するが、生成された `.yaml` はスキーマ違反であり、
+`YamlFormatReader`（＝ NTF 本体の読み取り経路）で読めない。
+
+| 入力（中間モデル） | 書き出される YAML | 読み戻し（違反キーワード・位置） | 担保テスト（`YamlFormatWriterModelTest#`） |
+|---|---|---|---|
+| `FileDataBlock.records` が空 | `records:` キーごと出ない | `required` ／ `$.setup_files[0]` | 版面: `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty` ／ 読み戻し: `failsToReadBackFileBlockWithoutRecords` |
+| `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（版面は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
+| `RecordLayout.fields` が空 | `fields: []` | `minItems` ／ `$.setup_files[0].records[0].fields` | `failsToReadBackRecordWithoutFields`（版面は既存の `YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists`） |
+| `FieldDef.type` が `null` | `{name: "c1"}`（`type` を省略） | `required` ／ `$.expected_files[0].records[0].fields[0]` | `failsToReadBackFieldWithoutType`（版面は既存の `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`） |
+
+- 原因: 直列化は中間モデルの形をそのまま写す（`emitRecords` は空なら `records:` を出さず、
+  `emitFlowList` は空なら `key: []` を出し、`fieldFlow` は `type` が `null` なら書かない）。
+  スキーマ側は `$defs.file_data.required` ／ `$defs.message_data.required` が `records` を要求し
+  （`minItems` は 0 なので**空配列 `records: []` なら通る**）、
+  `$defs.record_fragment.properties.fields.minItems` ＝ 1、`$defs.field_def.required` が `type` を要求する。
+  すなわち**空を「キーごと省略」で表す辺④と、「キーは必須・中身は空でよい」とするスキーマの食い違い**である
+  （4 件目だけは表現の食い違いではなく、スキーマが `type` 必須である以上、辺④が書ける形が仕様外という話である）。
+- **到達経路がある（実測・2026-08-14）。** 上 2 件（`records` 空）は**辺①が生成できる**。
+  レコードレイアウトを持たないファイルブロック／メッセージブロックを含む `.xlsx` を
+  `XlsFormatReader`（本番配線）で読むと `records=0` の中間モデルになる。
+  さらに `TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out)` を通すと、
+  `records:` を持たない `.yaml` が生成され、それを読み直すと上表のとおりスキーマ違反で失敗する。
+  **すなわち XLS→YAML 変換の成果物が NTF で読めなくなる。**
+  再現に使った `.xlsx` は `XlsFormatWriter` で生成したものであり、**Excel で手書きした版面での再現は未確認**である。
+- 下 2 件（`fields` 空／`type` 省略）は辺②では到達不能である（`inventory.md` §2.3。スキーマが弾く）。
+  辺③でも同じ形が「書けるが読み戻せない `.xlsx`」になる（**XLS-22**）。
+- 影響: 変換は成功し、`.yaml` も生成されるため、変換の時点では気づけない。
+  気づくのは NTF がそのテストデータを読むとき（またはこのツールで読み戻すとき）である。
+  スキーマ検証のメッセージは違反位置（`$.setup_files[0]`）を示すため、原因の特定自体は難しくない。
+- 判断: **仕様として不適切**である。`YamlFormatWriter` の Javadoc は「`YamlFormatReader` と記法対称に
+  直列化する」と謳っており、読み戻せない出力はその主張に反する。あるべき姿は
+  空のコレクションを `records: []` と書く（1・2 件目）か、書き出し時に弾く（3・4 件目。辺③の
+  `XlsFormatWriter#appendRecords` が同種の前提崩れを送出で弾いているのと同じ思想）である。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-13 折り返しの起きるキーを書き出すと、YAML として読めないファイルになる（影響度 低・**変換時には検出できない**／読み戻し時に loud）
+
+| 入力（中間モデル） | 書き出される YAML | 読み戻し | 担保テスト（`YamlFormatWriterScalarTest#`） |
+|---|---|---|---|
+| エスケープを要する文字（改行など）を含み、かつ 80 桁を超える**カラム名**（`directives` ／ `fw_header` のキーでも同じ） | ダブルクォートスカラーが行末の `\` で折り返され、**キーが 2 行にまたがる** | `IllegalStateException: Failed to parse YAML file: …`（パースで止まり、スキーマ検証には到達しない） | 版面: `foldsLongEscapedKeyWithBackslashContinuation` ／ 読み戻し: `failsToReadBackFoldedKey` |
+| 同じ形の**値**（`rows` の値） | 同じく折り返されるが、読み戻しは成功する | 元の文字列へ復元される | `foldsLongEscapedValueWithBackslashContinuation` ／ `restoresFoldedLongEscapedValueThroughRealReader` |
+
+- 原因: `YamlFormatWriter#q` は値を単独で snakeyaml-engine の `Dump#dumpToString` に渡す。
+  同エンジンは出力幅（既定 80 桁。`DumpSettings.builder().build().getWidth()` → **80**。実測）を
+  超えると、エスケープを挟んだ位置でダブルクォートスカラーを
+  行末の `\` で折り返す。`key(String)` はクォートが要るキーに同じ `q` を使うため、キーも折り返される。
+  **YAML の simple key は 1 行に収まらなければならない**ため、折り返されたキーはパースできない。
+  折り返しは長さだけでは起きない（エスケープを要する文字を 1 つも含まない 300 文字の値は 1 行のまま。実測）。
+- **折り返しの継続行の字下げは半角空白 2 個で固定であり、差し込み先のインデントに揃わない。**
+  `q` は差し込み先の深さを知らないためである。値側ではこれでも復元できる
+  （snakeyaml-engine と PyYAML の 2 実装で同じ文字列に復元されることを実測。**他の実装は未確認**）。
+- 影響: 到達には「キーにエスケープ対象文字を含む」かつ「80 桁を超える」の両方が要るため、
+  実データで踏む見込みは小さい。踏んだ場合は**そのファイル全体が読めなくなる**（ブロック単位ではない）。
+  例外メッセージはファイルパスを示すが、原因がキーの折り返しであることは示さない。
+- 判断: 記録に留める（影響度 低）。あるべき姿は、キーに使う `q` では折り返しを禁じる
+  （`DumpSettings#setWidth` を十分大きく取る、またはキー専用の整形にする）ことである。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### 課題としないと判断した観測結果（#25）
+
+| 観測 | 判断 |
+|---|---|
+| 軸D の 9 ケース（`"100"` ／ `"true"` ／ `"null"` ／ `null` ／ `""` ／ `"007"` ／改行含む ／ `"2026-08-07"` ／コロン・ハイフン・`#` 含む）がすべて往復する | 妥当。全値ダブルクォート＋`null` だけアンクォートという方針が効いている（`inventory.md` §4.1-2 の軸D 表） |
+| 改行を含む値がブロックスカラー（`\|` ／ `>`）ではなく 1 行の `"…\n…"` になる | 妥当（読み戻すと改行を含んだまま戻る。担保: `YamlFormatWriterScalarTest#writesNewlineContainingStringAsEscapedSingleLineScalar` ／ `#restoresNewlineContainingStringThroughRealReader`） |
+| セクション 0 件のコンテナから、ファイルも出力先ディレクトリも作られない | 妥当（記録のみ）。辺③は同じ入力から**シート 0 枚のブックを書き出す**（**XLS-23**）ため非対称だが、辺④は壊れた成果物を残さないぶん筋がよい。担保: `YamlFormatWriterModelTest#writesNothingWhenContainerHasNoSections` |
+| 出力先が存在しないと、例外にならずディレクトリが作られる（F4-01） | 妥当（辺③の `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook` と同じ挙動。担保: `YamlFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesYaml`） |
+| 小文字のテーブル名・カラム名が読み戻しで大文字化され、往復で元に戻らない | 既知（**YML-10** ／ 大文字化そのものは「課題としないと判断した観測結果（#24）」）。辺④側の現れ方を `YamlFormatWriterModelTest#uppercasesTableAndColumnNamesWhenReadBack` で固定した |
+| `field-separator` にリテラルのタブを持つブロックが、忠実に `"\t"` と書かれるのに読み戻せない | 既知（**YML-08**。辺②側でディレクティブ値が `trim()` されるため）。辺④側の現れ方＝**タブ区切りの可変長ファイルは往復できない**ことを `YamlFormatWriterModelTest#failsToReadBackLiteralTabFieldSeparator` で固定した |
+| `group_id` に YAML 特殊文字（コロン）を含めても往復する | 妥当（値としてクォートされるため。プローブ実測。担保テストは置いていない —— 軸要素ではなく、既存の `YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars` がキー側のクォートを、`#roundTrip_sendSync_preservesGroupIdAndNoField` が `group_id` の往復を通しているため） |
+
+### 未確認（#25）
+
+- **折り返しを含む出力 YAML を、snakeyaml-engine と PyYAML 以外の実装が同じ文字列へ復元するかは未確認である**（YML-13）。
+- **YML-12 の到達経路を Excel で手書きした版面で再現できるかは未確認である。** 実測に使った `.xlsx` は
+  `XlsFormatWriter` が生成したものである（読み取り側は本番配線の `XlsFormatReader` を通している）。
+- **軸D の 9 ケースは `setup_tables` の `rows` とレコード断片（`records[].rows`）の 2 経路で観測したが、
+  テストで固定したのは `setup_tables` 経路だけである。** レコード断片経路でも 9 ケースとも
+  同じ記法（フロー list の中のダブルクォート）で書かれ、同じく往復することはプローブで確認した。
+  LIST_MAP 経路（`list_maps`）は観測していない。

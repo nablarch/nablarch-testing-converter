@@ -59,9 +59,17 @@
 > - **§0.5** — 軸D 辺②を 10 ケース → **12 ケース**（D2-01〜D2-12。ユーザー確定・2026-08-14）へ改めた。
 > - **§0.8-3 / §5.2** — 辺②の軸D 件数と、軸A の辺②列（実 `.yaml` 経路でも ✅ になったこと）を追記した。
 >
-> **上記以外（§4・§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3 の更新を
+> **辺④（#25 辺④ 軸D・軸A〜F の欠け補充。2026-08-14）**
+>
+> - **§4.1-2（新設）** — #25 が追加したテストクラス（`YamlFormatWriterScalarTest` /
+>   `YamlFormatWriterModelTest` / `YamlFormatWriterInvalidOutputTest`）の担保を軸要素別に記す。
+>   §4.1 は「`YamlFormatWriterTest` 33 件」を対象とした #18 時点の事実として**そのまま残す**。
+>   `YamlFormatWriter` の JaCoCo 実測も本節末尾に置いた。
+> - **§4.3** — 辺④ 未担保一覧に「#25 後の状態」列を足した。
+>
+> **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
-> **§5.2 だけは §1.2-2 の #20 実績と §2.1-2 の #24 実績を反映した現時点ビューである。**
+> **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
 >
 > **§0（前提の実測）は原則として #18 時点のスナップショットである。** その後の変化は
 > 各項の中に日付つきで追記してある（§0.8-4 の `getCellType()` 件数など）。
@@ -376,7 +384,8 @@ RoundTripTest.java             30 @Test
    **F3-02 を辺③の対象外とする結論は変えない**（`XlsFormatWriter` は `overwrite` を保持しないので、
    辺③に書いても再現できない）。本書で「上位層で担保済み」と記した箇所はこの但し書きつきで読むこと。
    辺④（YAML 出力）の F4-02 については、上記 2 件がまさに `.yaml` を出力側とする衝突であり、
-   この但し書きは当たらない。
+   この但し書きは当たらない。**#25 で実物（`TestDataConverter#checkOverwrite` ／ `YamlFormatHandler#outputPaths` ／
+   上位層のテスト 2 件）を開いて再確認した**（§4.1-2 の「F4-02 を対象外とした根拠」）。
 6. **1 リソース単位 API のため、辺①・辺②では「セクション複数」「セクション 0」が構造上生成されない。**
    事実: `XlsFormatReader#read` は `Collections.singletonList(section)` を返し、
    `YamlFormatReader#read` も同じく `Collections.singletonList(section)` を返す。
@@ -387,6 +396,10 @@ RoundTripTest.java             30 @Test
    **辺③の C-02「sections 空」は #23 で担保済みになった（2026-08-13 追記）**:
    `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections` が
    シートを 1 枚も持たないブックが書き出されることを実測して固定した（`issues.md` **XLS-23**）。
+   **辺④の C-02「sections 空・複数」と E-4(複数) は #25 で担保済みになった（2026-08-14 追記）**:
+   `YamlFormatWriterModelTest#writesNothingWhenContainerHasNoSections`（空。**ファイルも出力先
+   ディレクトリも作られない** —— 辺③がシート 0 枚のブックを書くのとは非対称）と
+   `#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`（複数）で固定した。
 7. **`DataType.DEFAULT` はリーダ 2 経路のいずれでも生成されない。**
    事実: 辺① — `TestCoreReaderAdapter` が `type == DataType.DEFAULT` のブロックを `continue` でスキップする。
    辺② — `YamlFormatReader#addBlocksForSection` と `fileDataType` ／
@@ -463,12 +476,13 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 | 辺③ | **A-12 `EXPECTED_REQUEST_BODY_MESSAGES`**（2026-08-13 追記） | `xls_expectedRequestBodyMessages_isPreserved` |
 | 辺③ | **A-13 `RESPONSE_HEADER_MESSAGES`**（同上） | `xls_responseHeaderMessages_isPreserved` |
 | 辺③ | **A-14 `RESPONSE_BODY_MESSAGES`**（同上） | `xls_responseBodyMessages_isPreserved` |
-| 辺④ | A-07 `EXPECTED_FIXED` | `yaml_expectedFixed_isPreserved` |
-| 辺④ | A-08 `SETUP_VARIABLE` | `yaml_setupVariable_isPreserved` |
+| 辺④ | A-07 `EXPECTED_FIXED`（**#25 で直接の担保が付き ✅ になった**） | `yaml_expectedFixed_isPreserved` |
+| 辺④ | A-08 `SETUP_VARIABLE`（同上） | `yaml_setupVariable_isPreserved` |
 
 辺① D1-01 文字列／D1-13 空文字／D1-16 リテラル `null`、辺② D2-02／D2-03／D2-06／D2-07、
 辺③ D3-04／D3-05、辺④ D4-01 は既に `XlsFormatWriterTest#roundTrips*` ／ `YamlFormatWriterTest#roundTrip_*`
 経由で 🔺 であり、`RoundTripTest` は担保の厚みを増すが判定は変えない。
+**辺④ D4-01 と 辺④ A-07／A-08 は #25 で直接の担保が付き ✅ になった**（§4.1-2）。
 辺②については新たに 🔺 になる要素はない。
 
 **辺③ A-12〜A-14 の 3 行は 2026-08-13（#23 レビュー対応）で追加した。**
@@ -1724,25 +1738,180 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | 32 | `roundTrip_leadingTrailingWhitespace_isPreservedThroughRealReader` | A-02 | B-1 | C-09 | ※前後・中間の半角/全角空白が往復で脱落しない | E-2(1) | — |
 | 33 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | A-02 | B-1 | C-09 | 🔺**D4-01 `"100"` 相当（`"123"`）**・D4-03 `"null"`・D4-04 `null` の往復区別（出力 YAML の記法アサートではない） | E-2(複数=3) | — |
 
+<a id="s4-1-2"></a>
+
+### 4.1-2 #25 が追加したテストクラスの担保（2026-08-14 追記）
+
+**本節は #25 で新設した。** §4.1 は「`YamlFormatWriterTest` 33 件」を対象とした #18 時点の事実であり
+書き換えていない。ここには #25 が追加したテストクラスの担保だけを、**軸要素 → メソッド**の向きで記す
+（§4.1 は メソッド → 軸要素 の向き。対象クラスが重ならないため二重記載にならない。
+4 辺を通した逆引きの正は #27 の `axis-matrix.md`）。
+
+| テストクラス | 件数 | 担う軸 |
+|---|---|---|
+| `YamlFormatWriterScalarTest` | 16 | 軸D（9 ケースのうち #25 が埋めた分）＋ `issues.md` YML-13 |
+| `YamlFormatWriterModelTest` | 12 | 軸A（A-07／A-08）・軸C（C-02／C-12）・軸E（E-4）＋ `issues.md` YML-12／YML-08／YML-10 |
+| `YamlFormatWriterInvalidOutputTest` | 2 | 軸F（F4-01／F4-03） |
+
+件数の導出コマンド:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+for f in YamlFormatWriterScalarTest YamlFormatWriterModelTest YamlFormatWriterInvalidOutputTest; do
+  printf "%-34s %s @Test\n" "$f" "$(grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/$f.java)"
+done
+```
+
+出力は順に **16** ／ **12** ／ **2**（合計 **30**）。全体は `mvn clean test -Djacoco.skip=true` で
+**501 → 531**（Failures 0 ／ Errors 0 ／ Skipped 0）である。
+
+3 クラスとも `YamlFormatWriter#serialize`（出力 YAML テキスト）を直接アサートする。往復を見るものは
+`writer.write(...)` で実ファイルを書き、本番配線の `new YamlFormatReader().read(...)` で読み戻す
+（辺②側の単独の担保は §2.1-2 の `YamlFormatReaderScalarTest` にある）。
+
+**軸D（§0.5 の辺④ 9 ケース。記法と往復を分けて示す）**
+
+「記法」列は**出力 YAML の記法そのもの**（引用符の有無・折り返し・NULL 表現）をアサートしているメソッド、
+「往復」列は**書いて読み戻したときに元の文字列へ戻るか**をアサートしているメソッドである。
+クラス名を書いていないものは `YamlFormatWriterScalarTest` のメソッド。
+
+| 要素 | 出力 YAML の記法（実測） | 記法の担保 | 往復の担保 | 復元 |
+|---|---|---|---|---|
+| D4-01 `"100"` | `V: "100"` | `writesNumberLookingStringAsDoubleQuotedScalar` | `restoresNumberLookingStringThroughRealReader` | **する** |
+| D4-02 `"true"` | `V: "true"` | `writesBooleanLookingStringAsDoubleQuotedScalar` | `restoresBooleanLookingStringThroughRealReader` | **する** |
+| D4-03 `"null"` | `V: "null"` | `YamlFormatWriterTest#serialize_distinguishesNullFromNullString`（**既存**） | `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader`（**既存**） | **する** |
+| D4-04 `null`（Java `null`） | `V: null`（クォート無し） | 同上（**既存**） | 同上（**既存**） | **する**（Java `null` へ戻る） |
+| D4-05 `""` | `NAME: ""` | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation`（**既存**） | `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader`（**既存**） | **する**（`null` と区別される） |
+| D4-06 `"007"` | `V: "007"` | `writesLeadingZeroNumberAsDoubleQuotedScalar` | `restoresLeadingZeroNumberThroughRealReader` | **する** |
+| D4-07 改行含む | 短い値は 1 行の `V: "l1\nl2"`（ブロックスカラーではない）。80 桁を超えると行末 `\` で折り返す | `YamlFormatWriterTest#serialize_escapesQuotesBackslashAndControlChars`（**既存**）／`writesNewlineContainingStringAsEscapedSingleLineScalar`／折り返し `foldsLongEscapedValueWithBackslashContinuation` | `restoresNewlineContainingStringThroughRealReader`／折り返し `restoresFoldedLongEscapedValueThroughRealReader` | **する**（折り返しても） |
+| D4-08 `"2026-08-07"` | `V: "2026-08-07"` | `writesDateLookingStringAsDoubleQuotedScalar` | `restoresDateLookingStringThroughRealReader` | **する**（日付にならない） |
+| D4-09 コロン・ハイフン・`#` 含む | `V: "a: b - c #d"` | `writesColonHyphenAndHashContainingStringAsDoubleQuotedScalar` | `restoresColonHyphenAndHashContainingStringThroughRealReader` | **する**（`#` 以降も残る） |
+
+**9 ケースすべてで記法がアサートされ、9 ケースすべてが復元される。** #18 が 🔺 としていた D4-01
+（往復のみで記法アサートが無かった）は記法の担保が付いた。
+**全値ダブルクォート＋`null` だけアンクォートという方針が、往復が成立している理由である** ——
+引用符が落ちれば D4-01／D4-02／D4-06／D4-08 は本体スキーマ（`rows` の値を `["string","null"]` に限る）に
+違反して読み戻せなくなり、D4-09 は `issues.md` **YML-11** のとおり値が黙って変わる。
+
+**軸D の測定経路**: 上表は**すべて `setup_tables` の `rows`** で測っている。レコード断片
+（`records[].rows`）経路でも 9 ケースとも同じ記法（フロー list の中のダブルクォート）で書かれ、
+同じく往復することは**プローブで確認したがテストにはしていない**（下の「開示」）。
+
+**軸A（#25 が埋めた 2 種）**
+
+| 要素 | #18 の判定 | #25 後 | 担保テストメソッド（`YamlFormatWriterModelTest#`） |
+|---|---|---|---|
+| A-07 `EXPECTED_FIXED` | 🔺（`RoundTripTest#yaml_expectedFixed_isPreserved` 経由） | ✅ | `writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`（`expected_files` キーへ写ることを版面で）／`restoresExpectedFixedDataTypeThroughRealReader`（読み戻しても `EXPECTED_FIXED`・`FIXED` のまま） |
+| A-08 `SETUP_VARIABLE` | 🔺（`RoundTripTest#yaml_setupVariable_isPreserved` 経由） | ✅ | 同じ版面テスト（`setup_files` キーへ写る）／`restoresSetupVariableDataTypeThroughRealReader` |
+
+**変異による確認（2026-08-14 実測。`src/main` は確認後に戻し `git diff f3efa1b -- src/main` → 0 行）**:
+`YamlFormatWriter#sectionKey` の `case` を入れ替えて `EXPECTED_FIXED` を `setup_files` へ、
+`SETUP_VARIABLE` を `expected_files` へ写すよう変異させると、上記 3 メソッドが落ちる
+（`RoundTripTest` の 2 件も落ちる）。すなわち #18 の 🔺 は 🔺 のままではなく直接の担保になった。
+
+**軸C・軸E（#25 が埋めた 3 件）**
+
+| 要素 | #18 の判定 | #25 後 | 担保テストメソッド（`YamlFormatWriterModelTest#`） |
+|---|---|---|---|
+| C-02 `sections` 空 | ❌ | ✅ | `writesNothingWhenContainerHasNoSections` — 例外にならず**ファイルも出力先ディレクトリも作られない**（辺③は同じ入力からシート 0 枚のブックを書く。`issues.md` **XLS-23**） |
+| C-02 `sections` 複数 ／ E-4(複数) | ❌ | ✅ | `writesOneYamlFilePerSectionWhenContainerHasMultipleSections` — セクション 3 件（`zebra` / `alpha` / `mango`）から `<セクション名>.yaml` が 3 つ書かれ、各ファイルの中身がそのセクションの直列化結果と一致する |
+| C-12 `FileDataBlock.records` 空 | ❌ | ✅ | `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty` — `records:` キーごと出ない（この出力は読み戻せない。`issues.md` **YML-12**） |
+
+**軸F（§0.7 の辺④ 3 ケース）**
+
+| 要素 | 判定 | 担保テストメソッド | 観測した挙動 |
+|---|---|---|---|
+| F4-01 出力先不在 | ✅ | `YamlFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesYaml` | 例外にならず、多階層の出力先が作られて YAML が書かれる（`Files.createDirectories`）。#18 が 🔺 としていた `YamlFormatWriterTest#write_ioError_throwsUncheckedIOException` は「親に通常ファイルが居座り**ディレクトリを作れない**」別の入力である |
+| F4-02 `overwrite=false` 衝突 | **対象外**（上位層で担保済み） | — | 下の「F4-02 を対象外とした根拠」 |
+| F4-03 書き込み権限なし | ✅ | `#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | `UncheckedIOException`（メッセージは `failed to write YAML: <パス>`）。原因は `java.nio.file.AccessDeniedException`。ファイルは作られない。権限が効かない環境では `Assume` でスキップする |
+
+**F4-02 を対象外とした根拠（2026-08-14 に実物で確認した）**
+
+- `YamlFormatWriter` は `overwrite` を保持しない。`grep -rln "overwrite" src/main/java` が挙げるのは
+  `TestDataConverter` ／ `ConverterMojo` ／ `ConversionRequest` の 3 クラスだけで、
+  `grep -c "overwrite" src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` は **0** である。
+- 衝突を検査するのは `TestDataConverter#checkOverwrite`。`request.isOverwrite()` が偽のとき
+  `target.outputPaths(container, outputBase)` の各パスに `Files.exists` を掛け、真なら
+  `ConverterException("output already exists (overwrite=false): …")` を送出する。
+- 上位層の既存テスト 2 件はいずれも **XLS→YAML** であり、`checkOverwrite` が多態で呼ぶ
+  `FormatHandler#outputPaths` の実体は `YamlFormatHandler#outputPaths`
+  （`container.getSections()` の各セクション名に `.yaml` を付けて並べる）である。
+  すなわち**辺④（`.yaml` を出力側とする衝突）は担保されている**。
+  - `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse` — 出力先に `BookA/data.yaml` を
+    置いた状態で `TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out)` を呼び、
+    `ConverterException` のメッセージが `output already exists` で始まることをアサートする。
+  - `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` — 同じ状態で Mojo を
+    `from=xls` / `to=yaml` / `overwrite` 既定（false）で実行し、`MojoExecutionException` をアサートする。
+- 辺③（`.xlsx` を出力側とする衝突）は同じ根拠が成り立たず**未担保**である（§0.8-5 の訂正）。
+  この非対称は #22 で判明したものであり、辺④側は当てはまらない。
+
+**開示（テストを足していない担保の穴）**
+
+- **`YamlFormatWriter` の JaCoCo 実測（2026-08-14）は 行 158/159（99.4%）・分岐 88/92（95.7%）である。**
+  導出コマンド（JaCoCo 手順は steering Decisions のとおり。`pom.xml` は変更していない）:
+
+  ```sh
+  JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test jacoco:restore-instrumented-classes \
+    && JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec \
+    && awk -F, 'NR > 1 && $3 == "YamlFormatWriter" { print "line " $9 "/" ($8 + $9) " branch " $7 "/" ($6 + $7) }' \
+         target/site/jacoco/jacoco.csv
+  ```
+
+  出力は `line 158/159 branch 88/92`。未到達は 4 箇所で、**いずれも軸A〜F の要素ではない**:
+  `write` の「親ディレクトリを持たない相対パス」ガード（`getParent()` が `null` になる枝）／
+  `emitBlock` の `instanceof` チェーンの `else`（sealed 階層の安全網。唯一の未到達行はここ）／
+  `isPlainSafeKey` の「キーに制御文字（`< 0x20`）を含む」枝／
+  `rawGroup` の「`[` で始まるが `]` で終わらない `groupId`」枝。
+  **この数値は `YamlFormatWriter` 1 クラスぶんであり、4 辺の担当クラス全体の計測と未到達分岐の列挙は #26 の仕事である。**
+- **軸D の 9 ケースはテストとしては 1 経路（`setup_tables` の `rows`）でしか固定していない。**
+  レコード断片（`records[].rows`）経路でも 9 ケースとも同じ記法で書かれ同じく往復することは
+  プローブで確認したが、テストにはしていない（辺②の §2.1-2 が「12 ケースのうち 10 ケースは
+  1 経路でしか測っていない」と開示しているのと同じ性質の穴である）。
+  LIST_MAP（`list_maps`）経路は**観測していない**。
+- **`write` が複数セクションを書き出す順序はテストで固定していない。**
+  ファイルシステム上に順序が現れないためである（`writesOneYamlFilePerSectionWhenContainerHasMultipleSections` が
+  固定しているのは「セクション名 → 中身」の対応であって、書き出しの順ではない）。
+- **書き出した YAML がスキーマに適合するかを見る担保は無い。** `YamlFormatWriter` はスキーマを参照せず、
+  読み戻しを試みるテストだけが違反に気づける。#25 で見つけた 4 つの形は `issues.md` **YML-12** に
+  記録して固定したが、**「その 4 つ以外にスキーマ違反を書き得る形が無い」ことは確かめていない**。
+
 <a id="s4-3"></a>
 
-### 4.3 辺④ 未担保一覧（#25 が埋める対象）
+### 4.3 辺④ 未担保一覧（#25 が埋めた対象）
 
 計上単位と「状態」の 3 分類は §1.3 の規則に従う。
 
-| 軸 | 未担保要素 | 状態 | 件数 |
-|---|---|---|---|
-| A | A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#yaml_expectedFixed_isPreserved`）／A-08 `SETUP_VARIABLE`（🔺 `RoundTripTest#yaml_setupVariable_isPreserved`） | 要追加 | 2 |
-| B | （なし） | — | 0 |
-| C | C-02 sections 空・複数（writer 側は到達可能。§0.8-6）／C-12 FileDataBlock.records 空 | 要追加 | 2 |
-| D | D4-01 `"100"`（記法アサートなしの 🔺）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 要追加 | 5 |
-| E | E-4(複数) — `YamlFormatWriter#write` が sections をループするため到達可能（§0.8-6） | 要追加 | 1 |
-| F | F4-01 出力先不在（🔺 のみ）／F4-03 書き込み権限なし | 要追加 | 2 |
-| F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 1 |
-| **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1** | **13（うち対象外 1）** |
+**本表は #25 の実測結果に合わせて「#25 後の状態」列を足した（2026-08-14）。** #18 時点は
+「要追加 12 ／ 対象外 1」であった。軸D の定義（9 ケース）は #18 から変わっていないため総計 13 も動かない。
+#18 時点の分類は「#18 の状態」列に残した。
 
-**特に大きな空欄**: 軸D の 5 ケース（特に `"true"`・`"007"`・日付風文字列は、辺②で読み戻したときに
-型が変わりうる往復リスクの中心）。軸C は 4 つの辺のなかでもっとも埋まっている。
+| 軸 | 未担保要素 | #18 の状態 | #25 後の状態 | 件数 |
+|---|---|---|---|---|
+| A | A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#yaml_expectedFixed_isPreserved`）／A-08 `SETUP_VARIABLE`（🔺 `RoundTripTest#yaml_setupVariable_isPreserved`） | 要追加 | **担保済み（#25）** — 版面は `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`、往復は `#restoresExpectedFixedDataTypeThroughRealReader` ／ `#restoresSetupVariableDataTypeThroughRealReader`（変異による確認は §4.1-2 の軸A 表） | 2 |
+| B | （なし） | — | — | 0 |
+| C | C-02 sections 空・複数（writer 側は到達可能。§0.8-6）／C-12 FileDataBlock.records 空 | 要追加 | **担保済み（#25）** — 順に `YamlFormatWriterModelTest#writesNothingWhenContainerHasNoSections`（空）／`#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`（複数）／`#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`（C-12） | 2 |
+| D | D4-01 `"100"`（記法アサートなしの 🔺）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 要追加 | **担保済み（#25）** — `YamlFormatWriterScalarTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterScalarTest.java` → **16**）。要素別の担保メソッドは §4.1-2 の軸D 表。**残る 4 ケース（D4-03／D4-04／D4-05／D4-07 の記法）は既存の `YamlFormatWriterTest` が通しており、重複させていない**（同表にメソッド名を挙げてある） | 5 |
+| E | E-4(複数) — `YamlFormatWriter#write` が sections をループするため到達可能（§0.8-6） | 要追加 | **担保済み（#25）** — C-02(複数) と同じ入力（`#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`） | 1 |
+| F | F4-01 出力先不在（🔺 のみ）／F4-03 書き込み権限なし | 要追加 | **担保済み（#25）** — `YamlFormatWriterInvalidOutputTest` の **2 件**（同クラスの総数も 2。`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterInvalidOutputTest.java` → **2**） | 2 |
+| F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 対象外（変更なし。根拠は #25 で実物を開いて確認した。§4.1-2 の「F4-02 を対象外とした根拠」） | 1 |
+| **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1** | **要追加 0 ／ 担保済み 12 ／ 到達不能 0 ／ 対象外 1** | **13（うち対象外 1）** |
+
+**合計の検算**（表の「件数」列を上から順に足す）:
+
+- 担保済み: A 2 ＋ C 2 ＋ D 5 ＋ E 1 ＋ F 2 ＝ **12**
+- 対象外: F4-02 ＝ **1**
+- 要追加: **0**
+- 総計: 12 ＋ 1 ＝ **13**（B は 0 件）
+
+**#18 時点の「特に大きな空欄」**（軸D の 5 ケース。特に `"true"`・`"007"`・日付風文字列は、辺②で
+読み戻したときに型が変わりうる往復リスクの中心とされていた）は #25 で解消した。
+**実測では 9 ケースとも往復し、型が変わるものは 1 つも無かった**（§4.1-2 の軸D 表）。
+**辺④の「要追加」は 0 件**であり、到達不能と判定した要素も無い。
+
+**ただし「未担保 0 件」は本書の計上単位（§1.3 冒頭）での話である。** §4.1-2 末尾の「開示」4 点
+（JaCoCo 未到達 4 箇所／軸D を 1 経路でしか固定していない／複数セクションの書き出し順を固定していない／
+書き出した YAML のスキーマ適合を見る担保が無い）と、`issues.md` の **YML-12**／**YML-13** は
+空欄・穴として残る。
 
 ---
 
@@ -1781,7 +1950,10 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 **下の 2 表の辺②の軸D も #18 時点の定義（10 ケース）による。** 軸D 辺② は 2026-08-14 のユーザー確定で
 **12 ケース**になった（§0.5）。補正を当てると辺② 軸D は「10」ではなく **12**、
 辺②の合計は「26」ではなく **28**、状態別の辺②「要追加 23」は **25** が正しい。
-辺④は #25 が未着手のため #18 時点のまま。
+辺④は #25 が軸A 2 件・軸C 2 件・軸D 5 件・軸E 1 件・軸F 2 件を埋めたため最新は
+**要追加 0 ／ 担保済み 12 ／ 到達不能 0 ／ 対象外 1**（§4.3）であり、
+下の表の辺④列（要追加 12 ／ 対象外 1）は #18 時点の値である。
+**辺④の軸D は #18 時点も現在も 9 ケースで変わっていないため、辺④の合計 13 に補正は要らない。**
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
@@ -1808,7 +1980,9 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 
 **`RoundTripTest`（30 件）による 🔺 の追加は上の件数を変えない。** 🔺 は正式担保として数えないため、
 §0.8-8 で 🔺 を付けた辺① A-04／A-07／A-09／C-06 省略／D1-14、辺③ A-07／A-09、辺④ A-07／A-08 は
-いずれも「要追加」のまま残している（重複テストを書かないよう、追加時は §0.8-8 の表を参照すること）。
+いずれも #18 時点では「要追加」のまま残していた（重複テストを書かないよう、追加時は §0.8-8 の表を参照すること）。
+**このうち辺④の A-07／A-08 は #25 で直接の担保が付き ✅ になった**（§4.1-2 の軸A 表。
+`RoundTripTest` の 🔺 はそのまま残っており、二重の担保になっている）。
 
 ### 5.2 軸A の辺横断ビュー（`DataType` 14 種 × 4 辺）
 
@@ -1821,7 +1995,7 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 **辺②列は #24 で判定そのものは変わっていない（13/14 のまま）が、担保の経路が変わった。**
 #18 時点は in-memory 経路（`YamlFormatReaderTest`）だけだったのに対し、#24 で
 `YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` が実 `.yaml` 経路でも
-13 種すべてを通した（§2.1-2）。辺④は #25 が未着手のため #18 時点から変わっていない。
+13 種すべてを通した（§2.1-2）。**辺④列は #25 で A-07／A-08 が 🔺→✅ になった**（§4.1-2 の軸A 表）。
 
 | DataType | 辺① | 辺② | 辺③ | 辺④ |
 |---|---|---|---|---|
@@ -1831,28 +2005,29 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | A-04 `EXPECTED_COMPLETED` | ✅（#20 で 🔺→✅） | ✅ | ✅ | ✅ |
 | A-05 `LIST_MAP` | ✅ | ✅ | ✅ | ✅ |
 | A-06 `SETUP_FIXED` | ✅ | ✅ | ✅ | ✅ |
-| A-07 `EXPECTED_FIXED` | ✅（#20 で 🔺→✅） | ✅ | ✅（#23 で 🔺→✅） | 🔺 |
-| A-08 `SETUP_VARIABLE` | ✅ | ✅ | ✅ | 🔺 |
+| A-07 `EXPECTED_FIXED` | ✅（#20 で 🔺→✅） | ✅ | ✅（#23 で 🔺→✅） | ✅（#25 で 🔺→✅） |
+| A-08 `SETUP_VARIABLE` | ✅ | ✅ | ✅ | ✅（#25 で 🔺→✅） |
 | A-09 `EXPECTED_VARIABLE` | ✅（#20 で 🔺→✅） | ✅ | ✅（#23 で 🔺→✅） | ✅ |
 | A-10 `MESSAGE` | ✅ | ✅ | ✅ | ✅ |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
 | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
 | A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
 | A-14 `RESPONSE_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
-| **✅ 担保数** | 13/14 | 13/14 | **14/14** | 12/14 |
-| **🔺 弱い担保** | 0 | 0 | **0** | 2 |
+| **✅ 担保数** | 13/14 | 13/14 | **14/14** | **14/14** |
+| **🔺 弱い担保** | 0 | 0 | **0** | **0** |
 | **❌ 未担保** | 1 | 1 | **0** | 0 |
 
-`EXPECTED_FIXED`（A-07）は #20 で辺①が、#23 で辺③が ✅ になり、残る 🔺 は辺④の 1 辺だけである
-（`RoundTripTest#yaml_expectedFixed_isPreserved` 経由。§0.8-8）。
-`SETUP_VARIABLE`（A-08）の辺④も 🔺 のままで #25 の対象。`EXPECTED_VARIABLE`（A-09）の辺③は #23 で ✅ になった。
+`EXPECTED_FIXED`（A-07）は #20 で辺①が、#23 で辺③が、#25 で辺④が ✅ になり、**🔺 は 4 辺とも無くなった**
+（#25 以前の辺④は `RoundTripTest#yaml_expectedFixed_isPreserved` 経由の 🔺 だけだった。§0.8-8）。
+`SETUP_VARIABLE`（A-08）の辺④も #25 で ✅ になった。`EXPECTED_VARIABLE`（A-09）の辺③は #23 で ✅ になった。
 `DEFAULT`（A-01）は辺①・辺②で到達不能、辺③は #23 で ✅（`writesDefaultDataTypeMarker`）、
 辺④は `serialize_unsupportedDataType_throws` で ✅ だが、辺③は書き出し・辺④は例外という**非対称**である
 （`issues.md` **XLS-20**。修正はしていない）。
 送信同期 3 種（A-12〜A-14）の辺③は #18 以来 ✅ と書かれていたが実際は 🔺 で、#23 のレビューで
 3 メソッドを追加して ✅ にした（[§3.1-3](#s3-1-3-sendsync)）。
 
-**辺③は軸A 14 種すべてが ✅ である**（✅ 14 ／ 🔺 0 ／ ❌ 0）。**この判定は #23 の当初版では成り立って
+**辺③と辺④は軸A 14 種すべてが ✅ である**（どちらも ✅ 14 ／ 🔺 0 ／ ❌ 0。辺④は #25 で
+A-07／A-08 が ✅ になって揃った）。以下は辺③についての経緯である。**この判定は #23 の当初版では成り立って
 いなかった**（A-12〜A-14 が 🔺 で ✅ 11 ／ 🔺 3。#23 レビュー対応でテストを追加して初めて成立した）。
 上表の「✅ 担保数 14/14 ／ 🔺 0」は 2026-08-13 の #23 レビュー対応後の値である。
 
