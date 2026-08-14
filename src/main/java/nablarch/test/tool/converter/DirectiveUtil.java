@@ -9,7 +9,8 @@ import java.util.Map;
  * <p>
  * {@link nablarch.test.tool.converter.xls.XlsFormatReader} および
  * {@link nablarch.test.tool.converter.yaml.YamlFormatReader} で共通して使われる
- * {@code Map<String, Object>} → {@code Map<String, String>} 変換のロジックを提供する。
+ * {@code Map<String, Object>} → {@code Map<String, String>} 変換（{@link #toStringDirectives}）と、
+ * 区切り文字ディレクティブの値の逆正規化（{@link #normalizeSeparator}）を提供する。
  * </p>
  *
  * @author kiyobot
@@ -29,7 +30,10 @@ public final class DirectiveUtil {
      *
      * @param directives  本体ディレクティブ
      * @param valueMapper キーと {@link Object#toString()} 済みの値文字列を受け取り、
-     *                    最終的な文字列値へ変換する関数（XLS 版では逆正規化を行う）
+     *                    最終的な文字列値へ変換する関数。区切り文字ディレクティブについては
+     *                    辺①（Excel）・辺②（YAML）とも {@link #normalizeSeparator} による逆正規化を
+     *                    行う。辺①はそれ以外のキーで {@code QuotationTrimmer} 相当のクォート剥がしも
+     *                    行うため、両者は同一ではない
      * @return 文字列ディレクティブ（{@link LinkedHashMap} 順）
      */
     public static Map<String, String> toStringDirectives(

@@ -44,7 +44,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * （同一セクションキーの複数ブロックは 1 つのセクション配下へ記述順に並べる）。各ブロックの記法は
  * {@link YamlFormatReader} が読む形（テーブル＝{@code table:}＋行マップ／LIST_MAP＝{@code id:}＋列／
  * ファイル＝{@code path:}/{@code type:}/{@code directives:}/{@code records:}／メッセージ＝{@code id:}＋
- * {@code fw_header:}／送信系＝{@code group_id:} 必須）と一致させる。
+ * {@code fw_header:}／送信系＝{@code group_id:}。デフォルトグループは省略）と一致させる。
  * </p>
  *
  * <p>
