@@ -850,16 +850,17 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 **Steps**:
 
-- [ ] 軸D の9ケース（`"100"` ／ `"true"` ／ `"null"` ／ `null` ／ `""` ／ `"007"` ／改行含む／`"2026-08-07"` ／コロン・ハイフン・`#` 含む）を書き出し、出力 YAML の記法をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
-- [ ] 各ケースについて、#24 で固定した辺②の読み取り挙動と突き合わせ、文字列が同じ文字列として復元されるか否かを判定し記録する
-- [ ] 軸F: 出力先不在／書き込み権限なしのテストを追加する。`overwrite=false` 衝突は `YamlFormatWriter` が `overwrite` を保持しないため辺④の対象外とし、上位層で担保済みである根拠を対応表に記録する（#22 と同じ扱い）
-- [ ] #18 の棚卸し表で辺④の空欄となっている軸A・B・C・E の要素を埋める
-- [ ] 復元できない組み合わせがあれば `issues.md` に課題として記録する（**修正しない**）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] self-check（OK/NG per completion criterion、checks/task-25.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] 軸D の9ケース（`"100"` ／ `"true"` ／ `"null"` ／ `null` ／ `""` ／ `"007"` ／改行含む／`"2026-08-07"` ／コロン・ハイフン・`#` 含む。タグ D4-01〜D4-09 は `coverage/inventory.md` §「辺④ YAML 表現 9 ケース」で同じ並びに対応）を書き出し、出力 YAML の記法をアサートするテストを追加する（現状の挙動をまず記録してから固定する）
+- [x] 各ケースについて、#24 で固定した辺②の読み取り挙動と突き合わせ、文字列が同じ文字列として復元されるか否かを判定し記録する — 9 ケースとも復元される
+- [x] 軸F: 出力先不在／書き込み権限なしのテストを追加する。`overwrite=false` 衝突は `YamlFormatWriter` が `overwrite` を保持しないため辺④の対象外とし、上位層で担保済みである根拠を対応表に記録する（#22 と同じ扱い）
+- [x] #18 の棚卸し表で辺④の空欄となっている軸A・B・C・E の要素を埋める — 軸A の A-12〜A-14 が #18 以来 ✅ と誤判定されていた（実際は 🔺）ため訂正して埋め直した
+- [x] 復元できない組み合わせがあれば `issues.md` に課題として記録する（**修正しない**） — YML-12（スキーマが禁じる形の中間モデルから読み戻せない YAML が黙って書かれる）と YML-13（折り返しの起きるキーは YAML として読めなくなる）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する — `Tests run: 536, Failures: 0, Errors: 0, Skipped: 0`
+- [x] **台帳の記述規約の自己点検**（Rules 参照）: `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` → **0**。ファイル行数は書いていない。書き足した件数のすべてに導出コマンドを併記。逆引き表は新設していない
+- [x] self-check（OK/NG per completion criterion、checks/task-25.md に記録）
+- [x] QA expert review（subagent） — 3 巡実施。指摘は全件反映済み（`checks/task-25.md`）
+- [x] Craft expert review（subagent, coding） — 3 巡実施。指摘は全件反映済み
+- [x] Verification expert review（subagent, test） — 3 巡実施。生存変異 計 4 件をすべて閉じ、計 71 件の変異で再確認（残る生存 1 件は `YamlSeq#header` の等価変異として台帳に開示）
 
 **Completion criteria**:
 
