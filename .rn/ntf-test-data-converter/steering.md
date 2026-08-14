@@ -934,8 +934,12 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
+(written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
+session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
+so only a genuinely suspended session reads `paused`.)
+
 - **Status**: not suspended
-- **Date**: 2026-08-14
-- **Last completed**: #23
-- **Next**: #24（成果物 `8aa536f` は push 済み。レビュー3種を実施中）
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
