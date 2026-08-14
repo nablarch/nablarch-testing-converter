@@ -3,6 +3,9 @@ package nablarch.test.tool.converter.yaml;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -66,10 +69,21 @@ import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
  * </p>
  *
  * <p>
- * 例外メッセージ本文はロケール依存（日本語ロケールでは日本語）であるため、アサートは
- * {@link YamlSchemaValidationException#getErrors()} が返す {@link ValidationMessage} の
- * キーワード（{@code getType()}）と違反位置（{@code getInstanceLocation()}）で行う。
+ * <b>例外メッセージのアサートについて。</b>次の 3 類型で使い分ける（辺①の
+ * {@code XlsFormatReaderInvalidInputTest} と同じ考え方）。
  * </p>
+ * <ul>
+ *   <li>スキーマ検証の違反 — メッセージ本文はロケール依存（日本語ロケールでは日本語）であるため
+ *       本文を突き合わせず、{@link YamlSchemaValidationException#getErrors()} が返す
+ *       {@link ValidationMessage} のキーワード（{@code getType()}）と違反位置
+ *       （{@code getInstanceLocation()}）で行う。<b>報告順は突き合わせない</b> ——
+ *       {@code JsonSchema#validate} が返すのは {@code Set} であり反復順は契約されていないため、
+ *       2 件以上報告されるケースは件数と集合で突き合わせる。</li>
+ *   <li>器（{@code nablarch-testing}）や外部ライブラリが生成する文言 — 版差に追随しないため、
+ *       特徴的な部分文字列だけを {@code containsString} で突き合わせる。</li>
+ *   <li>変換ツール自身が組み立てる文言（一時ディレクトリの絶対パスを含むもの） —
+ *       変わらない先頭部分を {@code startsWith} で突き合わせる。</li>
+ * </ul>
  *
  * <p>
  * <b>本クラスは軸F の 5 ケースに加えて、「スキーマが構造を縛っていない箇所を突いた入力」の現状挙動も固定する</b>
@@ -234,10 +248,11 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - {name: \"f1\", type: \"半角英字\", length: \"1a\"}\n"
                 + "        rows:\n"
                 + "          - [\"a\"]\n");
-        assertThat(types(e), is(Arrays.asList("type", "pattern")));
-        assertThat(locations(e), is(Arrays.asList(
+        assertThat("2 件報告されること", types(e).size(), is(2));
+        assertThat(types(e), containsInAnyOrder("type", "pattern"));
+        assertThat(locations(e), containsInAnyOrder(
                 "$.setup_files[0].records[0].fields[0].length",
-                "$.setup_files[0].records[0].fields[0].length")));
+                "$.setup_files[0].records[0].fields[0].length"));
     }
 
     // ------------------------------------------------------------------ F2-02 YAML として不正
@@ -384,11 +399,13 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * {@code YamlLoader#load} は読み込み結果が {@code null} のとき空 Map を返し、スキーマ検証も
-     * 実行しない（トップレベルの必須キーは無いため空 Map はスキーマ上も適合する）。
-     * <b>本テストはこの「スキーマ検証に到達しない」分岐そのものを担保する唯一のテストである。</b>
-     * 同じ結果（ブロック 0 件）をスキーマ検証を通る入力で確かめるのは
+     * 実行しない。<b>ただし本テストはその早期 return を検知できない。</b>スキーマのトップレベルには
+     * {@code required} も {@code minProperties} も無く、空 Map は検証を通しても適合するため、
+     * 早期 return を外しても結果は変わらないからである。本テストが固定しているのは
+     * 「空ファイルを読んでも例外にならず、リソース名を持つブロック 0 件のコンテナになる」ことである。
+     * 同じ結果（ブロック 0 件）をスキーマ検証が実際に走る入力で確かめるのは
      * {@link YamlFormatReaderRealFileTest#namesContainerAndSectionByResourceNameWithoutBlocks}
-     * （入力は {@code setup_tables: []}）の役目であり、両者は通る経路が違う。
+     * （入力は {@code setup_tables: []}）の役目である。
      * </p>
      *
      * <p>担保する軸要素: F2-05（空ファイル）。</p>
@@ -412,6 +429,67 @@ public class YamlFormatReaderInvalidInputTest {
     // スキーマ検証を通る（＝仕様内の）入力である。軸F の 5 ケースには属さない。
     // 課題は coverage/issues.md の YML-04〜YML-08・YML-10 に記録した（src/main は無変更）。
     // ==================================================================
+
+    // ------------------------------------------------------------------ ローダの他の失敗経路（軸F の 5 ケース外）
+
+    /**
+     * Given: ルートがマッピングでない YAML（シーケンス）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code IllegalStateException}（メッセージは {@code "YAML root must be a mapping, but was "} で始まる）。
+     *
+     * <p>
+     * <b>F2-02（YAML として不正）とは別の分岐である。</b>F2-02 はパース自体が失敗する経路
+     * （{@link #failsWithParseErrorWhenYamlIsMalformed}。原因例外は {@code YamlEngineException}）だが、
+     * こちらはパースには成功したうえで型を弾く経路であり、原因例外を持たない。
+     * どちらも {@code IllegalStateException} であるため、<b>メッセージの先頭で分岐を区別する</b>。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸F の 5 ケースには属さない。ローダの分岐の固定）。</p>
+     */
+    @Test
+    public void failsWhenYamlRootIsNotMapping() {
+        // Given / When
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> YamlFixture.read(dir(), "- a\n- b\n"));
+
+        // Then
+        assertThat(thrown.getMessage(), startsWith("YAML root must be a mapping, but was "));
+        assertThat("パースは成功しているため原因例外を持たない", thrown.getCause(), is(nullValue()));
+    }
+
+    /**
+     * Given: 同一マッピング内に同じキーを 2 回書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code IllegalStateException}（原因は {@code YamlEngineException}）で止まる。
+     *
+     * <p>
+     * ローダが {@code LoadSettings} に {@code setAllowDuplicateKeys(false)} を設定しているため、
+     * パース段階で弾かれる。<b>辺①とは結果が正反対である</b> —— 辺①の実 {@code .xlsx} 経路では
+     * カラム名の重複は WARN ＋ 後勝ちで<b>変換が継続する</b>（F1-05。steering #16）。
+     * </p>
+     *
+     * <p>
+     * なお辺②で「大小だけが違うキー」（`id` と `ID`）は YAML としては別キーであるため
+     * この検査には掛からず、器の大文字化で衝突して値が消える（<b>YML-10</b>）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸F の 5 ケースには属さない。ローダの分岐の固定）。</p>
+     */
+    @Test
+    public void failsWhenSameKeyAppearsTwiceInOneMapping() {
+        // Given / When
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_tables:\n"
+                        + "  - table: \"T\"\n"
+                        + "    rows:\n"
+                        + "      - V: \"1\"\n"
+                        + "        V: \"2\"\n"));
+
+        // Then
+        assertThat(thrown.getMessage(), startsWith("Failed to parse YAML file: "));
+        assertThat(thrown.getCause(), is(instanceOf(YamlEngineException.class)));
+    }
 
     // ------------------------------------------------------------------ YML-04 先頭行のキー集合だけがカラムになる
 
@@ -639,6 +717,39 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList("a", "", "")));
         assertThat("明示的に書いた null は null のまま。欠損だけが空文字になる", record.getRows().get(1),
                 is(Arrays.asList("a", null, "")));
+    }
+
+    /**
+     * Given: フィールド 1 件のレコード断片に、要素 0 個の行 {@code rows: - []} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 行は消えず、値が<b>空文字</b>の 1 要素になる。
+     *
+     * <p>
+     * <b>「書かれた空文字」と見分けが付かないことを実行可能な形にするテストである。</b>
+     * {@link YamlFormatReaderScalarTest#readsEmptyStringAsIsInRecordFragmentPath} は
+     * {@code rows: - [""]} を読んで同じ {@code [""]} を得る。本テストは {@code rows: - []}
+     * ——すなわち<b>何も書かなかった行</b>——が同じ結果になることを示す。
+     * したがってレコード断片経路では「書いた空文字が保たれた」ことをテストで示せない（<b>YML-05</b>）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-05 の根拠テスト。D2-11 の担保の限界を示す）。</p>
+     */
+    @Test
+    public void fillsEmptyRecordFragmentRowWithEmptyStringIndistinguishableFromWrittenOne() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - []\n");
+
+        // Then
+        assertThat("何も書かなかった行も空文字 1 要素になる（書いた \"\" と同じ）",
+                onlyRecord(container).getRows(), is(Arrays.asList(Arrays.asList(""))));
     }
 
     // ------------------------------------------------------------------ YML-06 id 重複
@@ -887,7 +998,7 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         assertThat("trim() でタブが失われ、空文字として報告される",
-                thrown.getMessage(), is("field-separator must be one character.but was "));
+                thrown.getMessage(), containsString("field-separator must be one character"));
     }
 
     // ------------------------------------------------------------------ YML-11 引用符なしスカラーの値落ち
@@ -915,15 +1026,16 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void dropsSurroundingSpacesFromUnquotedScalar() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
                 + "      - V:   pad  \n");
 
         // Then
-        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("前後の空白が消える", block.getRows(), is(Arrays.asList(Arrays.asList("pad"))));
+        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
     /**
@@ -943,15 +1055,16 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void dropsCommentPartFromUnquotedScalarContainingHash() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
                 + "      - V: a #b\n");
 
         // Then
-        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("# 以降が消える", block.getRows(), is(Arrays.asList(Arrays.asList("a"))));
+        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
     // ------------------------------------------------------------------ YML-10 カラム名の大小衝突
@@ -982,7 +1095,7 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void dropsValueWhenTableColumnNamesDifferOnlyByCase() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"my_table\"\n"
                 + "    rows:\n"
@@ -992,7 +1105,9 @@ public class YamlFormatReaderInvalidInputTest {
                 + "        ID: \"4\"\n");
 
         // Then
-        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat("警告も出ない（辺①は同じ重複で WARNING を出す）",
+                reading.warnings(), is(Collections.<String>emptyList()));
+        TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("テーブル名も大文字化される", block.getIdentifier(), is("MY_TABLE"));
         assertThat("大文字化により列名が重複する", block.getColumnNames(), is(Arrays.asList("ID", "ID")));
         assertThat("後勝ちの値だけが残り、同じ値が 2 回並ぶ", block.getRows(),

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import nablarch.test.core.reader.DataType;
@@ -204,6 +205,7 @@ public class YamlFormatReaderRealFileTest {
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(block.getDataType(), is(DataType.SETUP_TABLE_DATA));
         assertThat(block.getIdentifier(), is("T"));
+        assertThat("C-06 省略時は整形済みグループ ID が空文字になる", block.getGroupId(), is(""));
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
         assertTrue("rows が空であること", block.getRows().isEmpty());
     }
@@ -467,8 +469,45 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("器が注入する file-type ＋ 書いた 2 件", block.getDirectives().size(), is(3));
         assertThat("integer が文字列になる", block.getDirectives().get("record-length"), is("3"));
         assertThat("boolean が文字列になる", block.getDirectives().get("required-decimal-point"), is("true"));
+    }
+
+    /**
+     * Given: {@code directives} を書かない<b>可変長</b>ファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 器が {@code file-type} に加えて {@code field-separator} も注入するため、
+     *        {@code directives} は 2 件になる。
+     *
+     * <p>
+     * {@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile}（固定長・1 件）との
+     * 差を固定する。C-11「{@code directives} 空は到達不能」という結論は両種別で成り立つが、
+     * <b>注入されるキーはファイル種別で違う</b>。
+     * </p>
+     *
+     * <p>担保する軸要素: A-07／B-3／C-11(空が到達不能である根拠。可変長側)／C-21(省略＝null。実ファイル経路)。</p>
+     */
+    @Test
+    public void readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"v.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("可変長では field-separator も注入される", block.getDirectives().size(), is(2));
+        assertThat(block.getDirectives().get("file-type"), is("Variable"));
+        assertThat(block.getDirectives().get("field-separator"), is(","));
+        assertThat("C-21 省略時は length が null になる（可変長では length を書かない）",
+                block.getRecords().get(0).getFields().get(0).getLength(), is(nullValue()));
     }
 
     /**
@@ -510,6 +549,51 @@ public class YamlFormatReaderRealFileTest {
     }
 
     /**
+     * Given: {@code response_body_messages}（送信系）に、{@code record_type: "FW_HEADER"} のレコードと
+     *        本文レコードを 1 件ずつ書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : FW_HEADER 名のレコードだけが落ち、本文レコードが残る（{@code records} 1 件）。
+     *
+     * <p>
+     * <b>FW_HEADER 名レコードの扱いは 3 経路で異なる。</b>ファイル系は残し
+     * （{@link #keepsFwHeaderNamedRecordInFileFromRealYaml}）、メッセージ系
+     * （{@link #dropsFwHeaderNamedRecordFromRealYaml}）と送信系（本テスト）は落とす。
+     * {@code YamlFormatReader#addSendSyncBlocks} が {@code #recordsWithoutFwHeader(entry)} を使い、
+     * 器（{@code YamlFileBuilder#buildFragmentsForSendSync}）も {@code skipFwHeader=true} で
+     * 落とすため、両者の件数が一致する。**converter 側だけが落とすのをやめると断片数と原文レコード数が
+     * 食い違い {@code IllegalStateException} になる。**
+     * {@code coverage/issues.md} <b>YML-03</b> に 3 経路の非対称を記録した。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の固定）。</p>
+     */
+    @Test
+    public void dropsFwHeaderNamedRecordFromSendSyncInRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"M1\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"h\"]\n"
+                + "      - fields:\n"
+                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat("FW_HEADER 名のレコードだけが落ちる", block.getRecords().size(), is(1));
+        assertThat("残るのは本文レコード",
+                block.getRecords().get(0).getFields().get(0).getName(), is("b1"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("b"))));
+    }
+
+    /**
      * Given: {@code setup_files} のレコードに {@code record_type: "FW_HEADER"} を書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件）。
@@ -541,6 +625,8 @@ public class YamlFormatReaderRealFileTest {
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat("ファイル系では FW_HEADER 名のレコードも残る", block.getRecords().size(), is(1));
+        assertThat("レコード種別も原文のまま残る（正規化で消えない）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
         assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("a"))));
     }
 
@@ -655,8 +741,8 @@ public class YamlFormatReaderRealFileTest {
                 + "messages:\n"
                 + "  - id: \"RM01\"\n"
                 + "    fw_header:\n"
-                + "      requestId: \"RM01\"\n"
                 + "      userId: \"u1\"\n"
+                + "      requestId: \"RM01\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
                 + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
@@ -665,8 +751,9 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
-        assertThat(new ArrayList<>(block.getFwHeaderFields().keySet()),
-                is(Arrays.asList("requestId", "userId")));
+        assertThat("辞書順（[requestId, userId]）ではなく原文の記述順であること",
+                new ArrayList<>(block.getFwHeaderFields().keySet()),
+                is(Arrays.asList("userId", "requestId")));
         assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
         assertThat(block.getFwHeaderFields().get("userId"), is("u1"));
         // 本文レコードは fw_header の影響を受けない
@@ -815,7 +902,15 @@ public class YamlFormatReaderRealFileTest {
      * {@code coverage/issues.md} に <b>YML-03</b> として記録した（{@code src/main} は無変更）。
      * </p>
      *
-     * <p>担保する軸要素: A-10／B-4／C-14(空)／C-15(空)（現状挙動の固定。YML-03 の根拠テスト）。</p>
+     * <p>
+     * <b>{@code records} 0 件になることを C-15(空) の担保として数えない。</b>スキーマ
+     * {@code $defs.message_data.properties.records.minItems} ＝ 1 であるため、実 {@code .yaml} で
+     * 「レコードを 1 件も書かない」ことはできず、ここで 0 件になるのは YML-03 が<b>書いたレコードを
+     * 落とした結果</b>である（仕様上の到達手段ではない）。台帳も C-15 を「実ファイル経路では到達不能」
+     * として開示している。
+     * </p>
+     *
+     * <p>担保する軸要素: A-10／B-4（現状挙動の固定。YML-03 の根拠テスト）。</p>
      */
     @Test
     public void dropsFwHeaderNamedRecordFromRealYaml() {
@@ -867,7 +962,7 @@ public class YamlFormatReaderRealFileTest {
     @Test
     public void reordersBlocksByFirstAppearanceOfGroupIdFromRealYaml() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_tables:\n"
                 + "  - group_id: \"g1\"\n"
                 + "    table: \"T1\"\n"
@@ -930,6 +1025,8 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"c\"]\n");
 
         // Then: グループの初出順にまとめ直され、原文の記述順（T1, T2, T3 ほか）ではなくなる
+        TestDataContainer container = reading.container();
+        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
         List<String> identifiers = new ArrayList<>();
         List<String> groupIds = new ArrayList<>();
         for (TestDataBlock block : YamlFixture.blocks(container)) {

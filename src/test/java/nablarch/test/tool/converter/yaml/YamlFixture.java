@@ -9,7 +9,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -77,6 +82,106 @@ final class YamlFixture {
             throw new UncheckedIOException("failed to write fixture: " + file, e);
         }
         return new YamlFormatReader().read(dir.toAbsolutePath().toString(), RESOURCE);
+    }
+
+    /**
+     * {@link #read} を実行し、その間に {@code java.util.logging} のルートロガーへ届いた
+     * WARNING 以上のログとあわせて返す。
+     *
+     * <p>
+     * <b>「例外にも警告にもならず値が消える」ことが `issues.md` の主張の核心である課題</b>
+     * （YML-09 ／ YML-10 ／ YML-11）について、警告の不在をアサートするために用いる。
+     * 兄弟の {@code XlsFormatReaderInvalidInputTest#readCapturingWarnings} と同じ形である。
+     * </p>
+     *
+     * <p>
+     * 捕捉できるのは JUL 経路だけで、{@code nablarch-testing} 自身のログ基盤
+     * （{@code nablarch.core.log}）への出力は対象外である。辺②の読み取り経路
+     * （{@link YamlFormatReader}）は JUL のロガーを 1 つも持たないため、
+     * <b>現状は「どこからも警告が出ない」ことの確認になる</b>（辺①の {@code XlsFormatReader} は
+     * 重複カラム名で JUL の WARNING を出す）。
+     * </p>
+     *
+     * @param dir      書き出し先ディレクトリ
+     * @param yamlText YAML テキスト
+     * @return 中間モデルと捕捉した警告
+     */
+    static Reading readCapturingWarnings(Path dir, String yamlText) {
+        CapturingHandler handler = new CapturingHandler();
+        Logger rootLogger = Logger.getLogger("");
+        rootLogger.addHandler(handler);
+        try {
+            return new Reading(read(dir, yamlText), handler.messages);
+        } finally {
+            rootLogger.removeHandler(handler);
+        }
+    }
+
+    /**
+     * 1 回の読み取りの結果（中間モデルと、その間に出力された WARNING 以上のログ）。
+     */
+    static final class Reading {
+
+        /** 読み取った中間モデル。 */
+        private final TestDataContainer container;
+
+        /** 読み取り中に出力された WARNING 以上のログメッセージ。 */
+        private final List<String> warnings;
+
+        /**
+         * コンストラクタ。
+         *
+         * @param container 読み取った中間モデル
+         * @param warnings  捕捉した警告メッセージ
+         */
+        Reading(TestDataContainer container, List<String> warnings) {
+            this.container = container;
+            this.warnings = warnings;
+        }
+
+        /**
+         * 読み取った中間モデルを返す。
+         *
+         * @return 中間モデル
+         */
+        TestDataContainer container() {
+            return container;
+        }
+
+        /**
+         * 捕捉した WARNING 以上のログメッセージを返す。
+         *
+         * @return 警告メッセージ
+         */
+        List<String> warnings() {
+            return warnings;
+        }
+    }
+
+    /**
+     * WARNING 以上のログレコードを集めるハンドラ。
+     */
+    private static final class CapturingHandler extends Handler {
+
+        /** 捕捉したメッセージ。 */
+        private final List<String> messages = new ArrayList<>();
+
+        @Override
+        public void publish(LogRecord record) {
+            if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+                messages.add(record.getMessage());
+            }
+        }
+
+        @Override
+        public void flush() {
+            // 集めるだけなのでフラッシュする対象を持たない。
+        }
+
+        @Override
+        public void close() {
+            // 集めるだけなので解放する資源を持たない。
+        }
     }
 
     /**
