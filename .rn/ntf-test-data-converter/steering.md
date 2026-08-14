@@ -817,9 +817,9 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
 - [x] **台帳の記述規約の自己点検**（Rules 参照）: `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` → **0** であること。ファイル行数を書いていないこと。本タスクで書き足した件数のすべてに、それを導いたコマンドを併記していること。逆引き表（軸要素 → 担保テストメソッド）を新設していないこと
 - [x] self-check（OK/NG per completion criterion、checks/task-24.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] QA expert review（subagent） — 3 巡実施。指摘は全件反映済み（`checks/task-24.md`）
+- [x] Craft expert review（subagent, coding） — 3 巡実施。指摘は全件反映済み
+- [x] Verification expert review（subagent, test） — 3 巡実施。生存変異 計 9 件をすべて閉じ、閉じたあと同じ変異で検知を確認
 
 **Completion criteria**:
 
@@ -934,12 +934,16 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
-(written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
-session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
-so only a genuinely suspended session reads `paused`.)
-
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-14
+- **Last completed**: #23（辺③ 軸A・B・C・E の欠け補充）
+- **Next**: #24 の check off → #25（辺④ 軸D 9 ケース・軸A〜F の欠け補充）
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1 。
+  **#24 は成果物・レビュー3種（各3巡）とも完了し、指摘は全件反映済み（`7fc5f57` まで push 済み）。
+  タスク本体の check off だけがユーザー判断待ち**（レビュー往復の上限 3 巡に到達したため、こちらでは
+  進めていない）。再開時はまず次の 2 点の回答を得ること —— (1) #24 を check off してよいか
+  （よければ `{type}: complete task #24 — …` のコミットを打って #25 へ）、(2) `.gitignore` に足した
+  `.claude/worktrees/`（レビュア用 worktree の混入防止）を残すか外すか。外す場合は次回以降、
+  レビュア起動時に worktree がコミットへ混入しないよう注意が要る。
+  #24 の判定と 3 巡ぶんの指摘・処置は `checks/task-24.md` に一本化してある（Ready to check off の行が
+  ユーザー判断待ちの印）。
