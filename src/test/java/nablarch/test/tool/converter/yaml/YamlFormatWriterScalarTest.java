@@ -5,10 +5,8 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
@@ -108,10 +106,20 @@ public class YamlFormatWriterScalarTest {
      * @return ブロック
      */
     private static TableDataBlock block(String value) {
+        return block("V", value);
+    }
+
+    /**
+     * 検証対象の値 1 個を {@code setup_tables} の 1 行 1 カラムに置いたブロックを組み立てる。
+     *
+     * @param column カラム名
+     * @param value  値（{@code null} 可）
+     * @return ブロック
+     */
+    private static TableDataBlock block(String column, String value) {
         return new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                new ArrayList<String>(Arrays.asList("V")),
-                new ArrayList<List<String>>(Arrays.asList(
-                        (List<String>) new ArrayList<String>(Arrays.asList(value)))));
+                Collections.singletonList(column),
+                Collections.singletonList(Collections.singletonList(value)));
     }
 
     /**
@@ -157,8 +165,8 @@ public class YamlFormatWriterScalarTest {
     private String writeAndReadBack(String value) {
         String base = folder.getRoot().getAbsolutePath();
         writer.write(new TestDataContainer("td", Collections.singletonList(section(block(value)))), base);
-        TestDataContainer back = new YamlFormatReader().read(base, "td");
-        TableDataBlock table = (TableDataBlock) back.getSections().get(0).getBlocks().get(0);
+        TableDataBlock table = YamlFixture.onlyBlock(
+                new YamlFormatReader().read(base, "td"), TableDataBlock.class);
         assertThat("読み戻したカラム名", table.getColumnNames(), is(Arrays.asList("V")));
         assertThat("読み戻した行数", table.getRows().size(), is(1));
         return table.getRows().get(0).get(0);
@@ -361,10 +369,17 @@ public class YamlFormatWriterScalarTest {
      * Then : ダブルクォート付きで 1 値として書かれる（コロンでキーに割れず、{@code #} 以降も残る）。
      *
      * <p>
-     * 担保する軸要素: D4-09（<b>値側</b>）。キー側のクォートは既存の
-     * {@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
-     * {@code #serialize_keyStartingWithIndicator_isQuoted} が担保しており、別の要素である
-     * （{@code inventory.md} §4.1 の 15・23 行目）。
+     * 担保する軸要素: D4-09（<b>値側</b>）。キー側のクォートは別の要素であり、本メソッドは見ていない。
+     * </p>
+     *
+     * <p>
+     * <b>キー側の担保は、既存テストだけではコロン・空白・空文字・先頭 {@code -} の 4 つに限られていた</b>
+     * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
+     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}。
+     * {@code inventory.md} §4.1 の 15・16・23 行目）。
+     * {@code YamlFormatWriter#isPlainSafeKey} が持つ特殊文字集合 18 文字のうち残る 17 文字と制御文字は
+     * #25 のレビューまで未固定であり（{@code #} を集合から外しても全件が通る生存変異として実測された）、
+     * {@code YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter} で閉じた。
      * </p>
      */
     @Test
@@ -403,10 +418,7 @@ public class YamlFormatWriterScalarTest {
      */
     @Test
     public void foldsLongEscapedKeyWithBackslashContinuation() {
-        TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                new ArrayList<String>(Arrays.asList(FOLDED_KEY)),
-                new ArrayList<List<String>>(Arrays.asList(
-                        (List<String>) new ArrayList<String>(Arrays.asList("v")))));
+        TableDataBlock block = block(FOLDED_KEY, "v");
 
         assertThat(writer.serialize(section(block)), is(""
                 + "setup_tables:\n"
@@ -431,10 +443,7 @@ public class YamlFormatWriterScalarTest {
     @Test
     public void failsToReadBackFoldedKey() {
         // Given
-        TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                new ArrayList<String>(Arrays.asList(FOLDED_KEY)),
-                new ArrayList<List<String>>(Arrays.asList(
-                        (List<String>) new ArrayList<String>(Arrays.asList("v")))));
+        TableDataBlock block = block(FOLDED_KEY, "v");
         String base = folder.getRoot().getAbsolutePath();
         writer.write(new TestDataContainer("td", Collections.singletonList(section(block))), base);
 

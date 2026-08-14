@@ -1,7 +1,7 @@
 package nablarch.test.tool.converter.yaml;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -47,6 +47,15 @@ import org.junit.rules.TemporaryFolder;
  * 軸A 2 件（A-07 {@code EXPECTED_FIXED}／A-08 {@code SETUP_VARIABLE}）・軸C 2 件
  * （C-02 {@code sections} 空・複数／C-12 {@code FileDataBlock.records} 空）・軸E 1 件
  * （E-4 コンテナ内セクション数 複数）である。
+ * </p>
+ *
+ * <p>
+ * <b>#25 のレビューで、送信同期 3 種（A-12 {@code EXPECTED_REQUEST_BODY_MESSAGES}／
+ * A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}）が
+ * #18 以来 ✅ と判定されていながら実際は 🔺 だったことが判明したため、3 件を追加した。</b>
+ * あわせて、キーのクォート判定（{@code YamlFormatWriter#isPlainSafeKey}）が特殊文字集合の
+ * ほとんどについて未固定だったため 1 件を追加した。経緯は各メソッドの Javadoc と
+ * {@code inventory.md} §4.1-2 の軸A 表にある。
  * </p>
  *
  * <p>
@@ -114,17 +123,19 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
-     * ブロック 1 件を実ファイルへ書き出し、本番配線の {@link YamlFormatReader} で読み戻して
-     * 唯一のブロックを返す。
+     * ブロック 1 件を実ファイルへ書き出し、本番配線の {@link YamlFormatReader} で読み戻す。
+     *
+     * <p>
+     * 唯一のブロックの取り出しは呼び出し側が {@link YamlFixture#onlyBlock(TestDataContainer, Class)} で行う
+     * （素キャストを避け、想定外のクラスが来たときに失敗メッセージへ実クラス名が出るようにするため。
+     * 同ヘルパの Javadoc に共有意図が書いてある）。
+     * </p>
      *
      * @param block ブロック
-     * @return 読み戻したブロック
+     * @return 読み戻した中間モデル
      */
-    private TestDataBlock writeAndReadBack(TestDataBlock block) {
-        String base = write(block);
-        List<TestDataBlock> blocks = new YamlFormatReader().read(base, "td").getSections().get(0).getBlocks();
-        assertThat("読み戻したブロック数", blocks.size(), is(1));
-        return blocks.get(0);
+    private TestDataContainer writeAndReadBack(TestDataBlock block) {
+        return new YamlFormatReader().read(write(block), "td");
     }
 
     /**
@@ -183,14 +194,23 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
-     * 値 1 行 1 フィールドのレコードレイアウトを組み立てる（{@code record_type} は省略）。
+     * 値 1 行 2 フィールドのレコードレイアウトを組み立てる（{@code record_type} は省略）。
+     *
+     * <p>
+     * <b>値は {@code "true"}（真偽値に見える文字列）と {@code "2026-08-07"}（日付に見える文字列）である。</b>
+     * レコード断片（{@code records[].rows}）経路は {@code YamlFormatWriter#rowFlow} を通り、
+     * {@code setup_tables} の {@code rows} 経路（{@code YamlFormatWriterScalarTest} が測っている経路）とは
+     * 別の呼び出し元である。素の値（{@code "v"} など）だけを置いていると、この経路でだけ
+     * クォートを落とす変異を入れても 1 件も落ちない（#25 レビューで実測した生存変異）。
+     * フィールド名の並び {@code flag} → {@code date} は辞書順の逆である。
+     * </p>
      *
      * @return レコードレイアウト
      */
     private static RecordLayout record() {
         return new RecordLayout(null,
-                Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
-                Collections.singletonList(Collections.singletonList("v")));
+                Arrays.asList(new FieldDef("flag", "半角英字", "5"), new FieldDef("date", "半角英字", "10")),
+                Collections.singletonList(Arrays.asList("true", "2026-08-07")));
     }
 
     /**
@@ -216,8 +236,11 @@ public class YamlFormatWriterModelTest {
      *
      * <p>
      * 担保する軸要素: A-07（{@code EXPECTED_FIXED} → {@code expected_files}）／
-     * A-08（{@code SETUP_VARIABLE} → {@code setup_files}）／E-1(複数)。
+     * A-08（{@code SETUP_VARIABLE} → {@code setup_files}）。
      * §4.1 では 2 種とも {@code RoundTripTest} 経由の 🔺 だけだった。
+     * E-1(複数) は既存の {@code YamlFormatWriterTest#serialize_multipleSections_separatedByBlankLineInEncounterOrder}
+     * が通しており、本メソッドは<b>並びを辞書順・定義順とずらした版</b>として足しているだけである
+     * （台帳 §4.1-2 は本クラスの担う軸に E-1 を挙げていない）。
      * </p>
      *
      * <p>
@@ -241,18 +264,20 @@ public class YamlFormatWriterModelTest {
                 + "    type: \"variable\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"f1\", type: \"半角英字\", length: \"5\"}\n"
+                + "          - {name: \"flag\", type: \"半角英字\", length: \"5\"}\n"
+                + "          - {name: \"date\", type: \"半角英字\", length: \"10\"}\n"
                 + "        rows:\n"
-                + "          - [\"v\"]\n"
+                + "          - [\"true\", \"2026-08-07\"]\n"
                 + "\n"
                 + "expected_files:\n"
                 + "  - path: \"e.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"f1\", type: \"半角英字\", length: \"5\"}\n"
+                + "          - {name: \"flag\", type: \"半角英字\", length: \"5\"}\n"
+                + "          - {name: \"date\", type: \"半角英字\", length: \"10\"}\n"
                 + "        rows:\n"
-                + "          - [\"v\"]\n"));
+                + "          - [\"true\", \"2026-08-07\"]\n"));
     }
 
     /**
@@ -270,7 +295,7 @@ public class YamlFormatWriterModelTest {
                 FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record()));
 
         // When
-        FileDataBlock back = (FileDataBlock) writeAndReadBack(block);
+        FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
 
         // Then
         assertThat(back.getDataType(), is(DataType.EXPECTED_FIXED));
@@ -292,12 +317,100 @@ public class YamlFormatWriterModelTest {
                 FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record()));
 
         // When
-        FileDataBlock back = (FileDataBlock) writeAndReadBack(block);
+        FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
 
         // Then
         assertThat(back.getDataType(), is(DataType.SETUP_VARIABLE));
         assertThat(back.getFileType(), is(FileDataBlock.FileType.VARIABLE));
         assertThat(back.getIdentifier(), is("s.csv"));
+    }
+
+    // ------------------------------------------------------------------ A-12 / A-13 / A-14
+
+    /**
+     * 送信同期のメッセージブロックを 1 件組み立てる（4 種で {@code DataType} 以外は同一）。
+     *
+     * @param type データ種別
+     * @return ブロック
+     */
+    private static MessageDataBlock sendSync(DataType type) {
+        return new MessageDataBlock(type, "[case1]", "MSG1", map(), map(),
+                Collections.singletonList(record()));
+    }
+
+    /**
+     * {@link #sendSync(DataType)} 1 件だけを持つセクションの、期待する出力 YAML を組み立てる。
+     *
+     * <p>
+     * セクションキー以外は 4 種で完全に同一である。すなわち<b>この文字列全体との一致を見れば、
+     * 写像が入れ替わったときに必ず落ちる</b>。
+     * </p>
+     *
+     * @param sectionKey 期待するセクションキー
+     * @return YAML テキスト
+     */
+    private static String sendSyncYaml(String sectionKey) {
+        return ""
+                + sectionKey + ":\n"
+                + "  - group_id: \"case1\"\n"
+                + "    id: \"MSG1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"flag\", type: \"半角英字\", length: \"5\"}\n"
+                + "          - {name: \"date\", type: \"半角英字\", length: \"10\"}\n"
+                + "        rows:\n"
+                + "          - [\"true\", \"2026-08-07\"]\n";
+    }
+
+    /**
+     * Given: {@code EXPECTED_REQUEST_BODY_MESSAGES} のブロック 1 件だけを持つセクション。
+     * When : {@code serialize}。
+     * Then : 出力全文が {@code expected_request_body_messages:} 配下の 1 ブロックと一致する。
+     *
+     * <p>
+     * 担保する軸要素: A-12。<b>#18 は ✅ と判定していたが誤りだった</b>（下記）。
+     * </p>
+     *
+     * <p>
+     * 既存の {@code YamlFormatWriterTest#serializeSendSync_allFourSectionKeys} は送信同期 4 種を
+     * <b>まとめて 1 つの出力に</b>直列化し、4 つのキー文字列が「どこかに現れる」ことを
+     * {@code assertTrue(yaml.contains(...))} で見ているだけで、{@code DataType} → セクションキーの対応を
+     * 1 つも固定していない。4 種の写像を入れ替えても 4 キーはすべて現れるため通ってしまう
+     * （#25 レビューの変異で実測）。担保があったのは、単独ブロックの出力全文を完全一致で見ている
+     * {@code #serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField} が通す A-11 だけである。
+     * <b>辺③がまったく同じ形の欠陥を #23 のレビューで見つけている</b>（{@code inventory.md} §3.1-3）。
+     * </p>
+     */
+    @Test
+    public void writesExpectedRequestBodyMessagesUnderItsOwnSectionKey() {
+        assertThat(serialize(sendSync(DataType.EXPECTED_REQUEST_BODY_MESSAGES)),
+                is(sendSyncYaml("expected_request_body_messages")));
+    }
+
+    /**
+     * Given: {@code RESPONSE_HEADER_MESSAGES} のブロック 1 件だけを持つセクション。
+     * When : {@code serialize}。
+     * Then : 出力全文が {@code response_header_messages:} 配下の 1 ブロックと一致する。
+     *
+     * <p>担保する軸要素: A-13（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
+     */
+    @Test
+    public void writesResponseHeaderMessagesUnderItsOwnSectionKey() {
+        assertThat(serialize(sendSync(DataType.RESPONSE_HEADER_MESSAGES)),
+                is(sendSyncYaml("response_header_messages")));
+    }
+
+    /**
+     * Given: {@code RESPONSE_BODY_MESSAGES} のブロック 1 件だけを持つセクション。
+     * When : {@code serialize}。
+     * Then : 出力全文が {@code response_body_messages:} 配下の 1 ブロックと一致する。
+     *
+     * <p>担保する軸要素: A-14（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
+     */
+    @Test
+    public void writesResponseBodyMessagesUnderItsOwnSectionKey() {
+        assertThat(serialize(sendSync(DataType.RESPONSE_BODY_MESSAGES)),
+                is(sendSyncYaml("response_body_messages")));
     }
 
     // ------------------------------------------------------------------ C-02 / E-4
@@ -341,6 +454,8 @@ public class YamlFormatWriterModelTest {
      *
      * <p>
      * セクションごとにテーブル識別子を変えてあるため、ファイル名とセクションの対応が入れ替われば落ちる。
+     * 期待する中身は<b>リテラルで置いている</b>（{@code writer.serialize(...)} と突き合わせると
+     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけないためである。#25 レビュー指摘）。
      * </p>
      */
     @Test
@@ -357,11 +472,23 @@ public class YamlFormatWriterModelTest {
 
         // Then
         assertThat("書かれたファイル数", out.list().length, is(3));
-        assertThat(read(out, zebra), is(writer.serialize(zebra)));
-        assertThat(read(out, alpha), is(writer.serialize(alpha)));
-        assertThat(read(out, mango), is(writer.serialize(mango)));
-        assertThat("セクションごとに中身が違うこと", read(out, zebra),
-                containsString("table: \"Z\""));
+        assertThat(read(out, zebra), is(oneRowTableYaml("Z")));
+        assertThat(read(out, alpha), is(oneRowTableYaml("A")));
+        assertThat(read(out, mango), is(oneRowTableYaml("M")));
+    }
+
+    /**
+     * {@link #table(String)} 1 件だけを持つセクションの、期待する出力 YAML を組み立てる。
+     *
+     * @param name テーブル名
+     * @return YAML テキスト
+     */
+    private static String oneRowTableYaml(String name) {
+        return ""
+                + "setup_tables:\n"
+                + "  - table: \"" + name + "\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n";
     }
 
     /**
@@ -395,18 +522,26 @@ public class YamlFormatWriterModelTest {
     /**
      * Given: レコードレイアウトを 1 件も持たないファイルブロック（ディレクティブは 2 件）。
      * When : {@code serialize}。
-     * Then : {@code records:} キー自体が書かれない。ディレクティブは記述順のまま出る。
+     * Then : {@code records:} キー自体が書かれない。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
      *
      * <p>
-     * 担保する軸要素: C-12（{@code FileDataBlock.records} 空）／E-3(0)。
+     * 担保する軸要素: C-12（{@code FileDataBlock.records} 空）。
      * ディレクティブの並び（{@code text-encoding} → {@code file-type}）は辞書順の逆である。
+     * </p>
+     *
+     * <p>
+     * <b>ディレクティブの値を {@code "true"}（真偽値に見える文字列）と {@code "2026-08-07"}（日付に見える文字列）に
+     * してある。</b>{@code YamlFormatWriter#emitMap} は {@code directives} ／ {@code fw_header} 専用の
+     * 出力経路であり、{@code YamlFormatWriterScalarTest} が測っている {@code setup_tables} の {@code rows} 経路とは
+     * 別の呼び出し元である。素の値（{@code "UTF-8"} など）だけを置いていると、この経路でだけ
+     * クォートを落とす変異を入れても 1 件も落ちない（#25 レビューで実測した生存変異）。
      * </p>
      */
     @Test
     public void writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8", "file-type", "Fixed"),
+                FileDataBlock.FileType.FIXED, map("text-encoding", "true", "file-type", "2026-08-07"),
                 Collections.<RecordLayout>emptyList());
 
         // When / Then
@@ -415,8 +550,81 @@ public class YamlFormatWriterModelTest {
                 + "  - path: \"n.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    directives:\n"
-                + "      text-encoding: \"UTF-8\"\n"
-                + "      file-type: \"Fixed\"\n"));
+                + "      text-encoding: \"true\"\n"
+                + "      file-type: \"2026-08-07\"\n"));
+    }
+
+    // ------------------------------------------------------------------ キーのクォート
+
+    /**
+     * クォートを要するキーと、期待する出力上の表記。
+     *
+     * <p>
+     * 1 列目は生のキー（{@code x} ＋ 対象文字）、2 列目は {@code directives:} 配下に現れるはずの表記である。
+     * 対象文字は {@code YamlFormatWriter#isPlainSafeKey} の特殊文字集合
+     * {@code "'#:,[]{}&*!|>%@`?}（<b>18 文字</b>）の全部と、制御文字（{@code < 0x20}）2 種である。
+     * 期待表記は<b>実行して観測した結果</b>であり、実装から導出していない。
+     * </p>
+     */
+    private static final String[][] KEYS_REQUIRING_QUOTES = {
+            {"x\"", "\"x\\\"\""},
+            {"x'", "\"x'\""},
+            {"x#", "\"x#\""},
+            {"x:", "\"x:\""},
+            {"x,", "\"x,\""},
+            {"x[", "\"x[\""},
+            {"x]", "\"x]\""},
+            {"x{", "\"x{\""},
+            {"x}", "\"x}\""},
+            {"x&", "\"x&\""},
+            {"x*", "\"x*\""},
+            {"x!", "\"x!\""},
+            {"x|", "\"x|\""},
+            {"x>", "\"x>\""},
+            {"x%", "\"x%\""},
+            {"x@", "\"x@\""},
+            {"x`", "\"x`\""},
+            {"x?", "\"x?\""},
+            {"x" + (char) 0x01, "\"x\\x01\""},
+            {"x" + (char) 0x1f, "\"x\\x1f\""},
+    };
+
+    /**
+     * Given: {@code YamlFormatWriter#isPlainSafeKey} の特殊文字集合 18 文字と制御文字 2 種を
+     *        1 文字ずつ含む {@code directives} のキー。
+     * When : {@code serialize}。
+     * Then : 20 通りすべてで、そのキーがダブルクォートで囲まれた出力全文になる。
+     *
+     * <p>
+     * 担保する軸要素: なし（{@code isPlainSafeKey} の判定そのもの。軸D はキーではなく<b>値</b>の表現である）。
+     * </p>
+     *
+     * <p>
+     * <b>既存の担保はコロン・空白・空文字・先頭 {@code -} の 4 つだけだった</b>
+     * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
+     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}）。
+     * 集合から {@code #} を 1 文字外すだけで全件が通ってしまうこと（生存変異）を #25 レビューが実測しており、
+     * 実害は大きい —— {@code #} が外れるとカラム名 {@code #x} の行が {@code - #x: "v"} となって
+     * <b>行全体が YAML コメント化し、データ行が黙って消える</b>。
+     * あわせて JaCoCo で未到達だった「キーに制御文字を含む」枝もここで閉じる。
+     * </p>
+     */
+    @Test
+    public void quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter() {
+        for (String[] pair : KEYS_REQUIRING_QUOTES) {
+            // Given
+            FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "k.dat",
+                    FileDataBlock.FileType.FIXED, map(pair[0], "v"),
+                    Collections.<RecordLayout>emptyList());
+
+            // When / Then
+            assertThat("キー: " + pair[0], serialize(block), is(""
+                    + "setup_files:\n"
+                    + "  - path: \"k.dat\"\n"
+                    + "    type: \"fixed\"\n"
+                    + "    directives:\n"
+                    + "      " + pair[1] + ": \"v\"\n"));
+        }
     }
 
     // ------------------------------------------------------------------ 書けるが読み戻せない形（YML-12）
@@ -541,7 +749,7 @@ public class YamlFormatWriterModelTest {
                 Collections.singletonList(Arrays.asList("100", "x")));
 
         // When
-        TableDataBlock back = (TableDataBlock) writeAndReadBack(block);
+        TableDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), TableDataBlock.class);
 
         // Then
         assertThat("テーブル名が大文字化される", back.getIdentifier(), is("USERS"));

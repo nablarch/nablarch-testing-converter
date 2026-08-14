@@ -1681,18 +1681,46 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 | 入力（中間モデル） | 書き出される YAML | 読み戻し（違反キーワード・位置） | 担保テスト（`YamlFormatWriterModelTest#`） |
 |---|---|---|---|
-| `FileDataBlock.records` が空 | `records:` キーごと出ない | `required` ／ `$.setup_files[0]` | 版面: `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty` ／ 読み戻し: `failsToReadBackFileBlockWithoutRecords` |
-| `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（版面は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
-| `RecordLayout.fields` が空 | `fields: []` | `minItems` ／ `$.setup_files[0].records[0].fields` | `failsToReadBackRecordWithoutFields`（版面は既存の `YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists`） |
-| `FieldDef.type` が `null` | `{name: "c1"}`（`type` を省略） | `required` ／ `$.expected_files[0].records[0].fields[0]` | `failsToReadBackFieldWithoutType`（版面は既存の `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`） |
+| `FileDataBlock.records` が空 | `records:` キーごと出ない | `required` ／ `$.setup_files[0]` | 記法: `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty` ／ 読み戻し: `failsToReadBackFileBlockWithoutRecords` |
+| `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（記法は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
+| `RecordLayout.fields` が空 | `fields: []` | `minItems` ／ `$.setup_files[0].records[0].fields` | `failsToReadBackRecordWithoutFields`（記法は既存の `YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists`） |
+| `FieldDef.type` が `null` | `{name: "c1"}`（`type` を省略） | `required` ／ `$.expected_files[0].records[0].fields[0]` | `failsToReadBackFieldWithoutType`（記法は既存の `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`） |
 
 - 原因: 直列化は中間モデルの形をそのまま写す（`emitRecords` は空なら `records:` を出さず、
   `emitFlowList` は空なら `key: []` を出し、`fieldFlow` は `type` が `null` なら書かない）。
-  スキーマ側は `$defs.file_data.required` ／ `$defs.message_data.required` が `records` を要求し
-  （`minItems` は 0 なので**空配列 `records: []` なら通る**）、
-  `$defs.record_fragment.properties.fields.minItems` ＝ 1、`$defs.field_def.required` が `type` を要求する。
-  すなわち**空を「キーごと省略」で表す辺④と、「キーは必須・中身は空でよい」とするスキーマの食い違い**である
-  （4 件目だけは表現の食い違いではなく、スキーマが `type` 必須である以上、辺④が書ける形が仕様外という話である）。
+  スキーマ側の該当箇所は次のとおりで、**`file_data` と `message_data` で `records` の扱いが違う**
+  （2026-08-14 に jar 内の実スキーマを展開して確認した。導出コマンドは下記）。
+
+  | `$defs` | `required` | `records` / `fields` の `minItems` |
+  |---|---|---|
+  | `file_data` | `path` ／ `type` ／ `records` | `records.minItems` ＝ **0** |
+  | `message_data` | `id` ／ `records` | `records.minItems` ＝ **1** |
+  | `record_fragment` | `fields` ／ `rows` | `fields.minItems` ＝ **1** |
+  | `field_def` | `name` ／ `type` | — |
+
+  ```sh
+  unzip -p "$(find ~/.m2 -name 'nablarch-testing-yaml-1.0.0-SNAPSHOT.jar' | head -1)" \
+      nablarch/test/ntf-testdata-yaml-schema.json | python3 -c "
+  import json,sys
+  d=json.load(sys.stdin)
+  for k in ['file_data','message_data','record_fragment','field_def']:
+      v=d['\$defs'][k]
+      print(k, 'required=', v.get('required'))
+      for pk,pv in v.get('properties',{}).items():
+          if 'minItems' in pv: print('   ', pk, 'minItems=', pv['minItems'])
+  "
+  ```
+
+  したがって 4 件の性質は同じではない。
+
+  - **1 件目（`FileDataBlock.records` 空）だけが「表現の食い違い」である。**
+    `records` は必須だが `minItems` が 0 なので、**空配列 `records: []` と書けば通る**。
+    にもかかわらず辺④は空を「キーごと省略」で表すため落ちる。
+  - **2 件目（`MessageDataBlock.records` 空）は表現の問題ではない。**
+    `message_data` は `records.minItems` ＝ 1 であり、`records: []` と書いても通らない。
+    すなわちスキーマは「レコードを 1 件も持たないメッセージ」という形そのものを認めていない。
+  - 3・4 件目（`fields` 空／`type` 省略）も同じく、スキーマが認めない形を辺④が書けてしまうという話である
+    （`fields.minItems` ＝ 1 ／ `type` 必須）。
 - **到達経路がある（実測・2026-08-14）。** 上 2 件（`records` 空）は**辺①が生成できる**。
   レコードレイアウトを持たないファイルブロック／メッセージブロックを含む `.xlsx` を
   `XlsFormatReader`（本番配線）で読むと `records=0` の中間モデルになる。
@@ -1706,16 +1734,19 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   気づくのは NTF がそのテストデータを読むとき（またはこのツールで読み戻すとき）である。
   スキーマ検証のメッセージは違反位置（`$.setup_files[0]`）を示すため、原因の特定自体は難しくない。
 - 判断: **仕様として不適切**である。`YamlFormatWriter` の Javadoc は「`YamlFormatReader` と記法対称に
-  直列化する」と謳っており、読み戻せない出力はその主張に反する。あるべき姿は
-  空のコレクションを `records: []` と書く（1・2 件目）か、書き出し時に弾く（3・4 件目。辺③の
-  `XlsFormatWriter#appendRecords` が同種の前提崩れを送出で弾いているのと同じ思想）である。
+  直列化する」と謳っており、読み戻せない出力はその主張に反する。あるべき姿は 4 件で分かれる。
+  - **1 件目のみ「空のコレクションを `records: []` と書く」**（スキーマが受け付ける形が存在するため）。
+  - **2・3・4 件目は「書き出し時に弾く」**（スキーマが形そのものを認めていないため、
+    どう書いても読み戻せない。辺③の `XlsFormatWriter#appendRecords` が同種の前提崩れを
+    送出で弾いているのと同じ思想）。
+
   修正はこの作業では行わない（`src/main` 無変更）。
 
 ### YML-13 折り返しの起きるキーを書き出すと、YAML として読めないファイルになる（影響度 低・**変換時には検出できない**／読み戻し時に loud）
 
 | 入力（中間モデル） | 書き出される YAML | 読み戻し | 担保テスト（`YamlFormatWriterScalarTest#`） |
 |---|---|---|---|
-| エスケープを要する文字（改行など）を含み、かつ 80 桁を超える**カラム名**（`directives` ／ `fw_header` のキーでも同じ） | ダブルクォートスカラーが行末の `\` で折り返され、**キーが 2 行にまたがる** | `IllegalStateException: Failed to parse YAML file: …`（パースで止まり、スキーマ検証には到達しない） | 版面: `foldsLongEscapedKeyWithBackslashContinuation` ／ 読み戻し: `failsToReadBackFoldedKey` |
+| エスケープを要する文字（改行など）を含み、かつ 80 桁を超える**カラム名**（`directives` ／ `fw_header` のキーでも同じ） | ダブルクォートスカラーが行末の `\` で折り返され、**キーが 2 行にまたがる** | `IllegalStateException: Failed to parse YAML file: …`（パースで止まり、スキーマ検証には到達しない） | 記法: `foldsLongEscapedKeyWithBackslashContinuation` ／ 読み戻し: `failsToReadBackFoldedKey` |
 | 同じ形の**値**（`rows` の値） | 同じく折り返されるが、読み戻しは成功する | 元の文字列へ復元される | `foldsLongEscapedValueWithBackslashContinuation` ／ `restoresFoldedLongEscapedValueThroughRealReader` |
 
 - 原因: `YamlFormatWriter#q` は値を単独で snakeyaml-engine の `Dump#dumpToString` に渡す。
@@ -1751,7 +1782,11 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 - **折り返しを含む出力 YAML を、snakeyaml-engine と PyYAML 以外の実装が同じ文字列へ復元するかは未確認である**（YML-13）。
 - **YML-12 の到達経路を Excel で手書きした版面で再現できるかは未確認である。** 実測に使った `.xlsx` は
   `XlsFormatWriter` が生成したものである（読み取り側は本番配線の `XlsFormatReader` を通している）。
-- **軸D の 9 ケースは `setup_tables` の `rows` とレコード断片（`records[].rows`）の 2 経路で観測したが、
-  テストで固定したのは `setup_tables` 経路だけである。** レコード断片経路でも 9 ケースとも
-  同じ記法（フロー list の中のダブルクォート）で書かれ、同じく往復することはプローブで確認した。
-  LIST_MAP 経路（`list_maps`）は観測していない。
+- **軸D の 9 ケースのうち、テストで 1 経路（`setup_tables` の `rows`）でしか固定していないのは 7 ケースである。**
+  `"true"`（D4-02）と `"2026-08-07"`（D4-08）は #25 のレビュー対応でレコード断片（`records[].rows`）経路と
+  `directives` 経路にも埋め込み、記法を固定した（`YamlFormatWriterModelTest#record()` ／
+  `#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`。当初版は「レコード断片経路は
+  プローブで確認したがテストにしていない」と開示していた箇所である）。
+  残る 7 ケースがレコード断片経路でも同じ記法（フロー list の中のダブルクォート）で書かれ、
+  同じく往復することはプローブで確認したがテストにはしていない。
+  **LIST_MAP 経路（`list_maps`）は 9 ケースとも観測していない。**

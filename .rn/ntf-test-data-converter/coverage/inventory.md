@@ -66,7 +66,12 @@
 >   §4.1 は「`YamlFormatWriterTest` 33 件」を対象とした #18 時点の事実として**そのまま残す**。
 >   `YamlFormatWriter` の JaCoCo 実測も本節末尾に置いた。
 > - **§4.3** — 辺④ 未担保一覧に「#25 後の状態」列を足した。
+> - **§4.1 末尾 / §4.1-2 / §4.3 / §5.1 / §5.2**（#25 レビュー対応・2026-08-14） — 送信同期 3 種
+>   （A-12〜A-14）の辺④が #18 以来 ✅ と誤判定されていた（実際は 🔺）ことを訂正し、
+>   辺④の軸A 件数を 2 → **5**、担保済みを 12 → **15**、総計を 13 → **16** に改めた。
+>   辺③の #23 レビューでの訂正（§3.3）と同じ形である。
 >
+
 > **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
 > **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
@@ -1738,6 +1743,17 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | 32 | `roundTrip_leadingTrailingWhitespace_isPreservedThroughRealReader` | A-02 | B-1 | C-09 | ※前後・中間の半角/全角空白が往復で脱落しない | E-2(1) | — |
 | 33 | `roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | A-02 | B-1 | C-09 | 🔺**D4-01 `"100"` 相当（`"123"`）**・D4-03 `"null"`・D4-04 `null` の往復区別（出力 YAML の記法アサートではない） | E-2(複数=3) | — |
 
+**上表 #10 `serializeSendSync_allFourSectionKeys` の軸A 欄「A-11, A-12, A-13, A-14」は誤りである
+（2026-08-14・#25 レビュー指摘。本表は #18 時点のスナップショットのため書き換えない）。**
+同メソッドは 4 タイプのブロックを**まとめて 1 つの出力に**直列化し、4 つのセクションキーが
+「どこかに現れる」ことを `assertTrue(yaml.contains(...))` で見るだけで、
+**`DataType` → セクションキーの写像を 1 つも固定していない**（変異による実測は [§4.1-2](#s4-1-2-sendsync)）。
+正しくは軸A 欄は「—」（このテストは軸A を担保しない）である。A-11 は #9
+`serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField` が単独ブロックの出力全文を
+完全一致でアサートしており独立に ✅、A-12〜A-14 は #25 レビュー対応で
+`YamlFormatWriterModelTest` に追加した 3 メソッドが担保する。
+**辺③の #31 `writesSequenceNoForAllSendSyncTypes` とまったく同じ形の誤りである**（§3.1 の同種の注記）。
+
 <a id="s4-1-2"></a>
 
 ### 4.1-2 #25 が追加したテストクラスの担保（2026-08-14 追記）
@@ -1750,7 +1766,7 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | テストクラス | 件数 | 担う軸 |
 |---|---|---|
 | `YamlFormatWriterScalarTest` | 16 | 軸D（9 ケースのうち #25 が埋めた分）＋ `issues.md` YML-13 |
-| `YamlFormatWriterModelTest` | 12 | 軸A（A-07／A-08）・軸C（C-02／C-12）・軸E（E-4）＋ `issues.md` YML-12／YML-08／YML-10 |
+| `YamlFormatWriterModelTest` | 16 | 軸A（A-07／A-08／**A-12〜A-14**）・軸C（C-02／C-12）・軸E（E-4）＋ キーのクォート判定 ＋ `issues.md` YML-12／YML-08／YML-10 |
 | `YamlFormatWriterInvalidOutputTest` | 2 | 軸F（F4-01／F4-03） |
 
 件数の導出コマンド:
@@ -1762,11 +1778,15 @@ for f in YamlFormatWriterScalarTest YamlFormatWriterModelTest YamlFormatWriterIn
 done
 ```
 
-出力は順に **16** ／ **12** ／ **2**（合計 **30**）。全体は `mvn clean test -Djacoco.skip=true` で
-**501 → 531**（Failures 0 ／ Errors 0 ／ Skipped 0）である。
+出力は順に **16** ／ **16** ／ **2**（合計 **34**）。全体は `mvn clean test -Djacoco.skip=true` で
+**501 → 535**（Failures 0 ／ Errors 0 ／ Skipped 0）である。
+**うち 4 件は #25 のレビュー対応で足した**（A-12〜A-14 の 3 件とキーのクォート 1 件。いずれも
+`YamlFormatWriterModelTest`。当初版は 30 件・531 件だった）。
 
-3 クラスとも `YamlFormatWriter#serialize`（出力 YAML テキスト）を直接アサートする。往復を見るものは
-`writer.write(...)` で実ファイルを書き、本番配線の `new YamlFormatReader().read(...)` で読み戻す
+**`serialize` を直接アサートするのは Scalar／Model の 2 クラスである。**
+`YamlFormatWriterInvalidOutputTest` は `serialize` を一度も呼ばず、`write` が書き出したファイル本文と
+送出された例外を見る。往復を見るものは `writer.write(...)` で実ファイルを書き、本番配線の
+`new YamlFormatReader().read(...)` で読み戻す
 （辺②側の単独の担保は §2.1-2 の `YamlFormatReaderScalarTest` にある）。
 
 **軸D（§0.5 の辺④ 9 ケース。記法と往復を分けて示す）**
@@ -1793,21 +1813,71 @@ done
 引用符が落ちれば D4-01／D4-02／D4-06／D4-08 は本体スキーマ（`rows` の値を `["string","null"]` に限る）に
 違反して読み戻せなくなり、D4-09 は `issues.md` **YML-11** のとおり値が黙って変わる。
 
-**軸D の測定経路**: 上表は**すべて `setup_tables` の `rows`** で測っている。レコード断片
-（`records[].rows`）経路でも 9 ケースとも同じ記法（フロー list の中のダブルクォート）で書かれ、
-同じく往復することは**プローブで確認したがテストにはしていない**（下の「開示」）。
+**軸D の測定経路**: 上表は**すべて `setup_tables` の `rows`** で測っている。ただし
+`"true"`（D4-02）と `"2026-08-07"`（D4-08）の 2 ケースだけは、**#25 のレビュー対応で
+残り 2 経路のうち 2 つにもフィクスチャとして埋め込み、記法を版面ごと固定した**
+（レコード断片＝`records[].rows` は `YamlFormatWriterModelTest#record()`、
+`directives` は `#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`）。
+LIST_MAP（`list_maps`）経路は依然として観測していない（下の「開示」）。
 
-**軸A（#25 が埋めた 2 種）**
+**軸A（#25 が埋めた 2 種 ＋ #25 レビューで判明した 3 種）**
 
 | 要素 | #18 の判定 | #25 後 | 担保テストメソッド（`YamlFormatWriterModelTest#`） |
 |---|---|---|---|
-| A-07 `EXPECTED_FIXED` | 🔺（`RoundTripTest#yaml_expectedFixed_isPreserved` 経由） | ✅ | `writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`（`expected_files` キーへ写ることを版面で）／`restoresExpectedFixedDataTypeThroughRealReader`（読み戻しても `EXPECTED_FIXED`・`FIXED` のまま） |
-| A-08 `SETUP_VARIABLE` | 🔺（`RoundTripTest#yaml_setupVariable_isPreserved` 経由） | ✅ | 同じ版面テスト（`setup_files` キーへ写る）／`restoresSetupVariableDataTypeThroughRealReader` |
+| A-07 `EXPECTED_FIXED` | 🔺（`RoundTripTest#yaml_expectedFixed_isPreserved` 経由） | ✅ | `writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`（`expected_files` キーへ写ることを出力全文の記法で）／`restoresExpectedFixedDataTypeThroughRealReader`（読み戻しても `EXPECTED_FIXED`・`FIXED` のまま） |
+| A-08 `SETUP_VARIABLE` | 🔺（`RoundTripTest#yaml_setupVariable_isPreserved` 経由） | ✅ | 同じ記法テスト（`setup_files` キーへ写る）／`restoresSetupVariableDataTypeThroughRealReader` |
+| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesExpectedRequestBodyMessagesUnderItsOwnSectionKey` |
+| A-13 `RESPONSE_HEADER_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseHeaderMessagesUnderItsOwnSectionKey` |
+| A-14 `RESPONSE_BODY_MESSAGES` | ✅（**誤り**。下記） | ✅ | `writesResponseBodyMessagesUnderItsOwnSectionKey` |
 
 **変異による確認（2026-08-14 実測。`src/main` は確認後に戻し `git diff f3efa1b -- src/main` → 0 行）**:
 `YamlFormatWriter#sectionKey` の `case` を入れ替えて `EXPECTED_FIXED` を `setup_files` へ、
-`SETUP_VARIABLE` を `expected_files` へ写すよう変異させると、上記 3 メソッドが落ちる
+`SETUP_VARIABLE` を `expected_files` へ写すよう変異させると、A-07／A-08 の 3 メソッドが落ちる
 （`RoundTripTest` の 2 件も落ちる）。すなわち #18 の 🔺 は 🔺 のままではなく直接の担保になった。
+
+<a id="s4-1-2-sendsync"></a>
+
+**A-12／A-13／A-14 の ✅ は #18 以来（#25 の当初版を含め）誤りだった。**
+この 3 タイプを辺④で通していたのは `YamlFormatWriterTest#serializeSendSync_allFourSectionKeys` だけで、
+同メソッドは送信同期 4 種を**まとめて 1 つの出力に**直列化し、4 つのキー文字列が「どこかに現れる」ことを
+`assertTrue(yaml.contains("..._messages:\n"))` で見ているだけである。**`DataType` → セクションキーの写像を
+1 つも固定していない**ため、4 種の写像を入れ替えても 4 キーはすべて現れて通ってしまう。
+辺④で単独ブロックの出力全文を完全一致で見ていたのは
+`YamlFormatWriterTest#serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField`
+（A-11 `EXPECTED_REQUEST_HEADER_MESSAGES`）の 1 箇所だけであり、担保があったのは A-11 だけだった。
+**これは #23 のレビューが辺③でまったく同じ形で見つけた欠陥である**（[§3.1-3](#s3-1-3-sendsync)。
+辺③では `writesSequenceNoForAllSendSyncTypes` が 4 タイプ共通の値だけを見ていた）。
+
+- **変異による実測（2026-08-14。#25 レビュー指摘の再現）**: `sectionKey` の
+  `RESPONSE_HEADER_MESSAGES` ↔ `RESPONSE_BODY_MESSAGES` を入れ替えた変異と、
+  `EXPECTED_REQUEST_BODY_MESSAGES` ↔ `RESPONSE_HEADER_MESSAGES` を入れ替えた変異の 2 通りを入れて全件実行した。
+  **どちらも当初版では writer 系が全緑**（落ちるのは `RoundTripTest` の 2 件だけ）であり、
+  往復テストは steering Rules フェーズ2 により正式な担保に数えないため、
+  **この時点で A-12／A-13／A-14 は 🔺 相当（正式担保 0）**であった。
+- **埋め方**: 上表の 3 メソッドを追加した。粒度は A-11 の担保テストに揃え、
+  **その `DataType` 単独のセクションを直列化して出力全文を完全一致でアサートする**
+  （`assertTrue(contains(...))` は使わない）。セクションキー以外は 4 種で完全に同一のフィクスチャなので、
+  写像が入れ替われば必ず落ちる。
+- **歯があることの実証**: 同じ 2 通りの変異を再度入れて全件実行し、
+  入れ替えた側の新規メソッドが落ちることを確認した（それぞれ `Tests run: 535, Failures: 4`
+  ＝ 新規 2 件 ＋ `RoundTripTest` 2 件）。変異は確認後に戻し、`git diff f3efa1b -- src/main` → **0 行**を確かめた。
+
+**キーのクォート判定（軸要素ではない。#25 レビューで判明した穴）**
+
+`YamlFormatWriter#isPlainSafeKey` は、キーに「制御文字（`< 0x20`）」「半角空白」
+「特殊文字集合 `"'#:,[]{}&*!|>%@` ` ?` の 18 文字のいずれか」を含むとき、または空文字・先頭が `-?:` のとき
+クォートする。**#25 の当初版までに固定されていたのはコロン・空白・空文字・先頭 `-` の 4 つだけ**で
+（§4.1 の 15・16・23 行目）、残る 17 文字と制御文字は未固定だった。
+
+- **変異による実測（2026-08-14）**: 集合から `#` を 1 文字外すだけで **531 件すべてが通る**（生存変異）。
+  実害は小さくない —— `#` が外れるとカラム名 `#x` の行が `- #x: "v"` となり、
+  **行全体が YAML コメント化してデータ行が黙って消える**。
+- **埋め方**: `YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter` を
+  追加した。特殊文字 18 文字と制御文字 2 種（`0x01` / `0x1f`）を 1 文字ずつ `directives` のキーに置き、
+  20 通りそれぞれで出力全文を完全一致でアサートする。期待表記は実行して観測した結果である。
+- **歯があることの実証**: `#` を集合から外す変異、および `c < 0x20` のガードを外す変異を入れて全件実行し、
+  それぞれ同メソッドが落ちることを確認した（`Tests run: 535, Failures: 1`）。あわせて JaCoCo で
+  未到達だった「キーに制御文字を含む」枝が閉じ、分岐が 88/92 から **89/92** になった（下の「開示」）。
 
 **軸C・軸E（#25 が埋めた 3 件）**
 
@@ -1847,7 +1917,8 @@ done
 
 **開示（テストを足していない担保の穴）**
 
-- **`YamlFormatWriter` の JaCoCo 実測（2026-08-14）は 行 158/159（99.4%）・分岐 88/92（95.7%）である。**
+- **`YamlFormatWriter` の JaCoCo 実測（2026-08-14。#25 レビュー対応後に取り直した）は
+  行 158/159（99.4%）・分岐 89/92（96.7%）である。**
   導出コマンド（JaCoCo 手順は steering Decisions のとおり。`pom.xml` は変更していない）:
 
   ```sh
@@ -1857,17 +1928,22 @@ done
          target/site/jacoco/jacoco.csv
   ```
 
-  出力は `line 158/159 branch 88/92`。未到達は 4 箇所で、**いずれも軸A〜F の要素ではない**:
+  出力は `line 158/159 branch 89/92`。未到達は **3 箇所**で、**いずれも軸A〜F の要素ではない**:
   `write` の「親ディレクトリを持たない相対パス」ガード（`getParent()` が `null` になる枝）／
   `emitBlock` の `instanceof` チェーンの `else`（sealed 階層の安全網。唯一の未到達行はここ）／
-  `isPlainSafeKey` の「キーに制御文字（`< 0x20`）を含む」枝／
   `rawGroup` の「`[` で始まるが `]` で終わらない `groupId`」枝。
+  **#25 の当初版で 4 箇所目に挙げていた `isPlainSafeKey` の「キーに制御文字（`< 0x20`）を含む」枝は
+  レビュー対応で閉じた**（`quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter`）。
   **この数値は `YamlFormatWriter` 1 クラスぶんであり、4 辺の担当クラス全体の計測と未到達分岐の列挙は #26 の仕事である。**
-- **軸D の 9 ケースはテストとしては 1 経路（`setup_tables` の `rows`）でしか固定していない。**
-  レコード断片（`records[].rows`）経路でも 9 ケースとも同じ記法で書かれ同じく往復することは
-  プローブで確認したが、テストにはしていない（辺②の §2.1-2 が「12 ケースのうち 10 ケースは
-  1 経路でしか測っていない」と開示しているのと同じ性質の穴である）。
-  LIST_MAP（`list_maps`）経路は**観測していない**。
+- **軸D の 9 ケースのうち 7 ケースは 1 経路（`setup_tables` の `rows`）でしか固定していない。**
+  `"true"`（D4-02）と `"2026-08-07"`（D4-08）だけは #25 のレビュー対応でレコード断片
+  （`records[].rows`）経路と `directives` 経路にも埋め込み、記法を版面ごと固定した
+  （変異で確認: `rowFlow` ／ `emitMap` がこの 2 値だけ非クォートで書くよう変異させると、
+  順に `Tests run: 535, Failures: 5, Errors: 2` ／ `Failures: 1` になる。当初版はどちらも生存変異だった）。
+  残る 7 ケースがレコード断片経路でも同じ記法で書かれ同じく往復することはプローブで確認したが、
+  テストにはしていない（辺②の §2.1-2 が「12 ケースのうち 10 ケースは 1 経路でしか測っていない」と
+  開示しているのと同じ性質の穴である）。
+  **LIST_MAP（`list_maps`）経路は 9 ケースとも観測していない。**
 - **`write` が複数セクションを書き出す順序はテストで固定していない。**
   ファイルシステム上に順序が現れないためである（`writesOneYamlFilePerSectionWhenContainerHasMultipleSections` が
   固定しているのは「セクション名 → 中身」の対応であって、書き出しの順ではない）。
@@ -1882,26 +1958,34 @@ done
 計上単位と「状態」の 3 分類は §1.3 の規則に従う。
 
 **本表は #25 の実測結果に合わせて「#25 後の状態」列を足した（2026-08-14）。** #18 時点は
-「要追加 12 ／ 対象外 1」であった。軸D の定義（9 ケース）は #18 から変わっていないため総計 13 も動かない。
-#18 時点の分類は「#18 の状態」列に残した。
+「要追加 12 ／ 対象外 1」と数えていた。軸D の定義（9 ケース）は #18 から変わっていない。
+**ただし軸A は #25 のレビューで 3 件（A-12／A-13／A-14）増えた。** この 3 件は
+**#18 時点で ✅ と誤判定されており、本節の集計にも入っていなかった**ためである
+（実際は 🔺 相当だった。根拠と変異による実測は [§4.1-2](#s4-1-2-sendsync)。
+辺③でも #23 のレビューでまったく同じ 3 件が同じ理由で判明している。§3.3）。
+したがって総計は 13 ではなく **16** が正しい。#18 時点の分類は「#18 の状態」列に残した。
 
 | 軸 | 未担保要素 | #18 の状態 | #25 後の状態 | 件数 |
 |---|---|---|---|---|
-| A | A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#yaml_expectedFixed_isPreserved`）／A-08 `SETUP_VARIABLE`（🔺 `RoundTripTest#yaml_setupVariable_isPreserved`） | 要追加 | **担保済み（#25）** — 版面は `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`、往復は `#restoresExpectedFixedDataTypeThroughRealReader` ／ `#restoresSetupVariableDataTypeThroughRealReader`（変異による確認は §4.1-2 の軸A 表） | 2 |
+| A | A-07 `EXPECTED_FIXED`（🔺 `RoundTripTest#yaml_expectedFixed_isPreserved`）／A-08 `SETUP_VARIABLE`（🔺 `RoundTripTest#yaml_setupVariable_isPreserved`） | 要追加 | **担保済み（#25）** — 記法は `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`、往復は `#restoresExpectedFixedDataTypeThroughRealReader` ／ `#restoresSetupVariableDataTypeThroughRealReader`（変異による確認は §4.1-2 の軸A 表） | 2 |
+| A | A-12 `EXPECTED_REQUEST_BODY_MESSAGES` ／ A-13 `RESPONSE_HEADER_MESSAGES` ／ A-14 `RESPONSE_BODY_MESSAGES` — **#18 時点で ✅ と誤判定されており本節の集計にも入っていなかった**（実際は `serializeSendSync_allFourSectionKeys` の `contains` アサートだけで、写像を 1 つも固定していなかった） | （集計外。誤って ✅） | **担保済み（#25 レビュー）** — `YamlFormatWriterModelTest#writesExpectedRequestBodyMessagesUnderItsOwnSectionKey` ／ `#writesResponseHeaderMessagesUnderItsOwnSectionKey` ／ `#writesResponseBodyMessagesUnderItsOwnSectionKey`（いずれも出力全文を完全一致。変異による実測は [§4.1-2](#s4-1-2-sendsync)） | 3 |
 | B | （なし） | — | — | 0 |
 | C | C-02 sections 空・複数（writer 側は到達可能。§0.8-6）／C-12 FileDataBlock.records 空 | 要追加 | **担保済み（#25）** — 順に `YamlFormatWriterModelTest#writesNothingWhenContainerHasNoSections`（空）／`#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`（複数）／`#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`（C-12） | 2 |
 | D | D4-01 `"100"`（記法アサートなしの 🔺）／D4-02 `"true"`／D4-06 `"007"`／D4-08 `"2026-08-07"`／D4-09 値側のコロン・ハイフン・`#` | 要追加 | **担保済み（#25）** — `YamlFormatWriterScalarTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterScalarTest.java` → **16**）。要素別の担保メソッドは §4.1-2 の軸D 表。**残る 4 ケース（D4-03／D4-04／D4-05／D4-07 の記法）は既存の `YamlFormatWriterTest` が通しており、重複させていない**（同表にメソッド名を挙げてある） | 5 |
 | E | E-4(複数) — `YamlFormatWriter#write` が sections をループするため到達可能（§0.8-6） | 要追加 | **担保済み（#25）** — C-02(複数) と同じ入力（`#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`） | 1 |
 | F | F4-01 出力先不在（🔺 のみ）／F4-03 書き込み権限なし | 要追加 | **担保済み（#25）** — `YamlFormatWriterInvalidOutputTest` の **2 件**（同クラスの総数も 2。`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatWriterInvalidOutputTest.java` → **2**） | 2 |
 | F | F4-02 `overwrite=false` 衝突 — `YamlFormatWriter` は `overwrite` を保持しない。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`／`ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` で担保済み（§0.8-5） | 対象外（上位層で担保済み） | 対象外（変更なし。根拠は #25 で実物を開いて確認した。§4.1-2 の「F4-02 を対象外とした根拠」） | 1 |
-| **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1** | **要追加 0 ／ 担保済み 12 ／ 到達不能 0 ／ 対象外 1** | **13（うち対象外 1）** |
+| **合計** | | **要追加 12 ／ 到達不能 0 ／ 対象外 1（＋ 誤判定により集計外 3）** | **要追加 0 ／ 担保済み 15 ／ 到達不能 0 ／ 対象外 1** | **16（うち対象外 1）** |
 
 **合計の検算**（表の「件数」列を上から順に足す）:
 
-- 担保済み: A 2 ＋ C 2 ＋ D 5 ＋ E 1 ＋ F 2 ＝ **12**
+- 担保済み: A 2 ＋ A 3（A-12〜A-14）＋ C 2 ＋ D 5 ＋ E 1 ＋ F 2 ＝ **15**
 - 対象外: F4-02 ＝ **1**
 - 要追加: **0**
-- 総計: 12 ＋ 1 ＝ **13**（B は 0 件）
+- 総計: 15 ＋ 1 ＝ **16**（B は 0 件）
+
+**#18 時点の 13 との差 3 は、A-12〜A-14 を ✅ と誤判定して計上から落としていた分である**
+（担保が増えたのではなく、数え漏れが解消した）。
 
 **#18 時点の「特に大きな空欄」**（軸D の 5 ケース。特に `"true"`・`"007"`・日付風文字列は、辺②で
 読み戻したときに型が変わりうる往復リスクの中心とされていた）は #25 で解消した。
@@ -1909,9 +1993,9 @@ done
 **辺④の「要追加」は 0 件**であり、到達不能と判定した要素も無い。
 
 **ただし「未担保 0 件」は本書の計上単位（§1.3 冒頭）での話である。** §4.1-2 末尾の「開示」4 点
-（JaCoCo 未到達 4 箇所／軸D を 1 経路でしか固定していない／複数セクションの書き出し順を固定していない／
-書き出した YAML のスキーマ適合を見る担保が無い）と、`issues.md` の **YML-12**／**YML-13** は
-空欄・穴として残る。
+（JaCoCo 未到達 3 箇所／軸D 9 ケースのうち 7 ケースを 1 経路でしか固定していない・LIST_MAP 経路は未観測／
+複数セクションの書き出し順を固定していない／書き出した YAML のスキーマ適合を見る担保が無い）と、
+`issues.md` の **YML-12**／**YML-13** は空欄・穴として残る。
 
 ---
 
@@ -1950,10 +2034,14 @@ done
 **下の 2 表の辺②の軸D も #18 時点の定義（10 ケース）による。** 軸D 辺② は 2026-08-14 のユーザー確定で
 **12 ケース**になった（§0.5）。補正を当てると辺② 軸D は「10」ではなく **12**、
 辺②の合計は「26」ではなく **28**、状態別の辺②「要追加 23」は **25** が正しい。
-辺④は #25 が軸A 2 件・軸C 2 件・軸D 5 件・軸E 1 件・軸F 2 件を埋めたため最新は
-**要追加 0 ／ 担保済み 12 ／ 到達不能 0 ／ 対象外 1**（§4.3）であり、
+辺④は #25 が軸A 2 件・軸C 2 件・軸D 5 件・軸E 1 件・軸F 2 件を、#25 のレビュー対応が
+軸A 3 件（A-12〜A-14。#18 時点で ✅ と誤判定されており本節の集計にも入っていなかった。§4.3）を
+埋めたため最新は **要追加 0 ／ 担保済み 15 ／ 到達不能 0 ／ 対象外 1**（§4.3）であり、
 下の表の辺④列（要追加 12 ／ 対象外 1）は #18 時点の値である。
-**辺④の軸D は #18 時点も現在も 9 ケースで変わっていないため、辺④の合計 13 に補正は要らない。**
+**辺④の軸D は #18 時点も現在も 9 ケースで変わっていないが、下の 2 表の辺④の数字は #18 時点の誤判定を含む。**
+辺④ 軸A は「2」ではなく **5**、辺④の合計は「13」ではなく **16**、状態別の辺④「要追加 12」は **15** が正しい
+（A-12〜A-14 を ✅ と誤判定していたため 3 件が計上から漏れていた。根拠は
+[§4.1-2](#s4-1-2-sendsync)、影響範囲は §4.3）。**辺③とまったく同じ形の誤判定である。**
 
 | 軸 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
@@ -1992,6 +2080,8 @@ done
 （A-01／A-07／A-09）を埋めたため辺③列を更新した**（2026-08-13。担保テストメソッドは §3.1-3）。
 **さらに #23 のレビューで A-12／A-13／A-14 の辺③が 🔺 だったことが判明し、テスト 3 件を追加して ✅ にした**
 （変異による実測は [§3.1-3](#s3-1-3-sendsync)）。
+**同じ 3 種は辺④でも 🔺 だったことが #25 のレビューで判明し、同じくテスト 3 件を追加して ✅ にした**
+（変異による実測は [§4.1-2](#s4-1-2-sendsync)）。
 **辺②列は #24 で判定そのものは変わっていない（13/14 のまま）が、担保の経路が変わった。**
 #18 時点は in-memory 経路（`YamlFormatReaderTest`）だけだったのに対し、#24 で
 `YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` が実 `.yaml` 経路でも
@@ -2010,9 +2100,9 @@ done
 | A-09 `EXPECTED_VARIABLE` | ✅（#20 で 🔺→✅） | ✅ | ✅（#23 で 🔺→✅） | ✅ |
 | A-10 `MESSAGE` | ✅ | ✅ | ✅ | ✅ |
 | A-11 `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | ✅ | ✅ | ✅ |
-| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
-| A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
-| A-14 `RESPONSE_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅ |
+| A-12 `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅（#25 レビューで 🔺→✅） |
+| A-13 `RESPONSE_HEADER_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅（#25 レビューで 🔺→✅） |
+| A-14 `RESPONSE_BODY_MESSAGES` | ✅ | ✅ | ✅（#23 レビューで 🔺→✅） | ✅（#25 レビューで 🔺→✅） |
 | **✅ 担保数** | 13/14 | 13/14 | **14/14** | **14/14** |
 | **🔺 弱い担保** | 0 | 0 | **0** | **0** |
 | **❌ 未担保** | 1 | 1 | **0** | 0 |
@@ -2023,13 +2113,20 @@ done
 `DEFAULT`（A-01）は辺①・辺②で到達不能、辺③は #23 で ✅（`writesDefaultDataTypeMarker`）、
 辺④は `serialize_unsupportedDataType_throws` で ✅ だが、辺③は書き出し・辺④は例外という**非対称**である
 （`issues.md` **XLS-20**。修正はしていない）。
-送信同期 3 種（A-12〜A-14）の辺③は #18 以来 ✅ と書かれていたが実際は 🔺 で、#23 のレビューで
-3 メソッドを追加して ✅ にした（[§3.1-3](#s3-1-3-sendsync)）。
+送信同期 3 種（A-12〜A-14）は**辺③・辺④の両方**で #18 以来 ✅ と書かれていたが実際はどちらも 🔺 で、
+辺③は #23 のレビューで、辺④は #25 のレビューで、それぞれ 3 メソッドを追加して ✅ にした
+（[§3.1-3](#s3-1-3-sendsync) ／ [§4.1-2](#s4-1-2-sendsync)）。
+**2 辺で同じ形の誤判定が起きたのは、どちらも「4 種をまとめて 1 つの出力に書き、4 種共通の性質だけを
+アサートする」テストを担保と数えていたためである**（辺③は連番 `"1"`、辺④は 4 つのキー文字列の
+`contains`）。writer 側で `DataType` を区別する出力を単独ブロックで固定していたのは、
+どちらの辺でも A-11 の 1 箇所だけだった。
 
 **辺③と辺④は軸A 14 種すべてが ✅ である**（どちらも ✅ 14 ／ 🔺 0 ／ ❌ 0。辺④は #25 で
-A-07／A-08 が ✅ になって揃った）。以下は辺③についての経緯である。**この判定は #23 の当初版では成り立って
-いなかった**（A-12〜A-14 が 🔺 で ✅ 11 ／ 🔺 3。#23 レビュー対応でテストを追加して初めて成立した）。
-上表の「✅ 担保数 14/14 ／ 🔺 0」は 2026-08-13 の #23 レビュー対応後の値である。
+A-07／A-08 が ✅ になって揃った）。**この判定は辺③・辺④とも当初版では成り立っていなかった** ——
+辺③は #23 の当初版で A-12〜A-14 が 🔺（✅ 11 ／ 🔺 3）、辺④は #25 の当初版で同じ 3 種が 🔺
+（✅ 11 ／ 🔺 3）であり、いずれもレビュー対応でテストを追加して初めて成立した。
+上表の「✅ 担保数 14/14 ／ 🔺 0」は、辺③が 2026-08-13 の #23 レビュー対応後、
+辺④が 2026-08-14 の #25 レビュー対応後の値である。
 
 <a id="s5-3"></a>
 
