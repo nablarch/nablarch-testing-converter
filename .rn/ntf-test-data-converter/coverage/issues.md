@@ -1196,10 +1196,11 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 | `\|`（リテラル）が `"l1\nl2\n"`、`>`（フォールド）が `"l1 l2\n"` になる（末尾に改行が付く） | 妥当（YAML のブロックスカラー仕様どおり。担保: `readsLiteralBlockScalarKeepingNewlines` ／ `readsFoldedBlockScalarFoldingNewlinesIntoSpaces`） |
 | `007` / `0x1F` / 日付風 `2026-08-07` が記法どおりの文字列になる | 妥当（`JsonScalarResolver` の `INT` / `FLOAT` に一致せず、日付タグの解決も持たないため） |
 | 空文字 `""` と値なし（Java `null`）が区別される | 妥当（Excel 経路が両者を区別できない XLS-04 とは対照的だが、YAML では区別できる）。**但し書き（2026-08-14・修正ラウンド 2 で追加）**: 区別されるのは**書かれた値**についてだけである。レコード断片で行の要素数が `fields` の件数に足りない場合、欠けた位置は `null` ではなく `""` で埋まり、「書かれた空文字」と見分けが付かなくなる（**YML-05**） |
-| 未知のトップレベルキーが**実ファイル経路では例外**になる（in-memory 経路では無視される） | 妥当。スキーマのルートが `additionalProperties: false` であるため。`YamlFormatReader#addBlocksForSection` の「未知キーは無視」は**スキーマが許す範囲にしか効かない**。loud に失敗するので黙って壊れない（担保: `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown`） |
+| 未知のトップレベルキーが**実ファイル経路では例外**になる（in-memory 経路では無視される） | 妥当。スキーマのルートが `additionalProperties: false` であるため。`YamlFormatReader#addBlocksForSection` の「未知キーは無視」は**実ファイル経路では到達不能**である（スキーマのトップレベル `properties` 11 キーと同メソッドの分岐 11 本が完全に一致し、分岐に落ちない既知キーは存在しない。JaCoCo が分岐 108/108 なのは in-memory 経路が通しているため）。loud に失敗するので黙って壊れない（担保: `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown`） |
 | 空ファイルが例外にならず、ブロック 0 件のコンテナになる | 妥当（`YamlLoader#load` が `loaded == null` のとき空 Map を返す。トップレベルに必須キーは無いためスキーマ上も適合する。担保: `#readsEmptyFileAsContainerWithoutBlocks`） |
 | `directives` を書かなくても中間モデルに `file-type` が現れる | 既知（**XLS-07**）。同じ本体器（`DataFile`）を使うため辺①と同じ挙動になる（担保: `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage`） |
 | `record_type` を書かないと `RecordLayout.recordType` が `null` になる | 妥当（`RecordLayout` の Javadoc「省略時は null」どおり。辺①の実 `.xlsx` 経路が `""` になる **XLS-06** とは非対称だが、YAML 側は仕様どおりである。担保: `#readsEmptyRowsFromRecordLayoutWithoutRows`） |
+| テーブル系ではテーブル名とカラム名が大文字化される（`table: "my_table"` → `MY_TABLE`、`user_id` → `USER_ID`）。LIST_MAP は原文の大小のまま | 妥当。器（nablarch-testing の `TableData`）が NTF 実行時に行うのと**同じ正規化**であり、変換後の YAML／Excel を NTF が読んでも解釈は変わらない。テーブル名については `$defs.table_data.properties.table.description` が「NTF により trim・大文字変換される」と明言している。**ただしカラム名の大文字化はスキーマのどこにも書かれておらず、LIST_MAP との非対称も文書化されていない。**衝突が起きた場合は値が消えるため、そちらは **YML-10** として課題に記録した（担保: `dropsValueWhenTableColumnNamesDifferOnlyByCase` ／ `keepsOriginalColumnCaseInListMap`） |
 
 ### 到達不能と判定した軸要素（#24）
 
@@ -1241,12 +1242,12 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 **本節は 2026-08-14 の 2 巡目レビュー指摘（「軸の枠に沿って埋める作り方では拾えない壊れ方が残っている」）を受けて
 実施した掃引の結果である。** 掃引の手順と、列挙したスキーマ上の自由度の一覧は
 `inventory.md` §2.1-2 の「開示」に載せた（どこまで見たか・見ていない範囲もそこに書いてある）。
-**掃引はその後 3 巡目レビュー指摘を受けて項目 24〜26 まで広げ、そこで YML-09 を見つけた**（同じ掃引の続きであるため
-節を分けずに本節へ入れている）。
+**掃引はその後のレビュー指摘を受けて項目 27 まで広げ、そこで YML-09（項目 24）と YML-10（項目 27）を見つけた**
+（同じ掃引の続きであるため節を分けずに本節へ入れている）。
 
-**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08・YML-09）を先に置き、
-loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない
-（YML-09 は最後に見つかったが検出できない側であるため YML-07 より前に来る）。
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08・YML-09・YML-10）を
+先に置き、loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない
+（YML-09・YML-10 は最後に見つかったが検出できない側であるため YML-07 より前に来る）。
 既出の YML-01（**変換時には**検出できない）・YML-02・YML-03（検出できない）もすべて検出できない側であるため、
 本節を後ろに置くことは並び順の原則に反しない（ID 昇順と発見順が一致しているだけである）。
 
@@ -1516,6 +1517,65 @@ loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見�
   同じ基準を当てれば、エントリの並びが変わることも「変換は忠実」として片付けられない。
 - 判断: **仕様として不適切**（あるべき姿は原文の記述順を保つことである。グループ単位の走査は
   器へ渡す単位の都合であって、出力の並びを決める理由にはならない）。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-10 テーブル系のカラム名は大文字化されるため、大小だけが違うキーが衝突して値が黙って消える（影響度 高・**検出できない**）
+
+| 入力（`setup_tables` の `rows`） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| `[{id: "1", ID: "2"}, {id: "3", ID: "4"}]` | `identifier=MY_TABLE`、`columnNames=[ID, ID]`、`rows=[[2, 2], [4, 4]]`。**`id` に書いた `"1"` `"3"` はどこにも残らない**うえ、**列名が重複した中間モデル**になる | `dropsValueWhenTableColumnNamesDifferOnlyByCase` |
+| `list_maps` に同じ `[{id: "1", ID: "2"}]` | `columnNames=[id, ID]`、`rows=[[1, 2]]`。**原文の大小が保たれ、値も失われない** | `keepsOriginalColumnCaseInListMap` |
+
+例外にも警告にもならない。
+
+- **この入力はスキーマ上の仕様内である。** `$defs.table_data.properties.rows.items` は
+  `{"type": "object", "additionalProperties": {"type": ["string", "null"]}}` で、
+  **キーの大小にも一意性にも制約が無い**。YAML としても `id` と `ID` は別キーであるため、
+  ローダの重複キー検査（`setAllowDuplicateKeys(false)`）にも掛からない。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']
+  print(json.dumps(d['table_data']['properties']['rows']['items'], ensure_ascii=False))
+  "
+  ```
+
+- 原因: **帰属は nablarch-testing 側である。** `nablarch/test/core/db/TableData.java` が
+  テーブル名（`name.trim().toUpperCase()`）とカラム名（`columnNames[i].toUpperCase()`）を大文字化し、
+  さらに行 Map へ値を入れるときも `map.put(columnNames[i].toUpperCase(), value)` とキーを大文字化する。
+  大文字化後に同名となった 2 カラムは **1 つの Map エントリへ潰れ、後勝ちの値だけが残る**。
+  converter（`YamlFormatReader#addTableBlocks`）は器が返した列名配列でそのまま値を引くため、
+  重複した列名がそのまま中間モデルへ出て、同じ値が 2 回並ぶ。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing/6-NEXT-SNAPSHOT/nablarch-testing-6-NEXT-SNAPSHOT-sources.jar \
+    && grep -n 'toUpperCase' nablarch/test/core/db/TableData.java | head -4
+  ```
+
+- **前提となる事実（大文字化そのもの）**: テーブル系では、衝突が無い場合でも
+  テーブル名とカラム名が大文字化される（`table: "my_table"` → `MY_TABLE`、
+  `user_id` → `USER_ID`）。**LIST_MAP は経路が違い、原文の大小のまま入る**
+  （`nonMarkerColumns` が `YamlSection#resolveColumns` の生キーを使う）。
+  スキーマが大文字変換に触れているのは `$defs.table_data.properties.table.description`
+  （「NTF により trim・大文字変換される」）**だけ**で、カラム名については何も書いていない。
+  大文字化そのものを課題としない判断は下の「課題としないと判断した観測結果（#24）」に記した。
+- **YML-04 との関係**: どちらも「スキーマが縛らないキー集合」に起因し、値が黙って消える。
+  YML-04 は**行をまたいだキーの差**、本課題は**同一行内の大小の衝突**であり、原因も帰属も別である
+  （YML-04 は yaml 側 `YamlSection#resolveColumns` ＋ converter、本課題は nablarch-testing 側 `TableData`）。
+- **辺① との関係**: 辺①は軸F に **F1-05「カラム名重複」**を要素として持ち、
+  `XlsFormatReader` は重複を検出して WARN ログを出す（steering #16）。
+  **辺②には同じ検出が無く、大小違いという形でだけ重複が起こる。**
+- 影響: 手書きの YAML でカラム名の大小が揺れることは自然に起こり得る（`id` と `ID` を混ぜて書く）。
+  それが警告なしに片方だけ残る。NTF 実行時も同じ大文字化を行うため後段のテストは通ってしまう。
+- 判断: **仕様として不適切**（少なくとも「大文字化後に同名となるカラムがある」ことを検知して
+  WARN すべきである。辺①が F1-05 で行っているのと同じ扱い）。
   修正はこの作業では行わない（`src/main` 無変更）。
 
 ### YML-07 長さ省略記法 `"-"` は `text-encoding` を書かないと手掛かりの無い `NullPointerException` になる（影響度 低・loud に失敗するため検出できる）

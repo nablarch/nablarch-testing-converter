@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -89,23 +90,43 @@ public class YamlFormatReaderScalarTest {
      * 書き出し、中間モデルへ入った値を返す。
      *
      * <p>
-     * <b>ブロックスカラー（{@code |} ／ {@code >}）を渡す場合の継続行のインデントは
-     * 半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1 で実測。8 個は {@code ScannerException}、
-     * 7 個は {@code ParserException}、6 個は {@code ScannerException} になる）。
-     * キー {@code V} が {@code "      - V:"}（空白 6 個＋{@code "- "}）の <b>9 桁目</b>から始まり、
-     * YAML のブロックスカラーはそれより深いインデントを要求するためである。
-     * 本クラスのテストは空白 10 個で書いている（インデント量そのものは値に現れない。
-     * ブロックスカラーは最も浅い継続行のインデントを基準に切り落とすため）。
+     * 値を書かない場合は本メソッドではなく {@link #readOmittedValue()} を、
+     * ブロックスカラー（{@code |} ／ {@code >}）の場合は {@link #readBlockScalarValue} を使う。
      * </p>
      *
-     * @param valueLines 検証対象スカラー。1 要素目は {@code "      - V: "} に続けて書かれ、
-     *                   2 要素目以降（ブロックスカラーの続き）は行としてそのまま連結される
-     *                   （＝インデントも呼び出し側が書く）。
-     *                   値を書かない場合は本メソッドではなく {@link #readOmittedValue()} を使う
+     * @param value 検証対象スカラー。{@code "      - V: "} に続けて書かれる
      * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
      */
-    private String readValue(String... valueLines) {
-        return readValueLine(" " + valueLines[0], Arrays.asList(valueLines).subList(1, valueLines.length));
+    private String readValue(String value) {
+        return readValueLine(" " + value, Collections.<String>emptyList());
+    }
+
+    /**
+     * ブロックスカラー（{@code |} ／ {@code >}）で書いた複数行の値を読み、中間モデルへ入った値を返す。
+     *
+     * <p>
+     * <b>継続行のインデントは本メソッドが付ける</b>（半角空白 10 個）。呼び出し側は中身だけを渡す。
+     * 必要なインデントは<b>半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1 で実測。8 個は
+     * {@code ScannerException}、7 個は {@code ParserException}、6 個は {@code ScannerException} になる）。
+     * キー {@code V} が {@code "      - V:"}（空白 6 個＋{@code "- "}）の <b>9 桁目</b>から始まり、
+     * YAML のブロックスカラーはそれより深いインデントを要求するためである。
+     * </p>
+     *
+     * <p>
+     * インデント量そのものは値に現れない。ブロックスカラーの content indentation は
+     * <b>最初の非空行のインデント</b>で決まり（YAML 1.2 §8.1.1.1）、以降の行はそれ以上のインデントを要する。
+     * </p>
+     *
+     * @param header       ブロックスカラーの記法（{@code "|"} ／ {@code ">"}）
+     * @param contentLines 継続行の中身（インデントを含めない）
+     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readBlockScalarValue(String header, String... contentLines) {
+        List<String> indented = new ArrayList<>(contentLines.length);
+        for (String line : contentLines) {
+            indented.add("          " + line);
+        }
+        return readValueLine(" " + header, indented);
     }
 
     /**
@@ -387,7 +408,7 @@ public class YamlFormatReaderScalarTest {
      */
     @Test
     public void readsLiteralBlockScalarKeepingNewlines() {
-        assertThat(readValue("|", "          l1", "          l2"), is("l1\nl2\n"));
+        assertThat(readBlockScalarValue("|", "l1", "l2"), is("l1\nl2\n"));
     }
 
     /**
@@ -397,7 +418,7 @@ public class YamlFormatReaderScalarTest {
      */
     @Test
     public void readsFoldedBlockScalarFoldingNewlinesIntoSpaces() {
-        assertThat(readValue(">", "          l1", "          l2"), is("l1 l2\n"));
+        assertThat(readBlockScalarValue(">", "l1", "l2"), is("l1 l2\n"));
     }
 
     // ------------------------------------------------------------------ D2-10
@@ -479,7 +500,13 @@ public class YamlFormatReaderScalarTest {
      * 「12 ケースの結果が他の 2 系統でも同じか」は上のテストだけでは分からない。
      * 以下は D2-06（null）と D2-11（空文字）の 2 ケースだけを別経路で測り、経路差が無いことを固定する。
      * 12 ケース × 3 経路には広げない（軸D の 12 ケース定義は setup_tables 経路のまま変えない）。
-     * 実測の結果、3 経路とも同じであった。
+     * 実測の結果、3 経路とも同じ値が入った。
+     *
+     * ただしレコード断片経路の空文字だけは、固定できる性質が他より弱い。この経路では
+     * 「書かれた空文字」と「要素数が足りず器が埋めた空文字」が中間モデル上で区別できないため
+     * （issues.md YML-05）、書いた "" が保たれたことをテストで示すことはできない。
+     * 示せるのは「"" は Java null にはならない」ことまでである。
+     * 該当テスト readsEmptyStringAsIsInRecordFragmentPath の Javadoc に同じ但し書きを置いた。
      */
 
     /**
@@ -521,17 +548,21 @@ public class YamlFormatReaderScalarTest {
     /**
      * Given: 引用符付きの空文字 {@code ""} をレコード断片の行値に置いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : 空文字が入る（{@code setup_tables} 経路と同じ。Java {@code null} とは区別される）。
+     * Then : 空文字が入る（Java {@code null} とは区別される）。
      *
      * <p>
-     * <b>但し書き: 区別されるのは「書かれた値」についてだけである。</b>レコード断片で行の要素数が
-     * {@code fields} の件数に足りない場合、欠けた位置は Java {@code null} ではなく<b>空文字</b>で埋められ、
-     * ここで固定した「書かれた空文字」と見分けが付かなくなる
-     * （{@code coverage/issues.md} <b>YML-05</b>。固定テストは
-     * {@link YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull}）。
+     * <b>本テストが固定できるのは「{@code ""} は Java {@code null} にならない」ことまでである。</b>
+     * レコード断片経路では、行の要素数が {@code fields} の件数に足りないときに欠けた位置が
+     * <b>空文字で埋められる</b>ため（{@code coverage/issues.md} <b>YML-05</b>。固定テストは
+     * {@link YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull}）、
+     * 「書かれた {@code ""}」と「書かれなかった位置」が同じ {@code ""} になる。実測でも
+     * {@code rows: - [""]} と {@code rows: - []} は同じ結果になった。
+     * すなわち「書いた空文字が保たれた」ことは本テストでは示せない
+     * （{@code setup_tables} ／ {@code list_maps} 経路では欠けたキーが {@code null} になるため示せる。
+     * {@link YamlFormatReaderInvalidInputTest#padsColumnMissingFromSecondRowWithNullInTable}）。
      * </p>
      *
-     * <p>担保する軸要素: D2-11 をレコード断片経路で確認したもの（同一ケース・別経路）。</p>
+     * <p>担保する軸要素: D2-11 をレコード断片経路で確認したもの（同一ケース・別経路。上の但し書きの範囲で）。</p>
      */
     @Test
     public void readsEmptyStringAsIsInRecordFragmentPath() {

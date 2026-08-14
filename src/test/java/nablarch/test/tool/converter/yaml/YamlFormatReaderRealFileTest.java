@@ -327,7 +327,13 @@ public class YamlFormatReaderRealFileTest {
     /**
      * Given: {@code directives} を書かない固定長ファイルエントリ。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : {@code directives} は空にならず、器が注入する {@code file-type} だけを持つ。
+     * Then : {@code directives} は空にならず、器が注入する {@code file-type} を持つ。
+     *
+     * <p>
+     * 注入されるキーは<b>ファイル種別で違う</b>。固定長は {@code {file-type=Fixed}} の 1 件だが、
+     * 可変長は {@code {file-type=Variable, field-separator=,}} の 2 件になる（実測）。
+     * 本テストは固定長で 1 件であることを固定する。空にならないという C-11 の結論は両種別で成り立つ。
+     * </p>
      *
      * <p>
      * 軸C の <b>C-11（{@code FileDataBlock.directives} 空）が辺②で到達不能である根拠</b>である。
@@ -636,7 +642,7 @@ public class YamlFormatReaderRealFileTest {
      * （{@code $defs.group_message_data.description}）は「{@code group_id} を省略した場合は経路 B として動作する」、
      * <b>プロパティの</b> description（{@code $defs.group_message_data.properties.group_id.description}）は
      * 「{@code MockMessagingContext} / {@code MockMessagingClient} 経路では参照されないため省略可」と書いている
-     * （2 文は別の JSON パスにある。引用元の取り違えを 2026-08-14 のレビュー指摘で訂正した）。
+     * （2 文は別の JSON パスにある）。
      * それでも {@code YamlFormatReader#addSendSyncBlocks} は
      * {@code rawGroupsInOrder}（{@code group_id} が非 null のエントリのみ列挙）を回すため、
      * {@code group_id} の無いエントリはブロックを生成しない。

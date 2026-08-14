@@ -96,6 +96,88 @@ public class YamlFormatReaderInvalidInputTest {
         YamlLoader.clearCacheForTest();
     }
 
+    // ------------------------------------------------------------------ helpers
+
+    /**
+     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     *
+     * @return ディレクトリ
+     */
+    private Path dir() {
+        return folder.getRoot().toPath();
+    }
+
+    /**
+     * YAML テキストを読み、{@link YamlSchemaValidationException} で失敗することを確かめる。
+     *
+     * @param yamlText YAML テキスト
+     * @return 送出された例外
+     */
+    private YamlSchemaValidationException assertSchemaViolation(String yamlText) {
+        return assertThrows(YamlSchemaValidationException.class, () -> YamlFixture.read(dir(), yamlText));
+    }
+
+    /**
+     * 違反のキーワード（{@code enum} / {@code required} など）をロケール非依存に取り出す。
+     *
+     * @param e 送出された例外
+     * @return 違反のキーワード（例外が報告した順）
+     */
+    private static List<String> types(YamlSchemaValidationException e) {
+        List<String> types = new ArrayList<>();
+        for (ValidationMessage message : e.getErrors()) {
+            types.add(message.getType());
+        }
+        return types;
+    }
+
+    /**
+     * 違反位置（{@code $.setup_files[0].type} など）をロケール非依存に取り出す。
+     *
+     * @param e 送出された例外
+     * @return 違反位置（例外が報告した順）
+     */
+    private static List<String> locations(YamlSchemaValidationException e) {
+        List<String> locations = new ArrayList<>();
+        for (ValidationMessage message : e.getErrors()) {
+            locations.add(message.getInstanceLocation().toString());
+        }
+        return locations;
+    }
+
+    /**
+     * 指定のクラス・メソッドの段がスタックトレースに含まれるかを返す。
+     *
+     * <p>
+     * 段の位置（{@code [0]} / {@code [1]}）で見ないのは、最内段が JDK の実装で動くためである。
+     * </p>
+     *
+     * @param thrown     送出された例外
+     * @param className  探すクラスの完全修飾名
+     * @param methodName 探すメソッド名
+     * @return 含まれるなら {@code true}
+     */
+    private static boolean hasFrame(Throwable thrown, String className, String methodName) {
+        for (StackTraceElement frame : thrown.getStackTrace()) {
+            if (className.equals(frame.getClassName()) && methodName.equals(frame.getMethodName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 唯一のブロックの唯一のレコードレイアウトを返す。
+     *
+     * @param container 中間モデル
+     * @return レコードレイアウト
+     */
+    private static RecordLayout onlyRecord(TestDataContainer container) {
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("レコードレイアウトが 1 件だけ生成されること", block.getRecords().size(), is(1));
+        return block.getRecords().get(0);
+    }
+
     // ------------------------------------------------------------------ F2-01 スキーマ違反
 
     /**
@@ -196,8 +278,9 @@ public class YamlFormatReaderInvalidInputTest {
      * は未知キーが無視されることを固定しているが、それは {@code loadRawMap} を差し替えて
      * スキーマ検証を迂回しているためである。実ファイル経路ではスキーマのトップレベルが
      * {@code additionalProperties: false} であるため、未知キーはファイルごと読み込みに失敗する。
-     * {@code YamlFormatReader#addBlocksForSection} の「未知キーは無視」は、
-     * <b>スキーマが許す範囲（既知キーのうち本クラスが分岐を持たないもの）に対してのみ効く</b>。
+     * すなわち {@code YamlFormatReader#addBlocksForSection} の「未知キーは無視」は
+     * <b>実ファイル経路では到達不能</b>である —— スキーマのトップレベル {@code properties} 11 キーと
+     * 同メソッドの分岐 11 本が完全に一致しており、分岐に落ちない既知キーは存在しない。
      * </p>
      *
      * <p>担保する軸要素: F2-03（未知のキー）。</p>
@@ -323,11 +406,11 @@ public class YamlFormatReaderInvalidInputTest {
     }
 
     // ==================================================================
-    // 掃引で見つけた現状挙動の固定（#24 修正ラウンド 2）
+    // 掃引で見つけた現状挙動の固定
     //
     // 以下はいずれも「本体スキーマが構造を縛っていない箇所」を突いた入力であり、
     // スキーマ検証を通る（＝仕様内の）入力である。軸F の 5 ケースには属さない。
-    // 課題は coverage/issues.md の YML-04〜YML-08 に記録した（src/main は無変更）。
+    // 課題は coverage/issues.md の YML-04〜YML-08・YML-10 に記録した（src/main は無変更）。
     // ==================================================================
 
     // ------------------------------------------------------------------ YML-04 先頭行のキー集合だけがカラムになる
@@ -643,10 +726,16 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      *
      * <p>
-     * <b>例外の型とメッセージだけでなく、発生箇所（スタックトレース先頭 2 段のクラス名・メソッド名）も
-     * アサートする。</b>型とメッセージ {@code null} だけではフィクスチャ側の不備で出た
-     * {@code NullPointerException} でも緑になり、「長さ計算の場所で・診断情報なしに落ちる」という
-     * 本課題の主張を固定できないためである。行番号はアサートしない（JDK・本体のバージョンで動くため）。
+     * <b>例外の型とメッセージだけでなく、発生箇所もアサートする。</b>型とメッセージ {@code null} だけでは
+     * フィクスチャ側の不備で出た {@code NullPointerException} でも緑になり、
+     * 「長さ計算の場所で・診断情報なしに落ちる」という本課題の主張を固定できないためである。
+     * </p>
+     *
+     * <p>
+     * 見るのは<b>器の呼び出し段が居ること</b>だけで、段の位置も行番号も見ない。
+     * NPE を投げる最内段は JDK の実装次第で動く（JDK 17 では
+     * {@code String#getBytes(Charset)} の {@code null} 判定だが、{@code Objects#requireNonNull} へ
+     * 変われば別クラスになる）。本課題の主張は最内段ではなく<b>呼び出し元</b>にあるためである。
      * </p>
      */
     @Test
@@ -666,16 +755,8 @@ public class YamlFormatReaderInvalidInputTest {
         // Then
         assertThat("どのファイルのどのフィールドかを示す手掛かりが無い",
                 thrown.getMessage(), is(nullValue()));
-        StackTraceElement thrownAt = thrown.getStackTrace()[0];
-        assertThat("落ちるのは値のバイト長を求める呼び出しである（クラス）",
-                thrownAt.getClassName(), is("java.lang.String"));
-        assertThat("落ちるのは値のバイト長を求める呼び出しである（メソッド）",
-                thrownAt.getMethodName(), is("getBytes"));
-        StackTraceElement caller = thrown.getStackTrace()[1];
-        assertThat("呼び出し元は器のオンデマンド長計算である（クラス）",
-                caller.getClassName(), is("nablarch.test.core.file.DataFileFragment"));
-        assertThat("呼び出し元は器のオンデマンド長計算である（メソッド）",
-                caller.getMethodName(), is("replaceFieldSize"));
+        assertTrue("器のオンデマンド長計算から出た NPE であること: " + Arrays.toString(thrown.getStackTrace()),
+                hasFrame(thrown, "nablarch.test.core.file.DataFileFragment", "replaceFieldSize"));
     }
 
     /**
@@ -809,64 +890,77 @@ public class YamlFormatReaderInvalidInputTest {
                 thrown.getMessage(), is("field-separator must be one character.but was "));
     }
 
-    // ------------------------------------------------------------------ helpers
+    // ------------------------------------------------------------------ YML-10 カラム名の大小衝突
 
     /**
-     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     * Given: テーブル系の {@code rows} に、大小だけが違う 2 つのキー {@code id} と {@code ID} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にも警告にもならず</b>、カラム名は大文字化されて {@code [ID, ID]} と重複し、
+     *        {@code id} に書いた値（{@code "1"} ／ {@code "3"}）は中間モデルのどこにも残らない。
      *
-     * @return ディレクトリ
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.table_data.properties.rows.items} は
+     * {@code {"type": "object", "additionalProperties": {"type": ["string", "null"]}}} で、
+     * キーの大小にも一意性にも制約が無い。YAML としても {@code id} と {@code ID} は別キーである。
+     * </p>
+     *
+     * <p>
+     * 原因は nablarch-testing の {@code TableData} が、カラム名（コンストラクタ）と行 Map のキー
+     * （値の格納時）をそれぞれ {@code toUpperCase()} することである。大文字化後に同名となった
+     * 2 カラムは 1 つの Map エントリへ潰れ、後勝ちの値だけが残る。
+     * {@code YamlFormatReader#addTableBlocks} は器が返した列名でそのまま値を引くため、
+     * 同じ値が 2 回並ぶ。{@code coverage/issues.md} に <b>YML-10</b> として記録した
+     * （{@code src/main} は無変更）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-10 の根拠テスト）。</p>
      */
-    private Path dir() {
-        return folder.getRoot().toPath();
+    @Test
+    public void dropsValueWhenTableColumnNamesDifferOnlyByCase() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"my_table\"\n"
+                + "    rows:\n"
+                + "      - id: \"1\"\n"
+                + "        ID: \"2\"\n"
+                + "      - id: \"3\"\n"
+                + "        ID: \"4\"\n");
+
+        // Then
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat("テーブル名も大文字化される", block.getIdentifier(), is("MY_TABLE"));
+        assertThat("大文字化により列名が重複する", block.getColumnNames(), is(Arrays.asList("ID", "ID")));
+        assertThat("後勝ちの値だけが残り、同じ値が 2 回並ぶ", block.getRows(),
+                is(Arrays.asList(Arrays.asList("2", "2"), Arrays.asList("4", "4"))));
     }
 
     /**
-     * YAML テキストを読み、{@link YamlSchemaValidationException} で失敗することを確かめる。
+     * Given: LIST_MAP の {@code rows} に、大小だけが違う 2 つのキー {@code id} と {@code ID} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : カラム名は<b>原文の大小のまま</b> {@code [id, ID]} で保たれ、両方の値が残る。
      *
-     * @param yamlText YAML テキスト
-     * @return 送出された例外
+     * <p>
+     * テーブル系（{@link #dropsValueWhenTableColumnNamesDifferOnlyByCase}）との<b>非対称</b>を固定する。
+     * LIST_MAP は {@code TableData} を経由せず、{@code YamlFormatReader#nonMarkerColumns} が
+     * {@code YamlSection#resolveColumns} の生キーをそのまま使うため大文字化されない。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-10 の対比。テーブル系との非対称を示す）。</p>
      */
-    private YamlSchemaValidationException assertSchemaViolation(String yamlText) {
-        return assertThrows(YamlSchemaValidationException.class, () -> YamlFixture.read(dir(), yamlText));
-    }
+    @Test
+    public void keepsOriginalColumnCaseInListMap() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - id: \"1\"\n"
+                + "        ID: \"2\"\n");
 
-    /**
-     * 違反のキーワード（{@code enum} / {@code required} など）をロケール非依存に取り出す。
-     *
-     * @param e 送出された例外
-     * @return 違反のキーワード（例外が報告した順）
-     */
-    private static List<String> types(YamlSchemaValidationException e) {
-        List<String> types = new ArrayList<>();
-        for (ValidationMessage message : e.getErrors()) {
-            types.add(message.getType());
-        }
-        return types;
-    }
-
-    /**
-     * 違反位置（{@code $.setup_files[0].type} など）をロケール非依存に取り出す。
-     *
-     * @param e 送出された例外
-     * @return 違反位置（例外が報告した順）
-     */
-    private static List<String> locations(YamlSchemaValidationException e) {
-        List<String> locations = new ArrayList<>();
-        for (ValidationMessage message : e.getErrors()) {
-            locations.add(message.getInstanceLocation().toString());
-        }
-        return locations;
-    }
-
-    /**
-     * 唯一のブロックの唯一のレコードレイアウトを返す。
-     *
-     * @param container 中間モデル
-     * @return レコードレイアウト
-     */
-    private static RecordLayout onlyRecord(TestDataContainer container) {
-        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
-        assertThat("レコードレイアウトが 1 件だけ生成されること", block.getRecords().size(), is(1));
-        return block.getRecords().get(0);
+        // Then
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
+        assertThat("原文の大小がそのまま残る", block.getColumnNames(), is(Arrays.asList("id", "ID")));
+        assertThat("どちらの値も失われない", block.getRows(), is(Arrays.asList(Arrays.asList("1", "2"))));
     }
 }

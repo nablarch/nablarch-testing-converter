@@ -17,3 +17,6 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+# Claude Code のレビュア用 worktree（一時作業領域）
+.claude/worktrees/

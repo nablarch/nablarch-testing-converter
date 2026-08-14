@@ -775,7 +775,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
-| `YamlFormatReaderInvalidInputTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 15 件は**スキーマを通る仕様内の入力**で、掃引で見つけた現状挙動を固定する） |
+| `YamlFormatReaderInvalidInputTest` | 25 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 17 件は**スキーマを通る仕様内の入力**で、掃引で見つけた現状挙動を固定する） |
 | `YamlFormatReaderRealFileTest` | 18 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
 **件数を更新した（2026-08-14・#24 のレビュー指摘の反映で 9 件追加）。** 内訳は
@@ -794,6 +794,11 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 掃引項目 24 で見つけた `issues.md` **YML-09** の固定。同クラスは修正ラウンド 2 の時点で 17 件だった
 ——`git show b26b5a7:src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java | grep -c '^    @Test'` → **17**）。
 **この 1 件も軸A〜F のどの要素にも新しい担保を与えないため、§2.3 の件数は動かない。**
+
+**件数をさらに更新した（2026-08-14・QA レビュー指摘の反映で 2 件追加）。** 内訳は
+`YamlFormatReaderInvalidInputTest` ＋2（掃引項目 27 で見つけた `issues.md` **YML-10** の固定＝
+`dropsValueWhenTableColumnNamesDifferOnlyByCase` と、その対比 `keepsOriginalColumnCaseInListMap`）。
+**この 2 件も軸A〜F のどの要素にも新しい担保を与えないため、§2.3 の件数は動かない。**
 
 3 クラスとも `new YamlFormatReader().read(...)` を本番配線で呼ぶ。`YamlFormatReaderTest` 20 件が
 `loadRawMap` を in-memory `Map` へ差し替えて**スカラー解決もスキーマ検証も通らない**のに対し、
@@ -834,7 +839,14 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | 元のケース | LIST_MAP 経路（`list_maps`） | レコード断片経路（`record_fragment.rows`） | 経路差 |
 |---|---|---|---|
 | D2-06 `null`（引用符なし） | `readsUnquotedNullAsJavaNullInListMapPath` → Java `null` | `readsUnquotedNullAsJavaNullInRecordFragmentPath` → Java `null` | **無し**（`setup_tables` 経路と同じ） |
-| D2-11 空文字 `""` | `readsEmptyStringAsIsInListMapPath` → `""` | `readsEmptyStringAsIsInRecordFragmentPath` → `""` | **無し**（同上） |
+| D2-11 空文字 `""` | `readsEmptyStringAsIsInListMapPath` → `""` | `readsEmptyStringAsIsInRecordFragmentPath` → `""`（**固定できる性質が弱い**。下の但し書き） | **無し**（同上） |
+
+**但し書き（レコード断片経路の空文字）**: この経路では、行の要素数が `fields` の件数に足りないときに
+欠けた位置が**空文字で埋められる**（**YML-05**）。したがって「書かれた `""`」と「書かれなかった位置」が
+中間モデル上で区別できず、**`rows: - [""]` と `rows: - []` は同じ結果になる**（実測）。
+`readsEmptyStringAsIsInRecordFragmentPath` が固定できるのは「`""` は Java `null` にならない」ことまでで、
+**「書いた空文字が保たれた」ことは示せない**。テーブル／LIST_MAP 経路では欠けたキーが `null` になるため
+（`padsColumnMissingFromSecondRowWithNullInTable`）区別できる。この差はテストの Javadoc にも書いた。
 
 残る 10 ケースを別経路で測っていないことは、下の「開示」に穴として記す。
 
@@ -934,15 +946,15 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 
 | # | スキーマ上の自由度（JSON パス） | 自由度の中身 | 実 `.yaml` で観測した結果 |
 |---|---|---|---|
-| 1 | `$defs.table_data.properties.rows.items` | `additionalProperties` が任意キーを許し、行ごとのキー集合に制約が無い | **YML-04**（先頭行に無いキーが黙って消える） |
-| 2 | `$defs.list_map_data.properties.rows.items` | 同上 | **YML-04**（経路差なし） |
+| 1 | `$defs.table_data.properties.rows.items` | `additionalProperties` が任意キーを許し、行ごとのキー集合に制約が無い。**キーの大小・一意性にも制約が無い** | **YML-04**（先頭行に無いキーが黙って消える）。**大小だけが違うキー（`id` と `ID`）を同一行に書いた場合は YML-10**（大文字化で衝突し値が消える） |
+| 2 | `$defs.list_map_data.properties.rows.items` | 同上 | **YML-04**（経路差なし）。ただし**大小の衝突は起きない** —— LIST_MAP は原文の大小のまま入る（**YML-10** の対比） |
 | 3 | `$defs.record_fragment.properties.rows.items` | 要素数が `fields` の件数と紐づいていない | **YML-05**（余りは drop・不足は `""` 充填） |
 | 4 | `$defs.record_fragment.properties.record_type` | `enum` が無い（description は「任意の名前でよい」） | `FW_HEADER` は **YML-03**（既記録）。`"Default"` / `"default"` は `null` へ正規化（テストで固定）。`"DEFAULT"` や任意名は原文のまま |
 | 5 | `$defs.field_def.properties.type` | `enum` が無い（`minLength: 1` のみ） | 未知の型名は `IllegalArgumentException`（loud）。課題なし |
 | 6 | `$defs.record_fragment.properties.fields` | `uniqueItems` が無く、フィールド名の重複は description にだけ「重複不可（重複時はエラー）」と書かれている | `IllegalArgumentException: Duplicate field names are not permitted in a record. duplicate field=[f1] . file=[f.dat]`（loud）。課題なし |
 | 7 | `$defs.field_def.properties.length` の `"-"` | パターンは許すが意味は description にだけ書かれている | **YML-07**（`text-encoding` 省略時に手掛かりの無い NPE） |
 | 8 | `$defs.field_def.properties.length` の省略 | 「固定長では実質必須」は description にだけ書かれている | 例外にならず `FieldDef.length` が `null` になる。変換は忠実。課題なし |
-| 9 | `$defs.directives`（固定長専用／可変長専用の別） | キー集合は固定だが、ファイル種別との対応は description にだけ書かれている | 取り違えは `IllegalArgumentException: invalid directive found. [...]`（loud）。課題なし |
+| 9 | `$defs.directives`（固定長専用／可変長専用の別） | キー集合は固定だが、ファイル種別との対応は description にだけ書かれている | 取り違えは `IllegalArgumentException: invalid directive found. [...]`（loud）。課題なし。**器が注入する既定ディレクティブはファイル種別で違う** —— 固定長は `{file-type=Fixed}` の 1 件、可変長は `{file-type=Variable, field-separator=,}` の 2 件（実測。C-11 が「空にならない＝到達不能」であることは両種別で成り立つ） |
 | 10 | `$defs.directives.properties.record-separator` ／ `field-separator` | シンボル指定とリテラル指定の両方を description が認めている | **YML-08**（リテラルは trim で消える／シンボルは実文字になる） |
 | 11 | `$defs.directives.properties.file-type` | `type` フィールドと矛盾させられる（整合の制約が無い） | 例外にならず、ブロックは `FIXED` のまま `file-type=Variable` を保持する。原文はどちらも残るため変換は忠実。課題なし |
 | 12 | `$defs.directives.properties.record-length` | フィールド長の合計と紐づいていない | 上書き値がそのまま中間モデルへ入る。変換は忠実。課題なし |
@@ -960,6 +972,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 | 24 | セクション配列内でのエントリの並び（`$defs.table_data` ／ `$defs.file_data` ／ `$defs.group_message_data` の `group_id`） | 同じ `group_id` のエントリが配列内で連続することを要求していない（順序の制約が無い） | **YML-09**（`g1` → `g2` → `g1` と書くとブロックがグループの初出順にまとめ直され、原文の記述順と食い違う。テーブル系・ファイル系・送信系の 3 経路とも同じ。**課題として記録した** — 判断の根拠は下の「掃引項目 24 を課題とした理由」） |
 | 25 | `$defs.field_def.properties.length` の `"0"` | パターンは許すが意味（ダミーフィールド）は description にだけ書かれている | `"0"` が忠実に `FieldDef.length` へ入る（例外にも既定値の補完にもならない）。課題なし |
 | 26 | 識別子系プロパティの `minLength` 不在（`$defs.table_data.properties.table` ／ `$defs.file_data.properties.path` ／ `$defs.list_map_data.properties.id` ／ `$defs.message_data.properties.id` ／ `$defs.record_fragment.properties.record_type` ／ `$defs.field_def.properties.name`）。`group_id` と `$defs.field_def.properties.type` には `minLength: 1` があるという非対称 | 空文字の識別子が書ける | 6 つとも例外にならず、**空の識別子がそのまま中間モデルへ入る**（`table: ""` → `""`、`path: ""` → `""`、`id: ""` → `""`、`name: ""` → `""`）。`table: "   "` は器が trim するため `""` になる。**`record_type: ""` は `null` ではなく `""` で入り、省略（`null`）と分かれる**（C-16 の「省略＝`null`」と隣接する事実。辺①の **XLS-06** は逆に実 `.xlsx` 経路で省略が `""` になる）。黙って消えるものは無いため課題なし |
+| 27 | **器が行う正規化**（スキーマが縛っていない箇所ではなく、スキーマが触れていない箇所）。`$defs.table_data.properties.table` の description は「NTF により trim・大文字変換される」と書くが、**カラム名の大文字化についてはスキーマのどこにも記述が無い** | テーブル系は器（`TableData`）がテーブル名とカラム名を大文字化する（`my_table` → `MY_TABLE`、`user_id` → `USER_ID`）。LIST_MAP は原文の大小のまま | **YML-10**（大小だけが違うキーが大文字化で衝突し、値が黙って消えて列名が重複する）。大文字化そのものは `issues.md`「課題としないと判断した観測結果（#24）」に記録 |
 
 **掃引項目 24 を課題とした理由（記録する／しないの判断・2026-08-14）**
 
@@ -988,7 +1001,7 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 - **軸D の 12 ケースを掃引の各項目へ掛け合わせてはいない**（上の 3 点目の「1 回ずつ」と同じ理由）。
 - **値のサイズ・行数の上限は掃引していない**（2026-08-14・3 巡目レビュー指摘で追記）。
   辺③には D3-07（Excel のセル文字数上限 32767 を超える値。`issues.md` **XLS-19**）があるが、
-  辺②の軸D 12 ケースにも上の掃引 26 項目にもサイズの観点は無い。**1 回だけ観測した**結果、
+  辺②の軸D 12 ケースにも上の掃引 27 項目にもサイズの観点は無い。**1 回だけ観測した**結果、
   40,000 文字の値は中間モデルへ同じ長さ・同じ内容で入り、5,000 行のテーブルも行数どおり入った
   （例外にも切り詰めにもならない）。スキーマは `rows` の値を `["string","null"]` としか縛らず
   長さ・件数の上限を持たないため**上限そのものは掃引していない**。テストは足していない。
@@ -1015,11 +1028,11 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 | D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 27 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）。要素別の担保テストメソッドは §2.1-2 の軸D 表。27 件のうち 4 件は D2-06／D2-11 を LIST_MAP 経路・レコード断片経路で確認したもので、**軸要素としては別勘定にしない**（§2.1-2 の「別経路での確認」表） | 12 |
 | E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **23**。差の 15 件は修正ラウンド 2 で足した掃引の固定テスト（`issues.md` YML-04〜YML-08）であり、**軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件と 15 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **25**。差の 17 件は掃引の固定テスト（`issues.md` YML-04〜YML-08・YML-10）であり、**軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件と 15 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
 | **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
 
-**軸F の 8 件と、差の 15 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 23 は上の表に
-コマンドを併記しているが、内訳の 8 と 15 は数字のまま置かれていた）。
+**軸F の 8 件と、差の 17 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 25 は上の表に
+コマンドを併記しているが、内訳の 8 と 17 は数字のまま置かれていた）。
 `YamlFormatReaderInvalidInputTest` は軸F の節（F2-01〜F2-05）を先頭に、掃引の節（YML-04 以降）を
 後ろに置いており、境界は節見出しのコメント行である:
 
@@ -1055,8 +1068,8 @@ awk '/YML-04 先頭行のキー集合/,0' \
 （`normalizeRecordType` の `"default"` 分岐——**修正ラウンド 2 で到達可能と判明しテストで閉じた**／
 C-15 は実ファイル経路では到達不能／軸D の 10 ケースは 1 経路でしか測っていない／
 YML-02・YML-03 で「警告が出ないこと」を実行可能な形にしていない）と、
-**掃引で列挙したスキーマの自由度 26 項目および「見ていない範囲」6 点**は
-空欄・穴として残る（§2.1-2 の「開示（修正ラウンド 2）」。項目 24〜26 と「見ていない範囲」6 点目は
+**掃引で列挙した 27 項目および「見ていない範囲」6 点**は
+空欄・穴として残る（§2.1-2 の「開示（修正ラウンド 2）」。項目 24〜27 と「見ていない範囲」6 点目は
 修正ラウンド 3 で足した）。**掃引はここで閉じる。**
 
 導出コマンド（自由度の項目数 26。掃引表は §2.1-2 の中で唯一「先頭列が番号」の表である）:

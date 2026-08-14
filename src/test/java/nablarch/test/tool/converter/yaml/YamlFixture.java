@@ -82,13 +82,16 @@ final class YamlFixture {
      * <p>
      * 素キャスト（失敗時に {@code ClassCastException} しか出ない）を避け、どのクラスが来たかが
      * 失敗メッセージに出るようにするためのヘルパ。兄弟の
-     * {@code XlsFormatReaderRealFileTest#onlyBlock(Class)} と同じ形である。
+     * {@code XlsFormatReaderRealFileTest#onlyBlock(Class)} と役割は同じだが、あちらは
+     * 1 クラスでしか使わないため private なインスタンスメソッドである。
      * </p>
      *
      * <p>
-     * 「唯一のブロック」の検査を辺②のテストクラス 3 つ（{@code YamlFormatReaderInvalidInputTest} ／
-     * {@code YamlFormatReaderRealFileTest} ／ {@code YamlFormatReaderScalarTest}）で共有し、
-     * 同じ失敗がクラスごとに別のメッセージにならないようにするため、本クラスへ置いている。
+     * こちらを {@code static} でフィクスチャ側に置いているのは、「唯一のブロック」の検査を辺②の
+     * テストクラス 3 つ（{@code YamlFormatReaderInvalidInputTest} ／ {@code YamlFormatReaderRealFileTest} ／
+     * {@code YamlFormatReaderScalarTest}）で共有し、同じ失敗がクラスごとに別のメッセージに
+     * ならないようにするためである。{@code XlsFixture} が「中間モデルを組み立てるヘルパは引き受けない」と
+     * 線を引いているのに対し、本クラスは<b>中間モデル側の取り出しヘルパも引き受ける</b>点で線引きが違う。
      * </p>
      *
      * @param <T>       期待する実装クラス
