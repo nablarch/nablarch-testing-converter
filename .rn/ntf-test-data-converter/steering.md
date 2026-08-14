@@ -56,6 +56,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **同じ関係を 2 方向に手書きしない。** ひとつのテストメソッドを、台帳の中で「テストメソッド → 軸要素」と「軸要素 → 担保テストメソッド」の両方に書かない。**4 辺を通した逆引き（軸要素 → 担保テストメソッド）の正は #27 の `coverage/axis-matrix.md` とする**（#23 後の構造見直しで確定・2026-08-13。**文言は #24 の 2 巡目レビュー指摘を受けて 2026-08-14 に実態へ合わせた**）。既存クラスの棚卸しは §X.1 系（メソッド → 軸要素）、各タスクが新規追加したクラスの担保は §X.1-2 系（軸要素 → メソッド）に書く。この 2 つは対象クラスが重ならないため二重記載にならない。規約を入れた `3f9e665` の時点で §1.2-2・§3.1-2・§3.1-3 が既にこの形であり（`git show 3f9e665:.rn/ntf-test-data-converter/coverage/inventory.md | grep -c 担保テストメソッド` → 15）、当初の文言のほうが実態と食い違っていた
 - **文書の揃え方**（ユーザー確定・2026-08-13）: 定義を変えたら `steering.md`／`coverage/inventory.md`／`coverage/issues.md` は指示に列挙が無くても現行定義へ揃えてよい。揃えないのは `checks/` だけ（時点の証拠記録であるため）
 - **レビュア subagent は `isolation: worktree` で起動する**（#23 で確立・2026-08-13）。レビュア には `checks/{task-id}.md`（自己点検）を渡さない・読ませない
+- **順序を主張するテストは、フィクスチャを最初から定義順・辞書順とずらして作る**（#24 の教訓・ユーザー確定・2026-08-14）。#24 で 3 巡かけて出た生存変異 9 件は、共通原因が「順序を主張する入力が辞書順・定義順と一致していた」ことだった。一致していると、順序を壊す変異を入れてもテストが通ってしまい、アサートが順序を担保していない。これは辺②に固有の話ではないため、#25 以降でフィクスチャを作るときは書く時点でずらす。3 巡かけて見つけるより書くときに外すほうが安い
+- **作業対象と無関係なファイルの変更は、独立した `chore:` コミットに分ける**（ユーザー確定・2026-08-14）。`.gitignore` への `.claude/worktrees/` 追加が `c15d531`（辺②のレビュー反映コミット）に相乗りしていた。履歴は書き換えないが、以降は分ける
 
 # Tasks
 
@@ -505,6 +507,14 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **`mvn -U` を打たない。** SNAPSHOT を取り直すと外の作業と競合する。解決できない成果物が出たら、自分で埋めずに成果物名と版を挙げて報告する。
 - **converter の `pom.xml` を配布用のピン留め版（`1.0.0-r190cc9a` 等）へ追随させない。** ピン留めは対象PJへ配る成果物の版であって開発リポの版ではなく、当て方はリハーサル側 clone の patch が持つ。開発リポを過去の版へ固定すると、yaml が次に進んだとき辺②の担保が実物からずれる。
 
+### レビュア用 worktree の除外先（ユーザー確定・2026-08-14）
+
+**`.gitignore` の `.claude/worktrees/` は残す。`.git/info/exclude` へ移さない。**
+このリポは `.rn/` 配下をすでに追跡下に置いており、エージェントの作業物を本体に持つ方針を取っている。
+その中で `.claude/worktrees/` だけを除外の対象外にする理由が無い。また `.git/info/exclude` は clone に
+乗らないため、このリポを clone するリハーサル・対象PJ で同じ混入が再発する。`.gitignore` が唯一、
+配布先まで持って行ける置き場である。
+
 ## converter 側では扱わない件
 
 - `rows: []`（データ行 0 件）のとき期待値検証が素通りする（偽陰性）問題は **yaml 側**の課題である。`nablarch-testing-yaml` の `YamlTableDataBuilder` に FIXME として記されている。converter 側で直さない・触らない。
@@ -934,16 +944,8 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-08-14
-- **Last completed**: #23（辺③ 軸A・B・C・E の欠け補充）
-- **Next**: #24 の check off → #25（辺④ 軸D 9 ケース・軸A〜F の欠け補充）
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1 。
-  **#24 は成果物・レビュー3種（各3巡）とも完了し、指摘は全件反映済み（`7fc5f57` まで push 済み）。
-  タスク本体の check off だけがユーザー判断待ち**（レビュー往復の上限 3 巡に到達したため、こちらでは
-  進めていない）。再開時はまず次の 2 点の回答を得ること —— (1) #24 を check off してよいか
-  （よければ `{type}: complete task #24 — …` のコミットを打って #25 へ）、(2) `.gitignore` に足した
-  `.claude/worktrees/`（レビュア用 worktree の混入防止）を残すか外すか。外す場合は次回以降、
-  レビュア起動時に worktree がコミットへ混入しないよう注意が要る。
-  #24 の判定と 3 巡ぶんの指摘・処置は `checks/task-24.md` に一本化してある（Ready to check off の行が
-  ユーザー判断待ちの印）。
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
