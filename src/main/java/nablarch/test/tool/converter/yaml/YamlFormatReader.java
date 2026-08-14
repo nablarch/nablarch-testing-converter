@@ -292,12 +292,11 @@ public class YamlFormatReader implements TestDataFormatReader {
             List<FixedLengthFile> bodies = adapter.readSendSyncMessages(basePath, resourceName, rawGroup, type);
             List<Map<String, Object>> entries = entriesForRawGroup(yaml, sectionKey, rawGroup);
             requireSameSize(bodies.size(), entries.size(), sectionKey, rawGroup);
-            String formattedGroup = rawGroup != null ? "[" + rawGroup + "]" : "";
             for (int i = 0; i < bodies.size(); i++) {
                 FixedLengthFile body = bodies.get(i);
                 Map<String, Object> entry = entries.get(i);
                 FileView view = TestCoreFileAdapter.read(body);
-                blocks.add(new MessageDataBlock(type, formattedGroup, body.getPath(),
+                blocks.add(new MessageDataBlock(type, formatGroup(entry), body.getPath(),
                         toStringDirectives(view.getDirectives()),
                         new LinkedHashMap<>(),
                         toRecordLayouts(view, recordsWithoutFwHeader(entry))));

@@ -43,9 +43,15 @@ public class YamlTestCoreAdapter {
 
     /**
      * デフォルトグループ（{@code group_id} 省略）を本体ビルダへ引き渡すための合成グループ ID。
-     * 複製した Map の中だけで使い、元の YAML には現れない。
+     * <p>
+     * 値そのものに衝突回避の役割は無い。{@link #defaultGroupOnlyYaml} が {@code group_id} を持つ
+     * エントリを 1 件も残さないため、この ID と一致しうる実在のグループ ID がそもそも同じ Map に
+     * 存在しない。上流の照合は {@code YamlMessageBuilder} の
+     * {@code rawGroupId != null && rawGroupId.equals(groupId)} で、非 null の文字列なら何でもよい。
+     * 複製した Map の中だけで使い、元の YAML は書き換えない。
+     * </p>
      */
-    private static final String DEFAULT_GROUP_MARKER = "\0default-group\0";
+    private static final String DEFAULT_GROUP_MARKER = "default-group";
 
     /** テーブル系ビルダ（空インタープリタ・補完なしで配線） */
     private final YamlTableDataBuilder tableBuilder;
