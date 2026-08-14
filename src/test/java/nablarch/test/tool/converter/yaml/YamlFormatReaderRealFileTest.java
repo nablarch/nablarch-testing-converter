@@ -608,24 +608,31 @@ public class YamlFormatReaderRealFileTest {
      * Given: {@code response_body_messages}（送信系）に、{@code record_type: "FW_HEADER"} のレコードと
      *        本文レコードを 1 件ずつ書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : FW_HEADER 名のレコードだけが落ち、本文レコードが残る（{@code records} 1 件）。
+     * Then : <b>2 件とも残る</b>（ファイル系と同じ扱いになる）。
      *
      * <p>
-     * <b>FW_HEADER 名レコードの扱いは 3 経路で異なる。</b>ファイル系は残し
-     * （{@link #keepsFwHeaderNamedRecordInFileFromRealYaml}）、メッセージ系
-     * （{@link #dropsFwHeaderNamedRecordFromRealYaml}）と送信系（本テスト）は落とす。
-     * {@code YamlFormatReader#addSendSyncBlocks} が {@code #recordsWithoutFwHeader(entry)} を使い、
-     * 器（{@code YamlFileBuilder#buildFragmentsForSendSync}）も {@code skipFwHeader=true} で
-     * 落とすため、両者の件数が一致する。**converter 側だけが落とすのをやめると断片数と原文レコード数が
-     * 食い違い {@code IllegalStateException} になる。**
-     * {@code coverage/issues.md} <b>YML-03</b> に 3 経路の非対称を記録した。
+     * <b>仕様どおりの期待値を書いた待機テストである（現時点では赤）。</b>
+     * スキーマ {@code $defs.record_fragment.properties.record_type} の description は
+     * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
+     * {@code $defs.message_data.properties.records} の description も
+     * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。ゆえに送信系でも
+     * この名前のレコードは落とされてはならない（{@code coverage/issues.md} <b>YML-03</b>）。
      * </p>
      *
-     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の固定）。</p>
+     * <p>
+     * <b>本リポジトリだけでは直せない。</b>器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal}）が
+     * {@code skipFwHeader && FW_HEADER_RECORD_TYPE.equals(recordType)} で {@code continue} し断片を作らない
+     * （{@code YamlFileBuilder.java:177}、{@code YamlSection.java:78}）。converter 側の
+     * {@code YamlFormatReader#recordsWithoutFwHeader} だけをやめると器の断片数（1）と原文レコード数（2）が
+     * 食い違い、{@code YamlFormatReader#toRecordLayouts}（{@code YamlFormatReader.java:330-333}）が
+     * {@code IllegalStateException} を投げる。修正は yaml 側で行う必要がある。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の担保）。</p>
      */
     @Test
-    @Ignore("YML-03: 送信系でも record_type: FW_HEADER のレコードが黙って捨てられる現状挙動を固定していた")
-    public void dropsFwHeaderNamedRecordFromSendSyncInRealYaml() {
+    @Ignore("YML-03: yaml側の修正待ち")
+    public void keepsFwHeaderNamedRecordInSendSyncFromRealYaml() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "response_body_messages:\n"
@@ -644,10 +651,14 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
-        assertThat("FW_HEADER 名のレコードだけが落ちる", block.getRecords().size(), is(1));
-        assertThat("残るのは本文レコード",
-                block.getRecords().get(0).getFields().get(0).getName(), is("b1"));
-        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("b"))));
+        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(2));
+        assertThat("レコード種別は原文のまま残る（ファイル系と同じ）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("h1"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("h"))));
+        assertThat("本文レコードは記述順のまま 2 件目に来る",
+                block.getRecords().get(1).getFields().get(0).getName(), is("b1"));
+        assertThat(block.getRecords().get(1).getRows(), is(Arrays.asList(Arrays.asList("b"))));
     }
 
     /**
@@ -656,9 +667,11 @@ public class YamlFormatReaderRealFileTest {
      * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件）。
      *
      * <p>
-     * <b>メッセージ系との非対称を固定する。</b>同じ {@code record_type: "FW_HEADER"} を
-     * {@code messages} に書くとレコードは捨てられる
-     * （{@link #dropsFwHeaderNamedRecordFromRealYaml}。{@code coverage/issues.md} <b>YML-03</b>）。
+     * <b>3 経路のうち、仕様どおりに動いている唯一の経路である。</b>同じ
+     * {@code record_type: "FW_HEADER"} を {@code messages}／送信系に書くとレコードは捨てられる
+     * （{@link #keepsFwHeaderNamedRecordInMessageFromRealYaml} ／
+     * {@link #keepsFwHeaderNamedRecordInSendSyncFromRealYaml} は、あるべき姿を書いた
+     * {@code @Ignore} の待機テストである。{@code coverage/issues.md} <b>YML-03</b>）。
      * ファイル系は {@code YamlFormatReader#addFileBlocks} が {@code records(entry)} を、
      * メッセージ系は {@code #recordsWithoutFwHeader(entry)} を使うためである。
      * </p>
@@ -955,34 +968,34 @@ public class YamlFormatReaderRealFileTest {
      * Given: {@code record_type: "FW_HEADER"} のレコードだけを持ち {@code fw_header:} を書かない
      *        {@code messages} エントリ。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>例外にならず</b>、ブロックは生成されるがレコードも FW 制御ヘッダも 0 件になる
-     *        （書いたフィールド定義とデータ行が黙って消える）。
+     * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件。ファイル系と同じ扱い）。
      *
      * <p>
-     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.record_fragment.properties.record_type} に
-     * {@code enum} は無く、その description は
+     * <b>仕様どおりの期待値を書いた待機テストである（現時点では赤）。</b>
+     * {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、その description は
      * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
      * {@code $defs.message_data.properties.records} の description も
      * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。
-     * にもかかわらず本体器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal} が
-     * {@code skipFwHeader} 時に {@code FW_HEADER} を {@code continue} でスキップする）と
-     * converter（{@code YamlFormatReader#recordsWithoutFwHeader}）の双方が、この名前のレコードを落とす。
-     * {@code coverage/issues.md} に <b>YML-03</b> として記録した（{@code src/main} は無変更）。
+     * にもかかわらず現状は、本体器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal} が
+     * {@code skipFwHeader} 時に {@code FW_HEADER} を {@code continue} でスキップする。
+     * {@code YamlFileBuilder.java:177}）と converter（{@code YamlFormatReader#recordsWithoutFwHeader}）の
+     * 双方がこの名前のレコードを落とし、レコードも FW 制御ヘッダも 0 件になる
+     * （書いたフィールド定義とデータ行が黙って消える）。
+     * {@code coverage/issues.md} <b>YML-03</b>。
      * </p>
      *
      * <p>
-     * <b>{@code records} 0 件になることを C-15(空) の担保として数えない。</b>スキーマ
-     * {@code $defs.message_data.properties.records.minItems} ＝ 1 であるため、実 {@code .yaml} で
-     * 「レコードを 1 件も書かない」ことはできず、ここで 0 件になるのは YML-03 が<b>書いたレコードを
-     * 落とした結果</b>である（仕様上の到達手段ではない）。台帳も C-15 を「実ファイル経路では到達不能」
-     * として開示している。
+     * <b>本リポジトリだけでは直せない。</b>converter 側の除外だけをやめると、器の断片数（0）と
+     * 原文レコード数（1）が食い違い、{@code YamlFormatReader#toRecordLayouts}
+     * （{@code YamlFormatReader.java:330-333}）が {@code IllegalStateException} を投げる。
+     * 修正は yaml 側（{@code skipFwHeader} の特別扱いを外すか、description を実装へ合わせるか）で行う。
      * </p>
      *
-     * <p>担保する軸要素: A-10／B-4（現状挙動の固定。YML-03 の根拠テスト）。</p>
+     * <p>担保する軸要素: なし（あるべき姿の待機。緑になるまで何も担保しない）。</p>
      */
     @Test
-    @Ignore("YML-03: record_type: FW_HEADER のレコードが黙って捨てられる現状挙動を固定していた")
-    public void dropsFwHeaderNamedRecordFromRealYaml() {
+    @Ignore("YML-03: yaml側の修正待ち")
+    public void keepsFwHeaderNamedRecordInMessageFromRealYaml() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "messages:\n"
@@ -994,12 +1007,17 @@ public class YamlFormatReaderRealFileTest {
                 + "        rows:\n"
                 + "          - [\"RM01\"]\n");
 
-        // Then: 例外にならず、レコードも FW 制御ヘッダも残らない
+        // Then: 書いたレコードがそのまま残る
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDataType(), is(DataType.MESSAGE));
         assertThat(block.getIdentifier(), is("RM01"));
-        assertThat("records が空であること", block.getRecords(), is(Collections.emptyList()));
-        assertThat("fwHeaderFields が空であること", block.getFwHeaderFields(), is(Collections.emptyMap()));
+        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(1));
+        assertThat("レコード種別は原文のまま残る（ファイル系と同じ）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("requestId"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("RM01"))));
+        assertThat("fw_header: を書いていないので FW 制御ヘッダは空のまま",
+                block.getFwHeaderFields(), is(Collections.emptyMap()));
     }
 
     // ------------------------------------------------------------------ グループの並び替え（YML-09）
