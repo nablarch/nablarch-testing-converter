@@ -177,7 +177,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         entry.prop("path", block.getIdentifier());
         entry.prop("type", block.getFileType() == FileDataBlock.FileType.FIXED ? "fixed" : "variable");
         emitMap(sb, entry, "directives", block.getDirectives());
-        emitRecords(sb, entry, block.getRecords());
+        emitRecords(sb, entry, block.getRecords(), true);
     }
 
     /**
@@ -196,7 +196,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         entry.prop("id", block.getIdentifier());
         emitMap(sb, entry, "directives", block.getDirectives());
         emitMap(sb, entry, "fw_header", block.getFwHeaderFields());
-        emitRecords(sb, entry, block.getRecords());
+        emitRecords(sb, entry, block.getRecords(), false);
     }
 
     // ------------------------------------------------------------------------
@@ -244,14 +244,28 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * レコードレイアウト群を出力する（空なら {@code records:} 自体を出力しない）。
+     * レコードレイアウト群を出力する。
+     * <p>
+     * 空の場合の書き方はブロック種別で異なる。ファイル系（{@code emitEmptyList} が真）は
+     * {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
+     * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法仕様が定めているためである
+     * （{@code testdata_notation.rst:879}／{@code :1144}。本体スキーマも
+     * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
+     * メッセージ系（偽）は {@code records:} 自体を出力しない（{@code $defs.message_data} の
+     * {@code records} は {@code minItems: 1} であり、空配列はスキーマ違反になるため）。
+     * </p>
      *
-     * @param sb      出力先
-     * @param parent  親エントリ
-     * @param records レコードレイアウト群
+     * @param sb            出力先
+     * @param parent        親エントリ
+     * @param records       レコードレイアウト群
+     * @param emitEmptyList 空のときに {@code records: []} を出力するなら true
      */
-    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records) {
+    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
+                             boolean emitEmptyList) {
         if (records.isEmpty()) {
+            if (emitEmptyList) {
+                parent.line(key("records") + ": []");
+            }
             return;
         }
         parent.header("records");

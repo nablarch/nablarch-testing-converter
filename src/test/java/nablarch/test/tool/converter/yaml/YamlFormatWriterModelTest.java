@@ -34,7 +34,6 @@ import nablarch.test.tool.converter.model.TestDataSection;
 import com.networknt.schema.ValidationMessage;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -548,9 +547,26 @@ public class YamlFormatWriterModelTest {
      * {@link #quotesBooleanAndDateLookingValuesInFwHeader} が固定する。
      * </p>
      */
+    /**
+     * Given: レコードレイアウトを 1 件も持たないファイルブロック（ディレクティブは 2 件）。
+     * When : {@code serialize}。
+     * Then : {@code records: []}（空配列）が書かれる。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
+     *
+     * <p>
+     * 記法仕様は「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」
+     * （{@code testdata_notation.rst:879}）、「{@code setup_files}・{@code expected_files} の各エントリには
+     * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる。
+     * 0バイトの空ファイルを表現するには、{@code records:} に空配列 {@code []} を記載する」
+     * （{@code testdata_notation.rst:1144}）と定めている。
+     * </p>
+     *
+     * <p>
+     * 担保する軸要素: C-12（{@code FileDataBlock.records} 空）。
+     * ディレクティブの並び（{@code text-encoding} → {@code file-type}）は辞書順の逆である。
+     * </p>
+     */
     @Test
-    @Ignore("YML-12: レコードが空のファイルブロックで records: キーごと落とす現状挙動を固定していた")
-    public void writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty() {
+    public void writesEmptyRecordsListForFileBlockWithoutRecords() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat",
                 FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8", "file-type", "Fixed"),
@@ -563,7 +579,8 @@ public class YamlFormatWriterModelTest {
                 + "    type: \"fixed\"\n"
                 + "    directives:\n"
                 + "      text-encoding: \"UTF-8\"\n"
-                + "      file-type: \"Fixed\"\n"));
+                + "      file-type: \"Fixed\"\n"
+                + "    records: []\n"));
     }
 
     /**
@@ -704,7 +721,8 @@ public class YamlFormatWriterModelTest {
                     + "  - path: \"k.dat\"\n"
                     + "    type: \"fixed\"\n"
                     + "    directives:\n"
-                    + "      " + pair[1] + ": \"v\"\n";
+                    + "      " + pair[1] + ": \"v\"\n"
+                    + "    records: []\n";
 
             // When（ここでは判定だけ。アサートはループ後に 1 回）
             String actual = serialize(block);
@@ -742,17 +760,29 @@ public class YamlFormatWriterModelTest {
      * （{@code minItems: 0} なので<b>空配列なら通る</b>が、キーごと省略されると通らない）。
      * </p>
      */
+    /**
+     * Given: レコードレイアウトを 1 件も持たないファイルブロック。
+     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
+     * Then : スキーマ違反にならず、レコード 0 件のファイルブロックとして戻る。
+     *
+     * <p>
+     * 本体スキーマの {@code $defs.file_data.required} は {@code records} を要求するが
+     * {@code minItems} は 0 であり、<b>空配列なら通る</b>（キーごと省略すると通らない）。
+     * 記法仕様も 0 バイトの空ファイルを {@code records: []} で表すと定めている
+     * （{@code testdata_notation.rst:1144}）。
+     * </p>
+     */
     @Test
-    @Ignore("YML-12: records: キーを落とした YAML が読み戻せない現状挙動を固定していた")
-    public void failsToReadBackFileBlockWithoutRecords() {
+    public void readsBackFileBlockWithEmptyRecords() {
         // Given / When
-        YamlSchemaValidationException e = assertFailsToReadBack(
+        FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(
                 new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat", FileDataBlock.FileType.FIXED,
-                        map(), Collections.<RecordLayout>emptyList()));
+                        map(), Collections.<RecordLayout>emptyList())), FileDataBlock.class);
 
         // Then
-        assertThat(types(e), is(Arrays.asList("required")));
-        assertThat(locations(e), is(Arrays.asList("$.setup_files[0]")));
+        assertThat(back.getIdentifier(), is("n.dat"));
+        assertThat(back.getFileType(), is(FileDataBlock.FileType.FIXED));
+        assertThat(back.getRecords().size(), is(0));
     }
 
     /**
