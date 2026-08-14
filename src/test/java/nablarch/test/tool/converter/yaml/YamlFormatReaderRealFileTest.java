@@ -897,26 +897,20 @@ public class YamlFormatReaderRealFileTest {
     /**
      * Given: {@code group_id} を書かない送信系エントリ 1 件と、書いたエントリ 1 件。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>例外にならず</b>、{@code group_id} 無しのエントリだけがブロックごと消える。
+     * Then : {@code group_id} 無しのエントリも<b>デフォルトグループ（整形済みグループ ID は空文字）</b>の
+     *        ブロックとして読み込まれ、記述順どおり 2 ブロックになる。
      *
      * <p>
-     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.group_message_data.required} は
-     * {@code ["id","records"]} だけで {@code group_id} を要求しない。加えて<b>定義レベルの</b> description
-     * （{@code $defs.group_message_data.description}）は「{@code group_id} を省略した場合は経路 B として動作する」、
-     * <b>プロパティの</b> description（{@code $defs.group_message_data.properties.group_id.description}）は
-     * 「{@code MockMessagingContext} / {@code MockMessagingClient} 経路では参照されないため省略可」と書いている
-     * （2 文は別の JSON パスにある）。
-     * それでも {@code YamlFormatReader#addSendSyncBlocks} は
-     * {@code rawGroupsInOrder}（{@code group_id} が非 null のエントリのみ列挙）を回すため、
-     * {@code group_id} の無いエントリはブロックを生成しない。
-     * {@code coverage/issues.md} に <b>YML-02</b> として記録した（{@code src/main} は無変更）。
+     * 記法仕様は「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が
+     * 対象になる」（{@code testdata_notation.rst:254}）と定めており、省略は仕様内の記法である。
+     * デフォルトグループを空文字で表すのは、ファイル系・テーブル系（{@code formatGroup}）および
+     * Excel 中間と同じ規則。
      * </p>
      *
-     * <p>担保する軸要素: A-14／B-4（現状挙動の固定。YML-02 の根拠テスト）。</p>
+     * <p>担保する軸要素: A-14／B-4（YML-02 の仕様どおりの挙動）。</p>
      */
     @Test
-    @Ignore("YML-02: group_id を省略した送信同期エントリがブロックごと落ちる現状挙動を固定していた")
-    public void dropsSendSyncEntryWithoutGroupIdFromRealYaml() {
+    public void readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "response_body_messages:\n"
@@ -934,11 +928,27 @@ public class YamlFormatReaderRealFileTest {
                 + "        rows:\n"
                 + "          - [\"y\"]\n");
 
-        // Then: 例外にならず、group_id 付きの 1 件だけが残る
-        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
-        assertThat(block.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
-        assertThat(block.getIdentifier(), is("KEEP"));
-        assertThat(block.getGroupId(), is("[g]"));
+        // Then: 2 件とも残る（デフォルトグループが先、個別グループが後）
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat(blocks.size(), is(2));
+
+        MessageDataBlock defaultGroup = (MessageDataBlock) blocks.get(0);
+        assertThat(defaultGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
+        assertThat(defaultGroup.getIdentifier(), is("DROP"));
+        assertThat(defaultGroup.getGroupId(), is(""));
+        assertThat(defaultGroup.getRecords().size(), is(1));
+        assertThat(defaultGroup.getRecords().get(0).getFields().size(), is(1));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getName(), is("d1"));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getType(), is("半角英字"));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getLength(), is("1"));
+        assertThat(defaultGroup.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("x"))));
+
+        MessageDataBlock namedGroup = (MessageDataBlock) blocks.get(1);
+        assertThat(namedGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
+        assertThat(namedGroup.getIdentifier(), is("KEEP"));
+        assertThat(namedGroup.getGroupId(), is("[g]"));
+        assertThat(namedGroup.getRecords().get(0).getFields().get(0).getName(), is("k1"));
+        assertThat(namedGroup.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("y"))));
     }
 
     /**

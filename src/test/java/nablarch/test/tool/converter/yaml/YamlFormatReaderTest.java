@@ -413,31 +413,36 @@ public class YamlFormatReaderTest {
     }
 
     @Test
-    public void readSendSync_entryWithoutGroupId_isDropped() {
+    public void readSendSync_entryWithoutGroupId_isReadAsDefaultGroup() {
         // Given: group_id 付き 1 件＋group_id 無し 1 件
         //        （スキーマは送信系に group_id を要求しない。$defs.expected_request_message_data /
         //          $defs.group_message_data の required はいずれも ["id","records"] である。
-        //          省略が正当であることは 2 つの別の JSON パスが述べている —
-        //          $defs.expected_request_message_data.properties.group_id.description が
-        //          「省略時は id 直接指定（先着1件）で動作する」、
-        //          $defs.group_message_data.description（定義レベル）が
-        //          「group_id を省略した場合は経路 B として動作する」。
-        //          すなわち group_id 無しは仕様内の入力である。issues.md YML-02）
+        //          省略時の意味は記法仕様が定めている — testdata_notation.rst:254
+        //          「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が
+        //          対象になる」。issues.md YML-02）
         Map<String, Object> yaml = map(
                 "response_body_messages", list(
                         map("group_id", "g1", "id", "KEEP",
                                 "records", list(map("fields", list(field("f", "半角英字", "1")),
                                         "rows", list(list("v"))))),
-                        map("id", "DROP",
+                        map("id", "DEFAULT",
                                 "records", list(map("fields", list(field("f", "半角英字", "1")),
                                         "rows", list(list("w")))))));
 
         // When
         List<TestDataBlock> blocks = blocks(reader(yaml).read(DIR, RESOURCE));
 
-        // Then: group_id 無しエントリは drop され（rawGroupsInOrder が null group_id を除外）、付きのみ残る
-        assertThat(blocks.size(), is(1));
+        // Then: group_id 無しエントリもデフォルトグループ（整形済みグループ ID は空文字）として残る。
+        //       並びはグループの初出順（g1 が先、デフォルトが後）
+        assertThat(blocks.size(), is(2));
         assertThat(((MessageDataBlock) blocks.get(0)).getIdentifier(), is("KEEP"));
+        assertThat(((MessageDataBlock) blocks.get(0)).getGroupId(), is("[g1]"));
+        assertThat(((MessageDataBlock) blocks.get(0)).getRecords().get(0).getRows(),
+                is(Arrays.asList(Arrays.asList("v"))));
+        assertThat(((MessageDataBlock) blocks.get(1)).getIdentifier(), is("DEFAULT"));
+        assertThat(((MessageDataBlock) blocks.get(1)).getGroupId(), is(""));
+        assertThat(((MessageDataBlock) blocks.get(1)).getRecords().get(0).getRows(),
+                is(Arrays.asList(Arrays.asList("w"))));
     }
 
     // ------------------------------------------------------------------------

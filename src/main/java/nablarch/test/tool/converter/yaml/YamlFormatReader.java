@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
@@ -273,8 +274,9 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * 送信系ブロックを写す。グループは生値で一致（{@code group_id} 必須）させ、器（本文 {@link FixedLengthFile} 群・Map 順）と
-     * 当該グループの Map エントリ列を zip する。FW 制御ヘッダは送信系では常に空。中間グループ ID は整形（{@code "[xxx]"}）して
+     * 送信系ブロックを写す。グループは生値で一致（{@code group_id} 省略時は {@code null} ＝デフォルトグループ）させ、
+     * 器（本文 {@link FixedLengthFile} 群・Map 順）と当該グループの Map エントリ列を zip する。
+     * FW 制御ヘッダは送信系では常に空。中間グループ ID は整形（{@code "[xxx]"}／デフォルトグループは空文字）して
      * Excel 中間と対称にする（マッチは生値・格納は整形）。
      *
      * @param basePath     ディレクトリ
@@ -290,7 +292,7 @@ public class YamlFormatReader implements TestDataFormatReader {
             List<FixedLengthFile> bodies = adapter.readSendSyncMessages(basePath, resourceName, rawGroup, type);
             List<Map<String, Object>> entries = entriesForRawGroup(yaml, sectionKey, rawGroup);
             requireSameSize(bodies.size(), entries.size(), sectionKey, rawGroup);
-            String formattedGroup = "[" + rawGroup + "]";
+            String formattedGroup = rawGroup != null ? "[" + rawGroup + "]" : "";
             for (int i = 0; i < bodies.size(); i++) {
                 FixedLengthFile body = bodies.get(i);
                 Map<String, Object> entry = entries.get(i);
@@ -433,17 +435,19 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 送信系セクション内エントリの生グループ ID（{@code group_id} 非 null のもの）を初出順で列挙する（重複排除）。
+     * 送信系セクション内エントリの生グループ ID を初出順で列挙する（重複排除）。
+     * {@code group_id} を省略したエントリはデフォルトグループとして {@code null} で列挙する
+     * （記法仕様 {@code testdata_notation.rst:254}）。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @return 生グループ ID のリスト
+     * @return 生グループ ID のリスト（デフォルトグループは {@code null}）
      */
     private static List<String> rawGroupsInOrder(Map<String, Object> yaml, String sectionKey) {
         List<String> groups = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             String group = YamlSection.toStr(YamlSection.castMap(entryObj).get(YamlSection.FIELD_GROUP_ID));
-            if (group != null && !groups.contains(group)) {
+            if (!groups.contains(group)) {
                 groups.add(group);
             }
         }
@@ -483,7 +487,7 @@ public class YamlFormatReader implements TestDataFormatReader {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
-            if (rawGroup.equals(YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID)))) {
+            if (Objects.equals(rawGroup, YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID)))) {
                 result.add(entry);
             }
         }
