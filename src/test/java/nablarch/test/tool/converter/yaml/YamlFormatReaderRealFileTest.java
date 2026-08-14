@@ -193,7 +193,7 @@ public class YamlFormatReaderRealFileTest {
                 "setup_tables:\n  - table: \"T\"\n    rows: []\n");
 
         // Then
-        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(block.getDataType(), is(DataType.SETUP_TABLE_DATA));
         assertThat(block.getIdentifier(), is("T"));
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
@@ -214,7 +214,7 @@ public class YamlFormatReaderRealFileTest {
                 "list_maps:\n  - id: \"lm\"\n    rows: []\n");
 
         // Then
-        ListMapBlock block = (ListMapBlock) onlyBlock(container);
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
         assertThat(block.getDataType(), is(DataType.LIST_MAP));
         assertThat(block.getIdentifier(), is("lm"));
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
@@ -242,7 +242,7 @@ public class YamlFormatReaderRealFileTest {
                 "setup_files:\n  - path: \"f.dat\"\n    type: \"fixed\"\n    records: []\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getDataType(), is(DataType.SETUP_FIXED));
         assertThat(block.getFileType(), is(FileDataBlock.FileType.FIXED));
         assertTrue("records が空であること", block.getRecords().isEmpty());
@@ -273,7 +273,7 @@ public class YamlFormatReaderRealFileTest {
                 + "        rows: []\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getRecords().size(), is(1));
         RecordLayout record = block.getRecords().get(0);
         assertThat(record.getRecordType(), is(nullValue()));
@@ -314,7 +314,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getRecords().size(), is(1));
         RecordLayout record = block.getRecords().get(0);
         assertThat("小文字の \"default\" も null へ正規化される", record.getRecordType(), is(nullValue()));
@@ -351,7 +351,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getDirectives().size(), is(1));
         assertThat(block.getDirectives().get("file-type"), is("Fixed"));
     }
@@ -383,7 +383,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDirectives().size(), is(1));
         assertThat(block.getDirectives().get("file-type"), is("Fixed"));
     }
@@ -414,7 +414,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDirectives().get("text-encoding"), is("Windows-31J"));
         assertThat(block.getDirectives().get("file-type"), is("Fixed"));
     }
@@ -539,7 +539,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(new ArrayList<>(block.getFwHeaderFields().keySet()),
                 is(Arrays.asList("requestId", "userId")));
         assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
@@ -580,7 +580,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"abcdefghij\"]\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         FieldDef field = block.getRecords().get(0).getFields().get(0);
         assertThat(field.getName(), is("f1"));
         assertThat(field.getType(), is("半角英字"));
@@ -619,7 +619,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDataType(), is(DataType.RESPONSE_HEADER_MESSAGES));
         assertThat(block.getDirectives().size(), is(1));
         assertThat(block.getDirectives().get("file-type"), is("Fixed"));
@@ -665,7 +665,7 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"y\"]\n");
 
         // Then: 例外にならず、group_id 付きの 1 件だけが残る
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
         assertThat(block.getIdentifier(), is("KEEP"));
         assertThat(block.getGroupId(), is("[g]"));
@@ -706,26 +706,127 @@ public class YamlFormatReaderRealFileTest {
                 + "          - [\"RM01\"]\n");
 
         // Then: 例外にならず、レコードも FW 制御ヘッダも残らない
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDataType(), is(DataType.MESSAGE));
         assertThat(block.getIdentifier(), is("RM01"));
         assertTrue("records が空であること", block.getRecords().isEmpty());
         assertTrue("fwHeaderFields が空であること", block.getFwHeaderFields().isEmpty());
     }
 
-    // ------------------------------------------------------------------ helpers
+    // ------------------------------------------------------------------ グループの並び替え（YML-09）
 
     /**
-     * 唯一のブロックを返す。
+     * Given: 同じセクション配列の中で {@code group_id} を {@code g1} → {@code g2} → {@code g1} と
+     *        交互に書いたエントリ列（テーブル系・ファイル系・送信系の 3 セクション）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にも警告にもならず</b>、ブロックはグループの初出順にまとめ直されて
+     *        {@code T1, T3, T2} ／ {@code a.dat, c.dat, b.dat} ／ {@code M1, M3, M2} の順になる
+     *        （原文の記述順ではない）。値そのものは失われない。
      *
-     * @param container 中間モデル
-     * @return ブロック
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.table_data} ／ {@code $defs.file_data} ／
+     * {@code $defs.group_message_data} のいずれも、同じ {@code group_id} のエントリが配列内で
+     * 連続することを要求していない。
+     * </p>
+     *
+     * <p>
+     * 原因は {@code YamlFormatReader#formattedGroupsInOrder} がグループを初出順に重複排除し、
+     * {@code #addTableBlocks} ／ {@code #addFileBlocks} ／ {@code #addSendSyncBlocks} が
+     * <b>グループ単位で</b>ブロックを作ることである。
+     * {@code coverage/issues.md} に <b>YML-09</b> として記録した（{@code src/main} は無変更）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-09 の根拠テスト）。</p>
      */
-    private static TestDataBlock onlyBlock(TestDataContainer container) {
+    @Test
+    public void reordersBlocksByFirstAppearanceOfGroupIdFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    table: \"T1\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n"
+                + "  - group_id: \"g2\"\n"
+                + "    table: \"T2\"\n"
+                + "    rows:\n"
+                + "      - C: \"2\"\n"
+                + "  - group_id: \"g1\"\n"
+                + "    table: \"T3\"\n"
+                + "    rows:\n"
+                + "      - C: \"3\"\n"
+                + "setup_files:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    path: \"a.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - group_id: \"g2\"\n"
+                + "    path: \"b.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "  - group_id: \"g1\"\n"
+                + "    path: \"c.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"c\"]\n"
+                + "response_body_messages:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    id: \"M1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - group_id: \"g2\"\n"
+                + "    id: \"M2\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "  - group_id: \"g1\"\n"
+                + "    id: \"M3\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"c\"]\n");
+
+        // Then: グループの初出順にまとめ直され、原文の記述順（T1, T2, T3 ほか）ではなくなる
+        List<String> identifiers = new ArrayList<>();
+        List<String> groupIds = new ArrayList<>();
+        for (TestDataBlock block : YamlFixture.blocks(container)) {
+            identifiers.add(block.getIdentifier());
+            groupIds.add(block.getGroupId());
+        }
+        assertThat("原文の記述順ではなくグループの初出順に並ぶ", identifiers, is(Arrays.asList(
+                "T1", "T3", "T2",
+                "a.dat", "c.dat", "b.dat",
+                "M1", "M3", "M2")));
+        assertThat(groupIds, is(Arrays.asList(
+                "[g1]", "[g1]", "[g2]",
+                "[g1]", "[g1]", "[g2]",
+                "[g1]", "[g1]", "[g2]")));
+        // 値そのものは失われない（入れ替わるのは並びだけ）
         List<TestDataBlock> blocks = YamlFixture.blocks(container);
-        assertThat(blocks.size(), is(1));
-        return blocks.get(0);
+        assertThat("2 番目に来た T3 の値", ((TableDataBlock) blocks.get(1)).getRows(),
+                is(Arrays.asList(Arrays.asList("3"))));
+        assertThat("3 番目に来た T2 の値", ((TableDataBlock) blocks.get(2)).getRows(),
+                is(Arrays.asList(Arrays.asList("2"))));
     }
+
+    // ------------------------------------------------------------------ helpers
 
     /**
      * {@code DEFAULT} を除く 13 データタイプすべてを 1 ファイルに書いた YAML を返す。

@@ -30,6 +30,7 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
 
 /**
  * 辺②（YAML→中間モデル）の軸F — 異常系 5 ケース（F2-01〜F2-05）の挙動を固定するテスト。
@@ -179,7 +180,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertTrue("メッセージにファイルパスを含むこと: " + thrown.getMessage(),
                 thrown.getMessage().startsWith("Failed to parse YAML file: "));
         assertThat(thrown.getCause(),
-                is(instanceOf(org.snakeyaml.engine.v2.exceptions.YamlEngineException.class)));
+                is(instanceOf(YamlEngineException.class)));
     }
 
     // ------------------------------------------------------------------ F2-03 未知のキー
@@ -351,7 +352,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"2\", B: \"x\"}\n");
 
         // Then
-        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(block.getColumnNames(), is(Arrays.asList("A")));
         assertThat("2 行目の B が消える", block.getRows(),
                 is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
@@ -375,7 +376,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"2\", B: \"x\"}\n");
 
         // Then
-        ListMapBlock block = (ListMapBlock) onlyBlock(container);
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
         assertThat(block.getColumnNames(), is(Arrays.asList("A")));
         assertThat("2 行目の B が消える", block.getRows(),
                 is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
@@ -402,7 +403,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"2\"}\n");
 
         // Then
-        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(block.getColumnNames(), is(Arrays.asList("A", "B")));
         assertThat(block.getRows(),
                 is(Arrays.asList(Arrays.asList("1", "x"), Arrays.asList("2", null))));
@@ -426,7 +427,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"1\"}\n");
 
         // Then
-        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
         assertTrue("2 行目に書いた行ごと消えること", block.getRows().isEmpty());
     }
@@ -453,7 +454,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"1\"}\n");
 
         // Then
-        ListMapBlock block = (ListMapBlock) onlyBlock(container);
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
         assertThat(block.getRows(),
                 is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
@@ -480,7 +481,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {\"[no]\": \"2\"}\n");
 
         // Then
-        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
         assertThat(block.getRows(),
                 is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
@@ -627,6 +628,88 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList(Arrays.asList("a"))));
     }
 
+    // ------------------------------------------------------------------ YML-07 長さ省略記法
+
+    /**
+     * Given: 長さ省略記法 {@code "-"} を使い、{@code text-encoding} を書かないファイルエントリ
+     *        （スキーマ {@code $defs.field_def.properties.length} は {@code "-"} を許し、
+     *        description もオンデマンド計算として意味を定めている）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code NullPointerException}（メッセージ無し）で止まる。
+     *
+     * <p>
+     * 器がオンデマンド長を求めるために値のバイト長を計算する際、ディレクティブ由来の文字セットが
+     * {@code null} のままだからである。{@code coverage/issues.md} <b>YML-07</b> の根拠テスト。
+     * </p>
+     *
+     * <p>
+     * <b>例外の型とメッセージだけでなく、発生箇所（スタックトレース先頭 2 段のクラス名・メソッド名）も
+     * アサートする。</b>型とメッセージ {@code null} だけではフィクスチャ側の不備で出た
+     * {@code NullPointerException} でも緑になり、「長さ計算の場所で・診断情報なしに落ちる」という
+     * 本課題の主張を固定できないためである。行番号はアサートしない（JDK・本体のバージョンで動くため）。
+     * </p>
+     */
+    @Test
+    public void failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding() {
+        // Given / When
+        NullPointerException thrown = assertThrows(NullPointerException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_files:\n"
+                        + "  - path: \"f.dat\"\n"
+                        + "    type: \"fixed\"\n"
+                        + "    records:\n"
+                        + "      - fields:\n"
+                        + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
+                        + "        rows:\n"
+                        + "          - [\"abcd\"]\n"));
+
+        // Then
+        assertThat("どのファイルのどのフィールドかを示す手掛かりが無い",
+                thrown.getMessage(), is(nullValue()));
+        StackTraceElement thrownAt = thrown.getStackTrace()[0];
+        assertThat("落ちるのは値のバイト長を求める呼び出しである（クラス）",
+                thrownAt.getClassName(), is("java.lang.String"));
+        assertThat("落ちるのは値のバイト長を求める呼び出しである（メソッド）",
+                thrownAt.getMethodName(), is("getBytes"));
+        StackTraceElement caller = thrown.getStackTrace()[1];
+        assertThat("呼び出し元は器のオンデマンド長計算である（クラス）",
+                caller.getClassName(), is("nablarch.test.core.file.DataFileFragment"));
+        assertThat("呼び出し元は器のオンデマンド長計算である（メソッド）",
+                caller.getMethodName(), is("replaceFieldSize"));
+    }
+
+    /**
+     * Given: 同じ長さ省略記法 {@code "-"} に {@code text-encoding} を添えたファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 例外にならず、{@code FieldDef.length} には原文 {@code "-"} が入る
+     *        （器が導出する実バイト長 {@code "4"} ではない）。
+     *
+     * <p>
+     * {@link #failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding} との差は
+     * {@code text-encoding} の有無だけである（YML-07 の切り分け）。
+     * </p>
+     */
+    @Test
+    public void readsOndemandLengthNotationWhenTextEncodingIsSpecified() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"UTF-8\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
+                + "        rows:\n"
+                + "          - [\"abcd\"]\n");
+
+        // Then
+        RecordLayout record = onlyRecord(container);
+        assertThat(record.getFields().get(0).getLength(), is("-"));
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abcd"))));
+    }
+
     // ------------------------------------------------------------------ YML-08 ディレクティブ値
 
     /**
@@ -656,7 +739,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat("書いた改行が消えて空文字になる", block.getDirectives().get("record-separator"), is(""));
     }
 
@@ -687,7 +770,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - [\"a\"]\n");
 
         // Then
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getDirectives().get("record-separator"), is("\r\n"));
     }
 
@@ -726,71 +809,6 @@ public class YamlFormatReaderInvalidInputTest {
                 thrown.getMessage(), is("field-separator must be one character.but was "));
     }
 
-    // ------------------------------------------------------------------ YML-07 長さ省略記法
-
-    /**
-     * Given: 長さ省略記法 {@code "-"} を使い、{@code text-encoding} を書かないファイルエントリ
-     *        （スキーマ {@code $defs.field_def.properties.length} は {@code "-"} を許し、
-     *        description もオンデマンド計算として意味を定めている）。
-     * When : 実 {@code .yaml} を {@code read}。
-     * Then : {@code NullPointerException}（メッセージ無し）で止まる。
-     *
-     * <p>
-     * 器がオンデマンド長を求めるために値のバイト長を計算する際、ディレクティブ由来の文字セットが
-     * {@code null} のままだからである。{@code coverage/issues.md} <b>YML-07</b> の根拠テスト。
-     * </p>
-     */
-    @Test
-    public void failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding() {
-        // Given / When
-        NullPointerException thrown = assertThrows(NullPointerException.class,
-                () -> YamlFixture.read(dir(), ""
-                        + "setup_files:\n"
-                        + "  - path: \"f.dat\"\n"
-                        + "    type: \"fixed\"\n"
-                        + "    records:\n"
-                        + "      - fields:\n"
-                        + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
-                        + "        rows:\n"
-                        + "          - [\"abcd\"]\n"));
-
-        // Then
-        assertThat("どのファイルのどのフィールドかを示す手掛かりが無い",
-                thrown.getMessage(), is(nullValue()));
-    }
-
-    /**
-     * Given: 同じ長さ省略記法 {@code "-"} に {@code text-encoding} を添えたファイルエントリ。
-     * When : 実 {@code .yaml} を {@code read}。
-     * Then : 例外にならず、{@code FieldDef.length} には原文 {@code "-"} が入る
-     *        （器が導出する実バイト長 {@code "4"} ではない）。
-     *
-     * <p>
-     * {@link #failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding} との差は
-     * {@code text-encoding} の有無だけである（YML-07 の切り分け）。
-     * </p>
-     */
-    @Test
-    public void readsOndemandLengthNotationWhenTextEncodingIsSpecified() {
-        // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
-                + "setup_files:\n"
-                + "  - path: \"f.dat\"\n"
-                + "    type: \"fixed\"\n"
-                + "    directives:\n"
-                + "      text-encoding: \"UTF-8\"\n"
-                + "    records:\n"
-                + "      - fields:\n"
-                + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
-                + "        rows:\n"
-                + "          - [\"abcd\"]\n");
-
-        // Then
-        RecordLayout record = onlyRecord(container);
-        assertThat(record.getFields().get(0).getLength(), is("-"));
-        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abcd"))));
-    }
-
     // ------------------------------------------------------------------ helpers
 
     /**
@@ -812,7 +830,12 @@ public class YamlFormatReaderInvalidInputTest {
         return assertThrows(YamlSchemaValidationException.class, () -> YamlFixture.read(dir(), yamlText));
     }
 
-    /** 違反のキーワード（{@code enum} / {@code required} など）をロケール非依存に取り出す。 */
+    /**
+     * 違反のキーワード（{@code enum} / {@code required} など）をロケール非依存に取り出す。
+     *
+     * @param e 送出された例外
+     * @return 違反のキーワード（例外が報告した順）
+     */
     private static List<String> types(YamlSchemaValidationException e) {
         List<String> types = new ArrayList<>();
         for (ValidationMessage message : e.getErrors()) {
@@ -821,7 +844,12 @@ public class YamlFormatReaderInvalidInputTest {
         return types;
     }
 
-    /** 違反位置（{@code $.setup_files[0].type} など）をロケール非依存に取り出す。 */
+    /**
+     * 違反位置（{@code $.setup_files[0].type} など）をロケール非依存に取り出す。
+     *
+     * @param e 送出された例外
+     * @return 違反位置（例外が報告した順）
+     */
     private static List<String> locations(YamlSchemaValidationException e) {
         List<String> locations = new ArrayList<>();
         for (ValidationMessage message : e.getErrors()) {
@@ -831,25 +859,13 @@ public class YamlFormatReaderInvalidInputTest {
     }
 
     /**
-     * 唯一のブロックを返す。
-     *
-     * @param container 中間モデル
-     * @return ブロック
-     */
-    private static TestDataBlock onlyBlock(TestDataContainer container) {
-        List<TestDataBlock> blocks = YamlFixture.blocks(container);
-        assertThat("ブロックが 1 件だけ生成されること", blocks.size(), is(1));
-        return blocks.get(0);
-    }
-
-    /**
      * 唯一のブロックの唯一のレコードレイアウトを返す。
      *
      * @param container 中間モデル
      * @return レコードレイアウト
      */
     private static RecordLayout onlyRecord(TestDataContainer container) {
-        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat("レコードレイアウトが 1 件だけ生成されること", block.getRecords().size(), is(1));
         return block.getRecords().get(0);
     }

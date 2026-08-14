@@ -1,5 +1,9 @@
 package nablarch.test.tool.converter.yaml;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -70,5 +74,33 @@ final class YamlFixture {
      */
     static List<TestDataBlock> blocks(TestDataContainer container) {
         return container.getSections().get(0).getBlocks();
+    }
+
+    /**
+     * 唯一のセクションの唯一のブロックが、期待する実装クラスであることを確かめて返す。
+     *
+     * <p>
+     * 素キャスト（失敗時に {@code ClassCastException} しか出ない）を避け、どのクラスが来たかが
+     * 失敗メッセージに出るようにするためのヘルパ。兄弟の
+     * {@code XlsFormatReaderRealFileTest#onlyBlock(Class)} と同じ形である。
+     * </p>
+     *
+     * <p>
+     * 「唯一のブロック」の検査を辺②のテストクラス 3 つ（{@code YamlFormatReaderInvalidInputTest} ／
+     * {@code YamlFormatReaderRealFileTest} ／ {@code YamlFormatReaderScalarTest}）で共有し、
+     * 同じ失敗がクラスごとに別のメッセージにならないようにするため、本クラスへ置いている。
+     * </p>
+     *
+     * @param <T>       期待する実装クラス
+     * @param container 中間モデル
+     * @param expected  期待する実装クラス
+     * @return 唯一のブロック
+     */
+    static <T extends TestDataBlock> T onlyBlock(TestDataContainer container, Class<T> expected) {
+        List<TestDataBlock> blocks = blocks(container);
+        assertThat("ブロックが 1 件だけ生成されること", blocks.size(), is(1));
+        TestDataBlock block = blocks.get(0);
+        assertThat("唯一のブロックの実装クラス", block, is(instanceOf(expected)));
+        return expected.cast(block);
     }
 }

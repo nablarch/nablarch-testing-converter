@@ -142,9 +142,7 @@ public class YamlFormatReaderScalarTest {
             yaml.append(line).append('\n');
         }
         TestDataContainer container = YamlFixture.read(dir(), yaml.toString());
-        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
-        TestDataBlock block = YamlFixture.blocks(container).get(0);
-        TableDataBlock table = (TableDataBlock) block;
+        TableDataBlock table = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(table.getColumnNames(), is(Arrays.asList("V")));
         assertThat(table.getRows().size(), is(1));
         return table.getRows().get(0).get(0);
@@ -163,8 +161,7 @@ public class YamlFormatReaderScalarTest {
                 + "  - id: \"lm\"\n"
                 + "    rows:\n"
                 + "      - V: " + value + "\n");
-        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
-        ListMapBlock block = (ListMapBlock) YamlFixture.blocks(container).get(0);
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
         assertThat(block.getColumnNames(), is(Arrays.asList("V")));
         assertThat(block.getRows().size(), is(1));
         return block.getRows().get(0).get(0);
@@ -193,8 +190,7 @@ public class YamlFormatReaderScalarTest {
                 + "          - {name: \"V\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
                 + "          - [" + value + "]\n");
-        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
-        FileDataBlock block = (FileDataBlock) YamlFixture.blocks(container).get(0);
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getRecords().size(), is(1));
         RecordLayout record = block.getRecords().get(0);
         assertThat(record.getRows().size(), is(1));
