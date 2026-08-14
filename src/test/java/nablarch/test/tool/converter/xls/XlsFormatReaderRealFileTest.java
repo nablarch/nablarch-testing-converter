@@ -29,7 +29,6 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -88,10 +87,10 @@ import org.junit.rules.TemporaryFolder;
  *         （C-11）と {@link #readsAllFourSendSyncMessageTypesFromRealBook}（C-13）がテストで示す。</td>
  *   </tr>
  *   <tr>
- *     <td>C-16 {@code RecordLayout.recordType} 省略（{@code null}）</td><td>到達不能</td>
- *     <td>空セルは {@code PoiXlsReader} が {@code ""} を返すため {@code null} にならない
- *         （{@code issues.md} XLS-06）。根拠は
- *         {@link #readsOmittedRecordTypeAsEmptyStringFromRealBook} がテストで示す。</td>
+ *     <td>C-16 {@code RecordLayout.recordType} 省略（{@code null}）</td><td>到達可能</td>
+ *     <td>空セルは {@code PoiXlsReader} が {@code ""} を返すが、{@link XlsFormatReader} が
+ *         {@code null} へ直して中間モデルへ入れる（{@code issues.md} XLS-06 の修正）。根拠は
+ *         {@link #readsOmittedRecordTypeAsNullFromRealBook} がテストで示す。</td>
  *   </tr>
  *   <tr>
  *     <td>C-17 {@code RecordLayout.fields} 空</td><td>到達不能</td>
@@ -846,19 +845,19 @@ public class XlsFormatReaderRealFileTest {
     /**
      * Given: 名前行の先頭セル（レコード種別）が空白セルの {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : レコード種別は {@code null} ではなく空文字になる。
+     * Then : レコード種別は {@code null} になる。
      *
      * <p>
-     * 担保する軸要素: C-16（省略）。中間モデル {@code RecordLayout} の Javadoc は省略時の表現を
-     * {@code null} と定めており、YAML 経路（辺②）は実際に {@code null} を入れる
+     * 担保する軸要素: C-16（省略）。中間モデル {@code RecordLayout} の Javadoc（同クラス 26 行目
+     * 「レコード種別（省略時は {@code null}。FW_HEADER 等もそのまま保持）」）が省略時の表現を
+     * {@code null} と定めており、YAML 経路（辺②）も {@code null} を入れる
      * （{@code YamlFormatReaderTest#readFile_recordTypeOmitted_keepsNullRecordType}）。
-     * 実 {@code .xlsx} 経路ではセル値が空文字として読まれるため {@code null} にならない。
-     * この非対称は課題として {@code coverage/issues.md} の XLS-06 に記録した（修正はしない）。
+     * 実 {@code .xlsx} 経路ではセル値が空文字として読まれるため以前は {@code null} にならなかった
+     * （{@code coverage/issues.md} の XLS-06）。
      * </p>
      */
     @Test
-    @Ignore("XLS-06: レコード種別の空セルが null ではなく空文字になる現状挙動を固定していた")
-    public void readsOmittedRecordTypeAsEmptyStringFromRealBook() {
+    public void readsOmittedRecordTypeAsNullFromRealBook() {
         // Given
         book().row(text("SETUP_FIXED=f.dat"))
                 .row(blank(), text("f1"))
@@ -872,7 +871,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         RecordLayout record = file.getRecords().get(0);
-        assertThat(record.getRecordType(), is(""));
+        assertThat(record.getRecordType(), is(nullValue()));
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abc"))));
     }
 

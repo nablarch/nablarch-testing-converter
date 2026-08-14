@@ -303,11 +303,27 @@ public class XlsFormatReader implements TestDataFormatReader {
         for (FragmentView fragment : fragments) {
             List<String> names = fragment.getNames();
             idx = verifyNameRow(bodyLines, idx, names);
-            String recordType = bodyLines.get(idx).get(0);
+            String recordType = emptyToNull(bodyLines.get(idx).get(0));
             idx++;
             idx = readFieldDefs(bodyLines, idx, names, fixed, records, recordType, fragment);
         }
         return records;
+    }
+
+    /**
+     * レコード種別セルの値を中間モデルの表現へ直す。
+     * <p>
+     * 空セルは {@code PoiXlsReader} が {@code ""} を返すが、中間モデルの
+     * {@link RecordLayout}（同クラスのコンストラクタ Javadoc「レコード種別（省略時は {@code null}）」）は
+     * 省略を {@code null} で表す。辺②（YAML）も省略時は {@code null} を入れる。
+     * 辺①だけ {@code ""} になる非対称を無くす（{@code issues.md} XLS-06）。
+     * </p>
+     *
+     * @param recordType レコード種別セルの値
+     * @return 空文字なら {@code null}、それ以外はそのまま
+     */
+    private static String emptyToNull(String recordType) {
+        return recordType == null || recordType.isEmpty() ? null : recordType;
     }
 
     /**
