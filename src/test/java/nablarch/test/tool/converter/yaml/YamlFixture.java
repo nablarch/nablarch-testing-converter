@@ -1,10 +1,10 @@
 package nablarch.test.tool.converter.yaml;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import nablarch.test.core.reader.yaml.YamlLoader;
@@ -22,6 +22,11 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  * <b>YAML テキストのパースとスキーマ検証を実際に通す</b>。
  * </p>
  *
+ * <p>
+ * パスの型は兄弟の {@code XlsFixture}（{@code open(Path)} ほか）と内部実装（{@link Files}）に揃えて
+ * {@link Path} を用いる。
+ * </p>
+ *
  * @author kiyobot
  */
 final class YamlFixture {
@@ -35,28 +40,24 @@ final class YamlFixture {
     /**
      * YAML テキストを実ファイルへ書き出し、本番配線の {@link YamlFormatReader} で読む。
      *
+     * <p>
+     * <b>副作用</b>: 読み込み前に {@link YamlLoader#clearCacheForTest()} を呼び、静的グローバルの
+     * LRU キャッシュ（{@code YamlLoader.YAML_CACHE}）を空にする。同一パスへ内容の違う YAML を書き直して
+     * 読むテストが、直前のテストのキャッシュ結果を受け取らないようにするためである。
+     * </p>
+     *
      * @param dir      書き出し先ディレクトリ
      * @param yamlText YAML テキスト
      * @return 中間モデル
      */
-    static TestDataContainer read(File dir, String yamlText) {
-        write(dir, yamlText);
-        YamlLoader.clearCacheForTest();
-        return new YamlFormatReader().read(dir.getAbsolutePath(), RESOURCE);
-    }
-
-    /**
-     * YAML テキストを実ファイルへ書き出す。
-     *
-     * @param dir      書き出し先ディレクトリ
-     * @param yamlText YAML テキスト
-     */
-    static void write(File dir, String yamlText) {
+    static TestDataContainer read(Path dir, String yamlText) {
         try {
-            Files.write(new File(dir, RESOURCE + ".yaml").toPath(), yamlText.getBytes(StandardCharsets.UTF_8));
+            Files.write(dir.resolve(RESOURCE + ".yaml"), yamlText.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        YamlLoader.clearCacheForTest();
+        return new YamlFormatReader().read(dir.toAbsolutePath().toString(), RESOURCE);
     }
 
     /**

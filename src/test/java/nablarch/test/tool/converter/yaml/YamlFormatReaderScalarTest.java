@@ -4,9 +4,13 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.ListMapBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -29,12 +33,23 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>対象は「NTF が実行できるテストデータ」に限る。</b>本体スキーマ
- * （yaml jar 内 {@code nablarch/test/ntf-testdata-yaml-schema.json}）の
- * {@code $defs.table_data.properties.rows.items.additionalProperties.type} が値を
- * {@code ["string","null"]} に限るため、引用符なしの {@code true} / {@code 123} / {@code 1.50} /
- * {@code .inf} / {@code .nan} はスキーマ違反で中間モデルへ到達しない。これらは仕様外の入力であり
- * 担保対象にしない（例外で止まるため黙って壊れることもない）。本クラスが扱うのは
- * <b>スキーマを通るスカラー記法だけ</b>である。
+ * （yaml jar 内 {@code nablarch/test/ntf-testdata-yaml-schema.json}）は
+ * <b>{@code rows} の値</b>（{@code $defs.table_data} ／ {@code $defs.list_map_data} の
+ * {@code properties.rows.items.additionalProperties.type}、および
+ * {@code $defs.record_fragment.properties.rows.items.items.type}）を {@code ["string","null"]} に限るため、
+ * <b>そこに</b>引用符なしで {@code true} / {@code 123} / {@code 1.50} / {@code .inf} / {@code .nan} と書くと
+ * スキーマ違反で中間モデルへ到達しない。これらは仕様外の入力であり担保対象にしない
+ * （例外で止まるため黙って壊れることもない）。本クラスが扱うのは
+ * <b>{@code rows} の値としてスキーマを通るスカラー記法だけ</b>である。
+ * </p>
+ *
+ * <p>
+ * <b>この線引きは {@code rows} の値にのみ当てはまる。</b>スキーマの他のプロパティは別の型を課しており、
+ * たとえば {@code $defs.field_def.properties.length} は
+ * {@code anyOf: [{type: integer, minimum: 0}, {type: string, pattern: "^([0-9]+|-)$"}]} であって
+ * description も「integer 記法（10）も文字列記法（"10"）もどちらも有効」と明記している。
+ * すなわち引用符なしの {@code 123} が一律に仕様外なのではない
+ * （{@code length} の integer 記法は {@link YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString} が担保する）。
  * </p>
  *
  * <p>
@@ -59,11 +74,29 @@ public class YamlFormatReaderScalarTest {
     // ------------------------------------------------------------------ helpers
 
     /**
+     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     *
+     * @return ディレクトリ
+     */
+    private Path dir() {
+        return folder.getRoot().toPath();
+    }
+
+    /**
      * 検証対象スカラー 1 個を {@code setup_tables} の 1 行 1 カラム（{@code V}）に置いた実 {@code .yaml} を
      * 書き出し、中間モデルへ入った値を返す。
      *
+     * <p>
+     * <b>ブロックスカラー（{@code |} ／ {@code >}）を渡す場合の継続行のインデントは
+     * 半角空白 10 個以上</b>である。値の位置（{@code "      - V: "} ＝ 空白 6 個＋{@code "- V: "}）が
+     * 8 桁目から始まるため、YAML のブロックスカラーはそれより深いインデントを要求する。
+     * 本クラスのテストは空白 10 個で書いている（インデント量そのものは値に現れない。
+     * ブロックスカラーは最も浅い継続行のインデントを基準に切り落とすため）。
+     * </p>
+     *
      * @param valueLines 検証対象スカラー。1 要素目は {@code "      - V: "} に続けて書かれ、
-     *                   2 要素目以降（ブロックスカラーの続き）は行としてそのまま連結される。
+     *                   2 要素目以降（ブロックスカラーの続き）は行としてそのまま連結される
+     *                   （＝インデントも呼び出し側が書く）。
      *                   1 要素目が空文字のときは {@code "      - V:"}（値なし）になる
      * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
      */
@@ -78,12 +111,61 @@ public class YamlFormatReaderScalarTest {
         for (int i = 1; i < valueLines.length; i++) {
             yaml.append(valueLines[i]).append('\n');
         }
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), yaml.toString());
+        TestDataContainer container = YamlFixture.read(dir(), yaml.toString());
         TestDataBlock block = YamlFixture.blocks(container).get(0);
         TableDataBlock table = (TableDataBlock) block;
         assertThat(table.getColumnNames(), is(Arrays.asList("V")));
         assertThat(table.getRows().size(), is(1));
         return table.getRows().get(0).get(0);
+    }
+
+    /**
+     * 検証対象スカラー 1 個を {@code list_maps} の 1 行 1 カラム（{@code V}）に置いた実 {@code .yaml} を
+     * 書き出し、中間モデルへ入った値を返す。{@link #readValue} と同じケースを LIST_MAP 経路で通す。
+     *
+     * @param value 検証対象スカラー（YAML 記法のまま）
+     * @return 中間モデル（{@link ListMapBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readListMapValue(String value) {
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - V: " + value + "\n");
+        ListMapBlock block = (ListMapBlock) YamlFixture.blocks(container).get(0);
+        assertThat(block.getColumnNames(), is(Arrays.asList("V")));
+        assertThat(block.getRows().size(), is(1));
+        return block.getRows().get(0).get(0);
+    }
+
+    /**
+     * 検証対象スカラー 1 個をレコード断片（{@code setup_files} の {@code records[].rows}）の
+     * 1 行 1 フィールドに置いた実 {@code .yaml} を書き出し、中間モデルへ入った値を返す。
+     * {@link #readValue} と同じケースをレコード断片経路で通す。
+     *
+     * <p>
+     * レコード断片の {@code rows} は<b>配列の配列</b>であり、スキーマも別パス
+     * （{@code $defs.record_fragment.properties.rows.items.items.type}）で型を課す。
+     * </p>
+     *
+     * @param value 検証対象スカラー（YAML 記法のまま）
+     * @return 中間モデル（{@link RecordLayout}）の 1 行目 1 フィールド目の値
+     */
+    private String readRecordFragmentValue(String value) {
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"V\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [" + value + "]\n");
+        FileDataBlock block = (FileDataBlock) YamlFixture.blocks(container).get(0);
+        assertThat(block.getRecords().size(), is(1));
+        RecordLayout record = block.getRecords().get(0);
+        assertThat(record.getRows().size(), is(1));
+        return record.getRows().get(0).get(0);
     }
 
     // ------------------------------------------------------------------ D2-01・D2-02
@@ -126,9 +208,10 @@ public class YamlFormatReaderScalarTest {
      * Then : 文字列 {@code "123"} が入る（数値へ解決されない）。
      *
      * <p>
-     * 引用符<b>なし</b>の {@code 123} は整数へ解決されスキーマ違反になるため対象外である
-     * （{@link YamlFormatReaderInvalidInputTest} が扱う軸F の範囲でもない ——
-     * 仕様外の入力として固定しないことが確定している）。
+     * 引用符<b>なし</b>の {@code 123} は整数へ解決され、<b>{@code rows} の値としては</b>スキーマ違反になるため
+     * 対象外である（{@link YamlFormatReaderInvalidInputTest} が扱う軸F の範囲でもない ——
+     * 仕様外の入力として固定しないことが確定している）。他のプロパティでは事情が異なり、
+     * {@code field_def.length} は integer 記法も許す（クラス Javadoc 参照）。
      * </p>
      */
     @Test
@@ -357,5 +440,64 @@ public class YamlFormatReaderScalarTest {
     @Test
     public void readsHashContainingStringAsIs() {
         assertThat(readValue("\"a #b\""), is("a #b"));
+    }
+
+    // ------------------------------------------------------------------ 経路差の確認（D2-06・D2-11 のみ）
+
+    /*
+     * 上の 12 ケースはすべて setup_tables の rows で測っている。YamlFormatReader の行値の取り出しは
+     * テーブル／LIST_MAP／レコード断片の 3 系統があり、スキーマも別パスで型を課すため、
+     * 「12 ケースの結果が他の 2 系統でも同じか」は上のテストだけでは分からない。
+     * 以下は D2-06（null）と D2-11（空文字）の 2 ケースだけを別経路で測り、経路差が無いことを固定する。
+     * 12 ケース × 3 経路には広げない（軸D の 12 ケース定義は setup_tables 経路のまま変えない）。
+     * 実測の結果、3 経路とも同じであった。
+     */
+
+    /**
+     * Given: 引用符なしの {@code null} を {@code list_maps} の行値に置いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : Java の {@code null} が入る（{@code setup_tables} 経路と同じ）。
+     *
+     * <p>担保する軸要素: D2-06 を LIST_MAP 経路で確認したもの（同一ケース・別経路）。</p>
+     */
+    @Test
+    public void readsUnquotedNullAsJavaNullInListMapPath() {
+        assertThat(readListMapValue("null"), is(nullValue()));
+    }
+
+    /**
+     * Given: 引用符付きの空文字 {@code ""} を {@code list_maps} の行値に置いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 空文字が入る（{@code setup_tables} 経路と同じ。Java {@code null} とは区別される）。
+     *
+     * <p>担保する軸要素: D2-11 を LIST_MAP 経路で確認したもの（同一ケース・別経路）。</p>
+     */
+    @Test
+    public void readsEmptyStringAsIsInListMapPath() {
+        assertThat(readListMapValue("\"\""), is(""));
+    }
+
+    /**
+     * Given: 引用符なしの {@code null} をレコード断片の行値に置いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : Java の {@code null} が入る（{@code setup_tables} 経路と同じ）。
+     *
+     * <p>担保する軸要素: D2-06 をレコード断片経路で確認したもの（同一ケース・別経路）。</p>
+     */
+    @Test
+    public void readsUnquotedNullAsJavaNullInRecordFragmentPath() {
+        assertThat(readRecordFragmentValue("null"), is(nullValue()));
+    }
+
+    /**
+     * Given: 引用符付きの空文字 {@code ""} をレコード断片の行値に置いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 空文字が入る（{@code setup_tables} 経路と同じ。Java {@code null} とは区別される）。
+     *
+     * <p>担保する軸要素: D2-11 をレコード断片経路で確認したもの（同一ケース・別経路）。</p>
+     */
+    @Test
+    public void readsEmptyStringAsIsInRecordFragmentPath() {
+        assertThat(readRecordFragmentValue("\"\""), is(""));
     }
 }

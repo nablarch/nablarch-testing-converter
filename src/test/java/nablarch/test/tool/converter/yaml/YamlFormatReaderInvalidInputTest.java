@@ -1,12 +1,15 @@
 package nablarch.test.tool.converter.yaml;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import nablarch.test.core.reader.yaml.YamlLoader;
@@ -40,10 +43,17 @@ import org.junit.rules.TemporaryFolder;
  * </table>
  *
  * <p>
- * <b>F2-01 の入力に、仕様外とした引用符なしスカラー記法（{@code true} / {@code 123} / {@code 1.50} /
- * {@code .inf} / {@code .nan}）は使わない。</b>それらは「NTF が実行できるテストデータ」の外側にあり、
- * 例外の形を固定する対象にしないことが確定しているためである。ここでは仕様内の記法（引用符付き文字列）で
- * 書きながらスキーマに反する入力 —— {@code type} の列挙違反 —— を使う。
+ * <b>F2-01 の入力に、{@code rows} の値として仕様外とした引用符なしスカラー記法（{@code true} /
+ * {@code 123} / {@code 1.50} / {@code .inf} / {@code .nan}）は使わない。</b>それらは
+ * 「NTF が実行できるテストデータ」の外側にあり、例外の形を固定する対象にしないことが確定しているためである。
+ * ここでは仕様内の記法（引用符付き文字列）で書きながらスキーマに反する入力 —— {@code type} の列挙違反と
+ * {@code length} のパターン違反 —— を使う。
+ * </p>
+ *
+ * <p>
+ * この線引きは <b>{@code rows} の値</b>にのみ当てはまる。他のプロパティは別の型を課しており、たとえば
+ * {@code $defs.field_def.properties.length} は integer 記法（{@code 10}）も文字列記法（{@code "10"}）も
+ * 許す（{@link YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString} が担保する）。
  * </p>
  *
  * <p>
@@ -77,6 +87,8 @@ public class YamlFormatReaderInvalidInputTest {
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code YamlSchemaValidationException} で止まり、違反は {@code enum} キーワード・
      *        位置 {@code $.setup_files[0].type} として報告される。
+     *
+     * <p>担保する軸要素: F2-01（スキーマ違反）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum() {
@@ -90,15 +102,26 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
                 + "          - [\"a\"]\n");
-        assertThat(types(e), is(list("enum")));
-        assertThat(locations(e), is(list("$.setup_files[0].type")));
+        assertThat(types(e), is(Arrays.asList("enum")));
+        assertThat(locations(e), is(Arrays.asList("$.setup_files[0].type")));
     }
 
     /**
      * Given: {@code field_def} の {@code length} に、スキーマの {@code ^([0-9]+|-)$} に反する
      *        引用符付き文字列 {@code "1a"} を書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : {@code YamlSchemaValidationException} で止まる（値が文字列でも記法が合わなければ通らない）。
+     * Then : {@code YamlSchemaValidationException} で止まり、違反は同じ位置に対する
+     *        {@code type} と {@code pattern} の 2 件として報告される
+     *        （値が文字列でも記法が合わなければ通らない）。
+     *
+     * <p>
+     * 2 件になるのは {@code length} が {@code anyOf} だからである。{@code "1a"} は
+     * 第 1 枝（{@code {type: integer, minimum: 0}}）の {@code type} と
+     * 第 2 枝（{@code {type: string, pattern: "^([0-9]+|-)$"}}）の {@code pattern} の<b>両方</b>を外し、
+     * どちらの枝の違反も報告される。順序・件数とも実測（2 件・この順）どおりに固定する。
+     * </p>
+     *
+     * <p>担保する軸要素: F2-01（スキーマ違反）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern() {
@@ -112,8 +135,10 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - {name: \"f1\", type: \"半角英字\", length: \"1a\"}\n"
                 + "        rows:\n"
                 + "          - [\"a\"]\n");
-        assertTrue("length の違反位置が報告されること: " + locations(e),
-                locations(e).contains("$.setup_files[0].records[0].fields[0].length"));
+        assertThat(types(e), is(Arrays.asList("type", "pattern")));
+        assertThat(locations(e), is(Arrays.asList(
+                "$.setup_files[0].records[0].fields[0].length",
+                "$.setup_files[0].records[0].fields[0].length")));
     }
 
     // ------------------------------------------------------------------ F2-02 YAML として不正
@@ -124,16 +149,18 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code IllegalStateException}（メッセージにファイルパスを含む）で止まり、
      *        原因例外は SnakeYAML Engine の {@code YamlEngineException} である。
      *        スキーマ検証はパースが通らないため実行されない（{@code YamlSchemaValidationException} ではない）。
+     *
+     * <p>担保する軸要素: F2-02（YAML として不正）。</p>
      */
     @Test
     public void failsWithParseErrorWhenYamlIsMalformed() {
         // Given / When
         try {
-            YamlFixture.read(folder.getRoot(), "setup_tables:\n  - table: \"T\"\n   rows: [\n");
+            YamlFixture.read(dir(), "setup_tables:\n  - table: \"T\"\n   rows: [\n");
             fail("should throw");
         } catch (IllegalStateException e) {
             // Then
-            assertTrue("スキーマ検証まで到達しないこと", !(e instanceof YamlSchemaValidationException));
+            assertFalse("スキーマ検証まで到達しないこと", e instanceof YamlSchemaValidationException);
             assertTrue("メッセージにファイルパスを含むこと: " + e.getMessage(),
                     e.getMessage().startsWith("Failed to parse YAML file: "));
             assertThat(e.getCause(),
@@ -157,6 +184,8 @@ public class YamlFormatReaderInvalidInputTest {
      * {@code YamlFormatReader#addBlocksForSection} の「未知キーは無視」は、
      * <b>スキーマが許す範囲（既知キーのうち本クラスが分岐を持たないもの）に対してのみ効く</b>。
      * </p>
+     *
+     * <p>担保する軸要素: F2-03（未知のキー）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown() {
@@ -168,8 +197,8 @@ public class YamlFormatReaderInvalidInputTest {
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
                 + "      - C: \"1\"\n");
-        assertThat(types(e), is(list("additionalProperties")));
-        assertThat(locations(e), is(list("$")));
+        assertThat(types(e), is(Arrays.asList("additionalProperties")));
+        assertThat(locations(e), is(Arrays.asList("$")));
     }
 
     // ------------------------------------------------------------------ F2-04 必須構造の欠落
@@ -179,13 +208,15 @@ public class YamlFormatReaderInvalidInputTest {
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code YamlSchemaValidationException} で止まり、違反は {@code required} キーワード・
      *        位置 {@code $.setup_tables[0]}・欠落プロパティ {@code rows} として報告される。
+     *
+     * <p>担保する軸要素: F2-04（必須構造の欠落）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenRequiredRowsIsMissing() {
         // Given / When / Then
         YamlSchemaValidationException e = assertSchemaViolation("setup_tables:\n  - table: \"T\"\n");
-        assertThat(types(e), is(list("required")));
-        assertThat(locations(e), is(list("$.setup_tables[0]")));
+        assertThat(types(e), is(Arrays.asList("required")));
+        assertThat(locations(e), is(Arrays.asList("$.setup_tables[0]")));
         assertThat(e.getErrors().get(0).getProperty(), is("rows"));
     }
 
@@ -199,6 +230,8 @@ public class YamlFormatReaderInvalidInputTest {
      * スキーマ {@code $defs.record_fragment.properties.fields.minItems} が 1 であるため、
      * フィールド 0 件のレコードは中間モデルへ到達しない。
      * </p>
+     *
+     * <p>担保する軸要素: F2-04（必須構造の欠落）／C-17（到達不能の根拠）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldsIsEmpty() {
@@ -210,8 +243,8 @@ public class YamlFormatReaderInvalidInputTest {
                 + "    records:\n"
                 + "      - fields: []\n"
                 + "        rows: []\n");
-        assertThat(types(e), is(list("minItems")));
-        assertThat(locations(e), is(list("$.setup_files[0].records[0].fields")));
+        assertThat(types(e), is(Arrays.asList("minItems")));
+        assertThat(locations(e), is(Arrays.asList("$.setup_files[0].records[0].fields")));
     }
 
     /**
@@ -224,6 +257,8 @@ public class YamlFormatReaderInvalidInputTest {
      * スキーマ {@code $defs.field_def.required} が {@code type} を必須とするため、
      * 型を持たないフィールド定義は中間モデルへ到達しない。
      * </p>
+     *
+     * <p>担保する軸要素: F2-04（必須構造の欠落）／C-20（到達不能の根拠）。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldTypeIsMissing() {
@@ -237,8 +272,8 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - {name: \"f1\", length: \"1\"}\n"
                 + "        rows:\n"
                 + "          - [\"a\"]\n");
-        assertThat(types(e), is(list("required")));
-        assertThat(locations(e), is(list("$.setup_files[0].records[0].fields[0]")));
+        assertThat(types(e), is(Arrays.asList("required")));
+        assertThat(locations(e), is(Arrays.asList("$.setup_files[0].records[0].fields[0]")));
         assertThat(e.getErrors().get(0).getProperty(), is("type"));
     }
 
@@ -252,12 +287,18 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * {@code YamlLoader#load} は読み込み結果が {@code null} のとき空 Map を返し、スキーマ検証も
      * 実行しない（トップレベルの必須キーは無いため空 Map はスキーマ上も適合する）。
+     * <b>本テストはこの「スキーマ検証に到達しない」分岐そのものを担保する唯一のテストである。</b>
+     * 同じ結果（ブロック 0 件）をスキーマ検証を通る入力で確かめるのは
+     * {@link YamlFormatReaderRealFileTest#namesContainerAndSectionByResourceNameWithoutBlocks}
+     * （入力は {@code setup_tables: []}）の役目であり、両者は通る経路が違う。
      * </p>
+     *
+     * <p>担保する軸要素: F2-05（空ファイル）。</p>
      */
     @Test
     public void readsEmptyFileAsContainerWithoutBlocks() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), "");
+        TestDataContainer container = YamlFixture.read(dir(), "");
 
         // Then
         assertThat(container.getName(), is(YamlFixture.RESOURCE));
@@ -269,6 +310,15 @@ public class YamlFormatReaderInvalidInputTest {
     // ------------------------------------------------------------------ helpers
 
     /**
+     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     *
+     * @return ディレクトリ
+     */
+    private Path dir() {
+        return folder.getRoot().toPath();
+    }
+
+    /**
      * YAML テキストを読み、{@link YamlSchemaValidationException} で失敗することを確かめる。
      *
      * @param yamlText YAML テキスト
@@ -276,7 +326,7 @@ public class YamlFormatReaderInvalidInputTest {
      */
     private YamlSchemaValidationException assertSchemaViolation(String yamlText) {
         try {
-            YamlFixture.read(folder.getRoot(), yamlText);
+            YamlFixture.read(dir(), yamlText);
             fail("should throw YamlSchemaValidationException");
             return null;
         } catch (YamlSchemaValidationException e) {
@@ -300,13 +350,5 @@ public class YamlFormatReaderInvalidInputTest {
             locations.add(message.getInstanceLocation().toString());
         }
         return locations;
-    }
-
-    private static List<String> list(String... values) {
-        List<String> list = new ArrayList<String>();
-        for (String value : values) {
-            list.add(value);
-        }
-        return list;
     }
 }

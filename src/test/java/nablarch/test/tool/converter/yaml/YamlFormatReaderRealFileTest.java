@@ -1,17 +1,19 @@
 package nablarch.test.tool.converter.yaml;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
 import nablarch.test.tool.converter.model.MessageDataBlock;
@@ -44,7 +46,13 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
+ * 各テストの Javadoc には、そのテストが担保する軸要素の ID
+ * （{@code .rn/ntf-test-data-converter/coverage/inventory.md} の A-01〜A-14／B-1〜B-4／C-01〜C-21／E-1〜E-4）を記す。
+ * </p>
+ *
+ * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>実装（src/main）は変更していない。
+ * 妥当でないと判断した挙動は {@code coverage/issues.md} に課題として記録した（{@code YML-02} ／ {@code YML-03}）。
  * </p>
  *
  * @author kiyobot
@@ -60,6 +68,15 @@ public class YamlFormatReaderRealFileTest {
         YamlLoader.clearCacheForTest();
     }
 
+    /**
+     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     *
+     * @return ディレクトリ
+     */
+    private Path dir() {
+        return folder.getRoot().toPath();
+    }
+
     // ------------------------------------------------------------------ 軸A
 
     /**
@@ -72,11 +89,13 @@ public class YamlFormatReaderRealFileTest {
      * {@code DEFAULT} は {@code YamlFormatReader#addBlocksForSection} が既知セクションキーのみを
      * 分岐に持ち、いずれの分岐も {@code DEFAULT} を渡さないため辺②では到達不能である。
      * </p>
+     *
+     * <p>担保する軸要素: A-02〜A-14（{@code DEFAULT} を除く 13 種）／E-1（複数＝13）。</p>
      */
     @Test
     public void readsAllThirteenDataTypesFromRealYaml() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), allSectionsYaml());
+        TestDataContainer container = YamlFixture.read(dir(), allSectionsYaml());
 
         // Then
         List<DataType> actual = new ArrayList<DataType>();
@@ -105,11 +124,14 @@ public class YamlFormatReaderRealFileTest {
      * Given: テーブル・LIST_MAP・ファイル・メッセージを 1 件ずつ書いた 1 ファイル。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code TestDataBlock} の具象 4 種がそれぞれ生成され、識別子も原文どおりになる。
+     *        テーブルと LIST_MAP はいずれも行 1 件を持つ。
+     *
+     * <p>担保する軸要素: B-1〜B-4／C-07（identifier）／E-1（複数＝4）／<b>E-2(1 件)</b>。</p>
      */
     @Test
     public void readsFourBlockImplementationsFromOneRealYaml() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
@@ -139,8 +161,11 @@ public class YamlFormatReaderRealFileTest {
         assertThat(blocks.size(), is(4));
         assertThat(blocks.get(0), is(instanceOf(TableDataBlock.class)));
         assertThat(blocks.get(0).getIdentifier(), is("T"));
+        assertThat("E-2 ブロック内行数（1 件）", ((TableDataBlock) blocks.get(0)).getRows().size(), is(1));
         assertThat(blocks.get(1), is(instanceOf(ListMapBlock.class)));
         assertThat(blocks.get(1).getIdentifier(), is("lm"));
+        assertThat("E-2 ブロック内行数（1 件。LIST_MAP 経路）",
+                ((ListMapBlock) blocks.get(1)).getRows().size(), is(1));
         assertThat(blocks.get(2), is(instanceOf(FileDataBlock.class)));
         assertThat(blocks.get(2).getIdentifier(), is("f.dat"));
         assertThat(blocks.get(3), is(instanceOf(MessageDataBlock.class)));
@@ -158,11 +183,13 @@ public class YamlFormatReaderRealFileTest {
      * 軸C の C-08（{@code columnNames} 空）・C-09（{@code rows} 空）と軸E の E-2(0 件) を同じ入力で通す。
      * カラム名は行から導出されるため、行が無ければカラム名も 0 件になる。
      * </p>
+     *
+     * <p>担保する軸要素: A-02／B-1／C-07／C-08(空)／C-09(空)／E-1(1 件)／E-2(0 件)。</p>
      */
     @Test
     public void readsEmptyColumnNamesAndRowsFromTableWithoutRows() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(),
+        TestDataContainer container = YamlFixture.read(dir(),
                 "setup_tables:\n  - table: \"T\"\n    rows: []\n");
 
         // Then
@@ -177,11 +204,13 @@ public class YamlFormatReaderRealFileTest {
      * Given: {@code rows} を空配列にした LIST_MAP エントリ。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : ブロックは生成され、{@code columnNames} も {@code rows} も空になる（テーブル経路と同じ）。
+     *
+     * <p>担保する軸要素: A-05／B-2／C-07／C-08(空)／C-09(空)／E-2(0 件)。</p>
      */
     @Test
     public void readsEmptyColumnNamesAndRowsFromListMapWithoutRows() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(),
+        TestDataContainer container = YamlFixture.read(dir(),
                 "list_maps:\n  - id: \"lm\"\n    rows: []\n");
 
         // Then
@@ -203,11 +232,13 @@ public class YamlFormatReaderRealFileTest {
      * （{@code message_data} / {@code expected_request_message_data} は {@code minItems: 1} のため
      * メッセージ系では到達できない）。
      * </p>
+     *
+     * <p>担保する軸要素: A-06／B-3／C-10(FIXED)／C-12(空)／E-3(0 件)。</p>
      */
     @Test
     public void readsEmptyRecordsFromFixedFileWithoutRecords() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(),
+        TestDataContainer container = YamlFixture.read(dir(),
                 "setup_files:\n  - path: \"f.dat\"\n    type: \"fixed\"\n    records: []\n");
 
         // Then
@@ -226,11 +257,13 @@ public class YamlFormatReaderRealFileTest {
      * 軸C の C-18（{@code RecordLayout.rows} 空）を通す。あわせて {@code record_type} を書かない場合に
      * {@code null} になること（C-16 省略）も実ファイル経路で確かめる。
      * </p>
+     *
+     * <p>担保する軸要素: A-06／B-3／C-16(省略＝null)／C-18(空)／C-19／C-21／E-3(1 件)。</p>
      */
     @Test
     public void readsEmptyRowsFromRecordLayoutWithoutRows() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_files:\n"
                 + "  - path: \"f.dat\"\n"
                 + "    type: \"fixed\"\n"
@@ -260,11 +293,13 @@ public class YamlFormatReaderRealFileTest {
      * 辺①でも同じ理由（本体 {@code DataFile} が {@code file-type} を必ず持つ）で到達不能と判定しており
      * （{@code coverage/issues.md} XLS-07）、YAML 経路でも同じ器を使うため結果は変わらない。
      * </p>
+     *
+     * <p>担保する軸要素: A-06／B-3／C-11(空が到達不能である根拠)。</p>
      */
     @Test
     public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_files:\n"
                 + "  - path: \"f.dat\"\n"
                 + "    type: \"fixed\"\n"
@@ -287,12 +322,17 @@ public class YamlFormatReaderRealFileTest {
      *
      * <p>
      * 軸C の <b>C-13（{@code MessageDataBlock.directives} 空）が辺②で到達不能である根拠</b>である。
+     * ただし {@code MessageDataBlock} は {@code addMessageBlocks}（本テスト）と {@code addSendSyncBlocks}
+     * （{@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInSendSync}）の 2 か所で生成される。
+     * 根拠は両方で示す。
      * </p>
+     *
+     * <p>担保する軸要素: A-10／B-4／C-13(空が到達不能である根拠。受信メッセージ経路)。</p>
      */
     @Test
     public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "messages:\n"
                 + "  - id: \"RM01\"\n"
                 + "    records:\n"
@@ -315,11 +355,13 @@ public class YamlFormatReaderRealFileTest {
      * <p>
      * 軸C の C-13（{@code MessageDataBlock.directives} 値あり）を通す。
      * </p>
+     *
+     * <p>担保する軸要素: A-10／B-4／C-13(値あり)。</p>
      */
     @Test
     public void readsMessageDirectivesFromRealYaml() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "messages:\n"
                 + "  - id: \"RM01\"\n"
                 + "    directives:\n"
@@ -348,11 +390,23 @@ public class YamlFormatReaderRealFileTest {
      * E-4(複数) は {@code YamlFormatReader#read} が {@code Collections.singletonList(section)} を返す
      * 1 リソース単位 API のため到達不能である。
      * </p>
+     *
+     * <p>
+     * <b>入力は {@code setup_tables: []}（既知セクションを空配列で書く）である。</b>
+     * 空ファイルやコメントだけのファイルにすると {@code YamlLoader#load} が
+     * {@code loadFromInputStream} の {@code null} を受けて空 Map を早期 return し、
+     * <b>{@code JSON_SCHEMA.validate} に到達しない</b>。本テストはスキーマ検証を通る入力で
+     * 「ブロック 0 件」を担保するために、スキーマ上有効な空配列を用いる。
+     * 空ファイルそのもの（＝検証を迂回する分岐）は
+     * {@link YamlFormatReaderInvalidInputTest#readsEmptyFileAsContainerWithoutBlocks}（軸F の F2-05）が担保する。
+     * </p>
+     *
+     * <p>担保する軸要素: C-01／C-02(1 件)／C-03／C-04(空)／E-1(0 件)／E-4(1 件)。</p>
      */
     @Test
     public void namesContainerAndSectionByResourceNameWithoutBlocks() {
-        // Given / When: コメントだけの YAML（トップレベルは空 Map になる）
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), "# no sections\n");
+        // Given / When: 既知セクションを空配列で書いた YAML（スキーマ検証を通る）
+        TestDataContainer container = YamlFixture.read(dir(), "setup_tables: []\n");
 
         // Then
         assertThat(container.getName(), is(YamlFixture.RESOURCE));
@@ -370,11 +424,13 @@ public class YamlFormatReaderRealFileTest {
      * 軸E の E-1(複数) / E-2(複数) / E-3(複数) を実ファイル経路で通す
      * （1 件のケースは他のテストが通している）。
      * </p>
+     *
+     * <p>担保する軸要素: A-02／A-06／B-1／B-3／C-16(値あり)／E-1(複数)／E-2(複数)／E-3(複数)。</p>
      */
     @Test
     public void readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(folder.getRoot(), ""
+        TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"T1\"\n"
                 + "    rows:\n"
@@ -407,6 +463,210 @@ public class YamlFormatReaderRealFileTest {
         assertThat("E-3 ファイル内レコードレイアウト数（複数）", file.getRecords().size(), is(2));
         assertThat(file.getRecords().get(0).getRecordType(), is("head"));
         assertThat(file.getRecords().get(1).getRows().size(), is(2));
+    }
+
+    // ------------------------------------------------------------------ 軸C（FW 制御ヘッダ・フィールド長）
+
+    /**
+     * Given: {@code fw_header:} に 2 キーを書いた {@code messages} エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 書いたキーと値がそのまま {@code MessageDataBlock.fwHeaderFields} へ記述順で入る。
+     *
+     * <p>
+     * 軸C の C-14（{@code MessageDataBlock.fwHeaderFields} 値あり）を<b>実ファイル経路で</b>通す。
+     * これまでは in-memory 経路（{@code YamlFormatReaderTest#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord}）
+     * の担保しか無かった。スキーマ上 {@code fw_header} は {@code messages} 専用であり
+     * （{@code $defs.message_data.properties.fw_header} の description）、値の型は
+     * {@code $defs.fw_header.additionalProperties.type} ＝ {@code string} である。
+     * </p>
+     *
+     * <p>担保する軸要素: A-10／B-4／C-14(値あり)。</p>
+     */
+    @Test
+    public void readsFwHeaderFieldsFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    fw_header:\n"
+                + "      requestId: \"RM01\"\n"
+                + "      userId: \"u1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        assertThat(new ArrayList<String>(block.getFwHeaderFields().keySet()),
+                is(Arrays.asList("requestId", "userId")));
+        assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
+        assertThat(block.getFwHeaderFields().get("userId"), is("u1"));
+        // 本文レコードは fw_header の影響を受けない
+        assertThat(block.getRecords().size(), is(1));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("b1"));
+    }
+
+    /**
+     * Given: {@code length} を<b>引用符なしの整数</b>（{@code 10}）で書いたフィールド定義。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : スキーマを通り、{@code FieldDef.length} には文字列 {@code "10"} が入る。
+     *
+     * <p>
+     * スキーマ {@code $defs.field_def.properties.length} は
+     * {@code anyOf: [{type: integer, minimum: 0}, {type: string, pattern: "^([0-9]+|-)$"}]} であり、
+     * description も「integer 記法（10）も文字列記法（"10"）もどちらも有効」と明記している。
+     * すなわち<b>これは仕様内の入力である</b>（{@code rows} の値として引用符なし {@code 123} を書くと
+     * スキーマ違反になるのとは別の話。{@code coverage/issues.md}「対象としない入力（辺②）」）。
+     * 中間モデルで文字列になるのは {@code YamlSection#toStr} が {@code Object#toString()} で
+     * 文字列化するためであり、引用符の有無は中間モデルに残らない。
+     * </p>
+     *
+     * <p>担保する軸要素: A-06／B-3／C-21（{@code FieldDef.length} 値あり・integer 記法）。</p>
+     */
+    @Test
+    public void readsIntegerLengthNotationAsString() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: 10}\n"
+                + "        rows:\n"
+                + "          - [\"abcdefghij\"]\n");
+
+        // Then
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        FieldDef field = block.getRecords().get(0).getFields().get(0);
+        assertThat(field.getName(), is("f1"));
+        assertThat(field.getType(), is("半角英字"));
+        assertThat(field.getLength(), is("10"));
+    }
+
+    // ------------------------------------------------------------------ 送信系（YML-02）・FW_HEADER（YML-03）
+
+    /**
+     * Given: {@code directives} を書かない送信系（{@code response_header_messages}）エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code directives} は空にならず、器が注入する {@code file-type} だけを持つ。
+     *
+     * <p>
+     * {@code MessageDataBlock} は {@code YamlFormatReader#addMessageBlocks} と
+     * {@code #addSendSyncBlocks} の 2 か所で生成される。
+     * {@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage} が前者を通すのに対し、
+     * 本テストは<b>後者</b>を通す。したがって軸C の
+     * <b>C-13（{@code MessageDataBlock.directives} 空）が辺②で到達不能である根拠</b>は
+     * 2 つの生成経路の両方で示されている。
+     * </p>
+     *
+     * <p>担保する軸要素: A-13／B-4／C-13(空が到達不能である根拠。送信系経路)。</p>
+     */
+    @Test
+    public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInSendSync() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        assertThat(block.getDataType(), is(DataType.RESPONSE_HEADER_MESSAGES));
+        assertThat(block.getDirectives().size(), is(1));
+        assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code group_id} を書かない送信系エントリ 1 件と、書いたエントリ 1 件。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、{@code group_id} 無しのエントリだけがブロックごと消える。
+     *
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.group_message_data.required} は
+     * {@code ["id","records"]} だけで {@code group_id} を要求せず、その description も
+     * 「group_id を省略した場合は経路 B（{@code MockMessagingContext} / {@code MockMessagingClient}）として動作する」と
+     * 書いている。それでも {@code YamlFormatReader#addSendSyncBlocks} は
+     * {@code rawGroupsInOrder}（{@code group_id} が非 null のエントリのみ列挙）を回すため、
+     * {@code group_id} の無いエントリはブロックを生成しない。
+     * {@code coverage/issues.md} に <b>YML-02</b> として記録した（{@code src/main} は無変更）。
+     * </p>
+     *
+     * <p>担保する軸要素: A-14／B-4（現状挙動の固定。YML-02 の根拠テスト）。</p>
+     */
+    @Test
+    public void dropsSendSyncEntryWithoutGroupIdFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_body_messages:\n"
+                + "  - id: \"DROP\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"d1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"x\"]\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"KEEP\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"k1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"y\"]\n");
+
+        // Then: 例外にならず、group_id 付きの 1 件だけが残る
+        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        assertThat(block.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
+        assertThat(block.getIdentifier(), is("KEEP"));
+        assertThat(block.getGroupId(), is("[g]"));
+    }
+
+    /**
+     * Given: {@code record_type: "FW_HEADER"} のレコードだけを持ち {@code fw_header:} を書かない
+     *        {@code messages} エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、ブロックは生成されるがレコードも FW 制御ヘッダも 0 件になる
+     *        （書いたフィールド定義とデータ行が黙って消える）。
+     *
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.record_fragment.properties.record_type} に
+     * {@code enum} は無く、その description は
+     * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
+     * {@code $defs.message_data.properties.records} の description も
+     * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。
+     * にもかかわらず本体器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal} が
+     * {@code skipFwHeader} 時に {@code FW_HEADER} を {@code continue} でスキップする）と
+     * converter（{@code YamlFormatReader#recordsWithoutFwHeader}）の双方が、この名前のレコードを落とす。
+     * {@code coverage/issues.md} に <b>YML-03</b> として記録した（{@code src/main} は無変更）。
+     * </p>
+     *
+     * <p>担保する軸要素: A-10／B-4／C-14(空)／C-15(空)（現状挙動の固定。YML-03 の根拠テスト）。</p>
+     */
+    @Test
+    public void dropsFwHeaderNamedRecordFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"requestId\", type: \"半角英字\", length: \"4\"}\n"
+                + "        rows:\n"
+                + "          - [\"RM01\"]\n");
+
+        // Then: 例外にならず、レコードも FW 制御ヘッダも残らない
+        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
+        assertThat(block.getDataType(), is(DataType.MESSAGE));
+        assertThat(block.getIdentifier(), is("RM01"));
+        assertTrue("records が空であること", block.getRecords().isEmpty());
+        assertTrue("fwHeaderFields が空であること", block.getFwHeaderFields().isEmpty());
     }
 
     // ------------------------------------------------------------------ helpers

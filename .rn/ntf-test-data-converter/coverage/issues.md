@@ -13,7 +13,13 @@
 | 影響度 高 | 変換結果が入力と一致せず、値が化ける・行が消えるなど**データが黙って変わる**。`nablarch-example-web`（サンプルアプリ）の 6 ファイルでの発現有無は影響度の根拠にしない（対象PJの実データでの発現は未知） |
 | 影響度 中 | 変換結果が入力と一致しないが、`nablarch-example-web`（サンプルアプリ）の 6 ファイルでは発現を確認していない（対象PJの実データに無いことは意味しない） |
 | 影響度 低 | 記録のみ。仕様として受容できると判断した |
+| 影響度 別枠 | 変換結果は入力と一致するが、**作成者の意図と NTF 実行時の解釈が食い違う**もの。上の 3 段は「変換結果が入力と一致するか」で定義されるため当てはまらない |
 | 未確認 | 挙動を確認・固定できなかったもの |
+
+**「影響度 別枠」を足した（2026-08-14・#24 のレビュー指摘による訂正）。** 高／中／低はいずれも
+「変換結果が入力と一致するか」を軸に定義されており、**変換自体は忠実なのに仕様として不適切**という課題を
+表現できなかった（YML-01 がそれである）。「低＝記録のみ。仕様として受容できると判断した」に寄せると
+「受容した」という誤った意味が付くため、段を 1 つ足して区別する。**別枠は「軽い」という意味ではない。**
 
 **「影響度 高」の定義を訂正した（2026-08-12・ユーザー指摘による訂正）。** 当初は「実プロジェクトの Excel
 テストデータに実在するパターンで」としていたが、`nablarch-example-web` は**サンプルアプリであって対象PJの
@@ -926,7 +932,9 @@ ID は発見順に振り、振り直さない。
 以下はすべて `YamlFixture` が書き出した実 `.yaml` を `new YamlFormatReader().read(...)` に渡して
 実測した結果である（`loadRawMap` を差し替える in-memory 経路ではスカラー解決もスキーマ検証も通らない）。
 
-### YML-01 `~` ／ `NULL` は NULL にならず文字列になる（**変換時には検出できない**／帰属は yaml 側）
+### YML-01 `~` ／ `NULL` は NULL にならず文字列になる（影響度 別枠・**変換時には検出できない**／帰属は yaml 側）
+
+**テストで担保した変種**（実 `.yaml` を読んで観測した結果をアサートしている）:
 
 | 入力（`rows` の値） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderScalarTest#`） |
 |---|---|---|
@@ -936,7 +944,14 @@ ID は発見順に振り、振り直さない。
 | `NULL`（大文字） | **文字列 `"NULL"`** | `readsUppercaseNullAsString` |
 | `"null"`（引用符あり） | 文字列 `"null"` | `readsQuotedNullAsString` |
 
-- **5 者はいずれもスキーマを通る仕様内の入力である。** 値に課される型は
+**正規表現から導出した事実**（テストは書いていない。下表 4 の `JsonScalarResolver` の `NULL` パターンから
+機械的に導ける範囲であり、担保テストがあると読ませないためここに分ける）:
+
+| 入力（`rows` の値） | 導出される結果 | 導出の根拠 |
+|---|---|---|
+| `Null`（先頭のみ大文字） | 文字列 `"Null"` | `NULL` ＝ `^(?:null)$` に一致しない（下表 4） |
+
+- **6 者はいずれもスキーマを通る仕様内の入力である。** 値に課される型は
   `$defs.table_data.properties.rows.items.additionalProperties.type` ＝ `["string","null"]`
   （`list_map_data` も同じパス。`record_fragment` は `$defs.record_fragment.properties.rows.items.items.type`）で、
   文字列も `null` も許される。にもかかわらず Java `null` になるのは前 2 者だけで、
@@ -982,12 +997,119 @@ ID は発見順に振り、振り直さない。
   `YamlTestCoreAdapter#loadRawMap` → `YamlLoader#load` が解決した値を受け取るだけで、
   スカラー解決には関与しない。したがって修正するとすれば yaml 側（`YamlLoader` の
   `LoadSettings` 構成、またはスキーマ／Javadoc）である。
-- **影響度の欄を置いていない理由**: 本書の凡例（高／中／低）は「変換結果が入力と一致するか」で定義されているが、
-  本課題では**変換結果は入力と一致する**（文字列 `"~"` が入り文字列 `"~"` が出る）。食い違うのは
-  作成者の意図と NTF 実行時の解釈の側であり、既存の 3 段階では捉えられない。凡例を拡張するかは
-  コーディネータの判断に委ね、ここでは「**変換時には検出できない**」とだけ書く。
+- **影響度を「別枠」とした理由**: 本課題では**変換結果は入力と一致する**（文字列 `"~"` が入り
+  文字列 `"~"` が出る）。食い違うのは作成者の意図と NTF 実行時の解釈の側である。
+  凡例の高／中／低はいずれも「変換結果が入力と一致するか」で定義されているため当てはまらず、
+  かといって「低＝仕様として受容できると判断した」でもない（下の判断のとおり**仕様として不適切**である）。
+  この 1 件のために凡例を 1 段拡張し、**影響度 別枠**とした（コーディネータ判断・2026-08-14）。
+  並び順の原則（検出できるかを優先）は変えていない。
 - 判断: **仕様として不適切**（NULL のつもりの記述が黙って文字列になる）。ただし帰属は yaml 側であり、
   本作業では修正しない（`src/main` 無変更）。
+
+### YML-02 送信系で `group_id` を省略したエントリがブロックごと黙って消える（影響度 中・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `response_body_messages` に `group_id` 無しの `id: "DROP"` 1 件と `group_id: "g"` の `id: "KEEP"` 1 件 | ブロックは **1 件**（`KEEP` だけ）。`DROP` はブロックもレコードも中間モデルに現れない。**例外は出ない** | `YamlFormatReaderRealFileTest#dropsSendSyncEntryWithoutGroupIdFromRealYaml` |
+
+- **この入力はスキーマ上の仕様内である。** `$defs.group_message_data.required` も
+  `$defs.expected_request_message_data.required` も `["id","records"]` だけで、**`group_id` を要求していない**。
+  さらに `group_message_data` の description は「group_id を省略した場合は経路 B
+  （`MockMessagingContext` / `MockMessagingClient`）として動作する」、
+  `expected_request_message_data.properties.group_id` の description は
+  「省略時は id 直接指定（先着1件）で動作する」と書いており、**省略が正当な使い方であることを明示している**。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
+  for k in ['group_message_data','expected_request_message_data']:
+      print(k, d['\$defs'][k]['required'])
+      print('   ', d['\$defs'][k]['properties']['group_id']['description'])
+  "
+  ```
+
+- 原因: `YamlFormatReader#addSendSyncBlocks` は `rawGroupsInOrder(yaml, sectionKey)` を回してブロックを作る。
+  `rawGroupsInOrder` は `group_id` が **非 null のエントリだけ**を列挙するため、`group_id` の無いエントリは
+  どのグループにも属さず、ブロック生成のループに一度も入らない。
+  （`src/main/java/nablarch/test/tool/converter/yaml/YamlFormatReader.java` の `addSendSyncBlocks` と
+  `rawGroupsInOrder`。同メソッドの Javadoc は「`group_id` 必須」と書いているが、上のとおり
+  スキーマは必須にしていない。Javadoc の記述と一次情報が食い違っている。）
+- 実測: 上表のとおり。**例外にならない**（担保テストが固定している）。
+  なお XLS-10／XLS-13 が行っているような「WARNING 以上のログが 0 件」というアサートは本課題では
+  行っていないため、**警告が 1 件も出ないことは未確認である**（`java.util.logging` のハンドラを
+  付けていない）。「検出できない」の根拠は、例外にならずブロックが消えるという観測に置く。
+- 影響: 送信系で `group_id` を省略した（＝ id 直接指定で使うつもりの）エントリは、変換後の成果物から
+  ブロックごと消える。入力と出力を突き合わせない限り気づけない。
+- `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
+  （送信系セクション自体が無い。`grep -rn 'expected_request_\|response_header_messages\|response_body_messages'
+  src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
+  ただし辺②の入力は本来**手書きの YAML** であり、対象PJの実データでの発現は未知である。
+- 判断: **仕様として不適切**（スキーマが仕様内と認める入力が黙って落ちる。少なくとも
+  「`group_id` 無しのエントリを drop した」と報せるべきである）。ただし本作業では修正しない
+  （`src/main` 無変更）。**修正するとしたら本リポジトリ内で完結する**（原因コードが `src/main` にあるため）。
+
+### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `messages` に `record_type: "FW_HEADER"` のレコード 1 件だけ（`fw_header:` は書かない） | ブロックは生成されるが `records` **0 件**・`fwHeaderFields` **0 件**。書いたフィールド定義とデータ行が消える。**例外は出ない** | `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromRealYaml` |
+
+- **この入力はスキーマ上の仕様内である。** `$defs.record_fragment.properties.record_type` に `enum` は無く、
+  その description は「メッセージング系（messages / expected_request_\* / response_\*）では NTF 内部で常に
+  `"default"` に置換されるため実行時の挙動に影響しない（**可読性のために任意の名前を記述してよい。
+  FW_HEADER のような予約値はない**）」と書いている。あわせて `$defs.message_data.properties.records` の
+  description は「FW 制御ヘッダは fw_header に記述するため records には含めない（**旧形式の
+  record_type: FW_HEADER は廃止**）」と書いている。**スキーマの description は 2 か所で「FW_HEADER は
+  予約値ではない／廃止された」と述べている**が、実装は予約値として扱い続けている。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
+  print(d['\$defs']['record_fragment']['properties']['record_type'])
+  print(d['\$defs']['message_data']['properties']['records']['description'])
+  "
+  ```
+
+- 原因: 落としているのは **converter と本体器の両方**である。
+  - 本体器（yaml 側）: `nablarch/test/core/reader/yaml/YamlFileBuilder.java` の `buildFragmentsInternal` が
+    `if (skipFwHeader && FW_HEADER_RECORD_TYPE.equals(recordType)) { continue; }` で断片を作らない
+    （`skipFwHeader` はメッセージ系・送信系で真）。`FW_HEADER_RECORD_TYPE` は
+    `nablarch/test/core/reader/yaml/YamlSection.java` で `"FW_HEADER"` と定義されている。
+  - converter: `YamlFormatReader#recordsWithoutFwHeader` が同じ名前のレコードを原文側からも除く。
+    除かなければ「器の断片数と原文レコード数の不一致」で `IllegalStateException` になるため、
+    converter 側だけを直しても解決しない。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT-sources.jar \
+    && grep -n 'FW_HEADER_RECORD_TYPE' nablarch/test/core/reader/yaml/YamlFileBuilder.java nablarch/test/core/reader/yaml/YamlSection.java
+  ```
+
+- 実測: 上表のとおり。`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残ることも、
+  送信系（`response_body_messages`）でも同じく落ちることもプローブで確認した（いずれも例外にならない）。
+  この 2 つはプローブでの観測であり**テストとしては固定していない**（担保テストは上表の 1 件のみ）。
+  YML-02 と同じく、警告が 1 件も出ないことは未確認である。
+- 影響: スキーマの description を読んで「FW_HEADER は予約値ではないので可読性のために使ってよい」と
+  判断した作成者が `record_type: "FW_HEADER"` と書くと、そのレコードのフィールド定義もデータ行も
+  変換後の成果物から消える。入力と出力を突き合わせない限り気づけない。
+  なお NTF 実行時も同じ器（`YamlFileBuilder`）が同じレコードを落とすため、**converter の変換は
+  NTF の解釈に忠実である**。食い違っているのは**スキーマの description と実装**の側である。
+- `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
+  （`grep -rn 'FW_HEADER' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
+  対象PJの実データでの発現は未知である。
+- 判断: **仕様として不適切**（スキーマの description が「予約値はない」と明言する値を実装が予約値として扱い、
+  黙ってデータを落とす）。**帰属は yaml 側**である（description を実装に合わせるか、実装から
+  `skipFwHeader` の特別扱いを外すかは yaml 側の判断）。本作業では修正しない（`src/main` 無変更）。
 
 ### 対象としない入力（辺②）
 
@@ -997,7 +1119,12 @@ converter の入出力は **NTF が実行できるテストデータ**に限る�
 `YamlLoader#load` はパース直後に `JSON_SCHEMA.validate(...)` を実行し、違反があれば
 `YamlSchemaValidationException` を投げるため、**スキーマ違反の YAML は中間モデルへ到達しない**。
 
-値に課される型は次のパスで `["string","null"]` に限られる。
+**この段落の適用範囲は `rows` の値だけである（2026-08-14・#24 のレビュー指摘による訂正）。**
+当初は「引用符なしの `123` は整数へ解決されスキーマ違反」と無限定に書いていたが、それが真なのは
+**`rows` の値**（`table_data` / `list_map_data` / `record_fragment`）についてだけであり、
+スキーマの他のプロパティには当てはまらない（下の「`rows` 以外のプロパティ」を参照）。
+
+`rows` の値に課される型は次のパスで `["string","null"]` に限られる。
 
 | 定義 | 型を課すパス |
 |---|---|
@@ -1016,10 +1143,33 @@ for k in ['table_data','list_map_data','record_fragment']:
 "
 ```
 
-したがって次の**引用符なし**スカラー記法は本書の対象外とする — `true` / `false`（真偽値へ解決）、
-`123`（整数へ解決）、`1.50` / `.inf` / `.nan`（浮動小数へ解決）。
+したがって次の**引用符なし**スカラー記法を **`rows` の値として書いた場合**は本書の対象外とする —
+`true` / `false`（真偽値へ解決）、`123`（整数へ解決）、`1.50` / `.inf` / `.nan`（浮動小数へ解決）。
 いずれも読み込みが例外で止まるため、黙って壊れることはない。**これらの例外の形はテストで固定しない**
 （不正な入力にどこまで対応するかに線は引けないため。ユーザー確定・2026-08-14）。
+
+**`rows` 以外のプロパティには当てはまらない。** スキーマは値の位置ごとに別の型を課す。
+とくに `$defs.field_def.properties.length` は
+
+```
+anyOf: [ {type: integer, minimum: 0}, {type: string, pattern: "^([0-9]+|-)$"} ]
+```
+
+であり、description も「**integer 記法（10）も文字列記法（"10"）もどちらも有効**」と明記している。
+すなわち `length: 10`（引用符なし整数）は**仕様内の入力**であり、中間モデルには文字列 `"10"` が入る
+（`YamlSection#toStr` が `Object#toString()` で文字列化するため。担保:
+`YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString`）。
+
+再現コマンド:
+
+```sh
+python3 -c "
+import json,zipfile,os
+z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
+print(json.dumps(d['\$defs']['field_def']['properties']['length'], ensure_ascii=False, indent=1))
+"
+```
 
 **引用符を付ければ同じ見た目の値はすべて仕様内である**（`"true"` / `"123"` / `"1.50"`）。
 これらは `YamlFormatReaderScalarTest` が D2-03（`readsQuotedNumberAsString`）／
@@ -1032,7 +1182,8 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 
 | 観測 | 判断 |
 |---|---|
-| 引用符なしの `TRUE` / `True` / `yes` / `on` が文字列になる | 妥当。スキーマが値を `["string","null"]` に限る以上そのとおりの挙動であり、**真偽値を表現する手段自体が無い**。作成者が真偽値のつもりで書く余地が無いため YML-01 とは性質が違う（担保: `readsUppercaseTrueAsString` ／ `readsYesAsString`） |
+| 引用符なしの `TRUE` / `yes` が文字列になる | 妥当。スキーマが `rows` の値を `["string","null"]` に限る以上そのとおりの挙動であり、**真偽値を表現する手段自体が無い**。作成者が真偽値のつもりで書く余地が無いため YML-01 とは性質が違う（**テストで担保**: `readsUppercaseTrueAsString` ／ `readsYesAsString`） |
+| 引用符なしの `True` / `on` も同様に文字列になる | 同上。ただし**テストは書いていない** — `JsonScalarResolver` の `BOOL` ＝ `^(?:true\|false)$`（YML-01 の表 4）に一致しないことから機械的に導ける事実であり、記法を 1 つ足すたびにテストを増やす価値が無いと判断した |
 | 引用符なしの `true` がスキーマ違反で例外になる | 仕様外の入力（上記「対象としない入力」）。例外で止まるので黙って壊れない |
 | 引用の別（`abc` ／ `"abc"` ／ `'abc'`）が中間モデルに残らない | 妥当（3 記法とも `"abc"`。YAML の記法差であって値の差ではない） |
 | `\|`（リテラル）が `"l1\nl2\n"`、`>`（フォールド）が `"l1 l2\n"` になる（末尾に改行が付く） | 妥当（YAML のブロックスカラー仕様どおり。担保: `readsLiteralBlockScalarKeepingNewlines` ／ `readsFoldedBlockScalarFoldingNewlinesIntoSpaces`） |
@@ -1047,12 +1198,18 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 
 `inventory.md` §2.3 では「要追加」に分類されていたが、実 `.yaml` 経路では生成できないことが判明したもの。
 
+**ただし表の最終行 C-15 だけは前提が違う（2026-08-14・#24 のレビュー指摘による訂正）。** C-15 は
+`inventory.md` §2.3 の「#18 の状態」列に現れず、§2.1 の表 12 行目
+（`readMessage_emptyBody_isStillMapped`）で **✅ とされていた**要素である。#24 で判明したのは
+「その ✅ は in-memory 経路のものであり、実 `.yaml` 経路では到達できない」という点であって、
+「要追加」から「到達不能」へ移したわけではない。該当行にも但し書きを付けた。
+
 | 軸要素 | 根拠 | 根拠テスト |
 |---|---|---|
 | C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | **XLS-07** と同じ（本体 `DataFile` のコンストラクタが `file-type` を必ず注入する）。YAML で `directives` を 1 つも書かなくても空 Map にならない | `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage` |
 | C-17 `RecordLayout.fields` 空 | スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1。`fields: []` はスキーマ違反となり中間モデルへ到達しない | `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` |
 | C-20 `FieldDef.type` 省略（`null`） | スキーマ `$defs.field_def.required` が `type` を必須とする。型を書かないフィールド定義は中間モデルへ到達しない | `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` |
-| C-15 `MessageDataBlock.records` 空 | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | —（スキーマの記述が根拠。テストは足していない） |
+| C-15 `MessageDataBlock.records` 空（**上の但し書きのとおり、この行だけ「要追加」からの移動ではない**） | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | 実 `.yaml` で `records` 0 件のブロックが**別経路で**生じることは `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromRealYaml` が示す（`record_type: FW_HEADER` のレコードだけを書くと器も原文も 0 件になる。`issues.md` **YML-03**）。ただしこれは仕様上の到達手段ではなく課題である |
 
 **#23 の「未確認」への回答**: `issues.md` の「未確認（#23）」に
 「**XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認**」と残していた。
