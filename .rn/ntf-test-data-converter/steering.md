@@ -786,7 +786,7 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 ---
 
-### #24: 辺② 軸D（YAML スカラー10ケース）・軸A〜F の欠け補充
+### #24: 辺② 軸D（YAML スカラー12ケース）・軸A〜F の欠け補充
 
 **Purpose**: YAML のスカラー型が中間モデルへどう入るかを固定し、#18 の棚卸しで空欄となった辺②の軸要素を埋める。
 
@@ -794,16 +794,16 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 **Steps**:
 
-- [ ] 軸D の12ケース（D2-01〜D2-12。定義は Decisions「軸D の対象範囲」）を実 YAML フィクスチャで読み、現状の挙動をまず記録してから固定する
-- [ ] 軸F: スキーマ違反／YAML として不正／未知のキー／必須構造の欠落／空ファイルのテストを追加する。**スキーマ違反のケースは、Decisions で仕様外とした引用符なしスカラー記法（`true` / `123` / `1.50` / `.inf` / `.nan`）を入力に使わない**（それらの例外はテストで固定しない、が確定事項のため）
-- [ ] #18 の棚卸し表で辺②の空欄となっている軸A・B・C・E の要素を埋める
-- [ ] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）。本タスクで記録が確定しているのは次の 2 点:
+- [x] 軸D の12ケース（D2-01〜D2-12。定義は Decisions「軸D の対象範囲」）を実 YAML フィクスチャで読み、現状の挙動をまず記録してから固定する
+- [x] 軸F: スキーマ違反／YAML として不正／未知のキー／必須構造の欠落／空ファイルのテストを追加する。**スキーマ違反のケースは、Decisions で仕様外とした引用符なしスカラー記法（`true` / `123` / `1.50` / `.inf` / `.nan`）を入力に使わない**（それらの例外はテストで固定しない、が確定事項のため）
+- [x] #18 の棚卸し表で辺②の空欄となっている軸A・B・C・E の要素を埋める
+- [x] 仕様として不適切と判断した挙動を `issues.md` に記録する（**修正しない**）。本タスクで記録が確定しているのは次の 2 点:
   - **YML-01（新規・ID は `XLS-nn` を使わない）**: 引用符なしの `null` と値なしは Java `null` になるが、`~` / `NULL` / `Null` はいずれも文字列になる。3 者ともスキーマを通る仕様内の入力であり、作成者が NULL のつもりで書いた値が黙って文字列としてテストデータに入る。帰属は converter ではなく yaml 側（loader のスカラー解決）と明記し、出典として解決を行っているクラス・メソッドの位置とスキーマの該当パスの両方を書く。影響度と検出可否は既存フォーマットに合わせる
   - **「対象としない入力」の YAML 側段落**: 引用符なしの `true` / `123` / `1.50` / `.inf` / `.nan` がスキーマ違反で対象外であることを、Excel 側の同節と対になる形で書く（スキーマの出典パスを添える）
-- [ ] **記録しないと確定しているもの**: 引用符なしの `true` がスキーマ違反で例外になること（仕様外の入力。例外で止まるので黙って壊れない）と、`TRUE` / `yes` が文字列になること（スキーマが値を `["string","null"]` に限る以上そのとおりの挙動で、真偽値を表現する手段自体が無い）
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] **台帳の記述規約の自己点検**（Rules 参照）: `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` → **0** であること。ファイル行数を書いていないこと。本タスクで書き足した件数のすべてに、それを導いたコマンドを併記していること。逆引き表（軸要素 → 担保テストメソッド）を新設していないこと
-- [ ] self-check（OK/NG per completion criterion、checks/task-24.md に記録）
+- [x] **記録しないと確定しているもの**: 引用符なしの `true` がスキーマ違反で例外になること（仕様外の入力。例外で止まるので黙って壊れない）と、`TRUE` / `yes` が文字列になること（スキーマが値を `["string","null"]` に限る以上そのとおりの挙動で、真偽値を表現する手段自体が無い）
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [x] **台帳の記述規約の自己点検**（Rules 参照）: `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` → **0** であること。ファイル行数を書いていないこと。本タスクで書き足した件数のすべてに、それを導いたコマンドを併記していること。逆引き表（軸要素 → 担保テストメソッド）を新設していないこと
+- [x] self-check（OK/NG per completion criterion、checks/task-24.md に記録）
 - [ ] QA expert review（subagent）
 - [ ] Craft expert review（subagent, coding）
 - [ ] Verification expert review（subagent, test）
@@ -921,8 +921,30 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-14
+- **Last completed**: #23。#24 は成果物とセルフチェックまで完了（`8aa536f` push 済み）、レビュー3種が未実施
+- **Next**: #24 の QA／Craft(coding)／Verification(test) レビュー。**ただし下記ブロッカーの回答が先**
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。
+
+  **🚦 ブロッカー — ビルドが通らない。ユーザーの回答待ちが 2 件**（本セッション外で `~/.m2` の依存が入れ替わった）:
+  - `nablarch-testing-yaml` は `1.0.0-SNAPSHOT` が消え **`1.0.0-r190cc9a`** のみ、`nablarch-testing` は `6-NEXT-SNAPSHOT` が消え **`6-NEXT-rfdf55d4`** ほかになっている（作成 2026-08-14 08:55〜08:56、`_remote.repositories` あり＝リモート取得）。`pom.xml` は `nablarch-testing-yaml` を `1.0.0-SNAPSHOT` で宣言したままで、`mvn -o dependency:resolve` が ERROR で止まる
+  - (1) この入れ替えは意図したものか（進行中ならレビューを止める）。(2) converter の `pom.xml` をピン留め版へ追随させる作業を **#24 とは別タスク**として steering に足してよいか（基準線 461 件の取り直しを伴う）
+  - **`mvn -U` を叩かないこと。** SNAPSHOT を取り直すと外の作業と競合する
+
+  **#24 の成果物の現状**: `8aa536f`（テスト 3 クラス 42 件 ＋ `YamlFixture`、`inventory.md` §2 系、`issues.md` の `## #24` 節）。`git diff 3165770 -- src/main` → 0 行。`target/surefire-reports` 実測で `Tests=461 Failures=0 Errors=0 Skipped=0`（37 クラス、更新時刻 08:52 ＝ 依存入れ替え 08:55 より前。したがって従来どおり `190cc9a` 版に対する結果）。`checks/task-24.md` の QA 列と Overall Verdict の QA 行は未記入（コーディネータの持ち物）。
+
+  **コーディネータ確認済み**: `src/main` 無変更、台帳自己点検 `grep -cE '\b(L[0-9]{1,4})\b' inventory.md` → 0、テスト件数の導出コマンドが 23／8／11 を返し記載と一致、YML-01 の帰属4段（`YamlLoader#load` が `setSchema` を呼ばない → 既定 `JsonSchema` → `JsonScalarResolver` → NULL 判定 `^(?:null)$`。`CoreScalarResolver` は `^(?:~|null|Null|NULL| )$`）を一次情報で再確認。
+
+  **レビュー前に triage が要る持ち越し 3 件**（実装エキスパートが台帳に開示済み）:
+  - YML-01 に影響度欄が無い。`issues.md` の凡例（高／中／低）は「変換結果が入力と一致するか」で定義されているが、本件は変換自体は忠実で、食い違うのは作成者の意図と NTF 実行時の解釈。凡例を 1 段拡張するか「低」に寄せるかはコーディネータ判断
+  - `YamlFormatReader#normalizeRecordType` の `"default"`（小文字）側が未到達分岐として 1 つ残る（軸A〜F のどの要素にも属さないため **#26 送り**として台帳に開示）
+  - 未知のトップレベルキーは実ファイル経路では例外（スキーマの root が `additionalProperties: false`）。in-memory 経路の既存テストが固定する「無視」と結果が異なるが、loud に失敗するため「課題としない」に置いてある
+
+  **レビュー運用（#23 で確立）**: レビュア subagent には `isolation: worktree` を使う。
+
+  **converter 側では扱わない件**: `rows: []` の期待値検証が素通りする（偽陰性）問題は yaml 側の FIXME。converter 側で直さない・触らない。
+
+  **文書の揃え方（ユーザー確定・2026-08-13）**: 定義を変えたら `steering.md`／`inventory.md`／`issues.md` は指示に列挙が無くても現行定義へ揃えてよい。揃えないのは `checks/` だけ（時点の証拠記録）。
+
+  **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に現れない。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` に分散。(3) 逆引き（軸要素 → 担保テストメソッド）の正は #27 の `coverage/axis-matrix.md`。

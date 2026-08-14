@@ -131,3 +131,114 @@ converter は `YamlFormatReader#read` → `YamlTestCoreAdapter#loadRawMap` → `
 - スキーマ `table_data.rows` の description には「`null`（クォートなし）および `"null"`（クォートあり）は
   ともに NullInterpreter により Java null に変換される」とあるが、これは NTF 実行時の解釈であり、
   converter は `InterpreterResolver.raw()` で配線しているため `"null"` は文字列のまま入る（上の実測どおり）。
+
+---
+
+## 実装（2026-08-14）
+
+### 追加したテストクラス
+
+| クラス | 件数 | 導出コマンド |
+|---|---|---|
+| `YamlFormatReaderScalarTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` |
+| `YamlFormatReaderInvalidInputTest` | 8 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` |
+| `YamlFormatReaderRealFileTest` | 11 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` |
+| （フィクスチャ）`YamlFixture` | — | テストではない。YAML テキストを実ファイルへ書き出し `new YamlFormatReader().read(...)` で読むヘルパ |
+
+合計 42 件を追加した（`Tests run` は 419 → **461**）。
+
+### 期待値を先に決めていないことの手順記録
+
+一時プローブ（`src/test/.../yaml/ScalarProbeTest.java`。記録後に削除）で、軸D 12 ケース・軸F 5 ケース・
+軸C/E の候補入力をすべて実ファイル経由で `read` に通し、**出力を印字させてから**アサートを書いた。
+プローブで観測した結果は下表のとおりで、本 §1〜§5 の記録（2026-08-13／2026-08-14 の再検証）と全件一致した。
+
+| 入力 | 観測結果 |
+|---|---|
+| `abc` / `"abc"` / `'abc'` | いずれも `"abc"` |
+| `"123"` / `"1.50"` / `"true"` / `TRUE` / `yes` | 記法どおりの文字列 |
+| `null`（引用符なし） / 値なし（`- V:`） | **Java `null`** |
+| `"null"` / `~` / `NULL` | **いずれも文字列** |
+| `2026-08-07` / `2026-08-07T12:34:56` / `007` / `0x1F` | 記法どおりの文字列 |
+| `\|` / `>` | `"l1\nl2\n"` / `"l1 l2\n"` |
+| `""` / `"  pad  "` / `"a: b"` / `"a #b"` | 記法どおり |
+| `type: "text"`（列挙違反） | `YamlSchemaValidationException`（`enum` / `$.setup_files[0].type`） |
+| インデント不正 ＋ 閉じないフローシーケンス | `IllegalStateException: Failed to parse YAML file: ...`（原因 `ParserException`） |
+| 未知のトップレベルキー | `YamlSchemaValidationException`（`additionalProperties` / `$`） |
+| `rows` 欠落 | `YamlSchemaValidationException`（`required` / `$.setup_tables[0]` / `rows`） |
+| 空ファイル | 例外なし。セクション 1 件・ブロック 0 件 |
+| `rows: []`（テーブル／LIST_MAP） | ブロック生成・`columnNames` 空・`rows` 空 |
+| `records: []`（固定長ファイル） | ブロック生成・`records` 空・`directives` は `{file-type=Fixed}` |
+| `directives` 省略（ファイル／メッセージ） | `{file-type=Fixed}` が注入される（空にならない） |
+| `fields: []` | `YamlSchemaValidationException`（`minItems`） |
+| `fields` の `type` 欠落 | `YamlSchemaValidationException`（`required` / `type`） |
+
+### カバレッジ（JaCoCo 実測）
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean jacoco:instrument test jacoco:restore-instrumented-classes
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
+```
+
+`target/site/jacoco/jacoco.csv` の `YamlFormatReader` 行:
+
+| 指標 | 値 |
+|---|---|
+| 行 | 201 / 201（**100%**。`LINE_MISSED` = 0） |
+| 分岐 | 107 / 108（**99.07%**。`BRANCH_MISSED` = 1） |
+| メソッド | 23 / 23 |
+
+未到達の分岐は 1 つだけで、`normalizeRecordType` の
+`if ("Default".equals(recordType) || "default".equals(recordType))` の**後段（小文字 `"default"`）**である
+（`jacoco.xml` の `YamlFormatReader.java` で `mb > 0` の行を抽出して特定）。
+軸A〜F のどの要素にも属さないため #24 ではテストを足さず、`inventory.md` §2.1-2 の「開示」に記した。
+**#26（カバレッジ計測と未到達分岐の列挙）で扱うこと。**
+
+## Completion Criteria
+
+| Criterion | Self-check | Evidence | QA | QA Evidence |
+|---|---|---|---|---|
+| 軸D の12ケース（D2-01〜D2-12）すべてがアサートされ、特に `null` ／値なし ／ `~` の3者の分かれ方と、`"null"` ／ `NULL` の扱いが結果として固定されている | OK | `YamlFormatReaderScalarTest` 23 件が 12 ケースを担保（要素→メソッドの対応は `inventory.md` §2.1-2 の軸D 表）。3 者の分かれ方は `readsUnquotedNullAsJavaNull`（Java `null`）／`readsOmittedValueAsJavaNull`（Java `null`）／`readsTildeAsString`（文字列 `"~"`）が、`"null"` ／ `NULL` は `readsQuotedNullAsString`（`"null"`）／`readsUppercaseNullAsString`（`"NULL"`）が固定している。いずれも実 `.yaml` を `new YamlFormatReader().read(...)` に通す経路 | | |
+| 軸F の5ケース（スキーマ違反／不正 YAML／未知キー／必須構造欠落／空ファイル）で例外型または結果がアサートされている。スキーマ違反のケースの入力に、仕様外とした引用符なしスカラー記法（`true` / `123` / `1.50` / `.inf` / `.nan`）を使っていない | OK | `YamlFormatReaderInvalidInputTest` 8 件が 5 ケースすべてを担保（`inventory.md` §2.1-2 の軸F 表）。例外型は `YamlSchemaValidationException`（F2-01/03/04）・`IllegalStateException` ＋ 原因 `YamlEngineException`（F2-02）、F2-05 は例外にならずブロック 0 件になる結果をアサート。スキーマ違反の入力は `type: "text"`（列挙違反）と `length: "1a"`（パターン違反）で、いずれも引用符付き文字列である。**仕様外記法を使っていないことの確認**（2 通りで確かめた。下の「確認コマンド」参照）| | |
+| `issues.md` に YML-01 と「対象としない入力」の YAML 側段落が記録されている（いずれも `src/main` 無変更） | OK | `issues.md` に `## #24 …` 節を新設し、`### YML-01 ~ ／ NULL は NULL にならず文字列になる` と `### 対象としない入力（辺②）` を置いた。YML-01 は解決経路 4 段（`YamlLoader#load` が `setSchema` を呼ばない → `LoadSettingsBuilder` の既定が `new JsonSchema()` → `JsonSchema` が `new JsonScalarResolver()` → `JsonScalarResolver.NULL` = `^(?:null)$`）を再現コマンド付きで示し、スキーマの該当パス（`$defs.table_data.properties.rows.items.additionalProperties.type` ほか）も併記した。**帰属は yaml 側**と明記。ID は `XLS-nn` ではなく `YML-nn` 系列。`src/main` 無変更は `git diff 3165770 -- src/main` が 0 行であることで確認 | | |
+| 辺②について軸A の13種（`DEFAULT` を除く。`YamlFormatReader#addBlocksForSection` が既知セクションキーのみを分岐に持ち `DEFAULT` を生成しないため到達不能。根拠付きで空欄に残す）・軸B の4種・軸C の全フィールド（省略可能なものは省略時も。`sections` は `YamlFormatReader#read` が `Collections.singletonList` を返すため「空」「複数」とも到達不能として根拠付きで空欄）・軸E が埋まっている | OK | 軸A: `YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` が 13 種を実 `.yaml` で ✅（A-01 は根拠付きで空欄）。軸B: `#readsFourBlockImplementationsFromOneRealYaml` が 4 種。軸C: #18 で欠けていた 8 要素のうち C-08/C-09/C-12/C-18/C-13(値あり) を担保済みへ、C-11(空)/C-13(空)/C-17/C-20 を根拠テスト付きの到達不能へ移した。C-02 は根拠付きで空欄。軸E: E-1/E-2/E-3 の 0・1・複数と E-4(1) を実 `.yaml` で担保、E-4(複数) は根拠付きで空欄（`inventory.md` §2.1-2 の軸C／軸E 表、§2.3 の未担保一覧＝**要追加 0 ／ 担保済み 22 ／ 到達不能 6**） | | |
+| src/main への変更がゼロ | OK | `git diff 3165770 -- src/main \| wc -l` → **0** | | |
+| `mvn clean test -Djacoco.skip=true` が全テスト PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` → `Tests run: 461, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`（基準線 419 ＋ 追加 42） | | |
+
+### 確認コマンド（軸F の入力に仕様外のスカラー記法を使っていないこと）
+
+対象ファイル: `src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java`
+
+```sh
+f=src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java
+
+# A. 仕様外記法の文字列がソース中に現れるか
+grep -nE 'true|false|123|1\.50|\.inf|\.nan' $f
+
+# B. 埋め込み YAML の行のうち、値が二重引用符で始まらないもの
+grep -oE '\+ "[^"]*\\n"' $f | grep -vE ': \\"'
+```
+
+- **A の結果**: ヒットするのは**クラス Javadoc の散文 4 行だけ**である
+  （「F2-01 の入力に…仕様外とした引用符なしスカラー記法…は使わない」という但し書き本文と、
+  `additionalProperties: false` の説明）。YAML フィクスチャの文字列リテラルには 1 件も現れない。
+- **B の結果**: 出力されるのは `setup_files:` / `records:` / `- fields:` / `rows:` のような
+  **マッピングキーだけの行**と、`fields: []` / `rows: []` の空配列だけである。
+  **スカラー値を持つ行はすべて `: \"…\"` の形（＝二重引用符付き）**であり、B の出力に現れない。
+- A だけでは「その語がソースに無い」ことしか言えず（YAML フィクスチャは Java の文字列リテラルなので
+  行末が `\n"` になり、素朴な行末一致の grep は常に 0 を返してしまう）、B と組み合わせて初めて
+  「**埋め込み YAML の全スカラー値が引用符付きである**」ことの根拠になる。
+
+### 台帳の記述規約の自己点検（Steps の一項目）
+
+| 点検項目 | 結果 |
+|---|---|
+| `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` が 0 | **0**（OK） |
+| ファイル行数を書いていない | OK（#24 で書き足した箇所に行数の記述はない） |
+| 書き足した件数のすべてに導出コマンドを併記 | OK（§2.1-2 のクラス別件数 3 件、§2.3 の軸D 23 件・軸F 8 件。いずれも `grep -c '^    @Test' <path>` を併記し、実行して同じ値を確認済み） |
+| 逆引き表（軸要素 → 担保テストメソッド）を新設していない | **新設していない**。§2.1-2 の軸D／軸F／軸C／軸E 表は #19〜#23 が §1.2-2／§3.1-2／§3.1-3 で用いた「その要素を #24 が埋めたことを示す差分表」と同じ形式であり、逆引きの正は #27 の `coverage/axis-matrix.md` である旨は §2.3 冒頭の規則（§1.3 参照）どおり |
+| 担保の穴をテストを足さない場合でも開示 | OK（§2.1-2 末尾「開示」に 2 点 —— `normalizeRecordType` の `"default"` 分岐が未到達／C-15 は実ファイル経路では到達不能） |
+
+## Overall Verdict
+
+- Self-check: OK
