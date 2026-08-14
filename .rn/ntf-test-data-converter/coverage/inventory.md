@@ -775,8 +775,8 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
-| `YamlFormatReaderInvalidInputTest` | 30 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 22 件は**スキーマを通る仕様内の入力**（掃引 20 件）と、ローダの他の失敗経路 2 件である） |
-| `YamlFormatReaderRealFileTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
+| `YamlFormatReaderInvalidInputTest` | 31 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 23 件は**スキーマを通る仕様内の入力**（掃引 21 件）と、ローダの他の失敗経路 2 件である） |
+| `YamlFormatReaderRealFileTest` | 24 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
 **件数を更新した（2026-08-14・#24 のレビュー指摘の反映で 9 件追加）。** 内訳は
 `YamlFormatReaderScalarTest` ＋4（軸D の経路差確認。下の「別経路での確認」表）、
@@ -824,6 +824,12 @@ FW_HEADER 除外が変異で生存していたため）、`YamlFormatReaderInval
 **どれも §2.3 の件数は動かさない**（前 2 件は軸F の 5 ケースに属さないローダの分岐、
 1 件は経路差の固定である）。あわせて既存テストへアサートを 3 か所足した
 （FW_HEADER 名レコードの種別／ディレクティブ件数／`length` 省略＝`null`）。
+
+**件数をさらに更新した（2026-08-14・3 巡目レビュー指摘の反映で 1 件追加）。** 内訳は
+`YamlFormatReaderInvalidInputTest` ＋1（`readsFieldSeparatorWrittenAsEscapedTabNotation`。
+YML-08 の field-separator だけ「通る側」のテストが無く、Javadoc の断定を実行可能な形にしていなかったため）。
+**§2.3 の件数は動かさない。** あわせて既存テストへアサートを 4 か所足した
+（`DataType` の総数 14／YML-04・YML-05 の代表テストの警告 0 件／`YamlFixture#blocks` のセクション数）。
 
 3 クラスとも `new YamlFormatReader().read(...)` を本番配線で呼ぶ。`YamlFormatReaderTest` 20 件が
 `loadRawMap` を in-memory `Map` へ差し替えて**スカラー解決もスキーマ検証も通らない**のに対し、
@@ -880,7 +886,7 @@ FW_HEADER 除外が変異で生存していたため）、`YamlFormatReaderInval
 
 | 要素 | 判定 | 担保テストメソッド | 観測した挙動 |
 |---|---|---|---|
-| F2-01 スキーマ違反 | ✅ | `failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum` ／ `failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern` | `YamlSchemaValidationException`。**違反のキーワードの集合と位置を、順序も件数も含めて厳密にアサートする** — 前者は `enum` 1 件・位置 `$.setup_files[0].type`、後者は `type` と `pattern` の 2 件（`length` が `anyOf` であり `"1a"` が両枝を外すため）で位置はいずれも `$.setup_files[0].records[0].fields[0].length`。**入力に、`rows` の値として仕様外とした引用符なしスカラー記法は使っていない**（`issues.md`「対象としない入力（辺②）」） |
+| F2-01 スキーマ違反 | ✅ | `failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum` ／ `failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern` | `YamlSchemaValidationException`。**違反のキーワードの集合と位置を、件数と集合を厳密にアサートする（報告順は `JsonSchema#validate` が返す `Set` の反復順が契約されていないため突き合わせない）** — 前者は `enum` 1 件・位置 `$.setup_files[0].type`、後者は `type` と `pattern` の 2 件（`length` が `anyOf` であり `"1a"` が両枝を外すため）で位置はいずれも `$.setup_files[0].records[0].fields[0].length`。**入力に、`rows` の値として仕様外とした引用符なしスカラー記法は使っていない**（`issues.md`「対象としない入力（辺②）」） |
 | F2-02 YAML として不正 | ✅ | `failsWithParseErrorWhenYamlIsMalformed` | `IllegalStateException`（メッセージは `Failed to parse YAML file: <path>` で始まる）。原因例外は `YamlEngineException`。パースで止まるためスキーマ検証には到達しない |
 | F2-03 未知のキー | ✅ | `failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown` | `YamlSchemaValidationException`（`additionalProperties` 違反）。**in-memory 経路（`YamlFormatReaderTest#read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys`）が固定している「未知キーは無視」とは結果が異なる**。スキーマのルートが `additionalProperties: false` であるため、実ファイルでは読み込みごと失敗する |
 | F2-04 必須構造の欠落 | ✅ | `failsWithSchemaValidationExceptionWhenRequiredRowsIsMissing` ／ `failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` | `YamlSchemaValidationException`（`required` / `minItems`）。後ろ 2 件は軸C の **C-17／C-20 が到達不能である根拠**でもある |
@@ -963,10 +969,22 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
   **12 ケース × 3 経路には広げないと判断した**（経路差が無いという観測が 2 ケースで得られたこと、
   および 3 系統とも同じ `YamlLoader` のスカラー解決結果を受け取る構造であることによる）。
   残る 10 ケースについて経路差が無いことは**未確認**である。
-- **「警告が出ないこと」は辺②の課題（YML-02／YML-03）ではアサートしていない。**
-  辺①の XLS-10／XLS-13 は `java.util.logging` のルートロガーにハンドラを付けて
-  「WARNING 以上 0 件」を実行可能な根拠にしているが、#24 の 2 件は例外にならないことと
-  結果が消えることの観測にとどめた（`issues.md` の各項に明記）。
+- **「警告が出ないこと」のアサートには 2 段階の穴がある。**
+
+  1. **課題ごとの有無**: `YamlFixture.readCapturingWarnings` で「WARNING 以上 0 件」を
+     アサートしているのは **YML-04／YML-05／YML-09／YML-10／YML-11 の代表テスト 6 件**である
+     （`grep -ho 'reading.warnings()' src/test/java/nablarch/test/tool/converter/yaml/*.java | wc -l` → **6**）。
+     **YML-02／YML-03 ではアサートしていない**（例外にならないことと結果が消えることの観測にとどめた）。
+  2. **捕捉範囲**: 捕捉できるのは `java.util.logging` のルートロガーに届くものだけである。
+     `nablarch-testing` 自身のログ基盤（`nablarch.core.log`）への出力は捕捉できないため、
+     **「どこにも警告が出ない」ことは証明していない**。言えるのは「JUL 経路には出ない」までである。
+
+  なお辺②の読み取り経路には JUL のロガーが 1 つも無い
+  （`grep -rn 'java.util.logging' src/main/java` のヒットは `XlsFormatReader` の import 1 行のみ）。
+  したがってこのアサートは**現状の実装では落ちようがなく**、意味を持つのは
+  「将来 JUL の警告を足したときに気づける」という回帰検知としてである。
+  辺①（`XlsFormatReader`）は重複カラム名で実際に JUL の WARNING を出すため、同じアサートが
+  そちらでは現在の挙動そのものを固定している。この非対称を承知のうえで残している。
 
 **開示（修正ラウンド 2＝スキーマの自由度の掃引。2026-08-14 追記）**
 
@@ -998,7 +1016,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 | 18 | `rows` の行オブジェクトのキー順 | 行ごとに順序が違ってよい | 値は名前で対応付けられるため順序差の影響は出ない。課題なし |
 | 19 | マーカーカラム `[COL]` | スキーマは通常のキーと区別しない（全カラムがマーカーでも通る） | カラム 0 件・値を持たない行になる。辺①の **XLS-08** と同型（テストで固定） |
 | 20 | `$defs.file_data.properties.records` の `minItems: 0` ／ `rows` の空配列 | 空を許す | 既に担保済み（C-12／C-09／E-2(0)／E-3(0)） |
-| 21 | `$defs.message_data.properties.records` に `FW_HEADER` 名を書ける | `enum` が無い | **YML-03**（既記録）。送信系（`response_body_messages`）でも同じくブロックだけが残ることをプローブで確認（テストは固定していない） |
+| 21 | `$defs.message_data.properties.records` に `FW_HEADER` 名を書ける | `enum` が無い | **YML-03**（既記録）。送信系（`response_body_messages`）でも落ちる。**「FW_HEADER ＋本文」の形は `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` で固定済み**で、未固定なのは「FW_HEADER のみ」を置いてブロックだけが残る形（プローブでの観測） |
 | 22 | `$defs.message_data.properties.records` に断片を 2 件以上書ける | 件数の上限が無い | 2 件とも保持される。辺①では **XLS-15** により不可能な形が辺②では作れる。課題なし |
 | 23 | `expected_request_header_messages` と `expected_request_body_messages` の件数一致 | スキーマは縛らず description にだけ書かれている | converter は片方だけでもブロックを作る。NTF 実行時の制約であり変換の正しさとは別。課題なし |
 | 24 | セクション配列内でのエントリの並び（`$defs.table_data` ／ `$defs.file_data` ／ `$defs.group_message_data` の `group_id`） | 同じ `group_id` のエントリが配列内で連続することを要求していない（順序の制約が無い） | **YML-09**（`g1` → `g2` → `g1` と書くとブロックがグループの初出順にまとめ直され、原文の記述順と食い違う。テーブル系・ファイル系・送信系の 3 経路とも同じ。**課題として記録した** — 判断の根拠は下の「掃引項目 24 を課題とした理由」） |
@@ -1032,6 +1050,23 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
   値を素通しする（`${...}` を含む値が原文のまま入ることは in-memory 経路の `YamlFormatReaderTest` が
   固定している。実 `.yaml` 経路では確かめていない）。
 - **軸D の 12 ケースを掃引の各項目へ掛け合わせてはいない**（上の 3 点目の「1 回ずつ」と同じ理由）。
+- **`YamlFormatReader#toStringDirectives` の「`null` 値は `null` のまま保持する」は実 `.yaml` 経路では
+  到達不能である**（2026-08-14・Verification レビュー指摘で追記）。`$defs.directives` の 17 プロパティは
+  型が `string` / `integer` / `boolean` のいずれかで **`null` を許さない**ため、スキーマを通る YAML から
+  `null` のディレクティブ値は書けない。
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']['directives']
+  ps=d['properties']
+  print(len(ps), sorted(set(json.dumps(v.get('type')) for v in ps.values())))
+  "
+  ```
+
+  出力は `17 ['"boolean"', '"integer"', '"string"']`。**テストは足していない**（in-memory 経路なら
+  固定できるが、実 `.yaml` 経路の担保という本タスクの狙いから外れるため）。
 - **C-06（`groupId` 省略＝`""`）は当初、実ファイル経路でのアサートが無かった**
   （2026-08-14・QA レビュー指摘）。#18 時点で ✅ だったのは in-memory 経路の `YamlFormatReaderTest` である。
   `readsEmptyColumnNamesAndRowsFromTableWithoutRows` に 1 行足して閉じた。
@@ -1092,10 +1127,10 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 | D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 27 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）。要素別の担保テストメソッドは §2.1-2 の軸D 表。27 件のうち 4 件は D2-06／D2-11 を LIST_MAP 経路・レコード断片経路で確認したもので、**軸要素としては別勘定にしない**（§2.1-2 の「別経路での確認」表） | 12 |
 | E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **30**。差の 22 件は、掃引の固定テスト 20 件（`issues.md` YML-04〜YML-08・YML-10・YML-11）と、ローダの他の失敗経路 2 件（ルートがマッピングでない／同一マッピング内のキー重複）であり、**いずれも軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件・20 件・2 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **31**。差の 23 件は、掃引の固定テスト 21 件（`issues.md` YML-04〜YML-08・YML-10・YML-11）と、ローダの他の失敗経路 2 件（ルートがマッピングでない／同一マッピング内のキー重複）であり、**いずれも軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件・2 件・21 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
 | **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
 
-**軸F の 8 件・ローダ分岐 2 件・掃引 20 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 30 は
+**軸F の 8 件・ローダ分岐 2 件・掃引 21 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 31 は
 上の表にコマンドを併記しているが、内訳は数字のまま置かれていた）。
 `YamlFormatReaderInvalidInputTest` は軸F の節（F2-01〜F2-05）を先頭に、ローダの他の失敗経路の節、
 掃引の節（YML-04 以降）の順に置いており、境界は節見出しのコメント行である:
@@ -1112,7 +1147,7 @@ awk '/YML-04 先頭行のキー集合/,0' \
   | grep -c '^    @Test'
 ```
 
-出力は順に **8** ／ **2** ／ **20**（8 ＋ 2 ＋ 20 ＝ 30）。
+出力は順に **8** ／ **2** ／ **21**（8 ＋ 2 ＋ 21 ＝ 31）。
 8 件のメソッド名は §2.1-2 の軸F 表に全件挙げてある
 （F2-01 が 2 件／F2-02 が 1 件／F2-03 が 1 件／F2-04 が 3 件／F2-05 が 1 件）。
 

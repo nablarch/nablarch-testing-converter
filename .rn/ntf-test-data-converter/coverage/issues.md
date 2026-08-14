@@ -1102,9 +1102,12 @@ ID は発見順に振り、振り直さない。
     && grep -n 'FW_HEADER_RECORD_TYPE' nablarch/test/core/reader/yaml/YamlFileBuilder.java nablarch/test/core/reader/yaml/YamlSection.java
   ```
 
-- 実測: 上表のとおり。`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残ることも、
-  送信系（`response_body_messages`）でも同じく落ちることもプローブで確認した（いずれも例外にならない）。
-  この 2 つはプローブでの観測であり**テストとしては固定していない**（担保テストは上表の 1 件のみ）。
+- 実測: 上表のとおり。`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残ること、
+  送信系（`response_body_messages`）でも同じく落ちることは、いずれも
+  `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
+  **1 件で両方とも固定している**（送信系に `FW_HEADER` ＋本文を 1 件ずつ置き、本文だけが残ることをアサート）。
+  **未固定なのは「送信系に `FW_HEADER` のみを置いた形」だけ**である（ブロックだけが残ることを
+  プローブで確認済み。掃引表 項目 21）。
   YML-02 と同じく、警告が 1 件も出ないことは未確認である。
 - 影響: スキーマの description を読んで「FW_HEADER は予約値ではないので可読性のために使ってよい」と
   判断した作成者が `record_type: "FW_HEADER"` と書くと、そのレコードのフィールド定義もデータ行も
@@ -1114,10 +1117,16 @@ ID は発見順に振り、振り直さない。
 - `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
   （`grep -rn 'FW_HEADER' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
   対象PJの実データでの発現は未知である。
-- **ファイル系との非対称**: 同じ `record_type: "FW_HEADER"` を `setup_files` に書いた場合は
-  **レコードは捨てられずに残る**（担保テスト `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInFileFromRealYaml`）。
-  `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks` ／
-  `#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使うためである。
+- **3 経路で扱いが違う**（いずれも担保テストあり）:
+
+  | 経路 | `record_type: "FW_HEADER"` のレコード | 担保テスト（`YamlFormatReaderRealFileTest#`） |
+  |---|---|---|
+  | ファイル系（`setup_files` ／ `expected_files`） | **残る** | `keepsFwHeaderNamedRecordInFileFromRealYaml` |
+  | メッセージ系（`messages`） | 落ちる | `dropsFwHeaderNamedRecordFromRealYaml` |
+  | 送信系（`response_body_messages` ほか） | 落ちる | `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` |
+
+  `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks`）と
+  送信系（`#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使うためである。
   同じ記法が置き場所によって残ったり消えたりする点も、作成者から見れば予測できない。
 - 判断: **仕様として不適切**（スキーマの description が「予約値はない」と明言する値を実装が予約値として扱い、
   黙ってデータを落とす）。**帰属は yaml 側**である（description を実装に合わせるか、実装から

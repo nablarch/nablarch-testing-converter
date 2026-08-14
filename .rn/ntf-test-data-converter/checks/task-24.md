@@ -155,14 +155,14 @@ converter は `YamlFormatReader#read` → `YamlTestCoreAdapter#loadRawMap` → `
 | クラス | 件数 | 導出コマンド |
 |---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` |
-| `YamlFormatReaderInvalidInputTest` | 30 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` |
-| `YamlFormatReaderRealFileTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` |
+| `YamlFormatReaderInvalidInputTest` | 31 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` |
+| `YamlFormatReaderRealFileTest` | 24 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` |
 | （フィクスチャ）`YamlFixture` | — | テストではない。YAML テキストを実ファイルへ書き出し `new YamlFormatReader().read(...)` で読むヘルパ |
 
-合計 **80 件**を追加した（`Tests run` は基準線 419 → **499**）。3 クラスとも `new YamlFormatReader().read(...)` を
+合計 **82 件**を追加した（`Tests run` は基準線 419 → **501**）。3 クラスとも `new YamlFormatReader().read(...)` を
 本番配線で呼び、スカラー解決とスキーマ検証の区間を実行する。
 
-**80 件の内訳**: 軸D 12 ケースと軸F 5 ケースの担保、#18 の棚卸しで空欄だった軸A・B・C・E の補充、
+**82 件の内訳**: 軸D 12 ケースと軸F 5 ケースの担保、#18 の棚卸しで空欄だった軸A・B・C・E の補充、
 **スキーマの自由度の掃引**で見つけた現状挙動の固定（`issues.md` YML-04〜YML-11）、および
 **変異が生存した箇所を閉じるテスト 3 件**である。
 掃引ぶんのテストは**軸A〜F のどの要素にも新しい担保を与えない**ため `inventory.md` §2.3 の件数を動かさない
@@ -285,6 +285,19 @@ QA／Craft／Verification の 3 レビュアから受けた指摘を、種類ご
 | **変異が生存**: `addFileBlocks` を `recordsWithoutFwHeader` に変えても全件 PASS。`record_type: "FW_HEADER"` がメッセージ系で落ちること（YML-03）は固定されていたが、**ファイル系では残る**という非対称が未固定だった | `#keepsFwHeaderNamedRecordInFileFromRealYaml` を追加し、`issues.md` YML-03 にも非対称の節を足した |
 | `readsMessageDirectivesFromRealYaml` が値だけを見て件数を見ておらず、器が既定ディレクティブを増やしても気づかない | `getDirectives().size()` のアサートを足し、兄弟テストと揃えた |
 | ディレクティブ値は `rows` と違い**非文字列を書ける**（`record-length` は integer、真偽値系は boolean）のに、`toStringDirectives` の型変換が未固定 | `#stringifiesNonStringDirectiveValuesFromRealYaml` を追加（`3` → `"3"`、`true` → `"true"`） |
+| **変異が生存**: `toRecordLayouts` の `fragment.getNames()` を昇順ソートしても全件 PASS。`FieldDef` の並び（原文 Map 由来）と行の値の並び（器の `getNames()` 由来）は**別々の出所**で位置対応しているのに、テストのフィールド名が `f1,f2,f3` ／ `c1,c2` ＝ **すべて辞書順と一致**していて区別できなかった | `#preservesFieldOrderAndValueAlignmentFromRealYaml` を追加（`zz` → `mm` → `aa`）。名前列と値列の**両方**をアサートする |
+| **変異が生存**: `addTableBlocks` のカラムをソートしても辺②の新規 3 クラスは 1 件も落ちない。C-08 を担保する 2 件のカラムが `[A, B]` ／ `[ID, ID]` でどちらもソート不変だった（LIST_MAP 側は `[val, key]` にしてあるのに非対称） | `padsColumnMissingFromSecondRowWithNullInTable` の入力を `[B, A]` へ変えた |
+| **変異が生存**: `addFileBlocks` の代表データタイプを常に `SETUP_FIXED` にしても `readsAllThirteenDataTypesFromRealYaml` は緑。`getDataType()` しか見ておらず「タイプは合っているが中身が別セクションのもの」を通していた | 同テストに**識別子の列**（`MSG4 … T1`）のアサートを足した |
+| `toStringDirectives` の Javadoc が「`null` 値は `null` のまま保持する」と断定しているが、対応するテストが無い | スキーマ `$defs.directives` の 17 プロパティが `string` / `integer` / `boolean` のみで **`null` を許さない**ことを確認し、**実 `.yaml` 経路では到達不能**として台帳の開示へ再現コマンド付きで記録した（テストは足さない） |
+| `issues.md` YML-03 が「送信系はテストとしては固定していない（担保テストは 1 件のみ）」と書いたままだった。前ラウンドで `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` を足したのに **`issues.md` を更新していなかった**（コミットメッセージだけが更新を主張していた） | YML-03 の実測欄を「送信系の『FW_HEADER ＋本文』は固定済み、未固定は『FW_HEADER のみ』の形だけ」に書き改め、非対称の記述を**3 経路の表**（ファイル系＝残す／メッセージ系＝落とす／送信系＝落とす）へ拡張した。掃引表 項目 21 にも同じ切り分けを書いた |
+| `containsInAnyOrder` へ変えた際にクラス Javadoc だけ更新し、**メソッド Javadoc と台帳が「順序も固定する」のまま**残っていた（同一ファイル内で正反対） | メソッド Javadoc を「件数と集合だけを固定し、報告順は突き合わせない」に、台帳の F2-01 行も同じ表現に直した。`locations` は同一文字列 2 個の `containsInAnyOrder` をやめ、`is(Arrays.asList(location, location))` にして意図を出した |
+| 「警告が出ないことをアサートしていない」という開示が**穴を 2 件に限定**していたが、YML-04／YML-05 も同じ状態だった。さらに `readCapturingWarnings` が捕まえるのは JUL 経路だけで `nablarch.core.log` は対象外なのに、issues.md は「例外にも警告にもならない」と実測事実のように書いていた | 開示を**2 段階**（課題ごとの有無／捕捉範囲）に書き直し、対象 6 件の導出コマンドを併記した。YML-04・YML-05 の代表テストに警告 0 件アサートを追加。アサートのメッセージを「JUL 経路にも警告が出ない」へ限定し、`YamlFixture` の Javadoc に「現状の実装では落ちようがない。意味は回帰検知」と明記した |
+| YML-08 の field-separator だけ「通る側」のテストが無く、Javadoc の断定（2 文字記法はタブへ変換される）が実行可能な形になっていなかった | `readsFieldSeparatorWrittenAsEscapedTabNotation` を追加（record-separator 側の 2 件と同じ対にした） |
+| `assertTrue(x.isEmpty())` が 13 か所。失敗時に中身が出ない。兄弟クラスは `assertThat(..., is(emptyList()))` に揃えている | 13 か所すべてを `assertThat` に置換した（`fwHeaderFields` は Map なので `emptyMap()`） |
+| `readsAllThirteenDataTypesFromRealYaml` は固定リストと突き合わせるだけで、`DataType` が 15 個目を持っても緑のまま | `DataType.values().length` が 14 であることを 1 行足した |
+| `YamlFixture#blocks` がセクション数を検査せず先頭セクションだけを見ていた | セクション 1 件のアサートを冒頭に足した（兄弟の `blocksOf` と同じ形） |
+| C-15 の到達不能根拠が `message_data` にしか触れておらず、送信系を確かめたか読み取れない | `group_message_data` ／ `expected_request_message_data` も `minItems: 1` であることを確認して 3 つとも挙げた |
+| `YamlFormatReaderScalarTest` だけ、テストごとの軸要素 ID が末尾 4 件にしか付いていなかった | D2 の 23 件すべてに `担保する軸要素: D2-0x（…）` を付け、クラス Javadoc にも兄弟と同じ宣言を入れた |
 | **変異が生存**: 送信系（`addSendSyncBlocks`）の FW_HEADER 除外をやめても全件 PASS。ファイル系は残す・メッセージ系は落とす、は固定済みだったが**送信系の入力が 1 件も無かった** | `#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` を追加し、`issues.md` YML-03 に 3 経路の非対称を書いた |
 | **変異が生存**: `normalizeRecordType` が `"FW_HEADER"` も `null` にしても全件 PASS。`keepsFwHeaderNamedRecordInFileFromRealYaml` が件数と行値しか見ておらず**種別名を見ていなかった** | `getRecordType() is "FW_HEADER"` のアサートを足した |
 | **変異が生存**: `fw_header` の `LinkedHashMap` を `TreeMap` に変えても全件 PASS。順序をアサートしている `readsFwHeaderFieldsFromRealYaml` のキーが `requestId` → `userId` ＝ **辞書順と一致**していて空振りだった | 入力を `userId` → `requestId`（辞書順と逆）へ変え、意図をアサートのメッセージにも書いた |
@@ -323,11 +336,11 @@ QA／Craft／Verification の 3 レビュアから受けた指摘を、種類ご
 | Criterion | Self-check | Evidence | QA | QA Evidence |
 |---|---|---|---|---|
 | 軸D の12ケース（D2-01〜D2-12）すべてがアサートされ、特に `null` ／値なし ／ `~` の3者の分かれ方と、`"null"` ／ `NULL` の扱いが結果として固定されている | OK | `YamlFormatReaderScalarTest` **27 件**（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）が 12 ケースを担保する。要素→メソッドの対応は `inventory.md` §2.1-2 の軸D 表。3 者の分かれ方は `readsUnquotedNullAsJavaNull`（Java `null`）／`readsOmittedValueAsJavaNull`（Java `null`）／`readsTildeAsString`（文字列 `"~"`）が、`"null"` ／ `NULL` は `readsQuotedNullAsString`／`readsUppercaseNullAsString` が固定している。27 件のうち 4 件は同一ケースを LIST_MAP 経路・レコード断片経路で確認したもので、**12 ケース定義には足していない**（§2.1-2「別経路での確認」表） | | |
-| 軸F の5ケース（スキーマ違反／不正 YAML／未知キー／必須構造欠落／空ファイル）で例外型または結果がアサートされている。スキーマ違反のケースの入力に、仕様外とした引用符なしスカラー記法（`true` / `123` / `1.50` / `.inf` / `.nan`）を使っていない | OK | 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**（同クラスの総数は `grep -c '^    @Test' …InvalidInputTest.java` → **30**。差の 22 件は掃引で見つけた現状挙動の固定 20 件（YML-04〜YML-08・YML-10・YML-11）とローダの他の失敗経路 2 件であり、**いずれも軸F の要素ではない**。8 ／ 2 ／ 20 の導出コマンドは `inventory.md` §2.3）。例外型は `YamlSchemaValidationException`（F2-01/03/04）・`IllegalStateException` ＋ 原因 `YamlEngineException`（F2-02）、F2-05 は例外にならずブロック 0 件になる結果をアサート。スキーマ違反の入力は `type: "text"`（列挙違反）と `length: "1a"`（パターン違反）で、いずれも引用符付き文字列である。**仕様外記法を使っていないことの確認**は下の「確認コマンド」を参照 | | |
+| 軸F の5ケース（スキーマ違反／不正 YAML／未知キー／必須構造欠落／空ファイル）で例外型または結果がアサートされている。スキーマ違反のケースの入力に、仕様外とした引用符なしスカラー記法（`true` / `123` / `1.50` / `.inf` / `.nan`）を使っていない | OK | 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**（同クラスの総数は `grep -c '^    @Test' …InvalidInputTest.java` → **31**。差の 23 件は掃引で見つけた現状挙動の固定 21 件（YML-04〜YML-08・YML-10・YML-11）とローダの他の失敗経路 2 件であり、**いずれも軸F の要素ではない**。8 ／ 2 ／ 21 の導出コマンドは `inventory.md` §2.3）。例外型は `YamlSchemaValidationException`（F2-01/03/04）・`IllegalStateException` ＋ 原因 `YamlEngineException`（F2-02）、F2-05 は例外にならずブロック 0 件になる結果をアサート。スキーマ違反の入力は `type: "text"`（列挙違反）と `length: "1a"`（パターン違反）で、いずれも引用符付き文字列である。**仕様外記法を使っていないことの確認**は下の「確認コマンド」を参照 | | |
 | `issues.md` に YML-01 と「対象としない入力」の YAML 側段落が記録されている（いずれも `src/main` 無変更） | OK | `issues.md` に `## #24 …` 節と `## #24 スキーマの自由度の掃引で記録した課題` 節があり、`### YML-01 …`（影響度 別枠。解決経路 4 段を再現コマンド付きで示し、担保を「テストで担保した変種」5 件と「正規表現から導出した事実」1 件に分けている）と `### 対象としない入力（辺②）`（適用範囲を `rows` の値に限定し、`field_def.length` の integer 記法が仕様内であることを再現コマンド付きで併記）を置いた。ID は `XLS-nn` ではなく `YML-nn` 系列。あわせて **YML-02〜YML-11** も記録した。`src/main` 無変更は `git diff 3165770 -- src/main \| wc -l` → **0** | | |
 | 辺②について軸A の13種（`DEFAULT` を除く。到達不能。根拠付きで空欄）・軸B の4種・軸C の全フィールド（省略可能なものは省略時も。`sections` は「空」「複数」とも到達不能として根拠付きで空欄）・軸E が埋まっている | OK | 軸A: `YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` が 13 種を実 `.yaml` で ✅（A-01 は根拠付きで空欄）。軸B: `#readsFourBlockImplementationsFromOneRealYaml` が 4 種。軸C: #18 で欠けていた 8 要素のうち C-08/C-09/C-12/C-18/C-13(値あり) を担保済みへ、C-11(空)/C-13(空)/C-17/C-20 を根拠テスト付きの到達不能へ移した。C-02 は根拠付きで空欄。C-14(値あり)・C-21 は実ファイル経路でも担保した。軸E: E-1/E-2/E-3 の 0・1・複数と E-4(1) を実 `.yaml` で担保、E-4(複数) は根拠付きで空欄。§2.3 の集計は **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 総計 28** | | |
 | src/main への変更がゼロ | OK | `git diff 3165770 -- src/main \| wc -l` → **0**（`3165770` は #24 のタスク定義コミット＝実装着手前） | | |
-| `mvn clean test -Djacoco.skip=true` が全テスト PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true` → `Tests run: 499, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`（基準線 419 ＋ 追加 80） | | |
+| `mvn clean test -Djacoco.skip=true` が全テスト PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true` → `Tests run: 501, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`（基準線 419 ＋ 追加 82） | | |
 
 ### 確認コマンド（軸F の入力に仕様外のスカラー記法を使っていないこと）
 
@@ -360,7 +373,7 @@ grep -oE '\+ "[^"]*\\n"' $f | grep -vE ': \\"'
 |---|---|
 | `grep -cE '\b(L[0-9]{1,4})\b' .rn/ntf-test-data-converter/coverage/inventory.md` が 0 | **0**（OK。実行して確認） |
 | ファイル行数を書いていない | OK |
-| 書き足した件数のすべてに導出コマンドを併記／併記したコマンドはそのまま実行して同じ結果が出る | OK。`inventory.md` に現れる 11 個のテストクラスパスすべてについて `grep -c '^    @Test'` を実行し、書かれた値と一致することを確認した（XLS: 10 / 33 / 18 / 16 / 18 / 40、YAML: 30 / 23 / 27 / 20 / 33）。内訳 8 ／ 2 ／ 20 と掃引項目 28 には `awk` ＋ `grep -c` の導出コマンドを併記し、**それぞれそのまま実行して同じ値が出ることを確認した**（前ラウンドではこの 2 つの出力値が取り残されていた） |
+| 書き足した件数のすべてに導出コマンドを併記／併記したコマンドはそのまま実行して同じ結果が出る | OK。`inventory.md` に現れる 11 個のテストクラスパスすべてについて `grep -c '^    @Test'` を実行し、書かれた値と一致することを確認した（XLS: 10 / 33 / 18 / 16 / 18 / 40、YAML: 31 / 24 / 27 / 20 / 33）。内訳 8 ／ 2 ／ 21 と掃引項目 28 には `awk` ＋ `grep -c` の導出コマンドを併記し、**それぞれそのまま実行して同じ値が出ることを確認した**（前ラウンドではこの 2 つの出力値が取り残されていた） |
 | 併記した再現コマンドを実際に実行して、引用した文言が出力に現れる | OK。追加・差し替えた再現コマンド（YML-02 の 1 本、YML-04 の 3 本、YML-05 の 2 本、YML-06 の 2 本、YML-07 の 1 本、YML-08 の 2 本、YML-09 の 2 本、YML-10 の 2 本）を**すべてそのまま実行**し、引用文・引用したコード行が出力に現れることを確認した |
 | 担保の穴は、テストを足さない場合でも台帳に開示する | OK。§2.1-2 の「開示」に、掃引で列挙した 28 項目の全件と「見ていない範囲」6 点、軸D を 1 経路でしか測っていない件、および**担保の強さについての 2 点**（軸D の大半は characterization であって converter の実装を固定しない／行・分岐 100% でも変異は生存しうる）を書いた |
 | 逆引き表（軸要素 → 担保テストメソッド）を新設していない | **新設していない**。§2.1-2 の各表は #19〜#23 が §1.2-2／§3.1-2／§3.1-3 で用いた「その要素を #24 が埋めたことを示す差分表」と同じ形式である。掃引表は「スキーマ上の自由度 → 観測結果」であり逆引きではない。逆引きの正は #27 の `coverage/axis-matrix.md`（steering Rules） |

@@ -56,6 +56,11 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
+ * 各テストの Javadoc には、そのテストが担保する軸要素の ID（D2-01〜D2-12）を記す
+ * （{@code YamlFormatReaderRealFileTest} ／ {@code YamlFormatReaderInvalidInputTest} と同じ書き方）。
+ * </p>
+ *
+ * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
  * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として
  * 記録してあり、実装（src/main）は変更していない（{@code YML-01}）。
@@ -224,6 +229,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの文字列 {@code abc}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code "abc"} が入る。
+     *
+     * <p>担保する軸要素: D2-01（引用符なし文字列）。</p>
      */
     @Test
     public void readsUnquotedStringAsIs() {
@@ -234,6 +241,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 二重引用符付きの文字列 {@code "abc"}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 引用符は残らず {@code "abc"} が入る（引用符なしと同値）。
+     *
+     * <p>担保する軸要素: D2-02（引用符あり文字列・二重）。</p>
      */
     @Test
     public void readsDoubleQuotedStringWithoutQuotes() {
@@ -244,6 +253,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 一重引用符付きの文字列 {@code 'abc'}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 引用符は残らず {@code "abc"} が入る（二重引用符と同値）。
+     *
+     * <p>担保する軸要素: D2-02（引用符あり文字列・一重）。</p>
      */
     @Test
     public void readsSingleQuotedStringWithoutQuotes() {
@@ -263,6 +274,8 @@ public class YamlFormatReaderScalarTest {
      * 仕様外の入力として固定しないことが確定している）。他のプロパティでは事情が異なり、
      * {@code field_def.length} は integer 記法も許す（クラス Javadoc 参照）。
      * </p>
+     *
+     * <p>担保する軸要素: D2-03（引用符付き数値）。</p>
      */
     @Test
     public void readsQuotedNumberAsString() {
@@ -273,6 +286,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの末尾ゼロ小数 {@code "1.50"}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 末尾ゼロを保った文字列 {@code "1.50"} が入る。
+     *
+     * <p>担保する軸要素: D2-04（引用符付き末尾ゼロ小数）。</p>
      */
     @Test
     public void readsQuotedTrailingZeroDecimalAsString() {
@@ -285,6 +300,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの {@code "true"}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 文字列 {@code "true"} が入る。
+     *
+     * <p>担保する軸要素: D2-05（真偽値に見える文字列・引用符あり）。</p>
      */
     @Test
     public void readsQuotedTrueAsString() {
@@ -301,6 +318,8 @@ public class YamlFormatReaderScalarTest {
      * （{@code org.snakeyaml.engine.v2.resolver.JsonScalarResolver} の {@code BOOL} が
      * {@code ^(?:true|false)$}）。そのため {@code TRUE} は引用符なしでもスキーマを通る。
      * </p>
+     *
+     * <p>担保する軸要素: D2-05（真偽値に見える文字列・TRUE）。</p>
      */
     @Test
     public void readsUppercaseTrueAsString() {
@@ -311,6 +330,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの {@code yes}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 文字列 {@code "yes"} が入る（YAML 1.1 の真偽値変換は行われない）。
+     *
+     * <p>担保する軸要素: D2-05（真偽値に見える文字列・yes）。</p>
      */
     @Test
     public void readsYesAsString() {
@@ -323,6 +344,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの {@code null}（小文字）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : Java の {@code null} が入る。
+     *
+     * <p>担保する軸要素: D2-06（NULL・引用符なし null）。</p>
      */
     @Test
     public void readsUnquotedNullAsJavaNull() {
@@ -333,6 +356,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 値を書かない行 {@code - V:}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : Java の {@code null} が入る（引用符なし {@code null} と同値）。
+     *
+     * <p>担保する軸要素: D2-06（NULL・値なし）。</p>
      */
     @Test
     public void readsOmittedValueAsJavaNull() {
@@ -345,6 +370,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの {@code "null"}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 文字列 {@code "null"} が入る（Java の {@code null} にはならない）。
+     *
+     * <p>担保する軸要素: D2-07（NULL に見える文字列・"null"）。</p>
      */
     @Test
     public void readsQuotedNullAsString() {
@@ -361,6 +388,8 @@ public class YamlFormatReaderScalarTest {
      * {@code coverage/issues.md} の <b>YML-01</b> に記録した（帰属は converter ではなく yaml 側）。
      * ここでは現状の挙動として固定するにとどめる。
      * </p>
+     *
+     * <p>担保する軸要素: D2-07（NULL に見える文字列・~）。</p>
      */
     @Test
     public void readsTildeAsString() {
@@ -371,6 +400,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの {@code NULL}（大文字）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : <b>Java の {@code null} ではなく文字列 {@code "NULL"}</b> が入る。
+     *
+     * <p>担保する軸要素: D2-07（NULL に見える文字列・NULL）。</p>
      */
     @Test
     public void readsUppercaseNullAsString() {
@@ -383,6 +414,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの日付風文字列 {@code 2026-08-07}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 記法どおりの文字列が入る（日付型へ解決されない）。
+     *
+     * <p>担保する軸要素: D2-08（日付風文字列）。</p>
      */
     @Test
     public void readsDateLikeStringAsIs() {
@@ -393,6 +426,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの日時風文字列 {@code 2026-08-07T12:34:56}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 記法どおりの文字列が入る（日時型へ解決されない）。
+     *
+     * <p>担保する軸要素: D2-08（日時風文字列）。</p>
      */
     @Test
     public void readsDateTimeLikeStringAsIs() {
@@ -405,6 +440,8 @@ public class YamlFormatReaderScalarTest {
      * Given: リテラルブロックスカラー（{@code |}）で書いた 2 行。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 改行を保った 1 値になり、<b>末尾に改行が付く</b>（{@code "l1\nl2\n"}）。
+     *
+     * <p>担保する軸要素: D2-09（複数行・リテラル）。</p>
      */
     @Test
     public void readsLiteralBlockScalarKeepingNewlines() {
@@ -415,6 +452,8 @@ public class YamlFormatReaderScalarTest {
      * Given: フォールドブロックスカラー（{@code >}）で書いた 2 行。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 行間の改行が半角空白へ畳まれ、<b>末尾に改行が付く</b>（{@code "l1 l2\n"}）。
+     *
+     * <p>担保する軸要素: D2-09（複数行・フォールド）。</p>
      */
     @Test
     public void readsFoldedBlockScalarFoldingNewlinesIntoSpaces() {
@@ -432,6 +471,8 @@ public class YamlFormatReaderScalarTest {
      * 整数へ解決されるのは {@code ^-?(0|[1-9][0-9]*)$}（{@code JsonScalarResolver} の {@code INT}）に
      * 一致する記法だけであり、先頭ゼロを持つ {@code 007} は一致しないため文字列のままスキーマを通る。
      * </p>
+     *
+     * <p>担保する軸要素: D2-10（先頭ゼロ）。</p>
      */
     @Test
     public void readsLeadingZeroNumberAsString() {
@@ -442,6 +483,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符なしの 16 進記法 {@code 0x1F}（JSON 数値記法ではない）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 記法どおりの文字列 {@code "0x1F"} が入る。
+     *
+     * <p>担保する軸要素: D2-10（非 JSON 数値記法）。</p>
      */
     @Test
     public void readsHexNotationAsString() {
@@ -454,6 +497,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの空文字 {@code ""}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 空文字が入る（値なし＝Java {@code null} とは区別される）。
+     *
+     * <p>担保する軸要素: D2-11（空文字）。</p>
      */
     @Test
     public void readsEmptyStringAsIs() {
@@ -464,6 +509,8 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの前後空白を持つ文字列 {@code "  pad  "}。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 前後空白が保たれる（トリムされない）。
+     *
+     * <p>担保する軸要素: D2-11（前後空白）。</p>
      */
     @Test
     public void readsSurroundingWhitespacePreserved() {
@@ -476,6 +523,8 @@ public class YamlFormatReaderScalarTest {
      * Given: コロンと空白を含む文字列 {@code "a: b"}（引用符が無ければマッピングと解釈される記法）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code "a: b"} が 1 つの値として入る。
+     *
+     * <p>担保する軸要素: D2-12（コロンを含む文字列）。</p>
      */
     @Test
     public void readsColonContainingStringAsIs() {
@@ -486,6 +535,8 @@ public class YamlFormatReaderScalarTest {
      * Given: {@code #} を含む文字列 {@code "a #b"}（引用符が無ければコメントとして落ちる記法）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code "a #b"} が 1 つの値として入る（コメントとして切り落とされない）。
+     *
+     * <p>担保する軸要素: D2-12（# を含む文字列）。</p>
      */
     @Test
     public void readsHashContainingStringAsIs() {

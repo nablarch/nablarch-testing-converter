@@ -231,7 +231,9 @@ public class YamlFormatReaderInvalidInputTest {
      * 2 件になるのは {@code length} が {@code anyOf} だからである。{@code "1a"} は
      * 第 1 枝（{@code {type: integer, minimum: 0}}）の {@code type} と
      * 第 2 枝（{@code {type: string, pattern: "^([0-9]+|-)$"}}）の {@code pattern} の<b>両方</b>を外し、
-     * どちらの枝の違反も報告される。順序・件数とも実測（2 件・この順）どおりに固定する。
+     * どちらの枝の違反も報告される。<b>固定するのは件数（2 件）とキーワードの集合だけで、
+     * 報告順は突き合わせない</b>（クラス Javadoc の方針どおり。{@code JsonSchema#validate} が返すのは
+     * {@code Set} であり反復順は契約されていないため）。
      * </p>
      *
      * <p>担保する軸要素: F2-01（スキーマ違反）。</p>
@@ -248,11 +250,10 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - {name: \"f1\", type: \"半角英字\", length: \"1a\"}\n"
                 + "        rows:\n"
                 + "          - [\"a\"]\n");
+        String location = "$.setup_files[0].records[0].fields[0].length";
         assertThat("2 件報告されること", types(e).size(), is(2));
-        assertThat(types(e), containsInAnyOrder("type", "pattern"));
-        assertThat(locations(e), containsInAnyOrder(
-                "$.setup_files[0].records[0].fields[0].length",
-                "$.setup_files[0].records[0].fields[0].length"));
+        assertThat("報告順は Set のため突き合わせない", types(e), containsInAnyOrder("type", "pattern"));
+        assertThat("2 件とも同じ位置に対する違反であること", locations(e), is(Arrays.asList(location, location)));
     }
 
     // ------------------------------------------------------------------ F2-02 YAML として不正
@@ -274,8 +275,8 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         assertFalse("スキーマ検証まで到達しないこと", thrown instanceof YamlSchemaValidationException);
-        assertTrue("メッセージにファイルパスを含むこと: " + thrown.getMessage(),
-                thrown.getMessage().startsWith("Failed to parse YAML file: "));
+        assertThat("メッセージにファイルパスを含むこと",
+                thrown.getMessage(), startsWith("Failed to parse YAML file: "));
         assertThat(thrown.getCause(),
                 is(instanceOf(YamlEngineException.class)));
     }
@@ -505,7 +506,7 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void dropsColumnThatAppearsOnlyInSecondRowOfTable() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
@@ -513,10 +514,11 @@ public class YamlFormatReaderInvalidInputTest {
                 + "      - {A: \"2\", B: \"x\"}\n");
 
         // Then
-        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat(block.getColumnNames(), is(Arrays.asList("A")));
         assertThat("2 行目の B が消える", block.getRows(),
                 is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
+        assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
     /**
@@ -560,14 +562,15 @@ public class YamlFormatReaderInvalidInputTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - {A: \"1\", B: \"x\"}\n"
-                + "      - {A: \"2\"}\n");
+                + "      - {B: \"x\", A: \"1\"}\n"
+                + "      - {B: \"y\"}\n");
 
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertThat(block.getColumnNames(), is(Arrays.asList("A", "B")));
-        assertThat(block.getRows(),
-                is(Arrays.asList(Arrays.asList("1", "x"), Arrays.asList("2", null))));
+        assertThat("辞書順（[A, B]）ではなく原文の記述順であること",
+                block.getColumnNames(), is(Arrays.asList("B", "A")));
+        assertThat("欠けたキーは null で埋まる（カラム順は原文どおり）", block.getRows(),
+                is(Arrays.asList(Arrays.asList("x", "1"), Arrays.asList("y", null))));
     }
 
     /**
@@ -589,8 +592,8 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
-        assertTrue("2 行目に書いた行ごと消えること", block.getRows().isEmpty());
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
+        assertThat("2 行目に書いた行ごと消えること", block.getRows(), is(Collections.emptyList()));
     }
 
     /**
@@ -616,7 +619,7 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
-        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
         assertThat(block.getRows(),
                 is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
     }
@@ -643,7 +646,7 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
         assertThat(block.getRows(),
                 is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
     }
@@ -665,7 +668,7 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void dropsRecordFragmentValuesBeyondFieldCount() {
         // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
                 + "setup_files:\n"
                 + "  - path: \"f.dat\"\n"
                 + "    type: \"fixed\"\n"
@@ -676,10 +679,11 @@ public class YamlFormatReaderInvalidInputTest {
                 + "          - [\"a\", \"b\", \"c\"]\n");
 
         // Then
-        RecordLayout record = onlyRecord(container);
+        RecordLayout record = onlyRecord(reading.container());
         assertThat(record.getFields().size(), is(1));
         assertThat("2 個目以降の値が消える", record.getRows(),
                 is(Arrays.asList(Arrays.asList("a"))));
+        assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
     /**
@@ -1035,7 +1039,7 @@ public class YamlFormatReaderInvalidInputTest {
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("前後の空白が消える", block.getRows(), is(Arrays.asList(Arrays.asList("pad"))));
-        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
+        assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
     /**
@@ -1064,7 +1068,45 @@ public class YamlFormatReaderInvalidInputTest {
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("# 以降が消える", block.getRows(), is(Arrays.asList(Arrays.asList("a"))));
-        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
+        assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
+    }
+
+    /**
+     * Given: {@code field-separator} を<b>バックスラッシュと {@code t} の 2 文字</b>で書いた可変長ファイル
+     *        （YAML のシングルクォート記法 {@code '\t'}。エスケープが働かないためリテラル 2 文字になる）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 器がタブ 1 文字へ変換し、中間モデルには長さ 1 のタブが入る。
+     *
+     * <p>
+     * <b>{@link #failsWhenFieldSeparatorIsWrittenAsActualTab} との切り分けである。</b>
+     * 実タブ 1 文字を渡すと器の {@code trim()} で失われて例外になるのに対し、
+     * 2 文字記法（スキーマの description が推奨する形）は通る。
+     * YML-08 の record-separator 側が {@code losesRecordSeparatorWrittenAsLiteralNewline} と
+     * {@code readsRecordSeparatorSymbolAsIs} の対で書かれているのに合わせ、
+     * field-separator 側にも「通る側」を置く。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-08 の切り分け）。</p>
+     */
+    @Test
+    public void readsFieldSeparatorWrittenAsEscapedTabNotation() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    directives:\n"
+                + "      field-separator: '\\t'\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("2 文字記法はタブ 1 文字へ変換される",
+                block.getDirectives().get("field-separator"), is("\t"));
     }
 
     // ------------------------------------------------------------------ YML-10 カラム名の大小衝突
@@ -1105,7 +1147,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "        ID: \"4\"\n");
 
         // Then
-        assertThat("警告も出ない（辺①は同じ重複で WARNING を出す）",
+        assertThat("JUL 経路にも警告が出ない（辺①は同じ重複で WARNING を出す）",
                 reading.warnings(), is(Collections.<String>emptyList()));
         TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("テーブル名も大文字化される", block.getIdentifier(), is("MY_TABLE"));

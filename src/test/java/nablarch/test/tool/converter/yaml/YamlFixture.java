@@ -95,11 +95,18 @@ final class YamlFixture {
      * </p>
      *
      * <p>
-     * 捕捉できるのは JUL 経路だけで、{@code nablarch-testing} 自身のログ基盤
-     * （{@code nablarch.core.log}）への出力は対象外である。辺②の読み取り経路
-     * （{@link YamlFormatReader}）は JUL のロガーを 1 つも持たないため、
-     * <b>現状は「どこからも警告が出ない」ことの確認になる</b>（辺①の {@code XlsFormatReader} は
-     * 重複カラム名で JUL の WARNING を出す）。
+     * <b>捕捉できるのは JUL 経路だけである。</b>{@code nablarch-testing} 自身のログ基盤
+     * （{@code nablarch.core.log}）への出力は捕捉できないため、これで示せるのは
+     * 「JUL 経路には警告が出ない」までであって「どこにも警告が出ない」ことではない。
+     * </p>
+     *
+     * <p>
+     * さらに辺②の読み取り経路（{@link YamlFormatReader}）は JUL のロガーを 1 つも持たないため、
+     * <b>現状の実装ではこのアサートは落ちようがない</b>。意味を持つのは
+     * 「将来 JUL の警告を足したときに気づける」という回帰検知としてである
+     * （辺①の {@code XlsFormatReader} は重複カラム名で実際に JUL の WARNING を出すため、
+     * そちらでは現在の挙動そのものを固定している）。この非対称は
+     * {@code coverage/inventory.md} §2.1-2 の「開示」に記した。
      * </p>
      *
      * @param dir      書き出し先ディレクトリ
@@ -191,6 +198,7 @@ final class YamlFixture {
      * @return ブロック群
      */
     static List<TestDataBlock> blocks(TestDataContainer container) {
+        assertThat("セクションが 1 件だけ生成されること", container.getSections().size(), is(1));
         return container.getSections().get(0).getBlocks();
     }
 

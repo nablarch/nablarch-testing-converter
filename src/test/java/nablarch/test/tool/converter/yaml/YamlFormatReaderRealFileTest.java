@@ -107,6 +107,8 @@ public class YamlFormatReaderRealFileTest {
         TestDataContainer container = YamlFixture.read(dir(), allSectionsYaml());
 
         // Then
+        assertThat("DataType が増えたら気づけるよう総数も固定する（DEFAULT ＋ 13）",
+                DataType.values().length, is(14));
         List<DataType> actual = new ArrayList<>();
         for (TestDataBlock block : YamlFixture.blocks(container)) {
             actual.add(block.getDataType());
@@ -125,6 +127,14 @@ public class YamlFormatReaderRealFileTest {
                 DataType.EXPECTED_COMPLETED,
                 DataType.EXPECTED_TABLE_DATA,
                 DataType.SETUP_TABLE_DATA)));
+        List<String> identifiers = new ArrayList<>();
+        for (TestDataBlock block : YamlFixture.blocks(container)) {
+            identifiers.add(block.getIdentifier());
+        }
+        assertThat("データタイプだけでなく識別子も固定する（別セクションの器から組み立てても気づけるように）",
+                identifiers, is(Arrays.asList(
+                        "MSG4", "MSG3", "MSG2", "MSG1", "RM01",
+                        "ef.dat", "ev.csv", "sf.dat", "sv.csv", "lm", "T3", "T2", "T1")));
     }
 
     // ------------------------------------------------------------------ 軸B
@@ -206,8 +216,8 @@ public class YamlFormatReaderRealFileTest {
         assertThat(block.getDataType(), is(DataType.SETUP_TABLE_DATA));
         assertThat(block.getIdentifier(), is("T"));
         assertThat("C-06 省略時は整形済みグループ ID が空文字になる", block.getGroupId(), is(""));
-        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
-        assertTrue("rows が空であること", block.getRows().isEmpty());
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
+        assertThat("rows が空であること", block.getRows(), is(Collections.emptyList()));
     }
 
     /**
@@ -227,8 +237,8 @@ public class YamlFormatReaderRealFileTest {
         ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
         assertThat(block.getDataType(), is(DataType.LIST_MAP));
         assertThat(block.getIdentifier(), is("lm"));
-        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
-        assertTrue("rows が空であること", block.getRows().isEmpty());
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
+        assertThat("rows が空であること", block.getRows(), is(Collections.emptyList()));
     }
 
     /**
@@ -239,7 +249,8 @@ public class YamlFormatReaderRealFileTest {
      * <p>
      * 軸C の C-12（{@code FileDataBlock.records} 空）と軸E の E-3(0 件) を同じ入力で通す。
      * スキーマ {@code $defs.file_data.properties.records.minItems} が 0 であるため到達できる
-     * （{@code message_data} / {@code expected_request_message_data} は {@code minItems: 1} のため
+     * （{@code message_data} / {@code group_message_data} / {@code expected_request_message_data} は
+     * いずれも {@code minItems: 1} のため
      * メッセージ系では到達できない）。
      * </p>
      *
@@ -255,7 +266,7 @@ public class YamlFormatReaderRealFileTest {
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
         assertThat(block.getDataType(), is(DataType.SETUP_FIXED));
         assertThat(block.getFileType(), is(FileDataBlock.FileType.FIXED));
-        assertTrue("records が空であること", block.getRecords().isEmpty());
+        assertThat("records が空であること", block.getRecords(), is(Collections.emptyList()));
     }
 
     /**
@@ -288,7 +299,7 @@ public class YamlFormatReaderRealFileTest {
         RecordLayout record = block.getRecords().get(0);
         assertThat(record.getRecordType(), is(nullValue()));
         assertThat(record.getFields().size(), is(1));
-        assertTrue("RecordLayout.rows が空であること", record.getRows().isEmpty());
+        assertThat("RecordLayout.rows が空であること", record.getRows(), is(Collections.emptyList()));
     }
 
     /**
@@ -330,6 +341,50 @@ public class YamlFormatReaderRealFileTest {
         assertThat("小文字の \"default\" も null へ正規化される", record.getRecordType(), is(nullValue()));
         assertThat(record.getFields().get(0).getName(), is("f1"));
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("a"))));
+    }
+
+    /**
+     * Given: フィールド名を<b>辞書順と逆</b>（{@code zz} → {@code aa}）に書いたレコード断片。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code FieldDef} の並びも行の値の並びも<b>原文の記述順</b>になる。
+     *
+     * <p>
+     * <b>フィールド名を辞書順と逆にしてあるのは意図である。</b>{@code FieldDef} の並びは
+     * 原文 Map（{@code YamlFormatReader#toFieldDefs}）から、行の値の並びは器の
+     * {@code DataFileFragment#getNames()} から来る<b>別々の出所</b>であり、両者は位置で対応づけられる。
+     * 他のテストのフィールド名（{@code f1,f2,f3} ／ {@code c1,c2}）は記述順と辞書順が一致するため、
+     * どちらかがソートされても気づけない。
+     * </p>
+     *
+     * <p>担保する軸要素: C-19（{@code FieldDef.name}）／C-18（{@code RecordLayout.rows} 値あり）。
+     * フィールド並びと値の対応の担保。</p>
+     */
+    @Test
+    public void preservesFieldOrderAndValueAlignmentFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"zz\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"mm\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"aa\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"z\", \"m\", \"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        RecordLayout record = block.getRecords().get(0);
+        List<String> names = new ArrayList<>();
+        for (FieldDef field : record.getFields()) {
+            names.add(field.getName());
+        }
+        assertThat("辞書順（[aa, mm, zz]）ではなく原文の記述順であること",
+                names, is(Arrays.asList("zz", "mm", "aa")));
+        assertThat("値もフィールドの記述順に対応すること",
+                record.getRows(), is(Arrays.asList(Arrays.asList("z", "m", "a"))));
     }
 
     // ------------------------------------------------------------------ 軸C（directives）
@@ -664,7 +719,7 @@ public class YamlFormatReaderRealFileTest {
         assertThat(container.getName(), is(YamlFixture.RESOURCE));
         assertThat(container.getSections().size(), is(1));
         assertThat(container.getSections().get(0).getName(), is(YamlFixture.RESOURCE));
-        assertTrue("ブロックが 0 件であること", YamlFixture.blocks(container).isEmpty());
+        assertThat("ブロックが 0 件であること", YamlFixture.blocks(container), is(Collections.emptyList()));
     }
 
     /**
@@ -929,8 +984,8 @@ public class YamlFormatReaderRealFileTest {
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
         assertThat(block.getDataType(), is(DataType.MESSAGE));
         assertThat(block.getIdentifier(), is("RM01"));
-        assertTrue("records が空であること", block.getRecords().isEmpty());
-        assertTrue("fwHeaderFields が空であること", block.getFwHeaderFields().isEmpty());
+        assertThat("records が空であること", block.getRecords(), is(Collections.emptyList()));
+        assertThat("fwHeaderFields が空であること", block.getFwHeaderFields(), is(Collections.emptyMap()));
     }
 
     // ------------------------------------------------------------------ グループの並び替え（YML-09）
