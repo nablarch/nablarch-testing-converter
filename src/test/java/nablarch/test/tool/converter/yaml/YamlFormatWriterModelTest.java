@@ -69,12 +69,19 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 順序を主張するフィクスチャは、<b>定義順・辞書順のいずれとも違う並び</b>で組み立てている
- * （セクションキーは {@code setup_files} → {@code expected_files} の順＝ {@code DataType} の定義順とも
- * 辞書順とも逆、ディレクティブは {@code text-encoding} → {@code file-type} の順＝辞書順の逆、
- * カラムは {@code zip} → {@code name} の順＝辞書順の逆）。並びが辞書順・定義順と一致していると、
- * 順序を壊す変更を入れてもテストが通ってしまうためである。
+ * 順序を主張するフィクスチャは、<b>定義順・辞書順のいずれとも違う並び</b>で組み立てている。
+ * 並びが辞書順・定義順と一致していると、順序を壊す変更を入れてもテストが通ってしまうためである。
+ * <b>本クラスのフィクスチャは 5 つとも下記のとおりずらしてある（新しく足すときはここへ加えること）。</b>
  * </p>
+ *
+ * <ul>
+ *   <li>セクションキー {@code setup_files} → {@code expected_files}
+ *       ＝ {@code DataType} の定義順とも辞書順とも逆</li>
+ *   <li>ディレクティブ {@code text-encoding} → {@code file-type} ＝辞書順の逆</li>
+ *   <li>{@code fw_header} のフィールド {@code resendFlag} → {@code dateSent} ＝辞書順の逆</li>
+ *   <li>レコード断片のフィールド {@code flag} → {@code date} ＝辞書順の逆（{@link #record()}）</li>
+ *   <li>カラム {@code zip} → {@code name} ＝辞書順の逆</li>
+ * </ul>
  *
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
@@ -574,7 +581,10 @@ public class YamlFormatWriterModelTest {
      * {@code fw_header} を選んだのは、フィールド名が利用者定義であり
      * <b>再送フラグ・送信日付という実在しうる組み合わせで真偽値風・日付風の値を置ける</b>ためである
      * （{@code directives} のキーは {@code file-type} ／ {@code text-encoding} など語彙が決まっており、
-     * 日付を取るものが無い）。フィールド名の並び {@code resendFlag} → {@code sendDate} は辞書順の逆である。
+     * 日付を取るものが無い）。フィールド名の並び {@code resendFlag} → {@code dateSent} は<b>辞書順の逆</b>
+     * （{@code LC_ALL=C sort} は {@code dateSent} → {@code resendFlag} に並べる）であり、
+     * 値の並び {@code "true"} → {@code "2026-08-07"} も辞書順の逆である。
+     * したがって {@code emitMap} がキーを辞書順へ並べ替える変異を入れると本メソッドが落ちる。
      * </p>
      *
      * <p>
@@ -588,7 +598,7 @@ public class YamlFormatWriterModelTest {
         // Given
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "RM01",
                 map("text-encoding", "UTF-8"),
-                map("resendFlag", "true", "sendDate", "2026-08-07"),
+                map("resendFlag", "true", "dateSent", "2026-08-07"),
                 Collections.<RecordLayout>emptyList());
 
         // When / Then
@@ -599,7 +609,7 @@ public class YamlFormatWriterModelTest {
                 + "      text-encoding: \"UTF-8\"\n"
                 + "    fw_header:\n"
                 + "      resendFlag: \"true\"\n"
-                + "      sendDate: \"2026-08-07\"\n"));
+                + "      dateSent: \"2026-08-07\"\n"));
     }
 
     // ------------------------------------------------------------------ キーのクォート
