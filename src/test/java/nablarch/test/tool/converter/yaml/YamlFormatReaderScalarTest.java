@@ -6,6 +6,8 @@ import static org.junit.Assert.assertThat;
 
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.tool.converter.model.FileDataBlock;
@@ -88,8 +90,10 @@ public class YamlFormatReaderScalarTest {
      *
      * <p>
      * <b>ブロックスカラー（{@code |} ／ {@code >}）を渡す場合の継続行のインデントは
-     * 半角空白 10 個以上</b>である。値の位置（{@code "      - V: "} ＝ 空白 6 個＋{@code "- V: "}）が
-     * 8 桁目から始まるため、YAML のブロックスカラーはそれより深いインデントを要求する。
+     * 半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1 で実測。8 個は {@code ScannerException}、
+     * 7 個は {@code ParserException}、6 個は {@code ScannerException} になる）。
+     * キー {@code V} が {@code "      - V:"}（空白 6 個＋{@code "- "}）の <b>9 桁目</b>から始まり、
+     * YAML のブロックスカラーはそれより深いインデントを要求するためである。
      * 本クラスのテストは空白 10 個で書いている（インデント量そのものは値に現れない。
      * ブロックスカラーは最も浅い継続行のインデントを基準に切り落とすため）。
      * </p>
@@ -97,21 +101,48 @@ public class YamlFormatReaderScalarTest {
      * @param valueLines 検証対象スカラー。1 要素目は {@code "      - V: "} に続けて書かれ、
      *                   2 要素目以降（ブロックスカラーの続き）は行としてそのまま連結される
      *                   （＝インデントも呼び出し側が書く）。
-     *                   1 要素目が空文字のときは {@code "      - V:"}（値なし）になる
+     *                   値を書かない場合は本メソッドではなく {@link #readOmittedValue()} を使う
      * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
      */
     private String readValue(String... valueLines) {
+        return readValueLine(" " + valueLines[0], Arrays.asList(valueLines).subList(1, valueLines.length));
+    }
+
+    /**
+     * 値を書かない行（{@code "      - V:"}）だけを持つ実 {@code .yaml} を書き出し、
+     * 中間モデルへ入った値を返す。
+     *
+     * <p>
+     * {@link #readValue} と分けているのは、「値なし」を空文字の引数で表すと呼び出し側から意図が読めないためである。
+     * </p>
+     *
+     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readOmittedValue() {
+        return readValueLine("", Collections.<String>emptyList());
+    }
+
+    /**
+     * {@code "      - V:"} に続く文字列と後続行から実 {@code .yaml} を組み立てて読み、
+     * 中間モデルへ入った値を返す。
+     *
+     * @param firstLineTail  {@code "      - V:"} の直後に書く文字列（値なしのときは空文字）
+     * @param followingLines 後続行（ブロックスカラーの継続行。インデントも含む）
+     * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
+     */
+    private String readValueLine(String firstLineTail, List<String> followingLines) {
         StringBuilder yaml = new StringBuilder()
                 .append("setup_tables:\n")
                 .append("  - table: \"T\"\n")
                 .append("    rows:\n")
                 .append("      - V:")
-                .append(valueLines[0].isEmpty() ? "" : " " + valueLines[0])
+                .append(firstLineTail)
                 .append('\n');
-        for (int i = 1; i < valueLines.length; i++) {
-            yaml.append(valueLines[i]).append('\n');
+        for (String line : followingLines) {
+            yaml.append(line).append('\n');
         }
         TestDataContainer container = YamlFixture.read(dir(), yaml.toString());
+        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
         TestDataBlock block = YamlFixture.blocks(container).get(0);
         TableDataBlock table = (TableDataBlock) block;
         assertThat(table.getColumnNames(), is(Arrays.asList("V")));
@@ -132,6 +163,7 @@ public class YamlFormatReaderScalarTest {
                 + "  - id: \"lm\"\n"
                 + "    rows:\n"
                 + "      - V: " + value + "\n");
+        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
         ListMapBlock block = (ListMapBlock) YamlFixture.blocks(container).get(0);
         assertThat(block.getColumnNames(), is(Arrays.asList("V")));
         assertThat(block.getRows().size(), is(1));
@@ -161,6 +193,7 @@ public class YamlFormatReaderScalarTest {
                 + "          - {name: \"V\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
                 + "          - [" + value + "]\n");
+        assertThat("ブロックが 1 件だけ生成されること", YamlFixture.blocks(container).size(), is(1));
         FileDataBlock block = (FileDataBlock) YamlFixture.blocks(container).get(0);
         assertThat(block.getRecords().size(), is(1));
         RecordLayout record = block.getRecords().get(0);
@@ -286,7 +319,7 @@ public class YamlFormatReaderScalarTest {
      */
     @Test
     public void readsOmittedValueAsJavaNull() {
-        assertThat(readValue(""), is(nullValue()));
+        assertThat(readOmittedValue(), is(nullValue()));
     }
 
     // ------------------------------------------------------------------ D2-07（NULL に見える文字列）
@@ -493,6 +526,14 @@ public class YamlFormatReaderScalarTest {
      * Given: 引用符付きの空文字 {@code ""} をレコード断片の行値に置いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : 空文字が入る（{@code setup_tables} 経路と同じ。Java {@code null} とは区別される）。
+     *
+     * <p>
+     * <b>但し書き: 区別されるのは「書かれた値」についてだけである。</b>レコード断片で行の要素数が
+     * {@code fields} の件数に足りない場合、欠けた位置は Java {@code null} ではなく<b>空文字</b>で埋められ、
+     * ここで固定した「書かれた空文字」と見分けが付かなくなる
+     * （{@code coverage/issues.md} <b>YML-05</b>。固定テストは
+     * {@link YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull}）。
+     * </p>
      *
      * <p>担保する軸要素: D2-11 をレコード断片経路で確認したもの（同一ケース・別経路）。</p>
      */

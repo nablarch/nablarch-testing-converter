@@ -775,13 +775,19 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
-| `YamlFormatReaderInvalidInputTest` | 8 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（意図的にスキーマ違反・不正 YAML にした入力） |
-| `YamlFormatReaderRealFileTest` | 16 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
+| `YamlFormatReaderInvalidInputTest` | 23 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件は意図的にスキーマ違反・不正 YAML にした入力。残る 15 件は**スキーマを通る仕様内の入力**で、掃引で見つけた現状挙動を固定する） |
+| `YamlFormatReaderRealFileTest` | 17 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
 **件数を更新した（2026-08-14・#24 のレビュー指摘の反映で 9 件追加）。** 内訳は
 `YamlFormatReaderScalarTest` ＋4（軸D の経路差確認。下の「別経路での確認」表）、
 `YamlFormatReaderRealFileTest` ＋5（C-14 実ファイル経路・`FieldDef.length` の integer 記法・
 送信系の `directives`・YML-02・YML-03）。
+
+**件数をさらに更新した（2026-08-14・2 巡目レビュー指摘の反映＝修正ラウンド 2 で 16 件追加）。** 内訳は
+`YamlFormatReaderInvalidInputTest` ＋15（掃引で見つけた `issues.md` **YML-04**〜**YML-08** の固定。
+下の「開示」の掃引表を参照）、`YamlFormatReaderRealFileTest` ＋1
+（`normalizeRecordType` の小文字 `"default"` 分岐。下の「開示」1 点目）。
+**この 16 件は軸A〜F のどの要素にも新しい担保を与えないため、§2.3 の件数は動かない。**
 
 3 クラスとも `new YamlFormatReader().read(...)` を本番配線で呼ぶ。`YamlFormatReaderTest` 20 件が
 `loadRawMap` を in-memory `Map` へ差し替えて**スカラー解決もスキーマ検証も通らない**のに対し、
@@ -872,13 +878,19 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 
 **開示（テストを足していない担保の穴）**
 
-- **`YamlFormatReader#normalizeRecordType` の `"default"`（小文字）分岐が未到達である。**
-  JaCoCo 実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` →
-  `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）で
-  `YamlFormatReader` は**行 201/201（100%）・分岐 107/108（99.07%）**であり、唯一の未到達分岐が
-  `if ("Default".equals(recordType) || "default".equals(recordType))` の後段である
+- **`YamlFormatReader#normalizeRecordType` の `"default"`（小文字）分岐は到達可能であり、修正ラウンド 2 で閉じた。**
+  #24 の JaCoCo 実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` →
+  `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）では
+  `YamlFormatReader` が**行 201/201（100%）・分岐 107/108（99.07%）**で、唯一の未到達分岐が
+  `if ("Default".equals(recordType) || "default".equals(recordType))` の後段だった
   （`"Default"` 側は `YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull` が通す）。
-  軸A〜F のどの要素にも属さないため #24 ではテストを足していない。**#26（カバレッジ計測と未到達分岐の列挙）で扱うこと。**
+  **当初「軸A〜F のどの要素にも属さない」として #26 送りと開示していたが、これは誤りだった**
+  （2026-08-14・2 巡目レビュー指摘）。`record_type: "default"` を書いた実 `.yaml` は
+  スキーマを通り（`$defs.record_fragment.properties.record_type` に `enum` は無く、description も
+  「可読性のために任意の名前を記述してよい」と書いている）、この分岐に到達する。
+  実測すると**作成者が書いた `"default"` は中間モデルで `null` になる**（＝原文に残らない）。
+  修正ラウンド 2 で `YamlFormatReaderRealFileTest#normalizesLowercaseDefaultRecordTypeToNull` を足して閉じた。
+  上の JaCoCo の数値は**その時点の実測値であり、本ラウンド後は再計測していない**。#26 で再計測すること。
 - **軸C の C-15（`MessageDataBlock.records` 空）は実 `.yaml` 経路では到達不能である。**
   スキーマ `$defs.message_data.properties.records.minItems` ＝ 1 のため。#18 が ✅ としているのは
   in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）であり、
@@ -895,6 +907,56 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
   辺①の XLS-10／XLS-13 は `java.util.logging` のルートロガーにハンドラを付けて
   「WARNING 以上 0 件」を実行可能な根拠にしているが、#24 の 2 件は例外にならないことと
   結果が消えることの観測にとどめた（`issues.md` の各項に明記）。
+
+**開示（修正ラウンド 2＝スキーマの自由度の掃引。2026-08-14 追記）**
+
+軸A〜F は「中間モデルの形」から要素を立てているため、**軸のどの要素にも当てはまらない壊れ方**は拾えない。
+2 巡目のレビュー指摘を受けて、**本体スキーマ**（yaml jar 内 `nablarch/test/ntf-testdata-yaml-schema.json`）を
+先頭から読み、「スキーマが構造を縛っていない箇所」を列挙し、その自由度を使った入力を実 `.yaml` で
+**1 項目につき 1 回ずつ**通した。以下がその全件である（**これが「どこまで見たか」である**）。
+課題として記録したものは `issues.md` の該当 ID を、記録しなかったものは観測結果を書く。
+
+| # | スキーマ上の自由度（JSON パス） | 自由度の中身 | 実 `.yaml` で観測した結果 |
+|---|---|---|---|
+| 1 | `$defs.table_data.properties.rows.items` | `additionalProperties` が任意キーを許し、行ごとのキー集合に制約が無い | **YML-04**（先頭行に無いキーが黙って消える） |
+| 2 | `$defs.list_map_data.properties.rows.items` | 同上 | **YML-04**（経路差なし） |
+| 3 | `$defs.record_fragment.properties.rows.items` | 要素数が `fields` の件数と紐づいていない | **YML-05**（余りは drop・不足は `""` 充填） |
+| 4 | `$defs.record_fragment.properties.record_type` | `enum` が無い（description は「任意の名前でよい」） | `FW_HEADER` は **YML-03**（既記録）。`"Default"` / `"default"` は `null` へ正規化（テストで固定）。`"DEFAULT"` や任意名は原文のまま |
+| 5 | `$defs.field_def.properties.type` | `enum` が無い（`minLength: 1` のみ） | 未知の型名は `IllegalArgumentException`（loud）。課題なし |
+| 6 | `$defs.record_fragment.properties.fields` | `uniqueItems` が無く、フィールド名の重複は description にだけ「重複不可（重複時はエラー）」と書かれている | `IllegalArgumentException: Duplicate field names are not permitted in a record. duplicate field=[f1] . file=[f.dat]`（loud）。課題なし |
+| 7 | `$defs.field_def.properties.length` の `"-"` | パターンは許すが意味は description にだけ書かれている | **YML-07**（`text-encoding` 省略時に手掛かりの無い NPE） |
+| 8 | `$defs.field_def.properties.length` の省略 | 「固定長では実質必須」は description にだけ書かれている | 例外にならず `FieldDef.length` が `null` になる。変換は忠実。課題なし |
+| 9 | `$defs.directives`（固定長専用／可変長専用の別） | キー集合は固定だが、ファイル種別との対応は description にだけ書かれている | 取り違えは `IllegalArgumentException: invalid directive found. [...]`（loud）。課題なし |
+| 10 | `$defs.directives.properties.record-separator` ／ `field-separator` | シンボル指定とリテラル指定の両方を description が認めている | **YML-08**（リテラルは trim で消える／シンボルは実文字になる） |
+| 11 | `$defs.directives.properties.file-type` | `type` フィールドと矛盾させられる（整合の制約が無い） | 例外にならず、ブロックは `FIXED` のまま `file-type=Variable` を保持する。原文はどちらも残るため変換は忠実。課題なし |
+| 12 | `$defs.directives.properties.record-length` | フィールド長の合計と紐づいていない | 上書き値がそのまま中間モデルへ入る。変換は忠実。課題なし |
+| 13 | `$defs.fw_header.additionalProperties` | 任意キーを許す（`minProperties: 0`） | 記述順のまま入る。空マップも通る。課題なし |
+| 14 | `$defs.list_map_data.properties.id` ／ `$defs.message_data.properties.id` | 一意制約が無い（「先着1件」は description にだけ書かれている） | **YML-06**（2 件目以降が 1 件目のデータで作られる） |
+| 15 | `$defs.table_data.properties.table` ／ `$defs.file_data.properties.path` | 一意制約が無い | 重複してもエントリごとに独立したブロックになる。変換は忠実。課題なし |
+| 16 | `$defs.group_message_data` ／ `$defs.expected_request_message_data` の `group_id` 省略 | 省略時の意味は description にだけ書かれている | **YML-02**（既記録） |
+| 17 | `$defs.table_data` ／ `$defs.file_data` の `group_id` 省略 | 同上 | 整形済みグループ ID が空文字になる。変換は忠実。課題なし |
+| 18 | `rows` の行オブジェクトのキー順 | 行ごとに順序が違ってよい | 値は名前で対応付けられるため順序差の影響は出ない。課題なし |
+| 19 | マーカーカラム `[COL]` | スキーマは通常のキーと区別しない（全カラムがマーカーでも通る） | カラム 0 件・値を持たない行になる。辺①の **XLS-08** と同型（テストで固定） |
+| 20 | `$defs.file_data.properties.records` の `minItems: 0` ／ `rows` の空配列 | 空を許す | 既に担保済み（C-12／C-09／E-2(0)／E-3(0)） |
+| 21 | `$defs.message_data.properties.records` に `FW_HEADER` 名を書ける | `enum` が無い | **YML-03**（既記録）。送信系（`response_body_messages`）でも同じくブロックだけが残ることをプローブで確認（テストは固定していない） |
+| 22 | `$defs.message_data.properties.records` に断片を 2 件以上書ける | 件数の上限が無い | 2 件とも保持される。辺①では **XLS-15** により不可能な形が辺②では作れる。課題なし |
+| 23 | `expected_request_header_messages` と `expected_request_body_messages` の件数一致 | スキーマは縛らず description にだけ書かれている | converter は片方だけでもブロックを作る。NTF 実行時の制約であり変換の正しさとは別。課題なし |
+
+**この掃引で見ていない範囲（穴として開示する）**
+
+- **各自由度は 1 項目につき 1 回ずつしか通していない。** 自由度どうしの組合せ
+  （例: `id` 重複とカラム不一致を同時に持つ入力）は見ていない。
+- **スキーマの description が NTF の実行時挙動を述べている部分は観測していない。**
+  FK 制約と DELETE 順序、`expected_complete_tables` の型別デフォルト値補完、
+  `testShots` の予約 ID など、変換ではなく NTF 実行時に効く記述である。確かめるには NTF の実行が要る。
+- **辺③（中間モデル→Excel）・辺④（中間モデル→YAML）へ書き出したときの挙動は掃引の対象外である。**
+  とくに YML-08（中間モデルに実改行が入る）の往復が安定するかは未確認であり、`issues.md` に明記した。
+- **インタープリタ記法（`${...}` など値の中身の記法）は掃引していない。**
+  スキーマは `rows` の値を `["string","null"]` としか縛っておらず記法に踏み込まないため、
+  「スキーマが縛っていない箇所」ではあるが、converter は `InterpreterResolver.raw()` で配線しており
+  値を素通しする（`${...}` を含む値が原文のまま入ることは in-memory 経路の `YamlFormatReaderTest` が
+  固定している。実 `.yaml` 経路では確かめていない）。
+- **軸D の 12 ケースを掃引の各項目へ掛け合わせてはいない**（上の 3 点目の「1 回ずつ」と同じ理由）。
 
 <a id="s2-3"></a>
 
@@ -918,7 +980,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 | D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 27 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）。要素別の担保テストメソッドは §2.1-2 の軸D 表。27 件のうち 4 件は D2-06／D2-11 を LIST_MAP 経路・レコード断片経路で確認したもので、**軸要素としては別勘定にしない**（§2.1-2 の「別経路での確認」表） | 12 |
 | E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — `YamlFormatReaderInvalidInputTest` 8 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **8**）。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **23**。差の 15 件は修正ラウンド 2 で足した掃引の固定テスト（`issues.md` YML-04〜YML-08）であり、**軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
 | **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
 
 **C-13 の数え方**: C-13 は「値あり」を #24 で担保し、「空」は到達不能である（§2.1-2 の軸C 表）。
@@ -938,9 +1000,11 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 3 件（A-01／C-02／E-4(複数)）は `YamlFormatReader#read` と `addBlocksForSection` の構造そのものが根拠である。
 
 **ただし「未担保 0 件」は本書の計上単位（§1.3 冒頭）での話である。** §2.1-2 末尾の「開示」4 点
-（`normalizeRecordType` の `"default"` 分岐が未到達／C-15 は実ファイル経路では到達不能／軸D の 10 ケースは
-1 経路でしか測っていない／YML-02・YML-03 で「警告が出ないこと」を実行可能な形にしていない）は
-空欄として残る。
+（`normalizeRecordType` の `"default"` 分岐——**修正ラウンド 2 で到達可能と判明しテストで閉じた**／
+C-15 は実ファイル経路では到達不能／軸D の 10 ケースは 1 経路でしか測っていない／
+YML-02・YML-03 で「警告が出ないこと」を実行可能な形にしていない）と、
+**修正ラウンド 2 の掃引で列挙したスキーマの自由度 23 項目および「見ていない範囲」5 点**は
+空欄・穴として残る（§2.1-2 の「開示（修正ラウンド 2）」）。
 
 **#24 のレビュー指摘の反映（2026-08-14）で足したテスト 9 件は、上の件数を動かさない。** 内訳は
 （a）既に ✅ だった軸要素を実ファイル経路・別経路でも通したもの（C-14 値あり／C-21 値あり／
@@ -949,6 +1013,11 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 （`issues.md` **YML-02**（送信系の `group_id` 省略でブロックが消える）／**YML-03**
 （`record_type: FW_HEADER` のレコードが捨てられる））である。
 （c）の 2 件は軸A〜F のどの要素にも新しい ✅ を与えないため、計上単位の上では件数に影響しない。
+
+**修正ラウンド 2（2026-08-14）で足したテスト 16 件も、上の件数を動かさない。** 15 件は
+「スキーマが構造を縛っていない箇所を突いた入力」の現状挙動の固定（`issues.md` **YML-04**〜**YML-08**）で、
+軸A〜F のどの要素にも属さない。残る 1 件（`normalizesLowercaseDefaultRecordTypeToNull`）は
+C-16 の正規化を実 `.yaml` で確かめたもので、C-16 は #18 時点で既に ✅ である。
 
 ---
 

@@ -1014,12 +1014,18 @@ ID は発見順に振り、振り直さない。
 
 - **この入力はスキーマ上の仕様内である。** `$defs.group_message_data.required` も
   `$defs.expected_request_message_data.required` も `["id","records"]` だけで、**`group_id` を要求していない**。
-  さらに `group_message_data` の description は「group_id を省略した場合は経路 B
-  （`MockMessagingContext` / `MockMessagingClient`）として動作する」、
-  `expected_request_message_data.properties.group_id` の description は
-  「省略時は id 直接指定（先着1件）で動作する」と書いており、**省略が正当な使い方であることを明示している**。
+  さらに次の 3 か所が**省略が正当な使い方であることを明示している**。
+  **引用元の JSON パスを明示し、再現コマンドを差し替えた（2026-08-14・#24 のレビュー指摘による訂正）。**
+  当初は定義レベルの description の文言をプロパティレベルの description の引用として書いており、
+  併記していた再現コマンドを実行しても引用文が出てこなかった。
 
-  再現コマンド:
+  | 引用元の JSON パス | 引用（逐語） |
+  |---|---|
+  | `$defs.group_message_data.description`（定義レベル） | 「group_id を省略した場合は経路 B として動作する」（同じ description の前段に「(B) MockMessagingContext / MockMessagingClient 経路では id で照合して先着1件収集する（group_id 不要）」とある） |
+  | `$defs.group_message_data.properties.group_id.description` | 「MockMessagingContext / MockMessagingClient 経路では参照されないため省略可」 |
+  | `$defs.expected_request_message_data.properties.group_id.description` | 「省略時は id 直接指定（先着1件）で動作する」 |
+
+  再現コマンド（上表の 3 つの引用がすべて出力に現れる）:
 
   ```sh
   python3 -c "
@@ -1027,8 +1033,9 @@ ID は発見順に振り、振り直さない。
   z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
   d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
   for k in ['group_message_data','expected_request_message_data']:
-      print(k, d['\$defs'][k]['required'])
-      print('   ', d['\$defs'][k]['properties']['group_id']['description'])
+      print('\$defs.'+k+'.required =', d['\$defs'][k]['required'])
+      print('\$defs.'+k+'.description =', d['\$defs'][k]['description'])
+      print('\$defs.'+k+'.properties.group_id.description =', d['\$defs'][k]['properties']['group_id']['description'])
   "
   ```
 
@@ -1188,7 +1195,7 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 | 引用の別（`abc` ／ `"abc"` ／ `'abc'`）が中間モデルに残らない | 妥当（3 記法とも `"abc"`。YAML の記法差であって値の差ではない） |
 | `\|`（リテラル）が `"l1\nl2\n"`、`>`（フォールド）が `"l1 l2\n"` になる（末尾に改行が付く） | 妥当（YAML のブロックスカラー仕様どおり。担保: `readsLiteralBlockScalarKeepingNewlines` ／ `readsFoldedBlockScalarFoldingNewlinesIntoSpaces`） |
 | `007` / `0x1F` / 日付風 `2026-08-07` が記法どおりの文字列になる | 妥当（`JsonScalarResolver` の `INT` / `FLOAT` に一致せず、日付タグの解決も持たないため） |
-| 空文字 `""` と値なし（Java `null`）が区別される | 妥当（Excel 経路が両者を区別できない XLS-04 とは対照的だが、YAML では区別できる） |
+| 空文字 `""` と値なし（Java `null`）が区別される | 妥当（Excel 経路が両者を区別できない XLS-04 とは対照的だが、YAML では区別できる）。**但し書き（2026-08-14・修正ラウンド 2 で追加）**: 区別されるのは**書かれた値**についてだけである。レコード断片で行の要素数が `fields` の件数に足りない場合、欠けた位置は `null` ではなく `""` で埋まり、「書かれた空文字」と見分けが付かなくなる（**YML-05**） |
 | 未知のトップレベルキーが**実ファイル経路では例外**になる（in-memory 経路では無視される） | 妥当。スキーマのルートが `additionalProperties: false` であるため。`YamlFormatReader#addBlocksForSection` の「未知キーは無視」は**スキーマが許す範囲にしか効かない**。loud に失敗するので黙って壊れない（担保: `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown`） |
 | 空ファイルが例外にならず、ブロック 0 件のコンテナになる | 妥当（`YamlLoader#load` が `loaded == null` のとき空 Map を返す。トップレベルに必須キーは無いためスキーマ上も適合する。担保: `#readsEmptyFileAsContainerWithoutBlocks`） |
 | `directives` を書かなくても中間モデルに `file-type` が現れる | 既知（**XLS-07**）。同じ本体器（`DataFile`）を使うため辺①と同じ挙動になる（担保: `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage`） |
@@ -1226,3 +1233,257 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
   Java null に変換される」と書いているが、converter は `InterpreterResolver.raw()` で配線しているため
   中間モデルには `"null"` が文字列のまま入る（実測済み）。**NTF 本体の実行時に本当に両者が同じ扱いになるかは
   確かめていない**（確かめるには NTF の実行が要る）。
+
+---
+
+## #24 修正ラウンド 2（スキーマの自由度の掃引）で記録した課題
+
+**本節は 2026-08-14 の 2 巡目レビュー指摘（「軸の枠に沿って埋める作り方では拾えない壊れ方が残っている」）を受けて
+実施した掃引の結果である。** 掃引の手順と、列挙したスキーマ上の自由度の一覧は
+`inventory.md` §2.1-2 の「開示」に載せた（どこまで見たか・見ていない範囲もそこに書いてある）。
+
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08）を先に置き、
+loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない。
+既出の YML-01（**変換時には**検出できない）・YML-02・YML-03（検出できない）もすべて検出できない側であるため、
+本節を後ろに置くことは並び順の原則に反しない（ID 昇順と発見順が一致しているだけである）。
+
+以下はすべて `YamlFixture` が書き出した実 `.yaml` を `new YamlFormatReader().read(...)` に渡して実測した。
+
+### YML-04 テーブル／LIST_MAP のカラムは先頭行のキー集合だけで決まり、後続行にしかないカラムが黙って消える（影響度 高・**検出できない**）
+
+| 入力（`rows`） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| `setup_tables`: `[{A: "1"}, {A: "2", B: "x"}]` | `columnNames=[A]`、`rows=[[1], [2]]`。**`B: "x"` が消える** | `dropsColumnThatAppearsOnlyInSecondRowOfTable` |
+| `list_maps`: 同上 | 同上（経路差なし） | `dropsColumnThatAppearsOnlyInSecondRowOfListMap` |
+| `setup_tables`: `[{A: "1", B: "x"}, {A: "2"}]`（逆向き＝後続行でキーが欠ける） | `columnNames=[A, B]`、`rows=[[1, x], [2, null]]`。欠けた側は `null` で救われる | `padsColumnMissingFromSecondRowWithNullInTable` |
+| `setup_tables`: `[{}, {A: "1"}]`（先頭行が空マッピング） | `columnNames=[]`、`rows=[]`。**2 行目に書いたデータごと消える**（行数まで変わる） | `dropsAllRowsWhenFirstRowOfTableIsEmptyObject` |
+| `list_maps`: `[{}, {A: "1"}]` | `columnNames=[]`、`rows=[[], []]`。行数は残るが値がすべて消える | `keepsRowCountButLosesValuesWhenFirstRowOfListMapIsEmptyObject` |
+
+- **この入力はスキーマ上の仕様内である。** `$defs.table_data.properties.rows.items` は
+  `{"type": "object", "additionalProperties": {"type": ["string", "null"]}}` であり、
+  **キー集合に制約が無い**（`list_map_data` も同じ）。行ごとにキーが違ってよく、空マッピング `{}` も適合する。
+  スキーマの description にも「全行で同じキーを書くこと」という条件は無い。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']
+  for k in ['table_data','list_map_data']:
+      print(k, json.dumps(d[k]['properties']['rows']['items'], ensure_ascii=False))
+  "
+  ```
+
+- 原因: **帰属は yaml 側と converter の両方である。**
+  - yaml 側: `nablarch/test/core/reader/yaml/YamlSection.java` の `resolveColumns` が
+    `new ArrayList<String>(castMap(rows.get(0)).keySet())`、すなわち**先頭行のキー集合だけ**を返す。
+    テーブル経路（`YamlTableDataBuilder`）・LIST_MAP 経路ともこれを使う。
+  - converter: `YamlFormatReader#nonMarkerColumns` が `YamlSection.resolveColumns(...)` の結果を
+    そのまま（マーカーを除いただけで）カラム順に使う。器が返す行 Map には 2 行目以降のキーも入っているが、
+    converter は列挙したカラムぶんしか取り出さない。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT-sources.jar \
+    && grep -n 'rows.get(0)' nablarch/test/core/reader/yaml/YamlSection.java
+  ```
+
+- 影響: 手書きの YAML で「その行にだけ意味のあるカラム」を後の行に足す書き方（NULL 許容カラムを 1 行だけ書く等）は
+  自然に起こり得る。それが変換後の成果物から**警告なしに消える**。先頭行を `{}` にした場合はテーブル経路で
+  ブロックの中身が丸ごと消える。
+- **XLS-08 との関係**: マーカーカラム（`[no]`）だけの行は同じく「カラム 0 件・値を持たない行」になる
+  （担保テスト `readsMarkerOnlyTableAsColumnlessRows`）。これは辺①の **XLS-08** と同型の現れ方であり、
+  マーカー除外そのものは意図した仕様（steering #15）である。本課題は「先頭行だけでカラムが決まる」ことのほうを指す。
+- 判断: **仕様として不適切**（データ損失。少なくとも「先頭行に無いキーを持つ行がある」ことを検知して WARN すべき。
+  あるべき姿は全行のキーの和集合をカラムにすることだが、それは NTF 実行時の解釈も変えるため yaml 側の判断が要る）。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-05 レコード断片で行の要素数がフィールド数と食い違っても例外にならず、余りは捨てられ不足は空文字で埋まる（影響度 中・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| `fields=[f1]` に `rows: [["a", "b", "c"]]` | `rows=[[a]]`。**2 個目以降が消える** | `dropsRecordFragmentValuesBeyondFieldCount` |
+| `fields=[f1,f2,f3]` に `rows: [["a"]]` | `rows=[[a, "", ""]]`。**Java `null` ではなく空文字**で埋まる | `fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull` |
+| 同上に `rows: [["a", null]]` | `rows=[[a, null, ""]]`。**明示的に書いた `null` は `null` のまま**残り、欠損だけが空文字になる | 同上 |
+
+- **この入力はスキーマ上の仕様内である**（構造としては通る）。`$defs.record_fragment.properties.rows.items` は
+  要素数を `fields` の件数と紐づけておらず、**JSON Schema では表現できない制約**を description が言葉で書いている:
+  「各配列の要素数が fields の件数と一致しない場合は **NTF がエラーを出す**」。
+  **その約束は変換時には果たされない**（変換は例外にならず黙って通る。NTF 実行時にエラーになるかは未確認）。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']
+  print(d['record_fragment']['properties']['rows']['description'])
+  "
+  ```
+
+- 原因: **帰属は nablarch-testing 側**である。`nablarch/test/core/file/DataFileFragment.java` の `addValue` が
+  `String value = i < line.size() ? line.get(i) : "";` として、フィールド名の件数ぶんだけ値を取り出し、
+  足りない位置を空文字で埋める。converter（`YamlFormatReader#toRecordLayouts`）は器が持つ値 Map を
+  断片のフィールド名順に並べ直すだけで、原文の要素数を見ない。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing/6-NEXT-SNAPSHOT/nablarch-testing-6-NEXT-SNAPSHOT-sources.jar \
+    && grep -n 'line.size()' nablarch/test/core/file/DataFileFragment.java
+  ```
+
+- **本課題は #24 の中心成果と直接ぶつかる。** 軸D では「空文字と Java `null` は区別される」ことを固定し、
+  下の「課題としないと判断した観測結果（#24）」にも同じことを書いた。**それが成り立つのは
+  「書かれた値」についてだけである。** 要素数が足りない行では、書かれていない位置が `""` になり、
+  「作成者が空文字を書いた」のか「書き忘れた（NULL のつもりだった）」のかが中間モデル上で区別できない。
+  該当行に但し書きを付けた（下表）。
+- 影響: 余り側は値が消え、不足側は書いていない空文字が作られる。どちらも例外にも警告にもならないため、
+  入力と出力を突き合わせない限り気づけない。
+- 判断: **仕様として不適切**（余りの drop は少なくとも WARN が要る。不足の充填は
+  スキーマ description が「NTF がエラーを出す」と書いている以上、変換時にも検知できるはずである）。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-06 `id` が重複したエントリは 2 件目以降も 1 件目のデータでブロックが作られる（影響度 中・**検出できない**）
+
+| 入力 | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| `list_maps` に `id: "lm"` を 2 件（1 件目 `{A: "first"}`／2 件目 `{A: "second"}`） | ブロックは 2 件。**どちらも `rows=[[first]]`**。`"second"` は中間モデルに現れない | `reusesFirstEntryRowsForDuplicateListMapId` |
+| `messages` に `id: "RM01"` を 2 件（1 件目 `m1`／`"a"`、2 件目 `m2`／`"b"`） | ブロックは 2 件。2 件目は**フィールド定義だけが自分のもの**（`m2`）で、**データ行は 1 件目の本文**（`"a"`） | `reusesFirstEntryBodyForDuplicateMessageId` |
+
+- **この入力はスキーマ上の仕様内である。** `id` に一意制約は無く、description が重複を明示的に扱っている —
+  `$defs.list_map_data.description`「id が重複した場合は最初の1件のみ有効（2件目以降は無視）」、
+  `$defs.message_data.description`「id で完全一致検索され先着1件のみ有効」。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']
+  print(d['list_map_data']['description'])
+  print(d['message_data']['description'])
+  "
+  ```
+
+- 原因: **帰属は converter 側**である。器は description のとおり先着 1 件を返す
+  （`YamlTableDataBuilder#buildListMapRows` と `YamlMessageBuilder#buildMessageContent` がいずれも
+  `id.equals(toStr(map.get(FIELD_ID)))` で最初に一致したエントリを返す）。
+  一方 `YamlFormatReader#addListMapBlocks` ／ `#addMessageBlocks` は**YAML エントリごとに 1 ブロック**を作り、
+  行値だけを `id` で引き直す。結果として「N 件目のカラム／フィールド定義 × 1 件目の値」という
+  原文のどこにも存在しない組み合わせが中間モデルに入る。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT-sources.jar \
+    && grep -n 'id.equals(toStr(map.get(FIELD_ID)))' \
+         nablarch/test/core/reader/yaml/YamlTableDataBuilder.java \
+         nablarch/test/core/reader/yaml/YamlMessageBuilder.java
+  ```
+
+- 影響: NTF 実行時に 2 件目以降は無視されるため**実行時の挙動は変わらない**が、変換後の成果物には
+  値が入れ替わったブロックが残る。入力と出力を突き合わせない限り気づけない。
+  カラム名が 1 件目と違う場合は 2 件目の値が `null` になることもプローブで確認した
+  （`[{id: lm, rows: [{A: first}]}, {id: lm, rows: [{B: second}]}]` → 2 件目は `rows=[[null]]`）。
+  この変種は**テストとしては固定していない**。
+- 判断: **仕様として不適切**（原文に存在しない組み合わせを作る。器の「先着 1 件」に合わせるなら
+  2 件目以降はブロックを作らない、もしくは原文どおりの値を使うべきである）。
+  **修正するとしたら本リポジトリ内で完結する**（原因コードが `src/main` にあるため）。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-08 ディレクティブ値が `trim()` されるため、スキーマ description が推奨する記法が壊れる（影響度 中・**(a) は検出できない**／(b) は loud）
+
+| # | 入力（`directives`） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|---|
+| (a) | `record-separator: "\r\n"`（description が推奨するリテラル記法。YAML は実際の CR LF に解決する） | **空文字**（値が消える）。例外にならない | `losesRecordSeparatorWrittenAsLiteralNewline` |
+| (b) | `field-separator: "\t"`（description が「タブ文字に変換される」と書く記法。YAML は実際のタブに解決する） | `IllegalArgumentException: field-separator must be one character.but was `（末尾は空。trim 後の値） | `failsWhenFieldSeparatorIsWrittenAsActualTab` |
+| (参考) | `record-separator: "CRLF"`（シンボル記法） | **シンボルではなく実際の改行 `"\r\n"`** が入る（辺①は逆正規化してシンボルへ戻すため非対称） | `readsRecordSeparatorSymbolAsActualNewline` |
+
+- **いずれもスキーマ上の仕様内である。** `$defs.directives.properties.record-separator.description` は
+  「`"CRLF"` / `"LF"` / `"CR"` / `"NONE"` のシンボル指定、または任意のリテラル文字列が有効。
+  YAML でリテラル指定する場合はダブルクォート文字列内でエスケープシーケンスを使う（例: `"\r\n"` = CRLF、`"\n"` = LF）」、
+  `field-separator.description` は「YAML では `"\t"` と記述するとタブ文字（U+0009）に変換される」と書いている。
+  **どちらの記法も実際には通らない。**
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  d=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))['\$defs']['directives']['properties']
+  print(d['record-separator']['description'])
+  print(d['field-separator']['description'])
+  "
+  ```
+
+- 原因: `nablarch/test/core/file/DataFile.java` の `setDirective` が
+  `convertDirectiveValue(directive, stringValue.trim())` として値を **trim してから**変換する。
+  制御文字（CR・LF・タブ）だけの値は trim で空になり、(a) では空文字として保存され、
+  (b) では「1 文字でなければならない」という `VariableLengthFile#convertDirectiveValue` の検査に引っ掛かる。
+  タブ指定が通るのは**バックスラッシュと `t` の 2 文字**を渡した場合であり（`TAB_EXPRESSION` ＝ `"\\t"`）、
+  YAML ではシングルクォート記法 `'\t'` がそれに当たる（プローブで確認。テストとしては固定していない）。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing/6-NEXT-SNAPSHOT/nablarch-testing-6-NEXT-SNAPSHOT-sources.jar \
+    && grep -n 'stringValue.trim()' nablarch/test/core/file/DataFile.java \
+    && grep -n 'TAB_EXPRESSION' nablarch/test/core/file/VariableLengthFile.java
+  ```
+
+- **帰属は 3 者に分かれる。**
+  - trim による損失そのもの: **nablarch-testing 側**（`DataFile#setDirective`）。
+  - 「その記法で書ける」と書いている description: **yaml 側**（スキーマ）。
+  - シンボル記法が中間モデルで実文字に変わること: **converter 側**。辺①は
+    `XlsFormatReader#normalizeDirectiveValue` が実改行・実タブをシンボル（`CRLF` / `\t`）へ逆正規化しており、
+    その Javadoc も「そのまま toString() すると本体 setDirective の trim() で失われる」と**この trim を認識している**。
+    辺②（`YamlFormatReader#toStringDirectives`）は素通しを選んでいるため、同じ入力表記が辺①と辺②で
+    別の中間モデル値になる。
+- 影響: (a) はレコード区切りが黙って空になる。(b) は loud に失敗するので気づける。
+  参考行（シンボル → 実文字）は値の意味こそ変わらないが、**中間モデルの値が原文と一致しない**。
+- **未確認**: 中間モデルに入った実改行を辺③（Excel）／辺④（YAML）へ書き出したときに何が起こるか、
+  すなわち往復が安定するかは**確かめていない**。辺②の観測だけからは、辺④が実改行をそのまま書けば
+  読み戻しで (a) の経路に入る（＝空文字になる）ことが予想されるが、**実行して確かめていない**。
+  #25 以降で確認すること。
+- 判断: **仕様として不適切**。修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-07 長さ省略記法 `"-"` は `text-encoding` を書かないと手掛かりの無い `NullPointerException` になる（影響度 低・loud に失敗するため検出できる）
+
+| 入力 | 結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| 固定長ファイルの `length: "-"`（`directives` を書かない） | `NullPointerException`（**メッセージ `null`**。どのファイルのどのフィールドかを示す手掛かりが無い） | `failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding` |
+| 同じ入力に `text-encoding: "UTF-8"` を足したもの | 例外にならず、`FieldDef.length` に原文 `"-"` が入る | `readsOndemandLengthNotationWhenTextEncodingIsSpecified` |
+
+- **この入力はスキーマ上の仕様内である。** `$defs.field_def.properties.length` のパターンは
+  `^([0-9]+|-)$` で `"-"` を許し、description も「`"-"` はオンデマンド計算（そのフィールドに追加された
+  全レコード値の最大バイト長に自動拡張される）」と意味を定めている。`text-encoding` は必須ではない。
+- 原因: `nablarch/test/core/file/DataFileFragment.java` の `replaceFieldSize` が
+  `data.getBytes(container.getEncodingFromDirectives())` を呼ぶ。`text-encoding` ディレクティブが無いと
+  この値は `null` のままで、`String#getBytes(Charset)` が NPE を投げる。**帰属は nablarch-testing 側**である。
+  可変長ファイル・メッセージ経路でも同じ場所で落ちることを実測した（テストは固定長 1 件のみ）。
+
+  再現コマンド:
+
+  ```sh
+  cd "$(mktemp -d)" \
+    && unzip -oq ~/.m2/repository/com/nablarch/framework/nablarch-testing/6-NEXT-SNAPSHOT/nablarch-testing-6-NEXT-SNAPSHOT-sources.jar \
+    && grep -n 'getEncodingFromDirectives()' nablarch/test/core/file/DataFileFragment.java
+  ```
+
+- 辺①（Excel）で同じ記法を通している `XlsFormatReaderRealFileTest#readsOmittedFieldLengthNotationFromRealBook` は
+  **入力に `text-encoding` 行を持っている**ため、この経路には入らない。すなわち辺①固有／辺②固有の話ではなく、
+  `text-encoding` の有無で決まる。
+- 影響: 変換が失敗するので気づけるが、**どのファイルのどのフィールドが原因かが分からない**（XLS-14 と同じ性質）。
+- 判断: 変換ツール側で読み取り例外にリソース名を添えて包み直すのがあるべき姿である（XLS-14 と同じ結論）。
+  本作業では修正しない（`src/main` 無変更）。

@@ -98,7 +98,7 @@ public class YamlFormatReaderRealFileTest {
         TestDataContainer container = YamlFixture.read(dir(), allSectionsYaml());
 
         // Then
-        List<DataType> actual = new ArrayList<DataType>();
+        List<DataType> actual = new ArrayList<>();
         for (TestDataBlock block : YamlFixture.blocks(container)) {
             actual.add(block.getDataType());
         }
@@ -279,6 +279,47 @@ public class YamlFormatReaderRealFileTest {
         assertThat(record.getRecordType(), is(nullValue()));
         assertThat(record.getFields().size(), is(1));
         assertTrue("RecordLayout.rows が空であること", record.getRows().isEmpty());
+    }
+
+    /**
+     * Given: {@code record_type} に小文字の {@code "default"} を書いたレコード断片。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code RecordLayout.recordType} は {@code null} になる
+     *        （作成者が書いた {@code "default"} は中間モデルに残らない）。
+     *
+     * <p>
+     * {@code YamlFormatReader#normalizeRecordType} は {@code "Default"} と {@code "default"} の
+     * 2 つを {@code null} へ正規化する。{@code "Default"} 側は in-memory 経路の
+     * {@code YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull} が通しているが、
+     * <b>小文字側は #24 の JaCoCo 実測時点で未到達だった</b>。本テストはそれを実 {@code .yaml} で閉じる。
+     * スキーマ {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、
+     * その description も「可読性のために任意の名前を記述してよい」と書いているため、
+     * {@code "default"} は<b>スキーマを通る仕様内の入力</b>である。
+     * </p>
+     *
+     * <p>担保する軸要素: A-06／B-3／C-16（{@code "default"}→null の正規化）。</p>
+     */
+    @Test
+    public void normalizesLowercaseDefaultRecordTypeToNull() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - record_type: \"default\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat(block.getRecords().size(), is(1));
+        RecordLayout record = block.getRecords().get(0);
+        assertThat("小文字の \"default\" も null へ正規化される", record.getRecordType(), is(nullValue()));
+        assertThat(record.getFields().get(0).getName(), is("f1"));
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("a"))));
     }
 
     // ------------------------------------------------------------------ 軸C（directives）
@@ -499,7 +540,7 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
-        assertThat(new ArrayList<String>(block.getFwHeaderFields().keySet()),
+        assertThat(new ArrayList<>(block.getFwHeaderFields().keySet()),
                 is(Arrays.asList("requestId", "userId")));
         assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
         assertThat(block.getFwHeaderFields().get("userId"), is("u1"));
@@ -591,9 +632,12 @@ public class YamlFormatReaderRealFileTest {
      *
      * <p>
      * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.group_message_data.required} は
-     * {@code ["id","records"]} だけで {@code group_id} を要求せず、その description も
-     * 「group_id を省略した場合は経路 B（{@code MockMessagingContext} / {@code MockMessagingClient}）として動作する」と
-     * 書いている。それでも {@code YamlFormatReader#addSendSyncBlocks} は
+     * {@code ["id","records"]} だけで {@code group_id} を要求しない。加えて<b>定義レベルの</b> description
+     * （{@code $defs.group_message_data.description}）は「{@code group_id} を省略した場合は経路 B として動作する」、
+     * <b>プロパティの</b> description（{@code $defs.group_message_data.properties.group_id.description}）は
+     * 「{@code MockMessagingContext} / {@code MockMessagingClient} 経路では参照されないため省略可」と書いている
+     * （2 文は別の JSON パスにある。引用元の取り違えを 2026-08-14 のレビュー指摘で訂正した）。
+     * それでも {@code YamlFormatReader#addSendSyncBlocks} は
      * {@code rawGroupsInOrder}（{@code group_id} が非 null のエントリのみ列挙）を回すため、
      * {@code group_id} の無いエントリはブロックを生成しない。
      * {@code coverage/issues.md} に <b>YML-02</b> として記録した（{@code src/main} は無変更）。

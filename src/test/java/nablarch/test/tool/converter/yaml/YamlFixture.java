@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
@@ -41,9 +40,11 @@ final class YamlFixture {
      * YAML テキストを実ファイルへ書き出し、本番配線の {@link YamlFormatReader} で読む。
      *
      * <p>
-     * <b>副作用</b>: 読み込み前に {@link YamlLoader#clearCacheForTest()} を呼び、静的グローバルの
-     * LRU キャッシュ（{@code YamlLoader.YAML_CACHE}）を空にする。同一パスへ内容の違う YAML を書き直して
-     * 読むテストが、直前のテストのキャッシュ結果を受け取らないようにするためである。
+     * <b>{@link nablarch.test.core.reader.yaml.YamlLoader} の LRU キャッシュはここでは触らない。</b>
+     * キャッシュを空にする責務は利用側テストクラスの {@code @After clearLoaderCache} に一本化してある
+     * （既存の {@code RoundTripTest} ほかと同じ形）。本フィクスチャを使うテストはすべて
+     * {@link org.junit.rules.TemporaryFolder} が用意するテストごとに別のディレクトリへ書くため、
+     * 1 つのテストメソッドの中で同一パスを書き直さない限りキャッシュは衝突しない。
      * </p>
      *
      * @param dir      書き出し先ディレクトリ
@@ -51,12 +52,13 @@ final class YamlFixture {
      * @return 中間モデル
      */
     static TestDataContainer read(Path dir, String yamlText) {
+        Path file = dir.resolve(RESOURCE + ".yaml");
         try {
-            Files.write(dir.resolve(RESOURCE + ".yaml"), yamlText.getBytes(StandardCharsets.UTF_8));
+            Files.createDirectories(dir);
+            Files.write(file, yamlText.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException("failed to write fixture: " + file, e);
         }
-        YamlLoader.clearCacheForTest();
         return new YamlFormatReader().read(dir.toAbsolutePath().toString(), RESOURCE);
     }
 

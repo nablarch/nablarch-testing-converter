@@ -2,18 +2,26 @@ package nablarch.test.tool.converter.yaml;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.core.reader.yaml.YamlSchemaValidationException;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.ListMapBlock;
+import nablarch.test.tool.converter.model.MessageDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
+import nablarch.test.tool.converter.model.TableDataBlock;
+import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
 import com.networknt.schema.ValidationMessage;
@@ -60,6 +68,14 @@ import org.junit.rules.TemporaryFolder;
  * 例外メッセージ本文はロケール依存（日本語ロケールでは日本語）であるため、アサートは
  * {@link YamlSchemaValidationException#getErrors()} が返す {@link ValidationMessage} の
  * キーワード（{@code getType()}）と違反位置（{@code getInstanceLocation()}）で行う。
+ * </p>
+ *
+ * <p>
+ * <b>本クラスは軸F の 5 ケースに加えて、「スキーマが構造を縛っていない箇所を突いた入力」の現状挙動も固定する</b>
+ * （後半の「掃引で見つけた現状挙動の固定」節。{@code coverage/issues.md} の
+ * <b>YML-04</b>〜<b>YML-08</b>）。それらの入力は<b>スキーマ検証を通る仕様内の入力</b>であって異常系ではないが、
+ * 例外にならず値や行が消える／中間モデルが原文と食い違うため、辺①の
+ * {@code XlsFormatReaderInvalidInputTest}（XLS-10〜XLS-15 を同居させている）と同じ置き方に揃えた。
  * </p>
  *
  * <p>
@@ -155,17 +171,15 @@ public class YamlFormatReaderInvalidInputTest {
     @Test
     public void failsWithParseErrorWhenYamlIsMalformed() {
         // Given / When
-        try {
-            YamlFixture.read(dir(), "setup_tables:\n  - table: \"T\"\n   rows: [\n");
-            fail("should throw");
-        } catch (IllegalStateException e) {
-            // Then
-            assertFalse("スキーマ検証まで到達しないこと", e instanceof YamlSchemaValidationException);
-            assertTrue("メッセージにファイルパスを含むこと: " + e.getMessage(),
-                    e.getMessage().startsWith("Failed to parse YAML file: "));
-            assertThat(e.getCause(),
-                    is(instanceOf(org.snakeyaml.engine.v2.exceptions.YamlEngineException.class)));
-        }
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> YamlFixture.read(dir(), "setup_tables:\n  - table: \"T\"\n   rows: [\n"));
+
+        // Then
+        assertFalse("スキーマ検証まで到達しないこと", thrown instanceof YamlSchemaValidationException);
+        assertTrue("メッセージにファイルパスを含むこと: " + thrown.getMessage(),
+                thrown.getMessage().startsWith("Failed to parse YAML file: "));
+        assertThat(thrown.getCause(),
+                is(instanceOf(org.snakeyaml.engine.v2.exceptions.YamlEngineException.class)));
     }
 
     // ------------------------------------------------------------------ F2-03 未知のキー
@@ -307,6 +321,476 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(YamlFixture.blocks(container).size(), is(0));
     }
 
+    // ==================================================================
+    // 掃引で見つけた現状挙動の固定（#24 修正ラウンド 2）
+    //
+    // 以下はいずれも「本体スキーマが構造を縛っていない箇所」を突いた入力であり、
+    // スキーマ検証を通る（＝仕様内の）入力である。軸F の 5 ケースには属さない。
+    // 課題は coverage/issues.md の YML-04〜YML-08 に記録した（src/main は無変更）。
+    // ==================================================================
+
+    // ------------------------------------------------------------------ YML-04 先頭行のキー集合だけがカラムになる
+
+    /**
+     * Given: {@code setup_tables} の 2 行目にだけ現れるカラム {@code B} を持つ YAML
+     *        （{@code rows.items.additionalProperties} は任意キーを許すためスキーマを通る）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、カラムは先頭行のキー集合 {@code [A]} だけになり、
+     *        2 行目の {@code B: "x"} が黙って消える。
+     *
+     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト。</p>
+     */
+    @Test
+    public void dropsColumnThatAppearsOnlyInSecondRowOfTable() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - {A: \"1\"}\n"
+                + "      - {A: \"2\", B: \"x\"}\n");
+
+        // Then
+        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        assertThat(block.getColumnNames(), is(Arrays.asList("A")));
+        assertThat("2 行目の B が消える", block.getRows(),
+                is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
+    }
+
+    /**
+     * Given: {@code list_maps} の 2 行目にだけ現れるカラム {@code B} を持つ YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : テーブル経路と同じく、2 行目の {@code B: "x"} が黙って消える。
+     *
+     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト（LIST_MAP 経路）。</p>
+     */
+    @Test
+    public void dropsColumnThatAppearsOnlyInSecondRowOfListMap() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - {A: \"1\"}\n"
+                + "      - {A: \"2\", B: \"x\"}\n");
+
+        // Then
+        ListMapBlock block = (ListMapBlock) onlyBlock(container);
+        assertThat(block.getColumnNames(), is(Arrays.asList("A")));
+        assertThat("2 行目の B が消える", block.getRows(),
+                is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
+    }
+
+    /**
+     * Given: 先頭行にだけ現れるカラム {@code B} を持つ（2 行目でキーが欠ける）YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 逆向き（キー不足）は値が消えず、Java {@code null} で埋められる。
+     *
+     * <p>
+     * YML-04 が<b>非対称</b>であることの根拠。カラム集合は先頭行だけで決まるため、
+     * 「先頭行に無いキー」は消え、「先頭行にあって後続行に無いキー」は {@code null} で救われる。
+     * </p>
+     */
+    @Test
+    public void padsColumnMissingFromSecondRowWithNullInTable() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - {A: \"1\", B: \"x\"}\n"
+                + "      - {A: \"2\"}\n");
+
+        // Then
+        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        assertThat(block.getColumnNames(), is(Arrays.asList("A", "B")));
+        assertThat(block.getRows(),
+                is(Arrays.asList(Arrays.asList("1", "x"), Arrays.asList("2", null))));
+    }
+
+    /**
+     * Given: 先頭行が空マッピング {@code {}} で、2 行目にデータを書いた {@code setup_tables}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、カラムも行も 0 件になる。2 行目に書いたデータも消える。
+     *
+     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト（最も損失が大きい形）。</p>
+     */
+    @Test
+    public void dropsAllRowsWhenFirstRowOfTableIsEmptyObject() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - {}\n"
+                + "      - {A: \"1\"}\n");
+
+        // Then
+        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
+        assertTrue("2 行目に書いた行ごと消えること", block.getRows().isEmpty());
+    }
+
+    /**
+     * Given: 先頭行が空マッピング {@code {}} で、2 行目にデータを書いた {@code list_maps}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : LIST_MAP 経路では<b>行数は残る</b>が、値を 1 つも持たない行になる。
+     *
+     * <p>
+     * {@code coverage/issues.md} <b>YML-04</b> の根拠テスト。同じ入力でもテーブル経路
+     * （{@link #dropsAllRowsWhenFirstRowOfTableIsEmptyObject}）は行ごと消えるのに対し、
+     * LIST_MAP 経路は行数だけが残る。
+     * </p>
+     */
+    @Test
+    public void keepsRowCountButLosesValuesWhenFirstRowOfListMapIsEmptyObject() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - {}\n"
+                + "      - {A: \"1\"}\n");
+
+        // Then
+        ListMapBlock block = (ListMapBlock) onlyBlock(container);
+        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
+        assertThat(block.getRows(),
+                is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+    }
+
+    /**
+     * Given: {@code rows} のキーがマーカーカラム {@code [no]} だけの {@code setup_tables}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : マーカーは除外されるため、カラム 0 件・値を持たない行 2 件になる。
+     *
+     * <p>
+     * 辺①の {@code coverage/issues.md} <b>XLS-08</b>（マーカー列だけのブロックがセル 0 個の行になる）と
+     * <b>同じ形</b>が辺②でも起こる。マーカーの除外そのものは意図した仕様（steering #15）である。
+     * </p>
+     */
+    @Test
+    public void readsMarkerOnlyTableAsColumnlessRows() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - {\"[no]\": \"1\"}\n"
+                + "      - {\"[no]\": \"2\"}\n");
+
+        // Then
+        TableDataBlock block = (TableDataBlock) onlyBlock(container);
+        assertTrue("columnNames が空であること", block.getColumnNames().isEmpty());
+        assertThat(block.getRows(),
+                is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+    }
+
+    // ------------------------------------------------------------------ YML-05 行の要素数とフィールド数の食い違い
+
+    /**
+     * Given: フィールド 1 件に対して値を 3 個書いたレコード断片
+     *        （{@code rows.items} の要素数は {@code fields} の件数と紐づいていないためスキーマを通る）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、フィールド数を超える値が黙って捨てられる。
+     *
+     * <p>
+     * スキーマ {@code $defs.record_fragment.properties.rows} の description は
+     * 「各配列の要素数が fields の件数と一致しない場合は NTF がエラーを出す」と書いているが、
+     * 変換時にはエラーにならない。{@code coverage/issues.md} <b>YML-05</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void dropsRecordFragmentValuesBeyondFieldCount() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\", \"b\", \"c\"]\n");
+
+        // Then
+        RecordLayout record = onlyRecord(container);
+        assertThat(record.getFields().size(), is(1));
+        assertThat("2 個目以降の値が消える", record.getRows(),
+                is(Arrays.asList(Arrays.asList("a"))));
+    }
+
+    /**
+     * Given: フィールド 3 件に対して値が足りない行（1 個だけの行と、2 個目に明示 {@code null} を書いた行）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、欠けた位置は Java {@code null} ではなく<b>空文字</b>で埋められる。
+     *        明示的に書いた {@code null} は Java {@code null} のまま残る。
+     *
+     * <p>
+     * すなわち<b>「書かれた空文字」と「要素数不足で埋められた欠損」が中間モデル上で区別できない</b>。
+     * 軸D の D2-11 で固定した「空文字と Java {@code null} は区別される」は<b>書かれた値についてのみ</b>成り立つ。
+     * {@code coverage/issues.md} <b>YML-05</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"f2\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"f3\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "          - [\"a\", null]\n");
+
+        // Then
+        RecordLayout record = onlyRecord(container);
+        assertThat(record.getFields().size(), is(3));
+        assertThat("欠損は空文字で埋められる（null ではない）", record.getRows().get(0),
+                is(Arrays.asList("a", "", "")));
+        assertThat("明示的に書いた null は null のまま。欠損だけが空文字になる", record.getRows().get(1),
+                is(Arrays.asList("a", null, "")));
+    }
+
+    // ------------------------------------------------------------------ YML-06 id 重複
+
+    /**
+     * Given: 同じ {@code id} を持つ {@code list_maps} エントリ 2 件（値は別）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>ブロックは 2 件生成されるが、<b>どちらも 1 件目の値</b>を持つ。
+     *        2 件目に書いた値 {@code "second"} は中間モデルに現れない。
+     *
+     * <p>
+     * スキーマは {@code id} に一意制約を持たず、{@code $defs.list_map_data} の description も
+     * 「id が重複した場合は最初の1件のみ有効（2件目以降は無視）」と重複を仕様内として扱っている。
+     * {@code coverage/issues.md} <b>YML-06</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void reusesFirstEntryRowsForDuplicateListMapId() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - {A: \"first\"}\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - {A: \"second\"}\n");
+
+        // Then
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat(blocks.size(), is(2));
+        assertThat(((ListMapBlock) blocks.get(0)).getRows(), is(Arrays.asList(Arrays.asList("first"))));
+        assertThat("2 件目のブロックにも 1 件目の値が入る",
+                ((ListMapBlock) blocks.get(1)).getRows(), is(Arrays.asList(Arrays.asList("first"))));
+    }
+
+    /**
+     * Given: 同じ {@code id} を持つ {@code messages} エントリ 2 件（フィールド名も値も別）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>ブロックは 2 件生成されるが、2 件目はフィールド定義だけが自分のもので、
+     *        データ行は<b>1 件目の本文</b>になる。2 件目に書いた値 {@code "b"} は中間モデルに現れない。
+     *
+     * <p>{@code coverage/issues.md} <b>YML-06</b> の根拠テスト（メッセージ経路）。</p>
+     */
+    @Test
+    public void reusesFirstEntryBodyForDuplicateMessageId() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m2\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n");
+
+        // Then
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat(blocks.size(), is(2));
+        MessageDataBlock second = (MessageDataBlock) blocks.get(1);
+        assertThat("フィールド定義は 2 件目の原文",
+                second.getRecords().get(0).getFields().get(0).getName(), is("m2"));
+        assertThat("値は 1 件目の本文", second.getRecords().get(0).getRows(),
+                is(Arrays.asList(Arrays.asList("a"))));
+    }
+
+    // ------------------------------------------------------------------ YML-08 ディレクティブ値
+
+    /**
+     * Given: {@code record-separator} をスキーマ description が推奨するリテラル記法
+     *        （ダブルクォート文字列内のエスケープシーケンス {@code "\r\n"}）で書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にならず</b>、中間モデルの {@code record-separator} は<b>空文字</b>になる（値が消える）。
+     *
+     * <p>
+     * 本体 {@code DataFile#setDirective} が値へ {@code String#trim()} を掛けるため、
+     * 制御文字だけの値は空になる。{@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void losesRecordSeparatorWrittenAsLiteralNewline() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    directives:\n"
+                + "      record-separator: \"\\r\\n\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat("書いた改行が消えて空文字になる", block.getDirectives().get("record-separator"), is(""));
+    }
+
+    /**
+     * Given: {@code record-separator} をシンボル記法 {@code "CRLF"} で書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 中間モデルには<b>シンボルではなく実際の改行</b>（{@code "\r\n"}）が入る。
+     *
+     * <p>
+     * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）は実改行をシンボルへ逆正規化するが、
+     * 辺②（{@code YamlFormatReader#toStringDirectives}）は素通しである。すなわち同じ入力表記が
+     * 辺①と辺②で別の中間モデル値になる。{@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void readsRecordSeparatorSymbolAsActualNewline() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    directives:\n"
+                + "      record-separator: \"CRLF\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat(block.getDirectives().get("record-separator"), is("\r\n"));
+    }
+
+    /**
+     * Given: {@code field-separator} をスキーマ description のとおり {@code "\t"} と書いた YAML
+     *        （ダブルクォート文字列のためタブ文字 1 個に解決される）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code IllegalArgumentException} で止まる。{@code trim()} でタブが失われ、
+     *        「1 文字でなければならない」という検査に引っ掛かるためである。
+     *
+     * <p>
+     * description は「YAML では {@code "\t"} と記述するとタブ文字（U+0009）に変換される」と書いているが、
+     * 実際にタブへ変換されるのは<b>バックスラッシュと {@code t} の 2 文字</b>を渡した場合
+     * （YAML では {@code '\t'} などシングルクォート記法）である。
+     * {@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void failsWhenFieldSeparatorIsWrittenAsActualTab() {
+        // Given / When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_files:\n"
+                        + "  - path: \"f.csv\"\n"
+                        + "    type: \"variable\"\n"
+                        + "    directives:\n"
+                        + "      field-separator: \"\\t\"\n"
+                        + "    records:\n"
+                        + "      - fields:\n"
+                        + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                        + "        rows:\n"
+                        + "          - [\"a\"]\n"));
+
+        // Then
+        assertThat("trim() でタブが失われ、空文字として報告される",
+                thrown.getMessage(), is("field-separator must be one character.but was "));
+    }
+
+    // ------------------------------------------------------------------ YML-07 長さ省略記法
+
+    /**
+     * Given: 長さ省略記法 {@code "-"} を使い、{@code text-encoding} を書かないファイルエントリ
+     *        （スキーマ {@code $defs.field_def.properties.length} は {@code "-"} を許し、
+     *        description もオンデマンド計算として意味を定めている）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code NullPointerException}（メッセージ無し）で止まる。
+     *
+     * <p>
+     * 器がオンデマンド長を求めるために値のバイト長を計算する際、ディレクティブ由来の文字セットが
+     * {@code null} のままだからである。{@code coverage/issues.md} <b>YML-07</b> の根拠テスト。
+     * </p>
+     */
+    @Test
+    public void failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding() {
+        // Given / When
+        NullPointerException thrown = assertThrows(NullPointerException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_files:\n"
+                        + "  - path: \"f.dat\"\n"
+                        + "    type: \"fixed\"\n"
+                        + "    records:\n"
+                        + "      - fields:\n"
+                        + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
+                        + "        rows:\n"
+                        + "          - [\"abcd\"]\n"));
+
+        // Then
+        assertThat("どのファイルのどのフィールドかを示す手掛かりが無い",
+                thrown.getMessage(), is(nullValue()));
+    }
+
+    /**
+     * Given: 同じ長さ省略記法 {@code "-"} に {@code text-encoding} を添えたファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 例外にならず、{@code FieldDef.length} には原文 {@code "-"} が入る
+     *        （器が導出する実バイト長 {@code "4"} ではない）。
+     *
+     * <p>
+     * {@link #failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding} との差は
+     * {@code text-encoding} の有無だけである（YML-07 の切り分け）。
+     * </p>
+     */
+    @Test
+    public void readsOndemandLengthNotationWhenTextEncodingIsSpecified() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"UTF-8\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"-\"}\n"
+                + "        rows:\n"
+                + "          - [\"abcd\"]\n");
+
+        // Then
+        RecordLayout record = onlyRecord(container);
+        assertThat(record.getFields().get(0).getLength(), is("-"));
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abcd"))));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     /**
@@ -325,18 +809,12 @@ public class YamlFormatReaderInvalidInputTest {
      * @return 送出された例外
      */
     private YamlSchemaValidationException assertSchemaViolation(String yamlText) {
-        try {
-            YamlFixture.read(dir(), yamlText);
-            fail("should throw YamlSchemaValidationException");
-            return null;
-        } catch (YamlSchemaValidationException e) {
-            return e;
-        }
+        return assertThrows(YamlSchemaValidationException.class, () -> YamlFixture.read(dir(), yamlText));
     }
 
     /** 違反のキーワード（{@code enum} / {@code required} など）をロケール非依存に取り出す。 */
     private static List<String> types(YamlSchemaValidationException e) {
-        List<String> types = new ArrayList<String>();
+        List<String> types = new ArrayList<>();
         for (ValidationMessage message : e.getErrors()) {
             types.add(message.getType());
         }
@@ -345,10 +823,34 @@ public class YamlFormatReaderInvalidInputTest {
 
     /** 違反位置（{@code $.setup_files[0].type} など）をロケール非依存に取り出す。 */
     private static List<String> locations(YamlSchemaValidationException e) {
-        List<String> locations = new ArrayList<String>();
+        List<String> locations = new ArrayList<>();
         for (ValidationMessage message : e.getErrors()) {
             locations.add(message.getInstanceLocation().toString());
         }
         return locations;
+    }
+
+    /**
+     * 唯一のブロックを返す。
+     *
+     * @param container 中間モデル
+     * @return ブロック
+     */
+    private static TestDataBlock onlyBlock(TestDataContainer container) {
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat("ブロックが 1 件だけ生成されること", blocks.size(), is(1));
+        return blocks.get(0);
+    }
+
+    /**
+     * 唯一のブロックの唯一のレコードレイアウトを返す。
+     *
+     * @param container 中間モデル
+     * @return レコードレイアウト
+     */
+    private static RecordLayout onlyRecord(TestDataContainer container) {
+        FileDataBlock block = (FileDataBlock) onlyBlock(container);
+        assertThat("レコードレイアウトが 1 件だけ生成されること", block.getRecords().size(), is(1));
+        return block.getRecords().get(0);
     }
 }

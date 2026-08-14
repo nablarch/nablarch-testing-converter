@@ -416,8 +416,12 @@ public class YamlFormatReaderTest {
     public void readSendSync_entryWithoutGroupId_isDropped() {
         // Given: group_id 付き 1 件＋group_id 無し 1 件
         //        （スキーマは送信系に group_id を要求しない。$defs.expected_request_message_data /
-        //          $defs.group_message_data の required はいずれも ["id","records"] であり、
-        //          group_id の description も「省略時は id 直接指定（先着1件）で動作する」と書いている。
+        //          $defs.group_message_data の required はいずれも ["id","records"] である。
+        //          省略が正当であることは 2 つの別の JSON パスが述べている —
+        //          $defs.expected_request_message_data.properties.group_id.description が
+        //          「省略時は id 直接指定（先着1件）で動作する」、
+        //          $defs.group_message_data.description（定義レベル）が
+        //          「group_id を省略した場合は経路 B として動作する」。
         //          すなわち group_id 無しは仕様内の入力である。issues.md YML-02）
         Map<String, Object> yaml = map(
                 "response_body_messages", list(
