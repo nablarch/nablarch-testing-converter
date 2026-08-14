@@ -719,6 +719,13 @@ public class XlsFormatWriterModelTest {
      * {@code issues.md} <b>XLS-22</b> の実検査。{@link XlsFormatWriter} は
      * 「本体パーサが読み戻せる版面で書く」ことを Javadoc で謳っているが、この入力では成り立たない。
      * </p>
+     *
+     * <p>
+     * <b>本メソッドが固定しているのは「本体パーサが読み戻せない版面を書けてしまう」という現状の記録で
+     * あって、NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。XLS-22 はユーザ確定の
+     * スコープ外として #25.5 では修正しておらず、残置の一覧は {@code coverage/issues.md} の
+     * 「残置している『緑の嘘』」にまとめた。
+     * </p>
      */
     @Test
     public void failsToReadBackRecordWithoutFields() {

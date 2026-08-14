@@ -53,8 +53,12 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>実装（src/main）は変更していない。
+ * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>
  * 妥当でないと判断した挙動は {@code coverage/issues.md} に課題として記録した（{@code YML-02} ／ {@code YML-03}）。
+ * このうち <b>{@code YML-02}</b>（{@code group_id} 省略の送信同期エントリが落ちる）は <b>#25.5 で修正済み</b>で、
+ * 該当テストは現状の固定ではなく<b>記法どおりの仕様</b>を書いている。{@code YML-03}（{@code FW_HEADER} を
+ * 名乗るレコードが捨てられる）は yaml 側の修正待ちのため、仕様どおりの期待値を書いた待機テストを
+ * {@code @Ignore} で置いてある。
  * </p>
  *
  * @author kiyobot
@@ -927,7 +931,7 @@ public class YamlFormatReaderRealFileTest {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "response_body_messages:\n"
-                + "  - id: \"DROP\"\n"
+                + "  - id: \"DEFAULT\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
                 + "          - {name: \"d1\", type: \"半角英字\", length: \"1\"}\n"
@@ -947,7 +951,7 @@ public class YamlFormatReaderRealFileTest {
 
         MessageDataBlock defaultGroup = (MessageDataBlock) blocks.get(0);
         assertThat(defaultGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
-        assertThat(defaultGroup.getIdentifier(), is("DROP"));
+        assertThat(defaultGroup.getIdentifier(), is("DEFAULT"));
         assertThat(defaultGroup.getGroupId(), is(""));
         assertThat(defaultGroup.getRecords().size(), is(1));
         assertThat(defaultGroup.getRecords().get(0).getFields().size(), is(1));

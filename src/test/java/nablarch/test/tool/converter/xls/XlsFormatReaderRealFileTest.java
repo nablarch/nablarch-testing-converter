@@ -54,9 +54,10 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として記録して
- * あり、実装（src/main）は変更していない。
+ * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
+ * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として記録した。
+ * このうち <b>XLS-06</b>（レコード種別を省略したセルが {@code null} ではなく {@code ""} になる）は
+ * <b>#25.5 で修正済み</b>で、該当テストは現状の固定ではなく<b>記法どおりの仕様</b>を書いている。
  * </p>
  *
  * <p>

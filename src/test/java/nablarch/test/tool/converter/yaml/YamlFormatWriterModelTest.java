@@ -84,9 +84,14 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
+ * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
  * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
- * （{@code YML-12}）として記録してあり、実装（src/main）は変更していない。
+ * （{@code YML-12}）として記録した。
+ * このうち <b>{@code YML-12} の 1 形目</b>（レコードが空のファイルブロックで {@code records:} キー自体が
+ * 書かれず、読み戻しがスキーマの {@code required} 違反になる）は <b>#25.5 で修正済み</b>で、該当テストは
+ * 現状の固定ではなく<b>記法どおりの仕様</b>（{@code records: []} を書く）を書いている。
+ * 残る 2〜4 形目（メッセージブロックの {@code records} 欠落・{@code fields} 欠落・{@code type} 欠落）は
+ * 今回の対象外のため、現状の固定のままである。
  * </p>
  *
  * @author kiyobot
@@ -531,25 +536,6 @@ public class YamlFormatWriterModelTest {
     /**
      * Given: レコードレイアウトを 1 件も持たないファイルブロック（ディレクティブは 2 件）。
      * When : {@code serialize}。
-     * Then : {@code records:} キー自体が書かれない。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
-     *
-     * <p>
-     * 担保する軸要素: C-12（{@code FileDataBlock.records} 空）。
-     * ディレクティブの並び（{@code text-encoding} → {@code file-type}）は辞書順の逆である。
-     * </p>
-     *
-     * <p>
-     * <b>ディレクティブのキーと値は NTF のテストデータとして実在する組み合わせにしてある</b>
-     * （{@code file-type: "Fixed"} ／ {@code text-encoding: "UTF-8"} は
-     * {@code YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndOmittedLength} や実サンプル
-     * {@code SampleConversionTest/.../testNormalEnd.yaml} に現れる形である）。
-     * {@code emitMap} 経路で真偽値風・日付風の値がクォートされることは、記法を主張する専用のメソッド
-     * {@link #quotesBooleanAndDateLookingValuesInFwHeader} が固定する。
-     * </p>
-     */
-    /**
-     * Given: レコードレイアウトを 1 件も持たないファイルブロック（ディレクティブは 2 件）。
-     * When : {@code serialize}。
      * Then : {@code records: []}（空配列）が書かれる。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
      *
      * <p>
@@ -752,17 +738,6 @@ public class YamlFormatWriterModelTest {
     /**
      * Given: レコードレイアウトを 1 件も持たないファイルブロック。
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
-     * Then : 書き出しは成功するが、読み戻しは {@code required}（{@code records}）違反で失敗する。
-     *
-     * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-12</b> の現状挙動の固定）。
-     * 本体スキーマの {@code $defs.file_data.required} が {@code records} を要求するためである
-     * （{@code minItems: 0} なので<b>空配列なら通る</b>が、キーごと省略されると通らない）。
-     * </p>
-     */
-    /**
-     * Given: レコードレイアウトを 1 件も持たないファイルブロック。
-     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : スキーマ違反にならず、レコード 0 件のファイルブロックとして戻る。
      *
      * <p>
@@ -795,6 +770,13 @@ public class YamlFormatWriterModelTest {
      * この形は既存の {@code YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly} が
      * <b>書き出し側だけ</b>固定していた（C-15 空）。読み戻せないことは誰も通していなかった。
      * </p>
+     *
+     * <p>
+     * <b>本メソッドが固定しているのは「スキーマが認めない形を書けてしまう」という現状の記録であって、
+     * NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。#25.5 で修正したのは YML-12 の
+     * 1 形目（ファイルブロックの {@code records} 欠落）だけで、本形はユーザ確定のスコープ外として
+     * 残置している。残置の一覧は {@code coverage/issues.md} の「残置している『緑の嘘』」にまとめた。
+     * </p>
      */
     @Test
     public void failsToReadBackMessageBlockWithoutRecords() {
@@ -818,6 +800,13 @@ public class YamlFormatWriterModelTest {
      * 既存の {@code YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists} が
      * {@code fields: []} を書くことを固定している。辺①・辺②のいずれもこの中間モデルを生成できない
      * （辺③では {@code issues.md} <b>XLS-22</b> が同じ形を扱う）。
+     * </p>
+     *
+     * <p>
+     * <b>本メソッドが固定しているのは「スキーマが認めない形を書けてしまう」という現状の記録であって、
+     * NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。#25.5 で修正したのは YML-12 の
+     * 1 形目（ファイルブロックの {@code records} 欠落）だけで、本形はユーザ確定のスコープ外として
+     * 残置している。残置の一覧は {@code coverage/issues.md} の「残置している『緑の嘘』」にまとめた。
      * </p>
      */
     @Test
@@ -843,6 +832,13 @@ public class YamlFormatWriterModelTest {
      * 担保する軸要素: なし（{@code issues.md} <b>YML-12</b>）。
      * 既存の {@code YamlFormatWriterTest#serialize_fieldWithNullType_omitsType} が
      * {@code {name: "c1"}} を書くことを固定している（C-20 省略）。
+     * </p>
+     *
+     * <p>
+     * <b>本メソッドが固定しているのは「スキーマが認めない形を書けてしまう」という現状の記録であって、
+     * NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。#25.5 で修正したのは YML-12 の
+     * 1 形目（ファイルブロックの {@code records} 欠落）だけで、本形はユーザ確定のスコープ外として
+     * 残置している。残置の一覧は {@code coverage/issues.md} の「残置している『緑の嘘』」にまとめた。
      * </p>
      */
     @Test

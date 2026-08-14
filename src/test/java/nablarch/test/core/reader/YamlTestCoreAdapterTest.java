@@ -222,6 +222,67 @@ public class YamlTestCoreAdapterTest {
         assertThat(fragment.getValues().get(0).get("s1"), is("${z}"));
     }
 
+    /**
+     * {@code groupId} に {@code null} を渡すと、{@code group_id} を省略したエントリ（デフォルト
+     * グループ）だけが記述順で返る。
+     * <p>
+     * Given: {@code group_id} 付き 3 件と省略 2 件が交互に並ぶ YAML<br>
+     * When : {@code readSendSyncMessages(..., null, ...)}<br>
+     * Then : 省略した 2 件だけが記述順（MSG_DEFAULT1・MSG_DEFAULT2）で返り、
+     * {@code group_id} 付きの MSG1・MSG2・MSG3 は含まれない。
+     * </p>
+     * <p>
+     * 記法（{@code testdata_notation.rst:254}「グループIDを省略した場合は…デフォルトグループが
+     * 対象になる」）どおりの挙動である。本体ビルダは {@code group_id} が非 null のエントリしか
+     * 返さないため、{@link YamlTestCoreAdapter} 側の前処理
+     * （{@code defaultGroupOnlyYaml}）でしか実現できない。この前処理の直接の担保
+     * （{@code issues.md} YML-02）。
+     * </p>
+     */
+    @Test
+    public void readSendSyncMessages_nullGroupId_returnsOnlyDefaultGroupEntriesInOrder() {
+        // Given
+        // (no setup beyond @After clearing cache)
+        // When: グループ ID 省略（＝デフォルトグループ）を取得
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", null,
+                DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+
+        // Then: group_id を持たない 2 件だけが記述順で返る
+        assertThat(bodies.size(), is(2));
+        assertThat(bodies.get(0).getPath(), is("MSG_DEFAULT1"));
+        assertThat(bodies.get(1).getPath(), is("MSG_DEFAULT2"));
+
+        // Then: 値も読めている（前処理が records を落としていない）
+        FragmentView first = TestCoreFileAdapter.read(bodies.get(0)).getFragments().get(0);
+        assertThat(first.getValues().get(0).get("d1"), is("de"));
+        FragmentView second = TestCoreFileAdapter.read(bodies.get(1)).getFragments().get(0);
+        assertThat(second.getValues().get(0).get("e1"), is("fg"));
+    }
+
+    /**
+     * {@code group_id} を明示したときは、デフォルトグループのエントリが混ざらない。
+     * <p>
+     * Given: 同上の YAML<br>
+     * When : {@code readSendSyncMessages(..., "case2", ...)}<br>
+     * Then : MSG3 の 1 件だけが返り、直後に並ぶ MSG_DEFAULT2 は含まれない。
+     * </p>
+     * <p>
+     * デフォルトグループ対応が既存の絞り込みを緩めていないことの担保である。
+     * </p>
+     */
+    @Test
+    public void readSendSyncMessages_namedGroupId_excludesDefaultGroupEntries() {
+        // Given
+        // (no setup beyond @After clearing cache)
+        // When
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", "case2",
+                DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+
+        // Then
+        assertThat(bodies.size(), is(1));
+        assertThat(bodies.get(0).getPath(), is("MSG3"));
+    }
+
     @Test
     public void readSendSyncMessages_noMatch_returnsEmpty() {
         // Given
