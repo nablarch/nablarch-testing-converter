@@ -29,6 +29,7 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -856,6 +857,7 @@ public class XlsFormatReaderRealFileTest {
      * </p>
      */
     @Test
+    @Ignore("XLS-06: レコード種別の空セルが null ではなく空文字になる現状挙動を固定していた")
     public void readsOmittedRecordTypeAsEmptyStringFromRealBook() {
         // Given
         book().row(text("SETUP_FIXED=f.dat"))

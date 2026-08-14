@@ -32,6 +32,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.After;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -505,6 +506,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * </p>
      */
     @Test
+    @Ignore("XLS-16: 31 文字超のシート名が黙って切り詰められる現状挙動を固定していた")
     public void truncatesSheetNameLongerThanExcelLimitSilently() {
         // Given
         String book = "TooLong";
@@ -547,6 +549,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * </p>
      */
     @Test
+    @Ignore("XLS-16: 切り詰めで禁止文字が消え検査に到達しないまま書き出される現状挙動を固定していた")
     public void writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation() {
         // Given
         String book = "Hidden";

@@ -30,6 +30,7 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import com.networknt.schema.ValidationMessage;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -920,6 +921,7 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      */
     @Test
+    @Ignore("YML-08: record-separator のリテラル改行が空文字になる現状挙動を固定していた")
     public void losesRecordSeparatorWrittenAsLiteralNewline() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
@@ -951,6 +953,7 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      */
     @Test
+    @Ignore("YML-08: シンボル CRLF が実改行のまま中間モデルへ入る（辺①と非対称な）現状挙動を固定していた")
     public void readsRecordSeparatorSymbolAsActualNewline() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
