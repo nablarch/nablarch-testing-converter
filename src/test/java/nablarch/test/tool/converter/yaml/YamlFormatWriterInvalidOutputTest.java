@@ -74,9 +74,6 @@ public class YamlFormatWriterInvalidOutputTest {
     /** セクション名（＝出力ファイル名の幹）。 */
     private static final String SECTION = "td";
 
-    /** {@link YamlFormatWriter} が付ける拡張子。 */
-    private static final String EXTENSION = ".yaml";
-
     /** 出力先。 */
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
@@ -124,7 +121,7 @@ public class YamlFormatWriterInvalidOutputTest {
      * @return 書き出されるはずのファイル
      */
     private static File writtenYaml(File dir) {
-        return new File(dir, SECTION + EXTENSION);
+        return new File(dir, SECTION + YamlFixture.EXTENSION);
     }
 
     /**
@@ -220,7 +217,7 @@ public class YamlFormatWriterInvalidOutputTest {
         // Then
         assertThat(thrown.getMessage(), containsString("failed to write YAML:"));
         assertThat("どのファイルを書けなかったかが分かる",
-                thrown.getMessage(), containsString(SECTION + EXTENSION));
+                thrown.getMessage(), containsString(SECTION + YamlFixture.EXTENSION));
         assertThat(thrown.getCause(), is(instanceOf(AccessDeniedException.class)));
         assertFalse("ファイルは作られない", writtenYaml(readOnly).exists());
     }

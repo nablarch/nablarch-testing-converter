@@ -70,8 +70,15 @@
 >   （A-12〜A-14）の辺④が #18 以来 ✅ と誤判定されていた（実際は 🔺）ことを訂正し、
 >   辺④の軸A 件数を 2 → **5**、担保済みを 12 → **15**、総計を 13 → **16** に改めた。
 >   辺③の #23 レビューでの訂正（§3.3）と同じ形である。
+> - **§4.1-2**（#25 レビュー修正ラウンド 2・2026-08-14） — 軸要素の判定は変えていない。
+>   (a) 軸D の測定経路の数え方を「埋めたのは 2 経路」に確定し、`list_maps` を独立した未観測経路として
+>   並べるのをやめた（`emitListMap` は `emitTable` と同じ `emitMapRows` を呼ぶため値の記法は同一コード）。
+>   (b) 「歯がある証明」と読める書き方を、実測の粒度（狙い撃ち変異が死ぬこと）まで落とした。
+>   (c) 20 ケースのキー検査が「1 ケース 1 `@Test`」の規約から逸脱していることと、その理由を記録した。
+>   (d) `YamlSeq#header` の生存変異が等価変異であることを記録した。
+>   (e) 辺④の文脈に残っていた Excel 用語「版面」を置き換えた。
+>   テストは 1 件増えて `YamlFormatWriterModelTest` 17 件・全体 **536** 件になった。
 >
-
 > **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
 > **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
@@ -1766,7 +1773,7 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | テストクラス | 件数 | 担う軸 |
 |---|---|---|
 | `YamlFormatWriterScalarTest` | 16 | 軸D（9 ケースのうち #25 が埋めた分）＋ `issues.md` YML-13 |
-| `YamlFormatWriterModelTest` | 16 | 軸A（A-07／A-08／**A-12〜A-14**）・軸C（C-02／C-12）・軸E（E-4）＋ キーのクォート判定 ＋ `issues.md` YML-12／YML-08／YML-10 |
+| `YamlFormatWriterModelTest` | 17 | 軸A（A-07／A-08／**A-12〜A-14**）・軸C（C-02／C-12）・軸D（D4-02／D4-08 を `emitMap` 経路で）・軸E（E-4）＋ キーのクォート判定 ＋ `issues.md` YML-12／YML-08／YML-10 |
 | `YamlFormatWriterInvalidOutputTest` | 2 | 軸F（F4-01／F4-03） |
 
 件数の導出コマンド:
@@ -1778,10 +1785,11 @@ for f in YamlFormatWriterScalarTest YamlFormatWriterModelTest YamlFormatWriterIn
 done
 ```
 
-出力は順に **16** ／ **16** ／ **2**（合計 **34**）。全体は `mvn clean test -Djacoco.skip=true` で
-**501 → 535**（Failures 0 ／ Errors 0 ／ Skipped 0）である。
-**うち 4 件は #25 のレビュー対応で足した**（A-12〜A-14 の 3 件とキーのクォート 1 件。いずれも
-`YamlFormatWriterModelTest`。当初版は 30 件・531 件だった）。
+出力は順に **16** ／ **17** ／ **2**（合計 **35**）。全体は `mvn clean test -Djacoco.skip=true` で
+**501 → 536**（Failures 0 ／ Errors 0 ／ Skipped 0）である。
+**うち 5 件は #25 のレビュー対応で足した**（A-12〜A-14 の 3 件、キーのクォート 1 件、
+`emitMap` 経路の記法 1 件。いずれも `YamlFormatWriterModelTest`。当初版は 30 件・531 件、
+レビュー修正ラウンド 1 の時点では 32 件・535 件だった）。
 
 **`serialize` を直接アサートするのは Scalar／Model の 2 クラスである。**
 `YamlFormatWriterInvalidOutputTest` は `serialize` を一度も呼ばず、`write` が書き出したファイル本文と
@@ -1815,10 +1823,25 @@ done
 
 **軸D の測定経路**: 上表は**すべて `setup_tables` の `rows`** で測っている。ただし
 `"true"`（D4-02）と `"2026-08-07"`（D4-08）の 2 ケースだけは、**#25 のレビュー対応で
-残り 2 経路のうち 2 つにもフィクスチャとして埋め込み、記法を版面ごと固定した**
-（レコード断片＝`records[].rows` は `YamlFormatWriterModelTest#record()`、
-`directives` は `#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`）。
-LIST_MAP（`list_maps`）経路は依然として観測していない（下の「開示」）。
+別の 2 経路 —— レコード断片（`records[].rows`）と `emitMap`（`directives` ／ `fw_header`）——
+にもフィクスチャとして埋め込み、記法を出力全文で固定した**
+（レコード断片は `YamlFormatWriterModelTest#record()`、
+`emitMap` 経路は `#quotesBooleanAndDateLookingValuesInFwHeader`）。
+**埋めた経路は 2 つである。**
+
+**`list_maps` は独立した経路ではない。** `YamlFormatWriter#emitListMap` と `#emitTable` は
+どちらも同じ引数で `emitMapRows` を呼ぶため、**値の記法は `setup_tables` と同一のコードで担保されている**。
+両者の差は `emitMapRows` を呼ぶ前に組み立てる 1 行だけで、`emitTable` が `entry.prop("table", ...)`、
+`emitListMap` が `entry.prop("id", ...)` を呼ぶ点である（その前の `emitGroupId` は同一）。
+すなわち残る差はキー側の literal であって値の記法ではない。出典（2026-08-14 実行）:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+grep -c "emitMapRows(sb, entry, block.getColumnNames(), block.getRows());" \
+  src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java
+```
+
+出力は **2**（`emitTable` と `emitListMap` の 2 箇所）。
 
 **軸A（#25 が埋めた 2 種 ＋ #25 レビューで判明した 3 種）**
 
@@ -1859,8 +1882,14 @@ LIST_MAP（`list_maps`）経路は依然として観測していない（下の�
   （`assertTrue(contains(...))` は使わない）。セクションキー以外は 4 種で完全に同一のフィクスチャなので、
   写像が入れ替われば必ず落ちる。
 - **歯があることの実証**: 同じ 2 通りの変異を再度入れて全件実行し、
-  入れ替えた側の新規メソッドが落ちることを確認した（それぞれ `Tests run: 535, Failures: 4`
-  ＝ 新規 2 件 ＋ `RoundTripTest` 2 件）。変異は確認後に戻し、`git diff f3efa1b -- src/main` → **0 行**を確かめた。
+  入れ替えた側の新規メソッドが落ちることを確認した（それぞれ `Failures: 4`
+  ＝ 新規 2 件 ＋ `RoundTripTest` 2 件）。
+  **レビュー修正ラウンド 2 で `RESPONSE_HEADER_MESSAGES` ↔ `RESPONSE_BODY_MESSAGES` の側を
+  取り直し、`Tests run: 536, Failures: 4` を確認した**（落ちるのは
+  `#writesResponseHeaderMessagesUnderItsOwnSectionKey` ／ `#writesResponseBodyMessagesUnderItsOwnSectionKey` と
+  `RoundTripTest#yaml_responseHeaderMessages_isPreserved` ／ `#yaml_responseBodyMessages_isPreserved`。
+  ラウンド 1 時点の実測値は全体 535 件でのものだった）。
+  変異は確認後に戻し、`git diff -- src/main pom.xml` → **0 行**を確かめた。
 
 **キーのクォート判定（軸要素ではない。#25 レビューで判明した穴）**
 
@@ -1875,8 +1904,20 @@ LIST_MAP（`list_maps`）経路は依然として観測していない（下の�
 - **埋め方**: `YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter` を
   追加した。特殊文字 18 文字と制御文字 2 種（`0x01` / `0x1f`）を 1 文字ずつ `directives` のキーに置き、
   20 通りそれぞれで出力全文を完全一致でアサートする。期待表記は実行して観測した結果である。
-- **歯があることの実証**: `#` を集合から外す変異、および `c < 0x20` のガードを外す変異を入れて全件実行し、
-  それぞれ同メソッドが落ちることを確認した（`Tests run: 535, Failures: 1`）。あわせて JaCoCo で
+- **「1 ケース 1 `@Test`」の規約から辺④だけ逸脱している**（レビュー修正ラウンド 2 で明記した）。
+  規約は `XlsFormatWriterInvalidOutputTest` の F3-04 節と `XlsFormatWriterCellTypeTest` の
+  コメントにあり、理由は「ループで束ねると最初の 1 文字が落ちた時点で残りが実行されず、
+  どの文字で挙動が違うのかが分からなくなるため」である。逸脱してよいと判断した根拠は 2 つ。
+  (a) 20 ケースは `isPlainSafeKey` の**同一の判定 1 つ**（文字集合の `indexOf` と `c < 0x20` の
+  制御文字ガード）を通る 1 つの振る舞いであり、Xls 側の禁止文字 7 件のように文字ごとに
+  違うメッセージ・違う挙動を持たない。(b) ループ内では判定するだけで**アサートはループ後に 1 回**に
+  集約したので、1 件目が落ちても残り 19 ケースは実行され、失敗メッセージに落ちた全件が出る ——
+  すなわち規約の理由が成立しない。逸脱の理由は当該メソッドの Javadoc にも書いてある。
+- **歯があることの実証（2026-08-14 に修正ラウンド 2 の形で取り直した）**: `#` を集合から外す変異、
+  および `c < 0x20` のガードを外す変異を入れて全件実行し、それぞれ同メソッドが落ちることを確認した
+  （どちらも `Tests run: 536, Failures: 1`）。集約したアサートが機能していることも同時に確認できており、
+  失敗メッセージは順に `20 ケース中 1 件が期待どおりにクォートされなかった` ／
+  `20 ケース中 2 件が…`（制御文字 `0x01` / `0x1f` の 2 件）である。あわせて JaCoCo で
   未到達だった「キーに制御文字を含む」枝が閉じ、分岐が 88/92 から **89/92** になった（下の「開示」）。
 
 **軸C・軸E（#25 が埋めた 3 件）**
@@ -1937,13 +1978,41 @@ LIST_MAP（`list_maps`）経路は依然として観測していない（下の�
   **この数値は `YamlFormatWriter` 1 クラスぶんであり、4 辺の担当クラス全体の計測と未到達分岐の列挙は #26 の仕事である。**
 - **軸D の 9 ケースのうち 7 ケースは 1 経路（`setup_tables` の `rows`）でしか固定していない。**
   `"true"`（D4-02）と `"2026-08-07"`（D4-08）だけは #25 のレビュー対応でレコード断片
-  （`records[].rows`）経路と `directives` 経路にも埋め込み、記法を版面ごと固定した
-  （変異で確認: `rowFlow` ／ `emitMap` がこの 2 値だけ非クォートで書くよう変異させると、
-  順に `Tests run: 535, Failures: 5, Errors: 2` ／ `Failures: 1` になる。当初版はどちらも生存変異だった）。
+  （`records[].rows`）経路と `emitMap`（`directives` ／ `fw_header`）経路にも埋め込み、
+  記法を出力全文で固定した。
   残る 7 ケースがレコード断片経路でも同じ記法で書かれ同じく往復することはプローブで確認したが、
   テストにはしていない（辺②の §2.1-2 が「12 ケースのうち 10 ケースは 1 経路でしか測っていない」と
   開示しているのと同じ性質の穴である）。
-  **LIST_MAP（`list_maps`）経路は 9 ケースとも観測していない。**
+  **`list_maps` はこの穴に数えない。**`emitListMap` は `emitTable` と同じ `emitMapRows` を呼ぶため、
+  値の記法は `setup_tables` と同一コードで担保されている（上の「軸D の測定経路」に出典）。
+  残る差はキー側の literal（`table:` ／ `id:`）だけである。
+- **この 2 ケースの埋め込みが示すのは「その 2 値がその経路でアサートされている」ことまでである。**
+  #25 の当初版（素の値だけを置いた版）でも、**条件を付けない変異なら既存テストが捉える** ——
+  `rowFlow` からクォートを外す変異では `YamlFormatWriterTest` だけで `Failures: 5, Errors: 2`、
+  `emitMap` から外す変異では同クラスの 5 件が落ちる（2026-08-14 実測。全体は順に
+  `Tests run: 536, Failures: 10, Errors: 9` ／ `Tests run: 536, Failures: 9, Errors: 0`）。
+  当初版で生存したのは**この 2 値だけを狙い撃ちした変異**である（`rowFlow` ／ `emitMap` が
+  `"true"` と `"2026-08-07"` のときだけ非クォートで書く変異。現在は順に
+  `Tests run: 536, Failures: 5, Errors: 2` ／ `Failures: 1` で死ぬ）。
+  すなわち**この埋め込みは「歯がある証明」ではなく、軸D の 2 ケースを別経路でも観測した記録である**。
+  変異は 4 通りとも確認後に戻し、`git diff -- src/main pom.xml` → **0 行**を確かめた。
+- **`YamlSeq#header(String k)` の `key(k)` は入力で区別できない等価変異であり、テストを足すべき穴ではない。**
+  Verification レビューが実行した変異のうち唯一生存したのがこれである。
+  **2026-08-14 に自分で再現した**（`header` の本文を `line(k + ":")` へ変異させて全件実行 →
+  `Tests run: 536, Failures: 0, Errors: 0, Skipped: 0`）。
+  ただし `header(...)` の実引数は**すべてコンパイル時定数かつ plain-safe**であるため、
+  クォートの有無が出力に現れる入力が存在しない。出典（2026-08-14 実行）:
+
+  ```sh
+  cd /home/tie303177/work/nablarch/nablarch-testing-converter
+  grep -rho "\.header([^)]*)" src/main/java/nablarch/test/tool/converter/yaml/ | sort | uniq -c
+  grep -rho 'emitMap(sb, entry, "[a-z_]*"\|emitFlowList(sb, item, "[a-z_]*"' \
+    src/main/java/nablarch/test/tool/converter/yaml/ | sort | uniq -c
+  ```
+
+  1 つ目の出力は `.header("records")` 1 ／ `.header("rows")` 1 ／ `.header(keyName)` 2 の **4 箇所**。
+  2 つ目が `keyName` の実引数で、`"directives"` 2 ／ `"fw_header"` 1 ／ `"fields"` 1 ／ `"rows"` 1 の
+  **5 箇所ともリテラル**である。**将来のレビュアはこの検証をやり直さなくてよい。**
 - **`write` が複数セクションを書き出す順序はテストで固定していない。**
   ファイルシステム上に順序が現れないためである（`writesOneYamlFilePerSectionWhenContainerHasMultipleSections` が
   固定しているのは「セクション名 → 中身」の対応であって、書き出しの順ではない）。

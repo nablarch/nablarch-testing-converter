@@ -54,8 +54,9 @@ import org.junit.rules.TemporaryFolder;
  * A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}）が
  * #18 以来 ✅ と判定されていながら実際は 🔺 だったことが判明したため、3 件を追加した。</b>
  * あわせて、キーのクォート判定（{@code YamlFormatWriter#isPlainSafeKey}）が特殊文字集合の
- * ほとんどについて未固定だったため 1 件を追加した。経緯は各メソッドの Javadoc と
- * {@code inventory.md} §4.1-2 の軸A 表にある。
+ * ほとんどについて未固定だったため 1 件を、軸D の D4-02／D4-08 を {@code YamlFormatWriter#emitMap}
+ * 経路でも観測するため 1 件を追加した。経緯は各メソッドの Javadoc と
+ * {@code inventory.md} §4.1-2 の軸A 表・「軸D の測定経路」にある。
  * </p>
  *
  * <p>
@@ -84,9 +85,6 @@ import org.junit.rules.TemporaryFolder;
  * @author kiyobot
  */
 public class YamlFormatWriterModelTest {
-
-    /** {@link YamlFormatWriter} が付ける拡張子。 */
-    private static final String EXTENSION = ".yaml";
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
@@ -200,8 +198,12 @@ public class YamlFormatWriterModelTest {
      * <b>値は {@code "true"}（真偽値に見える文字列）と {@code "2026-08-07"}（日付に見える文字列）である。</b>
      * レコード断片（{@code records[].rows}）経路は {@code YamlFormatWriter#rowFlow} を通り、
      * {@code setup_tables} の {@code rows} 経路（{@code YamlFormatWriterScalarTest} が測っている経路）とは
-     * 別の呼び出し元である。素の値（{@code "v"} など）だけを置いていると、この経路でだけ
-     * クォートを落とす変異を入れても 1 件も落ちない（#25 レビューで実測した生存変異）。
+     * 別の呼び出し元である。したがって軸D の D4-02／D4-08 の記法が<b>この経路でも</b>
+     * アサートされている状態を作るために、素の値（{@code "v"} など）でなくこの 2 値を置いてある。
+     * <b>これが示すのは「その 2 値がこの経路でアサートされている」ことまでである</b> ——
+     * 当初版（素の値）では「{@code rowFlow} がこの 2 値だけ非クォートで書く」変異が生存したが、
+     * 条件を付けない「{@code rowFlow} からクォートを外す」変異なら当初版でも既存テストが落ちる。
+     * 詳細は {@code inventory.md} §4.1-2 の「軸D の測定経路」にある。
      * フィールド名の並び {@code flag} → {@code date} は辞書順の逆である。
      * </p>
      *
@@ -500,7 +502,7 @@ public class YamlFormatWriterModelTest {
      * @throws IOException 読めなかった場合
      */
     private static String read(File dir, TestDataSection section) throws IOException {
-        Path file = new File(dir, section.getName() + EXTENSION).toPath();
+        Path file = new File(dir, section.getName() + YamlFixture.EXTENSION).toPath();
         assertTrue("書き出されていること: " + file, Files.exists(file));
         return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
     }
@@ -530,18 +532,19 @@ public class YamlFormatWriterModelTest {
      * </p>
      *
      * <p>
-     * <b>ディレクティブの値を {@code "true"}（真偽値に見える文字列）と {@code "2026-08-07"}（日付に見える文字列）に
-     * してある。</b>{@code YamlFormatWriter#emitMap} は {@code directives} ／ {@code fw_header} 専用の
-     * 出力経路であり、{@code YamlFormatWriterScalarTest} が測っている {@code setup_tables} の {@code rows} 経路とは
-     * 別の呼び出し元である。素の値（{@code "UTF-8"} など）だけを置いていると、この経路でだけ
-     * クォートを落とす変異を入れても 1 件も落ちない（#25 レビューで実測した生存変異）。
+     * <b>ディレクティブのキーと値は NTF のテストデータとして実在する組み合わせにしてある</b>
+     * （{@code file-type: "Fixed"} ／ {@code text-encoding: "UTF-8"} は
+     * {@code YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndOmittedLength} や実サンプル
+     * {@code SampleConversionTest/.../testNormalEnd.yaml} に現れる形である）。
+     * {@code emitMap} 経路で真偽値風・日付風の値がクォートされることは、記法を主張する専用のメソッド
+     * {@link #quotesBooleanAndDateLookingValuesInFwHeader} が固定する。
      * </p>
      */
     @Test
     public void writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "true", "file-type", "2026-08-07"),
+                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8", "file-type", "Fixed"),
                 Collections.<RecordLayout>emptyList());
 
         // When / Then
@@ -550,8 +553,53 @@ public class YamlFormatWriterModelTest {
                 + "  - path: \"n.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    directives:\n"
-                + "      text-encoding: \"true\"\n"
-                + "      file-type: \"2026-08-07\"\n"));
+                + "      text-encoding: \"UTF-8\"\n"
+                + "      file-type: \"Fixed\"\n"));
+    }
+
+    /**
+     * Given: 真偽値に見える値と日付に見える値を持つ {@code fw_header} のメッセージブロック。
+     * When : {@code serialize}。
+     * Then : どちらの値もダブルクォート付きで書かれる。
+     *
+     * <p>
+     * 担保する軸要素: D4-02（{@code "true"}）／D4-08（{@code "2026-08-07"}）を
+     * <b>{@code YamlFormatWriter#emitMap} 経路で</b>。同メソッドは {@code directives} と
+     * {@code fw_header} の 2 箇所から呼ばれる唯一の出力経路であり、
+     * {@code YamlFormatWriterScalarTest} が軸D を測っている {@code setup_tables} の {@code rows} 経路
+     * （{@code YamlSeq#prop}）とは別の呼び出し元である。
+     * </p>
+     *
+     * <p>
+     * {@code fw_header} を選んだのは、フィールド名が利用者定義であり
+     * <b>再送フラグ・送信日付という実在しうる組み合わせで真偽値風・日付風の値を置ける</b>ためである
+     * （{@code directives} のキーは {@code file-type} ／ {@code text-encoding} など語彙が決まっており、
+     * 日付を取るものが無い）。フィールド名の並び {@code resendFlag} → {@code sendDate} は辞書順の逆である。
+     * </p>
+     *
+     * <p>
+     * <b>本メソッドが示すのは「この 2 値がこの経路でアサートされている」ことまでである。</b>
+     * {@code emitMap} からクォートを外す変異（条件なし）は本メソッドが無くても既存テストが捉える。
+     * 粒度の議論は {@code inventory.md} §4.1-2 の「軸D の測定経路」にある。
+     * </p>
+     */
+    @Test
+    public void quotesBooleanAndDateLookingValuesInFwHeader() {
+        // Given
+        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "RM01",
+                map("text-encoding", "UTF-8"),
+                map("resendFlag", "true", "sendDate", "2026-08-07"),
+                Collections.<RecordLayout>emptyList());
+
+        // When / Then
+        assertThat(serialize(block), is(""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"UTF-8\"\n"
+                + "    fw_header:\n"
+                + "      resendFlag: \"true\"\n"
+                + "      sendDate: \"2026-08-07\"\n"));
     }
 
     // ------------------------------------------------------------------ キーのクォート
@@ -608,23 +656,65 @@ public class YamlFormatWriterModelTest {
      * <b>行全体が YAML コメント化し、データ行が黙って消える</b>。
      * あわせて JaCoCo で未到達だった「キーに制御文字を含む」枝もここで閉じる。
      * </p>
+     *
+     * <p>
+     * <b>本メソッドは「1 ケース 1 {@code @Test}」の規約から意図して逸脱している。</b>
+     * 規約は {@code XlsFormatWriterInvalidOutputTest} の F3-04 節と
+     * {@code XlsFormatWriterCellTypeTest} のコメントにあり、その理由は
+     * 「ループで束ねると最初の 1 文字が落ちた時点で残りが実行されず、どの文字で挙動が違うのかが
+     * 分からなくなるため」である。ここでループにしてよいと判断した根拠は 2 つある。
+     * </p>
+     *
+     * <ol>
+     *   <li><b>20 ケースは 1 つの振る舞いである。</b>いずれも
+     *       {@code YamlFormatWriter#isPlainSafeKey} の同一の判定 1 つ
+     *       （特殊文字集合の {@code indexOf} と {@code c < 0x20} の制御文字ガード）を通り、
+     *       通れば一律に {@code q(k)} でクォートされる。Xls 側の禁止文字 7 件のように
+     *       <b>文字ごとに違うメッセージ・違う挙動</b>（例外になる／切り詰めで黙って書けてしまう）を
+     *       持つわけではない。</li>
+     *   <li><b>失敗を集約したので規約の理由が成立しない。</b>ループ内では判定するだけで、
+     *       アサートはループ後に 1 回だけ行う。したがって 1 件目が落ちても残り 19 ケースは実行され、
+     *       失敗メッセージには落ちた全ケースが出る。</li>
+     * </ol>
+     *
+     * <p>この逸脱は {@code inventory.md} §4.1-2 にも記録してある。</p>
      */
     @Test
     public void quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter() {
+        List<String> failures = new ArrayList<>();
         for (String[] pair : KEYS_REQUIRING_QUOTES) {
             // Given
             FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "k.dat",
                     FileDataBlock.FileType.FIXED, map(pair[0], "v"),
                     Collections.<RecordLayout>emptyList());
-
-            // When / Then
-            assertThat("キー: " + pair[0], serialize(block), is(""
+            String expected = ""
                     + "setup_files:\n"
                     + "  - path: \"k.dat\"\n"
                     + "    type: \"fixed\"\n"
                     + "    directives:\n"
-                    + "      " + pair[1] + ": \"v\"\n"));
+                    + "      " + pair[1] + ": \"v\"\n";
+
+            // When（ここでは判定だけ。アサートはループ後に 1 回）
+            String actual = serialize(block);
+            if (!expected.equals(actual)) {
+                failures.add("キー " + pair[1] + " は " + escapeNewlines(expected)
+                        + " になるはずが " + escapeNewlines(actual) + " になった");
+            }
         }
+
+        // Then
+        assertThat(KEYS_REQUIRING_QUOTES.length + " ケース中 " + failures.size() + " 件が期待どおりに"
+                        + "クォートされなかった", failures, is(Collections.<String>emptyList()));
+    }
+
+    /**
+     * 失敗メッセージを 1 行に収めるため、改行をエスケープ表記へ置き換える。
+     *
+     * @param yaml YAML テキスト
+     * @return 改行を {@code \n} の 2 文字へ置き換えた文字列
+     */
+    private static String escapeNewlines(String yaml) {
+        return yaml.replace("\n", "\\n");
     }
 
     // ------------------------------------------------------------------ 書けるが読み戻せない形（YML-12）

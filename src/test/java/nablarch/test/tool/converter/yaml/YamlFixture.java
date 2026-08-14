@@ -42,6 +42,18 @@ final class YamlFixture {
     /** フィクスチャのリソース名（＝コンテナ名・セクション名になる）。 */
     static final String RESOURCE = "testdata";
 
+    /**
+     * YAML ファイルの拡張子。
+     *
+     * <p>
+     * 本フィクスチャが書き出すファイルの拡張子であると同時に、{@link YamlFormatWriter} が
+     * 出力ファイルに付ける拡張子でもある。辺④の書き出しテスト
+     * （{@code YamlFormatWriterModelTest} ／ {@code YamlFormatWriterInvalidOutputTest}）が
+     * 同じ定数を各クラスで重複定義していたため、ここへ寄せた。
+     * </p>
+     */
+    static final String EXTENSION = ".yaml";
+
     private YamlFixture() {
     }
 
@@ -69,7 +81,7 @@ final class YamlFixture {
      * @return 中間モデル
      */
     static TestDataContainer read(Path dir, String yamlText) {
-        Path file = dir.resolve(RESOURCE + ".yaml");
+        Path file = dir.resolve(RESOURCE + EXTENSION);
         if (Files.exists(file)) {
             throw new IllegalStateException("fixture already written in this test: " + file
                     + " — 同一テストメソッド内の 2 回目の read はローダのキャッシュが 1 回目の結果を返すため、"
