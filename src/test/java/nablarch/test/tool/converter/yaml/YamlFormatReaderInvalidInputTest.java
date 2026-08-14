@@ -30,7 +30,6 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import com.networknt.schema.ValidationMessage;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -913,16 +912,23 @@ public class YamlFormatReaderInvalidInputTest {
      * Given: {@code record-separator} をスキーマ description が推奨するリテラル記法
      *        （ダブルクォート文字列内のエスケープシーケンス {@code "\r\n"}）で書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>例外にならず</b>、中間モデルの {@code record-separator} は<b>空文字</b>になる（値が消える）。
+     * Then : <b>例外にならず</b>、中間モデルの {@code record-separator} はシンボル {@code "NONE"} になる。
      *
      * <p>
-     * 本体 {@code DataFile#setDirective} が値へ {@code String#trim()} を掛けるため、
-     * 制御文字だけの値は空になる。{@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * 記法が定めるのはシンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意の
+     * リテラル文字列である（{@code testdata_notation.rst:945-946}）。中間モデルには辺①
+     * （{@code XlsFormatReader#normalizeDirectiveValue}）と同じ逆正規化を通した値を入れる。
+     * </p>
+     *
+     * <p>
+     * <b>書いた改行そのものは本体で失われる。</b>本体 {@code DataFile#setDirective} が
+     * 値へ {@code String#trim()} を掛けるため、制御文字だけの値は converter へ届く前に空になる。
+     * 空を {@code NONE} と読むのは辺①と同じ規則である。改行が消えること自体は本リポジトリの外
+     * （nablarch-testing）に原因があり、ここでは直せない。{@code coverage/issues.md} <b>YML-08</b>。
      * </p>
      */
     @Test
-    @Ignore("YML-08: record-separator のリテラル改行が空文字になる現状挙動を固定していた")
-    public void losesRecordSeparatorWrittenAsLiteralNewline() {
+    public void readsRecordSeparatorWrittenAsLiteralNewlineAsNoneSymbol() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_files:\n"
@@ -938,23 +944,25 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
-        assertThat("書いた改行が消えて空文字になる", block.getDirectives().get("record-separator"), is(""));
+        assertThat("本体の trim() で空になった値を、辺①と同じ規則でシンボルへ戻す",
+                block.getDirectives().get("record-separator"), is("NONE"));
     }
 
     /**
      * Given: {@code record-separator} をシンボル記法 {@code "CRLF"} で書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : 中間モデルには<b>シンボルではなく実際の改行</b>（{@code "\r\n"}）が入る。
+     * Then : 中間モデルにも<b>シンボルのまま</b>（{@code "CRLF"}）入る。
      *
      * <p>
-     * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）は実改行をシンボルへ逆正規化するが、
-     * 辺②（{@code YamlFormatReader#toStringDirectives}）は素通しである。すなわち同じ入力表記が
-     * 辺①と辺②で別の中間モデル値になる。{@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * 本体の器は {@code LineSeparator.evaluate} でシンボルを実改行へ変換するが、
+     * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）も辺②
+     * （{@code YamlFormatReader#toStringDirectives}）も同じ逆正規化でシンボルへ戻すため、
+     * 同じ入力表記が同じ中間モデル値になる。記法の出典は {@code testdata_notation.rst:1114}
+     * （{@code record-separator CRLF}）。{@code coverage/issues.md} <b>YML-08</b>。
      * </p>
      */
     @Test
-    @Ignore("YML-08: シンボル CRLF が実改行のまま中間モデルへ入る（辺①と非対称な）現状挙動を固定していた")
-    public void readsRecordSeparatorSymbolAsActualNewline() {
+    public void readsRecordSeparatorSymbolAsSymbol() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_files:\n"
@@ -970,7 +978,7 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
-        assertThat(block.getDirectives().get("record-separator"), is("\r\n"));
+        assertThat(block.getDirectives().get("record-separator"), is("CRLF"));
     }
 
     /**
@@ -1078,14 +1086,14 @@ public class YamlFormatReaderInvalidInputTest {
      * Given: {@code field-separator} を<b>バックスラッシュと {@code t} の 2 文字</b>で書いた可変長ファイル
      *        （YAML のシングルクォート記法 {@code '\t'}。エスケープが働かないためリテラル 2 文字になる）。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : 器がタブ 1 文字へ変換し、中間モデルには長さ 1 のタブが入る。
+     * Then : 器がタブ 1 文字へ変換したうえで、中間モデルには辺①と同じ 2 文字記法（{@code \t}）が入る。
      *
      * <p>
      * <b>{@link #failsWhenFieldSeparatorIsWrittenAsActualTab} との切り分けである。</b>
      * 実タブ 1 文字を渡すと器の {@code trim()} で失われて例外になるのに対し、
      * 2 文字記法（スキーマの description が推奨する形）は通る。
-     * YML-08 の record-separator 側が {@code losesRecordSeparatorWrittenAsLiteralNewline} と
-     * {@code readsRecordSeparatorSymbolAsIs} の対で書かれているのに合わせ、
+     * YML-08 の record-separator 側が {@code readsRecordSeparatorWrittenAsLiteralNewlineAsNoneSymbol} と
+     * {@code readsRecordSeparatorSymbolAsSymbol} の対で書かれているのに合わせ、
      * field-separator 側にも「通る側」を置く。
      * </p>
      *
@@ -1108,8 +1116,8 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
-        assertThat("2 文字記法はタブ 1 文字へ変換される",
-                block.getDirectives().get("field-separator"), is("\t"));
+        assertThat("器はタブ 1 文字へ変換するが、中間モデルへは 2 文字記法へ戻して入れる",
+                block.getDirectives().get("field-separator"), is("\\t"));
     }
 
     // ------------------------------------------------------------------ YML-10 カラム名の大小衝突

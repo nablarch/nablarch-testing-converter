@@ -474,21 +474,12 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 本体ディレクティブ値を、YAML へ書き出す表現（仕様 DR-09/DR-10 のシンボル）へ逆正規化する。
-     * 本体は record-separator を LineSeparator.evaluate で実改行（\r\n 等）に、field-separator のタブを
-     * 実タブに変換済みのため、そのまま toString() すると本体 setDirective の trim() で失われる。
-     * 書き出し時にシンボル名（CRLF/LF/CR/NONE・\\t）へ戻すことで往復一致させる。
+     * 区切り文字（record-separator／field-separator）の逆正規化は辺②（YamlFormatReader）と共有する
+     * {@link DirectiveUtil#normalizeSeparator} が行う。それ以外のキーは QuotationTrimmer 記法を剥がす。
      */
     private static String normalizeDirectiveValue(String key, String value) {
-        if ("record-separator".equals(key)) {
-            if ("\r\n".equals(value)) return "CRLF";
-            if ("\n".equals(value)) return "LF";
-            if ("\r".equals(value)) return "CR";
-            if (value.isEmpty()) return "NONE";
-            return value;
-        }
-        if ("field-separator".equals(key)) {
-            if ("\t".equals(value)) return "\\t";
-            return value;
+        if ("record-separator".equals(key) || "field-separator".equals(key)) {
+            return DirectiveUtil.normalizeSeparator(key, value);
         }
         // ディレクティブ値も本体 Excel 実行経路では readTestData の interpret により QuotationTrimmer が
         // 適用される（例: quoting-delimiter のセル値 """ は " に解釈される）。変換器はインタープリタが

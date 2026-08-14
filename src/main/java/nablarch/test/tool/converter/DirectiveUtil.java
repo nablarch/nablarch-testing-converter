@@ -44,6 +44,48 @@ public final class DirectiveUtil {
     }
 
     /**
+     * 区切り文字ディレクティブ（{@code record-separator}／{@code field-separator}）の値を、
+     * 記法どおりの表現（シンボル／エスケープ 2 文字）へ逆正規化する。
+     * <p>
+     * 本体の器は {@code record-separator} を {@code LineSeparator.evaluate} で実改行（{@code \r\n} 等）へ、
+     * {@code field-separator} の 2 文字記法を実タブへ変換して保持する。一方、記法が定めるのは
+     * シンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意のリテラル文字列
+     * （{@code testdata_notation.rst:945-946}）と、タブを表す {@code field-separator=\t}
+     * （{@code testdata_notation.rst:1078}）である。実制御文字のまま中間モデルへ入れると、
+     * 書き出した値を本体が読み戻せない（{@code DataFile#setDirective} の {@code trim()} で失われる）。
+     * </p>
+     * <p>
+     * 辺①（Excel）と辺②（YAML）で同じ入力表記が同じ中間モデル値になるよう、両者から呼ぶ
+     * （{@code issues.md} YML-08）。区切り文字以外のキーは値をそのまま返す。
+     * </p>
+     *
+     * @param key   ディレクティブキー
+     * @param value 文字列化済みのディレクティブ値（non-null）
+     * @return 逆正規化後の値
+     */
+    public static String normalizeSeparator(String key, String value) {
+        if ("record-separator".equals(key)) {
+            if ("\r\n".equals(value)) {
+                return "CRLF";
+            }
+            if ("\n".equals(value)) {
+                return "LF";
+            }
+            if ("\r".equals(value)) {
+                return "CR";
+            }
+            if (value.isEmpty()) {
+                return "NONE";
+            }
+            return value;
+        }
+        if ("field-separator".equals(key)) {
+            return "\t".equals(value) ? "\\t" : value;
+        }
+        return value;
+    }
+
+    /**
      * キーと文字列値を受け取り、最終的な文字列値へ変換するインタフェース。
      */
     public interface ValueMapper {
