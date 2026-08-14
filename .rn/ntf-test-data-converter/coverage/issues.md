@@ -1236,14 +1236,17 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 
 ---
 
-## #24 修正ラウンド 2（スキーマの自由度の掃引）で記録した課題
+## #24 スキーマの自由度の掃引で記録した課題
 
 **本節は 2026-08-14 の 2 巡目レビュー指摘（「軸の枠に沿って埋める作り方では拾えない壊れ方が残っている」）を受けて
 実施した掃引の結果である。** 掃引の手順と、列挙したスキーマ上の自由度の一覧は
 `inventory.md` §2.1-2 の「開示」に載せた（どこまで見たか・見ていない範囲もそこに書いてある）。
+**掃引はその後 3 巡目レビュー指摘を受けて項目 24〜26 まで広げ、そこで YML-09 を見つけた**（同じ掃引の続きであるため
+節を分けずに本節へ入れている）。
 
-**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08）を先に置き、
-loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない。
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08・YML-09）を先に置き、
+loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない
+（YML-09 は最後に見つかったが検出できない側であるため YML-07 より前に来る）。
 既出の YML-01（**変換時には**検出できない）・YML-02・YML-03（検出できない）もすべて検出できない側であるため、
 本節を後ろに置くことは並び順の原則に反しない（ID 昇順と発見順が一致しているだけである）。
 
@@ -1457,6 +1460,63 @@ loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見�
   読み戻しで (a) の経路に入る（＝空文字になる）ことが予想されるが、**実行して確かめていない**。
   #25 以降で確認すること。
 - 判断: **仕様として不適切**。修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-09 同じ `group_id` のエントリが離れて書かれていると、ブロックがグループの初出順にまとめ直され原文の記述順と食い違う（影響度 中・**検出できない**）
+
+| 入力（1 ファイルに 3 セクション。`group_id` を `g1` → `g2` → `g1` と交互に書く） | 中間モデルへ入る結果 | 担保テスト |
+|---|---|---|
+| `setup_tables`: `T1`(g1) / `T2`(g2) / `T3`(g1) | ブロックは `T1`, **`T3`**, `T2` の順（原文は `T1`, `T2`, `T3`） | `YamlFormatReaderRealFileTest#reordersBlocksByFirstAppearanceOfGroupIdFromRealYaml` |
+| `setup_files`: `a.dat`(g1) / `b.dat`(g2) / `c.dat`(g1) | ブロックは `a.dat`, **`c.dat`**, `b.dat` の順 | 同上 |
+| `response_body_messages`: `M1`(g1) / `M2`(g2) / `M3`(g1) | ブロックは `M1`, **`M3`**, `M2` の順 | 同上 |
+
+**値そのものは失われない**（`T3` の行は `[["3"]]`、`T2` の行は `[["2"]]` のまま。入れ替わるのは並びだけ）。
+例外にも警告にもならない。
+
+- **この入力はスキーマ上の仕様内である。** セクション配列（`setup_tables` ／ `setup_files` ／
+  `response_body_messages`）はいずれも `{"type": "array", "items": {"$ref": ...}}` だけで、
+  同じ `group_id` のエントリが配列内で**連続することを要求するキーワードを持たない**。
+  それどころか description は「**同一 group_id を持つ複数エントリはすべて収集される**」と書いており、
+  離れて書かれることを前提にしている。
+
+  再現コマンド:
+
+  ```sh
+  python3 -c "
+  import json,zipfile,os
+  z=zipfile.ZipFile(os.path.expanduser('~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml/1.0.0-SNAPSHOT/nablarch-testing-yaml-1.0.0-SNAPSHOT.jar'))
+  s=json.loads(z.read('nablarch/test/ntf-testdata-yaml-schema.json').decode('utf-8'))
+  for k in ['setup_tables','setup_files','response_body_messages']:
+      p=s['properties'][k]
+      print(k, 'keys=', sorted(p.keys()), '| items=', json.dumps(p['items'], ensure_ascii=False))
+  print(s['properties']['setup_tables']['description'].splitlines()[0])
+  "
+  ```
+
+  出力の 3 行はいずれも `keys= ['description', 'items', 'type']` であり、順序に関するキーワードは無い。
+
+- 原因: **帰属は converter 側である。** `YamlFormatReader` はセクションを**グループ単位で**走査する。
+  テーブル系・ファイル系は `#formattedGroupsInOrder`、送信系は `#rawGroupsInOrder` が
+  グループ ID を**初出順で重複排除**して返し、`#addTableBlocks` ／ `#addFileBlocks` ／
+  `#addSendSyncBlocks` がそのグループごとにエントリを集めてブロックを作る。
+  結果として、原文でグループが交互に現れても、ブロックは「グループの初出順 × グループ内の記述順」に並ぶ。
+
+  再現コマンド:
+
+  ```sh
+  grep -n 'groups.contains(group)' src/main/java/nablarch/test/tool/converter/yaml/YamlFormatReader.java
+  ```
+
+  出力は 2 行（`formattedGroupsInOrder` と `rawGroupsInOrder` の重複排除）。
+
+- 影響: 辺③④はこの並びのまま書き出すため、**変換後の成果物ではエントリの並びが原文と入れ替わる**。
+  NTF は `group_id` で収集するため実行結果は変わらず、変換後にテストを流しても通ってしまう。
+  入力と出力を目で突き合わせない限り気づけない。
+- **#15 との関係**: 本リポジトリは並びの保持を変換の正しさとして扱ってきた
+  （steering #15「LIST_MAP 列順保持修正」は列順がアルファベット順になることを不具合として直した）。
+  同じ基準を当てれば、エントリの並びが変わることも「変換は忠実」として片付けられない。
+- 判断: **仕様として不適切**（あるべき姿は原文の記述順を保つことである。グループ単位の走査は
+  器へ渡す単位の都合であって、出力の並びを決める理由にはならない）。
+  修正はこの作業では行わない（`src/main` 無変更）。
 
 ### YML-07 長さ省略記法 `"-"` は `text-encoding` を書かないと手掛かりの無い `NullPointerException` になる（影響度 低・loud に失敗するため検出できる）
 

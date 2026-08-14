@@ -730,7 +730,8 @@ public class YamlFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * 原因は {@code YamlFormatReader#formattedGroupsInOrder} がグループを初出順に重複排除し、
+     * 原因は、テーブル系・ファイル系は {@code YamlFormatReader#formattedGroupsInOrder} が、
+     * 送信系は {@code #rawGroupsInOrder} が、それぞれグループを初出順に重複排除し、
      * {@code #addTableBlocks} ／ {@code #addFileBlocks} ／ {@code #addSendSyncBlocks} が
      * <b>グループ単位で</b>ブロックを作ることである。
      * {@code coverage/issues.md} に <b>YML-09</b> として記録した（{@code src/main} は無変更）。
