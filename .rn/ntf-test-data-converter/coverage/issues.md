@@ -126,9 +126,9 @@ XLS-01 はセル書式に起因する課題であり、次の前提を持つ（�
 
 ### XLS-01 表示形式 `@` の数値セルが `double` の文字列表現になる（影響度 高・値が変わるため後段のテスト失敗で検出できる）
 
-| 入力セル | 中間モデルへ入る値 | 担保テスト |
+| 入力セル | 中間モデルへ入る値 | テスト |
 |---|---|---|
-| 数値 `1`・**表示形式 `@`（文字列書式）** | `"1.0"` | `XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString` |
+| 数値 `1`・**表示形式 `@`（文字列書式）** | `"1.0"` | `XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString`（**#25.5 以降は担保ではなく実挙動の記録**。下の判定を参照） |
 
 - 原因: `PoiXlsReader#readOneLine` の `cell.toString()` が、数値セルに対して
   POI の `XSSFCell#toString()` → `getNumericCellValue() + ""` を返す。表示形式は参照されない。
@@ -294,11 +294,11 @@ converter の入出力は **NTF が実行できるテストデータ**に限る�
   記法が明文で定めている読み飛ばしである。マーカー列がフィールドとして読まれないことも
   `notation:1267`「メッセージボディの各行の先頭要素は、フィールドとしては読み込まれないラベル列である」のとおり。
 
-### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中）
+### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中・**#25.5 で修正済み**）
 
-| 入力 | 中間モデルへ入る値 | 担保テスト |
-|---|---|---|
-| `SETUP_FIXED=f.dat` の名前行 先頭セル（レコード種別）が空白セル | `RecordLayout.recordType` ＝ `""` | `XlsFormatReaderRealFileTest#readsOmittedRecordTypeAsEmptyStringFromRealBook` |
+| 入力 | 中間モデルへ入る値（#25.5 前） | 中間モデルへ入る値（#25.5 後） | 担保テスト |
+|---|---|---|---|
+| `SETUP_FIXED=f.dat` の名前行 先頭セル（レコード種別）が空白セル | `RecordLayout.recordType` ＝ `""` | `RecordLayout.recordType` ＝ **`null`** | `XlsFormatReaderRealFileTest#readsOmittedRecordTypeAsNullFromRealBook`（旧名 `readsOmittedRecordTypeAsEmptyStringFromRealBook`） |
 
 - 中間モデル `RecordLayout` の Javadoc（L26/L36）は省略時の表現を **`null`** と定めており、
   YAML 経路（辺②）は実際に `null` を入れる
@@ -332,11 +332,17 @@ converter の入出力は **NTF が実行できるテストデータ**に限る�
 - Excel へ書き戻す際は `XlsFormatWriter` L275 の `nullToEmpty` により元と同じ空セルへ戻るため、
   Excel→YAML→Excel の往復自体は安定する。しかし同じ「省略」が入力形式によって 2 通りに表現され、
   YAML 同士の比較・スキーマ上の扱いが揃わない。
-- 判断: **仕様として不適切**（省略の表現が経路間で非対称）。修正はこの作業では行わない。
+- 判断: **仕様として不適切**（省略の表現が経路間で非対称）。**この「判断」は #19〜#25 の時点のもので、
+  当時は修正しない前提だった。#25.5 で方針が変わり、下の判定のとおり修正済みである。**
 - NTF 仕様としての判定: **要対応**。中間モデルの契約 `RecordLayout.java:26`「レコード種別（省略時は `null`）」に
   反する（辺①だけが `""` を入れ、辺②は `null` を入れる）。**#25.5 で修正済み（5721ecd）**。
   `XlsFormatReader` が空のレコード種別セルを `null` として中間モデルへ入れるようにし、辺②と揃えた。
-- 帰結: 辺①では軸C の C-16「省略（`null`）」は**到達不能**である。
+- 帰結: 辺①では軸C の C-16「省略（`null`）」は #25.5 まで**到達不能**だった。
+  修正後は到達可能になり、`inventory.md` §1.2-2／§1.3 の C-16 を「担保済み」へ移した。
+  上の変換後 YAML と `record_type: ""` の記述は **#25.5 前**の実測である。修正後は
+  `YamlFormatWriter` L275 の `if (record.getRecordType() != null)` により `record_type` キー自体が出ない
+  （辺②由来の省略と同じ形になる）。**この 1 点はソースを読んで判断したものであり、変換後 YAML を
+  取り直した実測ではない**（`readsOmittedRecordTypeAsNullFromRealBook` が固定しているのは辺①の読み取り結果まで）。
 
 ### XLS-07 器が注入する既定ディレクティブが、Excel に書かれていなくても中間モデルに現れる（影響度 低・記録のみ）
 
@@ -613,25 +619,27 @@ loud に失敗する／記録のみのもの（XLS-11・XLS-14）を後に置く
 それまでは手作業のダンプでしか確かめておらず、テストは読み戻し値しか見ていなかったため、
 POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の「区間の帰属」だけが誤りになる**状態だった。
 
-### XLS-16 31 文字を超えるセクション名が黙って 31 文字へ切り詰められる（影響度 中・**衝突しない限り検出できない**）
+### XLS-16 31 文字を超えるセクション名が黙って 31 文字へ切り詰められる（影響度 中・**衝突しない限り検出できない**・**#25.5 で修正済み**）
 
-| 入力 | 書き出されるブック | 担保テスト |
-|---|---|---|
-| セクション名 `a` × 32 文字 | シート名は `a` × **31 文字**。例外も警告も出ない。元の名前では `Workbook#getSheet` が `null` を返し、変換ツール自身の読み戻し（`XlsFormatReader`）も `IllegalArgumentException: sheet not found.` になる | `XlsFormatWriterInvalidOutputTest#truncatesSheetNameLongerThanExcelLimitSilently` |
-| セクション名 `a` × 31 文字（上限ちょうど） | そのまま書かれる（切り詰めなし）。元の名前でシートを引ける | `#writesSheetNameOfExcelLimitLengthAsIs` |
-| 先頭 31 文字が同じで 32 文字目だけ異なる 2 セクション | `IllegalArgumentException: The workbook already contains a sheet of this name`（衝突したときだけ失敗する） | `#failsWhenTruncatedSheetNamesCollide` |
-| 大文字小文字だけが違う 2 セクション（`abc` と `ABC`。どちらも 3 文字で切り詰めは走らない） | 同上（`The workbook already contains a sheet of this name`）。ブックは作られない | `#failsWhenSheetNamesDifferOnlyInCase` |
-| セクション名 `a` × 31 文字 ＋ `/`（32 文字。禁止文字が index 31） | **例外にならず**、`a` × 31 文字のシートを持つブックが書き出される（切り詰めが禁止文字検査を無効化する） | `#writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation` |
-| セクション名 `a` × 30 文字 ＋ `/a`（32 文字。禁止文字が index 30） | `IllegalArgumentException: Invalid char (/) found at index (30) in sheet name 'aaa…a/'`。**メッセージのシート名は切り詰め後の 31 文字**である | `#rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation` |
+| 入力 | 書き出されるブック（**#25.5 前**） | 書き出されるブック（**#25.5 後**） | 担保テスト（#25.5 後の名前） |
+|---|---|---|---|
+| セクション名 `a` × 32 文字 | シート名は `a` × **31 文字**。例外も警告も出ない。元の名前では `Workbook#getSheet` が `null` を返し、変換ツール自身の読み戻し（`XlsFormatReader`）も `IllegalArgumentException: sheet not found.` になる | `IllegalArgumentException: シート名が Excel の上限 31 文字を超えています。… sheetName='aaa…a', length=32`。**ブックは作られない** | `XlsFormatWriterInvalidOutputTest#rejectsSheetNameLongerThanExcelLimit`（旧名 `truncatesSheetNameLongerThanExcelLimitSilently`） |
+| セクション名 `a` × 31 文字（上限ちょうど） | そのまま書かれる（切り詰めなし）。元の名前でシートを引ける | 変わらない | `#writesSheetNameOfExcelLimitLengthAsIs` |
+| 先頭 31 文字が同じで 32 文字目だけ異なる 2 セクション | `IllegalArgumentException: The workbook already contains a sheet of this name`（衝突したときだけ失敗する） | 32 文字の時点で文字数超過として落ちるため、この入力は**衝突判定に到達しない**。重複判定は**同じ 31 文字のセクション名 2 つ**で担保し直した | `#failsWhenSameSheetNameOfLimitLengthIsUsedTwice`（旧名 `failsWhenTruncatedSheetNamesCollide`。入力も 31 文字 2 つへ変えてある） |
+| 大文字小文字だけが違う 2 セクション（`abc` と `ABC`。どちらも 3 文字で切り詰めは走らない） | 同上（`The workbook already contains a sheet of this name`）。ブックは作られない | 変わらない（31 文字以下なので文字数検査を通り、POI の `equalsIgnoreCase` 判定に到達する） | `#failsWhenSheetNamesDifferOnlyInCase` |
+| セクション名 `a` × 31 文字 ＋ `/`（32 文字。禁止文字が index 31） | **例外にならず**、`a` × 31 文字のシートを持つブックが書き出される（切り詰めが禁止文字検査を無効化する） | **文字数超過**で落ちる（禁止文字が切り詰めで消える前に弾かれる）。ブックは作られない | `#rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation`（旧名 `writesSheetNameWhoseForbiddenCharacterIsRemovedByTruncation`） |
+| セクション名 `a` × 30 文字 ＋ `/`（**31 文字**。禁止文字が index 30） | —（#25.5 前は 32 文字の `"a"×30 + "/a"` で検査していた。メッセージのシート名が切り詰め後の 31 文字になることが検査順序の裏づけだった） | `IllegalArgumentException: Invalid char (/) found at index (30) in sheet name 'aaa…a/'`。**メッセージのシート名は渡した名前そのもの**（31 文字なので切り詰めは起きない） | `#rejectsSheetNameWhoseForbiddenCharacterIsAtTheLastPosition`（旧名 `rejectsSheetNameWhoseForbiddenCharacterSurvivesTruncation`。入力も 31 文字へ変えてある） |
 
 - 原因: POI 3.8 の `XSSFWorkbook#createSheet(String)` が、31 文字を超える名前を `substring(0, 31)` で
   切り詰めてから `WorkbookUtil.validateSheetName` に掛ける（`javap -c` で逆アセンブルして確認。
   重複判定 `containsSheet` も両辺を 31 文字へ切り詰めて `equalsIgnoreCase` で比べるため、
   切り詰め後に同名になる 2 セクションはここで弾かれる）。
-  **引用したこの機構は切り詰め側・`equalsIgnoreCase` 側の両方を実測で押さえてある**:
-  切り詰め側は `#failsWhenTruncatedSheetNamesCollide`、`equalsIgnoreCase` 側は
-  `#failsWhenSheetNamesDifferOnlyInCase`（レビュー指摘・第 3 ラウンドで追加）。`XlsFormatWriter#build`（L126）は
-  `workbook.createSheet(section.getName())` をそのまま呼ぶだけで、長さを検査も報告もしない。
+  **引用したこの機構は #25.5 前の時点で切り詰め側・`equalsIgnoreCase` 側の両方を実測で押さえてあった**:
+  切り詰め側は当時の `#failsWhenTruncatedSheetNamesCollide`（先頭 31 文字が同じ 32 文字 2 つ）、
+  `equalsIgnoreCase` 側は `#failsWhenSheetNamesDifferOnlyInCase`（レビュー指摘・第 3 ラウンドで追加）。
+  **#25.5 で 32 文字超が `createSheet` に到達しなくなったため、切り詰め側の入力はもう作れない**
+  （同テストは同名 31 文字 2 つでの重複判定へ書き直した）。`XlsFormatWriter#build`（L126）は
+  #25.5 前は `workbook.createSheet(section.getName())` をそのまま呼ぶだけで、長さを検査も報告もしなかった。
 - 実測: 上表のとおり。切り詰めは**メモリ上のブックの時点で**起きている（`build` 直後の `getSheetName(0)` が
   既に 31 文字）。
 - 影響: YAML → Excel 変換で、長いセクション名が変換後のブックでは別名になる。値は失われないが
@@ -651,14 +659,17 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
   書き出される**（実測: `"a"×31 + "/"` → 例外なし・`a`×31 のシートを持つブックが生成）。
   「禁止文字なら必ず失敗するので気づける」という前提は成り立たない。
 - 判断: **仕様として不適切**（31 文字超は変換前に弾くか、少なくとも WARN で報せるべき）。
-  Excel の制約であり回避はできないため、黙って変えないことが要点である。修正はこの作業では行わない。
+  Excel の制約であり回避はできないため、黙って変えないことが要点である。**この「判断」は #19〜#25 の
+  時点のもので、当時は修正しない前提だった。#25.5 で方針が変わり、下の判定のとおり修正済みである**
+  （採ったのは「変換前に弾く」ほうである）。
 - NTF 仕様としての判定: **要対応**。`notation:588`「読み込み単位の名前（Excel 形式ではシート名、YAML 形式では
   ファイル名）と ID を指定して List 形式または Map 形式でデータを取得できる」のとおり**シート名は
   呼び出し側が渡す引き当てキー**であり、黙って別名へ変えれば呼び出し側から引けなくなる。
-  **#25.5 で修正済み（e80a4dd）**。`XlsFormatWriter` が `createSheet` の前に 31 文字超を検査して例外で落とす
+  **#25.5 で修正済み（e80a4dd）**。`XlsFormatWriter#build`（L128）が `createSheet`（L129）の**前に**
+  `requireValidSheetNameLength`（L150）を呼び、31 文字超を `IllegalArgumentException` で落とす
   （POI 3.8 の `XSSFWorkbook#createSheet` による `substring(0,31)` の前に置いたため、
   切り詰めが禁止文字検査を無効化する抜けも同時に閉じた）。
-- **修正するとしたら本リポジトリ内で完結する**（`XlsFormatWriter#build` にシート名の検査を足せばよい）。
+- **修正は本リポジトリ内で完結した**（`XlsFormatWriter` のみ。本体・yaml への変更はゼロ）。
 
 ### XLS-17 XML で表現できない制御文字が保存時に `?` へ黙って置換される（影響度 中・値が変わるため後段のテスト失敗で検出できる）
 
@@ -1144,11 +1155,11 @@ ID は発見順に振り、振り直さない。
   それはそもそも記法が認めていない書き方である。スカラー解決を行うのは yaml 側の `YamlLoader` であり
   converter は関与しない。
 
-### YML-02 送信系で `group_id` を省略したエントリがブロックごと黙って消える（影響度 中・**検出できない**）
+### YML-02 送信系で `group_id` を省略したエントリがブロックごと黙って消える（影響度 中・**検出できない**・**#25.5 で修正済み**）
 
-| 入力 | 中間モデルへ入る結果 | 担保テスト |
-|---|---|---|
-| `response_body_messages` に `group_id` 無しの `id: "DROP"` 1 件と `group_id: "g"` の `id: "KEEP"` 1 件 | ブロックは **1 件**（`KEEP` だけ）。`DROP` はブロックもレコードも中間モデルに現れない。**例外は出ない** | `YamlFormatReaderRealFileTest#dropsSendSyncEntryWithoutGroupIdFromRealYaml` |
+| 入力 | 中間モデルへ入る結果（**#25.5 前**） | 中間モデルへ入る結果（**#25.5 後**） | 担保テスト |
+|---|---|---|---|
+| `response_body_messages` に `group_id` 無しの `id: "DROP"` 1 件と `group_id: "g"` の `id: "KEEP"` 1 件 | ブロックは **1 件**（`KEEP` だけ）。`DROP` はブロックもレコードも中間モデルに現れない。**例外は出ない** | ブロックは **2 件**。`DROP` は**デフォルトグループ**（`getGroupId()` が空文字）のブロックとして残り、フィールド定義・データ行も保たれる。並びはデフォルトグループが先、`[g]` が後 | `YamlFormatReaderRealFileTest#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml`（旧名 `dropsSendSyncEntryWithoutGroupIdFromRealYaml`）／in-memory 経路は `YamlFormatReaderTest#readSendSync_entryWithoutGroupId_isReadAsDefaultGroup`（旧名 `readSendSync_entryWithoutGroupId_isDropped`） |
 
 - **この入力はスキーマ上の仕様内である。** `$defs.group_message_data.required` も
   `$defs.expected_request_message_data.required` も `["id","records"]` だけで、**`group_id` を要求していない**。
@@ -1177,35 +1188,41 @@ ID は発見順に振り、振り直さない。
   "
   ```
 
-- 原因: `YamlFormatReader#addSendSyncBlocks` は `rawGroupsInOrder(yaml, sectionKey)` を回してブロックを作る。
-  `rawGroupsInOrder` は `group_id` が **非 null のエントリだけ**を列挙するため、`group_id` の無いエントリは
-  どのグループにも属さず、ブロック生成のループに一度も入らない。
+- 原因（**#25.5 前**）: `YamlFormatReader#addSendSyncBlocks` は `rawGroupsInOrder(yaml, sectionKey)` を回して
+  ブロックを作る。`rawGroupsInOrder` は `group_id` が **非 null のエントリだけ**を列挙していた
+  （`if (group != null && !groups.contains(group))`）ため、`group_id` の無いエントリは
+  どのグループにも属さず、ブロック生成のループに一度も入らなかった。
   （`src/main/java/nablarch/test/tool/converter/yaml/YamlFormatReader.java` の `addSendSyncBlocks` と
-  `rawGroupsInOrder`。同メソッドの Javadoc は「`group_id` 必須」と書いているが、上のとおり
-  スキーマは必須にしていない。Javadoc の記述と一次情報が食い違っている。）
-- 実測: 上表のとおり。**例外にならない**（担保テストが固定している）。
+  `rawGroupsInOrder`。同メソッドの Javadoc は「`group_id` 必須」と書いていたが、上のとおり
+  スキーマは必須にしていない。Javadoc の記述と一次情報が食い違っていた。）
+- 修正（**#25.5**・36e94a4）: `rawGroupsInOrder` の `null` 除外をやめてデフォルトグループを `null` として列挙し、
+  `entriesForRawGroup` の突き合わせを `Objects.equals` に、整形済みグループ ID を
+  `rawGroup != null ? "[" + rawGroup + "]" : ""` に変えた。器側 `YamlTestCoreAdapter#readSendSyncMessages` も
+  `group_id` 省略エントリを拾えるようにしてある。Javadoc の「`group_id` 必須」も直した。
+- 実測: 上表のとおり。#25.5 前後とも**例外にならない**（担保テストが固定している）。
   なお XLS-10／XLS-13 が行っているような「WARNING 以上のログが 0 件」というアサートは本課題では
   行っていないため、**警告が 1 件も出ないことは未確認である**（`java.util.logging` のハンドラを
   付けていない）。「検出できない」の根拠は、例外にならずブロックが消えるという観測に置く。
-- 影響: 送信系で `group_id` を省略した（＝ id 直接指定で使うつもりの）エントリは、変換後の成果物から
-  ブロックごと消える。入力と出力を突き合わせない限り気づけない。
+- 影響（**#25.5 前**）: 送信系で `group_id` を省略した（＝ id 直接指定で使うつもりの）エントリは、変換後の成果物から
+  ブロックごと消えた。入力と出力を突き合わせない限り気づけなかった。
 - `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
   （送信系セクション自体が無い。`grep -rn 'expected_request_\|response_header_messages\|response_body_messages'
   src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
   ただし辺②の入力は本来**手書きの YAML** であり、対象PJの実データでの発現は未知である。
 - 判断: **仕様として不適切**（スキーマが仕様内と認める入力が黙って落ちる。少なくとも
-  「`group_id` 無しのエントリを drop した」と報せるべきである）。ただし本作業では修正しない
-  （`src/main` 無変更）。**修正するとしたら本リポジトリ内で完結する**（原因コードが `src/main` にあるため）。
+  「`group_id` 無しのエントリを drop した」と報せるべきである）。**この「判断」は #19〜#25 の時点のもので、
+  当時は修正しない前提だった。#25.5 で方針が変わり、下の判定のとおり修正済みである。**
+  **修正は本リポジトリ内で完結した**（原因コードが `src/main` にあったため）。
 - NTF 仕様としての判定: **要対応**。`notation:254`「グループIDを省略した場合は、グループIDを持たない
   データブロック（デフォルトグループ）が対象になる」＝**省略は仕様内の書き方**であり、ブロックごと落とすのは
   この明文に反する。**#25.5 で修正済み（36e94a4）**。`YamlFormatReader` が `group_id` 省略の送信同期エントリを
   デフォルトグループのブロックとして読むようにした。
 
-### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**）
+### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**・**未修正／nablarch-testing-yaml 側の修正待ち**）
 
 | 入力 | 中間モデルへ入る結果 | 担保テスト |
 |---|---|---|
-| `messages` に `record_type: "FW_HEADER"` のレコード 1 件だけ（`fw_header:` は書かない） | ブロックは生成されるが `records` **0 件**・`fwHeaderFields` **0 件**。書いたフィールド定義とデータ行が消える。**例外は出ない** | `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromRealYaml` |
+| `messages` に `record_type: "FW_HEADER"` のレコード 1 件だけ（`fw_header:` は書かない） | ブロックは生成されるが `records` **0 件**・`fwHeaderFields` **0 件**。書いたフィールド定義とデータ行が消える。**例外は出ない** | **現在この挙動を固定しているアクティブなテストは無い**（#25.5 で `dropsFwHeaderNamedRecordFromRealYaml` を、仕様どおりの期待値を書いた `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml`（`@Ignore("YML-03: yaml側の修正待ち")`）へ置き換えたため。観測は本表が唯一の記録である） |
 
 - **この入力はスキーマ上の仕様内である。** `$defs.record_fragment.properties.record_type` に `enum` は無く、
   その description は「メッセージング系（messages / expected_request_\* / response_\*）では NTF 内部で常に
@@ -1246,8 +1263,10 @@ ID は発見順に振り、振り直さない。
 
 - 実測: 上表のとおり。`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残ること、
   送信系（`response_body_messages`）でも同じく落ちることは、いずれも
-  `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
-  **1 件で両方とも固定している**（送信系に `FW_HEADER` ＋本文を 1 件ずつ置き、本文だけが残ることをアサート）。
+  #25.5 まで `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
+  **1 件で両方とも固定していた**（送信系に `FW_HEADER` ＋本文を 1 件ずつ置き、本文だけが残ることをアサート）。
+  **#25.5 で同テストは `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（`@Ignore`）へ置き換えたため、
+  現在この観測を固定しているアクティブなテストは無い。**
   **未固定なのは「送信系に `FW_HEADER` のみを置いた形」だけ**である（ブロックだけが残ることを
   プローブで確認済み。掃引表 項目 21）。
   YML-02 と同じく、警告が 1 件も出ないことは未確認である。
@@ -1259,20 +1278,22 @@ ID は発見順に振り、振り直さない。
 - `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
   （`grep -rn 'FW_HEADER' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
   対象PJの実データでの発現は未知である。
-- **3 経路で扱いが違う**（いずれも担保テストあり）:
+- **3 経路で扱いが違う**（いずれもテストあり。ただしメッセージ系・送信系は #25.5 以降 `@Ignore` の待機テストであり、
+  現状挙動を固定してはいない）:
 
   | 経路 | `record_type: "FW_HEADER"` のレコード | 担保テスト（`YamlFormatReaderRealFileTest#`） |
   |---|---|---|
   | ファイル系（`setup_files` ／ `expected_files`） | **残る** | `keepsFwHeaderNamedRecordInFileFromRealYaml` |
-  | メッセージ系（`messages`） | 落ちる | `dropsFwHeaderNamedRecordFromRealYaml` |
-  | 送信系（`response_body_messages` ほか） | 落ちる | `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` |
+  | メッセージ系（`messages`） | 落ちる | `keepsFwHeaderNamedRecordInMessageFromRealYaml`（**`@Ignore` の待機テスト**。仕様どおり「残る」を期待値に書いてあるので現状では赤。旧テスト `dropsFwHeaderNamedRecordFromRealYaml` を置き換えたもの） |
+  | 送信系（`response_body_messages` ほか） | 落ちる | `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（**同上**。旧テスト `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` を置き換えたもの） |
 
   `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks`）と
   送信系（`#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使うためである。
   同じ記法が置き場所によって残ったり消えたりする点も、作成者から見れば予測できない。
 - 判断: **仕様として不適切**（スキーマの description が「予約値はない」と明言する値を実装が予約値として扱い、
   黙ってデータを落とす）。**帰属は yaml 側**である（description を実装に合わせるか、実装から
-  `skipFwHeader` の特別扱いを外すかは yaml 側の判断）。本作業では修正しない（`src/main` 無変更）。
+  `skipFwHeader` の特別扱いを外すかは yaml 側の判断）。**#25.5 でも converter 側は無変更**であり、
+  下の判定のとおり待機テストを置いて yaml 側の修正を待っている。
 - NTF 仕様としての判定: **要対応**（ただし帰属は nablarch-testing-yaml 側）。本体スキーマ
   `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment.properties.record_type.description` が
   「可読性のために任意の名前を記述してよい。**FW_HEADER のような予約値はない**」と明言しているのに対し、
@@ -1382,7 +1403,7 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 | C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | **XLS-07** と同じ（本体 `DataFile` のコンストラクタが `file-type` を必ず注入する）。YAML で `directives` を 1 つも書かなくても空 Map にならない | `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage` |
 | C-17 `RecordLayout.fields` 空 | スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1。`fields: []` はスキーマ違反となり中間モデルへ到達しない | `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` |
 | C-20 `FieldDef.type` 省略（`null`） | スキーマ `$defs.field_def.required` が `type` を必須とする。型を書かないフィールド定義は中間モデルへ到達しない | `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` |
-| C-15 `MessageDataBlock.records` 空（**上の但し書きのとおり、この行だけ「要追加」からの移動ではない**） | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | 実 `.yaml` で `records` 0 件のブロックが**別経路で**生じることは `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromRealYaml` が示す（`record_type: FW_HEADER` のレコードだけを書くと器も原文も 0 件になる。`issues.md` **YML-03**）。ただしこれは仕様上の到達手段ではなく課題である |
+| C-15 `MessageDataBlock.records` 空（**上の但し書きのとおり、この行だけ「要追加」からの移動ではない**） | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | 実 `.yaml` で `records` 0 件のブロックが**別経路で**生じることは **YML-03**（`record_type: FW_HEADER` のレコードだけを書くと器も原文も 0 件になる）が示す。ただしこれは仕様上の到達手段ではなく課題であり、#25.5 で当該テストが `@Ignore` の待機テストへ置き換わったため、現在この観測を固定しているアクティブなテストは無い |
 
 **#23 の「未確認」への回答**: `issues.md` の「未確認（#23）」に
 「**XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認**」と残していた。
@@ -1599,7 +1620,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   変換ツールが何を書き出すかではない）。**上の「判断」（原文に存在しない組み合わせを作る＝仕様として不適切）と
   食い違う。** 器の「先着 1 件」に合わせるのが望ましいという主張は改善提案として残る。
 
-### YML-08 ディレクティブ値が `trim()` されるため、スキーマ description が推奨する記法が壊れる（影響度 中・**(a) は検出できない**／(b) は loud）
+### YML-08 ディレクティブ値が `trim()` されるため、スキーマ description が推奨する記法が壊れる（影響度 中・**(a) は検出できない**／(b) は loud・**#25.5 で修正済み**）
 
 **#25.5 で辺②を修正した（6c8d90e）。下表の「中間モデルへ入る結果」は 3 行とも改訂してある。**
 
@@ -1882,7 +1903,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 掲載順は本ファイルの原則どおり「検出できないものを上」である。2 件とも
 **変換時には検出できず、読み戻しのときに loud に失敗する**（値が黙って変わるものではない）。
 
-### YML-12 スキーマが禁じる形の中間モデルを渡すと、読み戻せない YAML が黙って書き出される（影響度 中・**変換時には検出できない**／読み戻し時に loud）
+### YML-12 スキーマが禁じる形の中間モデルを渡すと、読み戻せない YAML が黙って書き出される（影響度 中・**変換時には検出できない**／読み戻し時に loud・**#25.5 で修正済み**）
 
 `YamlFormatWriter` は本体スキーマ（yaml jar 内 `nablarch/test/ntf-testdata-yaml-schema.json`）を
 参照しない。以下の 4 つの形は書き出しに成功するが、生成された `.yaml` はスキーマ違反であり、
@@ -1890,13 +1911,15 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 | 入力（中間モデル） | 書き出される YAML | 読み戻し（違反キーワード・位置） | 担保テスト（`YamlFormatWriterModelTest#`） |
 |---|---|---|---|
-| `FileDataBlock.records` が空 | `records:` キーごと出ない | `required` ／ `$.setup_files[0]` | 記法: `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty` ／ 読み戻し: `failsToReadBackFileBlockWithoutRecords` |
+| `FileDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない ／ **#25.5 後**: `records: []` が出る | **#25.5 前**: `required` ／ `$.setup_files[0]` ／ **#25.5 後**: 読み戻せる（違反なし） | 記法: `writesEmptyRecordsListForFileBlockWithoutRecords`（旧名 `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`） ／ 読み戻し: `readsBackFileBlockWithEmptyRecords`（旧名 `failsToReadBackFileBlockWithoutRecords`） |
 | `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（記法は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
 | `RecordLayout.fields` が空 | `fields: []` | `minItems` ／ `$.setup_files[0].records[0].fields` | `failsToReadBackRecordWithoutFields`（記法は既存の `YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists`） |
 | `FieldDef.type` が `null` | `{name: "c1"}`（`type` を省略） | `required` ／ `$.expected_files[0].records[0].fields[0]` | `failsToReadBackFieldWithoutType`（記法は既存の `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`） |
 
-- 原因: 直列化は中間モデルの形をそのまま写す（`emitRecords` は空なら `records:` を出さず、
+- 原因（**#25.5 前**）: 直列化は中間モデルの形をそのまま写していた（`emitRecords` は空なら `records:` を出さず、
   `emitFlowList` は空なら `key: []` を出し、`fieldFlow` は `type` が `null` なら書かない）。
+  **#25.5 で `emitRecords` だけを直し、ファイルデータブロックに限り空でも `records: []` を出すようにした**
+  （メッセージ系は `records.minItems` ＝ 1 で `[]` も通らないため、従来どおりキーを出さない）。
   スキーマ側の該当箇所は次のとおりで、**`file_data` と `message_data` で `records` の扱いが違う**
   （2026-08-14 に jar 内の実スキーマを展開して確認した。導出コマンドは下記）。
 
@@ -1924,7 +1947,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
   - **1 件目（`FileDataBlock.records` 空）だけが「表現の食い違い」である。**
     `records` は必須だが `minItems` が 0 なので、**空配列 `records: []` と書けば通る**。
-    にもかかわらず辺④は空を「キーごと省略」で表すため落ちる。
+    にもかかわらず辺④は空を「キーごと省略」で表していたため落ちていた（**#25.5 で修正済み**）。
   - **2 件目（`MessageDataBlock.records` 空）は表現の問題ではない。**
     `message_data` は `records.minItems` ＝ 1 であり、`records: []` と書いても通らない。
     すなわちスキーマは「レコードを 1 件も持たないメッセージ」という形そのものを認めていない。
@@ -1956,7 +1979,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   **スキーマが形そのものを認めておらず `[]` を書いても読み戻せない**ため、ユーザー確定で対象外
   （steering Decisions「この 3 形は今回の対象外とし、記録のみのまま残す」）。
 
-  修正はこの作業では行わない（`src/main` 無変更）。
+  1 形目の修正は本リポジトリ内で完結した（`YamlFormatWriter` のみ）。
 
 ### YML-13 折り返しの起きるキーを書き出すと、YAML として読めないファイルになる（影響度 低・**変換時には検出できない**／読み戻し時に loud）
 
@@ -2004,7 +2027,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 - **軸D の 9 ケースのうち、テストで 1 経路（`setup_tables` の `rows`）でしか固定していないのは 7 ケースである。**
   `"true"`（D4-02）と `"2026-08-07"`（D4-08）は #25 のレビュー対応でレコード断片（`records[].rows`）経路と
   `directives` 経路にも埋め込み、記法を固定した（`YamlFormatWriterModelTest#record()` ／
-  `#writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`。当初版は「レコード断片経路は
+  `#writesEmptyRecordsListForFileBlockWithoutRecords`（#25.5 で改名。旧名
+  `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`）。当初版は「レコード断片経路は
   プローブで確認したがテストにしていない」と開示していた箇所である）。
   残る 7 ケースがレコード断片経路でも同じ記法（フロー list の中のダブルクォート）で書かれ、
   同じく往復することはプローブで確認したがテストにはしていない。
