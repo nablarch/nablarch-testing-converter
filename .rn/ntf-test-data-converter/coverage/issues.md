@@ -1601,11 +1601,16 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 ### YML-08 ディレクティブ値が `trim()` されるため、スキーマ description が推奨する記法が壊れる（影響度 中・**(a) は検出できない**／(b) は loud）
 
-| # | 入力（`directives`） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
-|---|---|---|---|
-| (a) | `record-separator: "\r\n"`（description が推奨するリテラル記法。YAML は実際の CR LF に解決する） | **空文字**（値が消える）。例外にならない | `losesRecordSeparatorWrittenAsLiteralNewline` |
-| (b) | `field-separator: "\t"`（description が「タブ文字に変換される」と書く記法。YAML は実際のタブに解決する） | `IllegalArgumentException: field-separator must be one character.but was `（末尾は空。trim 後の値） | `failsWhenFieldSeparatorIsWrittenAsActualTab` |
-| (参考) | `record-separator: "CRLF"`（シンボル記法） | **シンボルではなく実際の改行 `"\r\n"`** が入る（辺①は逆正規化してシンボルへ戻すため非対称） | `readsRecordSeparatorSymbolAsActualNewline` |
+**#25.5 で辺②を修正した（6c8d90e）。下表の「中間モデルへ入る結果」は 3 行とも改訂してある。**
+
+| # | 入力（`directives`） | #25.5 前の結果 | **#25.5 後（現在）の結果** | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|---|---|
+| (a) | `record-separator: "\r\n"`（description が推奨するリテラル記法。YAML は実際の CR LF に解決する） | **空文字**（値が消える）。例外にならない | **`"NONE"`**（空を辺①と同じ規則でシンボルへ戻す）。**書いた改行そのものは依然として失われている**（本体の `trim()` は converter の外） | `readsRecordSeparatorWrittenAsLiteralNewlineAsNoneSymbol` |
+| (b) | `field-separator: "\t"`（description が「タブ文字に変換される」と書く記法。YAML は実際のタブに解決する） | `IllegalArgumentException: field-separator must be one character.but was `（末尾は空。trim 後の値） | **変化なし**（例外は converter へ届く前に本体側で送出されるため、辺②の修正では変わらない） | `failsWhenFieldSeparatorIsWrittenAsActualTab` |
+| (参考) | `record-separator: "CRLF"`（シンボル記法） | **シンボルではなく実際の改行 `"\r\n"`** が入る（辺①は逆正規化してシンボルへ戻すため非対称） | **`"CRLF"`**（シンボルのまま入る。**辺①と対称になった**） | `readsRecordSeparatorSymbolAsSymbol` |
+
+`field-separator` をエスケープ 2 文字記法（YAML のシングルクォート `'\t'`）で書いた場合も同じ修正の対象で、
+中間モデル値は **実タブ 1 文字 → 2 文字記法 `\t`** に変わった（`readsFieldSeparatorWrittenAsEscapedTabNotation`）。
 
 - **いずれもスキーマ上の仕様内である。** `$defs.directives.properties.record-separator.description` は
   「`"CRLF"` / `"LF"` / `"CR"` / `"NONE"` のシンボル指定、または任意のリテラル文字列が有効。
@@ -1647,15 +1652,29 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   - シンボル記法が中間モデルで実文字に変わること: **converter 側**。辺①は
     `XlsFormatReader#normalizeDirectiveValue` が実改行・実タブをシンボル（`CRLF` / `\t`）へ逆正規化しており、
     その Javadoc も「そのまま toString() すると本体 setDirective の trim() で失われる」と**この trim を認識している**。
-    辺②（`YamlFormatReader#toStringDirectives`）は素通しを選んでいるため、同じ入力表記が辺①と辺②で
-    別の中間モデル値になる。
-- 影響: (a) はレコード区切りが黙って空になる。(b) は loud に失敗するので気づける。
-  参考行（シンボル → 実文字）は値の意味こそ変わらないが、**中間モデルの値が原文と一致しない**。
-- **未確認**: 中間モデルに入った実改行を辺③（Excel）／辺④（YAML）へ書き出したときに何が起こるか、
-  すなわち往復が安定するかは**確かめていない**。辺②の観測だけからは、辺④が実改行をそのまま書けば
-  読み戻しで (a) の経路に入る（＝空文字になる）ことが予想されるが、**実行して確かめていない**。
-  #25 以降で確認すること。
-- 判断: **仕様として不適切**。修正はこの作業では行わない（`src/main` 無変更）。
+    辺②（`YamlFormatReader#toStringDirectives`）は素通しを選んでいたため、同じ入力表記が辺①と辺②で
+    別の中間モデル値になっていた。**この 1 点だけが converter 側の欠陥であり、#25.5 で直した（6c8d90e）。**
+    残る 2 者（trim による損失・description）は本リポジトリの外にあり、**今も直っていない。**
+- 影響: (a) は**書いた改行が失われる**（#25.5 前は空文字、後は `NONE`。いずれにせよ原文の CRLF ではない）。
+  (b) は loud に失敗するので気づける。参考行（シンボル → 実文字）は #25.5 で解消し、
+  **中間モデルの値が原文の表記と一致するようになった。**
+- **辺④の往復を実行して確かめた（#25.5・2026-08-14。「未確認」を解消）。** 中間モデルを手で組み立てて
+  `YamlFormatWriter#write` で書き出し、同じディレクトリを `YamlFormatReader#read` で読み戻した実測である。
+
+  | 中間モデルの `record-separator` | 辺④が書き出した YAML | 読み戻した中間モデル値 | 往復 |
+  |---|---|---|---|
+  | `"CRLF"`（シンボル） | `record-separator: "CRLF"` | **`"CRLF"`** | **安定する** |
+  | 実改行 `CR LF` | `record-separator: "\r\n"`（エスケープ表記で書かれる） | **`"NONE"`** | **安定しない**（`CR LF` → `NONE`） |
+  | （参考）`field-separator` に実タブ | `field-separator: "\t"` | 読み戻しが例外 `IllegalArgumentException: field-separator must be one character.but was `（末尾は空） | **loud に失敗する** |
+
+  **予想は半分外れた。** 「辺④が実改行をそのまま書けば読み戻しで (a) の経路に入る」までは当たっている
+  （書き出された `"\r\n"` は (a) の入力そのものであり、本体の `trim()` で値が失われる）。
+  外れたのは結果で、**空文字ではなく `NONE` になる**——#25.5 の修正（6c8d90e）で辺②が空をシンボルへ
+  逆正規化するようになったためである。**値が失われることそのものは変わっていない。**
+  なお #25.5 の修正後、辺①・辺②はどちらも実制御文字を中間モデルへ入れないため、
+  **この入力は中間モデルを手で組み立てた場合にのみ生じる。**
+- 判断: **仕様として不適切**。**#25.5 で converter 側の 1 点（辺①との非対称）だけを直した（6c8d90e）。**
+  trim による損失と description の食い違いは本リポジトリの外にあり、**未解決のまま残っている。**
 - NTF 仕様としての判定: **要対応**。`notation:945`（`record-separator` はシンボルまたは任意のリテラル文字列）、
   `notation:1078`（`field-separator=\t`）、`notation:1114`（`record-separator CRLF`）はいずれも**シンボルと
   エスケープ 2 文字の記法しか示しておらず**、実制御文字のままのディレクティブ値は記法の外にある
