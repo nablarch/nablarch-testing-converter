@@ -54,6 +54,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **担保の穴は、テストを足さない場合でも台帳に開示する。** 開示しないのは件数を誤るのと同じ性質の誤りとする（#22 で確定・2026-08-13）
 - **台帳（`coverage/inventory.md`）に「他ファイルの行番号」「ファイル行数」「コマンドを併記しない件数」を書かない**（#23 後の構造見直しで確定・2026-08-13）。行番号とファイル行数は他ファイルを編集するたびに移動し、台帳を直すと台帳の別箇所が自己無効化する。識別はクラス名・メソッド名で行う。#22・#23 の計 5 ラウンドの FAIL はすべて台帳の記述精度であり、テストコードの欠陥ではなかった
 - **同じ関係を 2 方向に手書きしない。** 台帳が持つのは「テストメソッド → 軸要素」（§X.1 系）だけとし、逆引き（軸要素 → 担保テストメソッド）の正は #27 の `coverage/axis-matrix.md` とする（同・2026-08-13）。#24・#25 の途中で逆引きが要る場面ではテストメソッド名を grep する
+- **文書の揃え方**（ユーザー確定・2026-08-13）: 定義を変えたら `steering.md`／`coverage/inventory.md`／`coverage/issues.md` は指示に列挙が無くても現行定義へ揃えてよい。揃えないのは `checks/` だけ（時点の証拠記録であるため）
+- **レビュア subagent は `isolation: worktree` で起動する**（#23 で確立・2026-08-13）。レビュア には `checks/{task-id}.md`（自己点検）を渡さない・読ませない
 
 # Tasks
 
@@ -496,6 +498,17 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
   JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean install -Djacoco.skip=true
   ```
 
+### ローカルリポジトリの扱い（ユーザー確定・2026-08-14）
+
+- **本セッションは既定の `~/.m2` をそのまま使う。** `-Dmaven.repo.local` を指定しない。`MAVEN_ARGS` も設定しない（設定するのは配布リハーサル側だけ）。
+- 対象PJ配布のリハーサルは専用のローカルリポジトリ `~/work/pj111/.m2-rehearsal/repository` へ分離済みで、`~/.m2` はもう共有されていない。
+- **`mvn -U` を打たない。** SNAPSHOT を取り直すと外の作業と競合する。解決できない成果物が出たら、自分で埋めずに成果物名と版を挙げて報告する。
+- **converter の `pom.xml` を配布用のピン留め版（`1.0.0-r190cc9a` 等）へ追随させない。** ピン留めは対象PJへ配る成果物の版であって開発リポの版ではなく、当て方はリハーサル側 clone の patch が持つ。開発リポを過去の版へ固定すると、yaml が次に進んだとき辺②の担保が実物からずれる。
+
+## converter 側では扱わない件
+
+- `rows: []`（データ行 0 件）のとき期待値検証が素通りする（偽陰性）問題は **yaml 側**の課題である。`nablarch-testing-yaml` の `YamlTableDataBuilder` に FIXME として記されている。converter 側で直さない・触らない。
+
 ## JaCoCo カバレッジ取得手順（設定変更不要）
 
 親 POM に Offline Instrumentation 設定済み。以下のコマンドで取得できる：
@@ -921,30 +934,8 @@ NTF 本体と同一コード 1 本であるため、変換の前後で値は変�
 
 # State
 
-- **Status**: paused
+- **Status**: not suspended
 - **Date**: 2026-08-14
-- **Last completed**: #23。#24 は成果物とセルフチェックまで完了（`8aa536f` push 済み）、レビュー3種が未実施
-- **Next**: #24 の QA／Craft(coding)／Verification(test) レビュー。**ただし下記ブロッカーの回答が先**
-- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1。
-
-  **🚦 ブロッカー — ビルドが通らない。ユーザーの回答待ちが 2 件**（本セッション外で `~/.m2` の依存が入れ替わった）:
-  - `nablarch-testing-yaml` は `1.0.0-SNAPSHOT` が消え **`1.0.0-r190cc9a`** のみ、`nablarch-testing` は `6-NEXT-SNAPSHOT` が消え **`6-NEXT-rfdf55d4`** ほかになっている（作成 2026-08-14 08:55〜08:56、`_remote.repositories` あり＝リモート取得）。`pom.xml` は `nablarch-testing-yaml` を `1.0.0-SNAPSHOT` で宣言したままで、`mvn -o dependency:resolve` が ERROR で止まる
-  - (1) この入れ替えは意図したものか（進行中ならレビューを止める）。(2) converter の `pom.xml` をピン留め版へ追随させる作業を **#24 とは別タスク**として steering に足してよいか（基準線 461 件の取り直しを伴う）
-  - **`mvn -U` を叩かないこと。** SNAPSHOT を取り直すと外の作業と競合する
-
-  **#24 の成果物の現状**: `8aa536f`（テスト 3 クラス 42 件 ＋ `YamlFixture`、`inventory.md` §2 系、`issues.md` の `## #24` 節）。`git diff 3165770 -- src/main` → 0 行。`target/surefire-reports` 実測で `Tests=461 Failures=0 Errors=0 Skipped=0`（37 クラス、更新時刻 08:52 ＝ 依存入れ替え 08:55 より前。したがって従来どおり `190cc9a` 版に対する結果）。`checks/task-24.md` の QA 列と Overall Verdict の QA 行は未記入（コーディネータの持ち物）。
-
-  **コーディネータ確認済み**: `src/main` 無変更、台帳自己点検 `grep -cE '\b(L[0-9]{1,4})\b' inventory.md` → 0、テスト件数の導出コマンドが 23／8／11 を返し記載と一致、YML-01 の帰属4段（`YamlLoader#load` が `setSchema` を呼ばない → 既定 `JsonSchema` → `JsonScalarResolver` → NULL 判定 `^(?:null)$`。`CoreScalarResolver` は `^(?:~|null|Null|NULL| )$`）を一次情報で再確認。
-
-  **レビュー前に triage が要る持ち越し 3 件**（実装エキスパートが台帳に開示済み）:
-  - YML-01 に影響度欄が無い。`issues.md` の凡例（高／中／低）は「変換結果が入力と一致するか」で定義されているが、本件は変換自体は忠実で、食い違うのは作成者の意図と NTF 実行時の解釈。凡例を 1 段拡張するか「低」に寄せるかはコーディネータ判断
-  - `YamlFormatReader#normalizeRecordType` の `"default"`（小文字）側が未到達分岐として 1 つ残る（軸A〜F のどの要素にも属さないため **#26 送り**として台帳に開示）
-  - 未知のトップレベルキーは実ファイル経路では例外（スキーマの root が `additionalProperties: false`）。in-memory 経路の既存テストが固定する「無視」と結果が異なるが、loud に失敗するため「課題としない」に置いてある
-
-  **レビュー運用（#23 で確立）**: レビュア subagent には `isolation: worktree` を使う。
-
-  **converter 側では扱わない件**: `rows: []` の期待値検証が素通りする（偽陰性）問題は yaml 側の FIXME。converter 側で直さない・触らない。
-
-  **文書の揃え方（ユーザー確定・2026-08-13）**: 定義を変えたら `steering.md`／`inventory.md`／`issues.md` は指示に列挙が無くても現行定義へ揃えてよい。揃えないのは `checks/` だけ（時点の証拠記録）。
-
-  **#27 への申し送り（`issues.md` に記録済み）**: (1) 軸E の `E-1(1 件)`・`E-4(1 件)` が台帳 §3.1 の軸E 欄に現れない。(2) 送信同期 4 種の担保が `XlsFormatWriterTest` と `XlsFormatWriterModelTest` に分散。(3) 逆引き（軸要素 → 担保テストメソッド）の正は #27 の `coverage/axis-matrix.md`。
+- **Last completed**: #23
+- **Next**: #24（成果物 `8aa536f` は push 済み。レビュー3種を実施中）
+- **Notes**: ブランチ `ntf-test-data-converter` / PR #1 https://github.com/nablarch/nablarch-testing-converter/pull/1
