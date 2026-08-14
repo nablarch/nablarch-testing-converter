@@ -283,6 +283,31 @@ public class YamlTestCoreAdapterTest {
         assertThat(bodies.get(0).getPath(), is("MSG3"));
     }
 
+    /**
+     * デフォルトグループを求めたセクションが YAML に存在しないときは空で返る（例外にしない）。
+     * <p>
+     * Given: {@code expected_request_body_messages} を持たない YAML<br>
+     * When : 同セクションのデータタイプで {@code readSendSyncMessages(..., null, ...)}<br>
+     * Then : 空リストが返る。
+     * </p>
+     * <p>
+     * {@code defaultGroupOnlyYaml} はセクションが無い（{@code yaml.get(sectionKey)} が {@code null}）
+     * 場合に空セクションを組み立てて返す。グループ ID を明示したときの
+     * {@link #readSendSyncMessages_noMatch_returnsEmpty} と挙動を揃えるための担保。
+     * </p>
+     */
+    @Test
+    public void readSendSyncMessages_nullGroupId_sectionAbsent_returnsEmpty() {
+        // Given
+        // (sendSync.yaml は expected_request_header_messages しか持たない)
+        // When
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", null,
+                DataType.EXPECTED_REQUEST_BODY_MESSAGES);
+
+        // Then
+        assertThat(bodies.size(), is(0));
+    }
+
     @Test
     public void readSendSyncMessages_noMatch_returnsEmpty() {
         // Given
