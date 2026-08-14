@@ -775,8 +775,8 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
-| `YamlFormatReaderInvalidInputTest` | 25 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 17 件は**スキーマを通る仕様内の入力**で、掃引で見つけた現状挙動を固定する） |
-| `YamlFormatReaderRealFileTest` | 18 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
+| `YamlFormatReaderInvalidInputTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 19 件は**スキーマを通る仕様内の入力**で、掃引で見つけた現状挙動を固定する） |
+| `YamlFormatReaderRealFileTest` | 21 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
 **件数を更新した（2026-08-14・#24 のレビュー指摘の反映で 9 件追加）。** 内訳は
 `YamlFormatReaderScalarTest` ＋4（軸D の経路差確認。下の「別経路での確認」表）、
@@ -799,6 +799,17 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 `YamlFormatReaderInvalidInputTest` ＋2（掃引項目 27 で見つけた `issues.md` **YML-10** の固定＝
 `dropsValueWhenTableColumnNamesDifferOnlyByCase` と、その対比 `keepsOriginalColumnCaseInListMap`）。
 **この 2 件も軸A〜F のどの要素にも新しい担保を与えないため、§2.3 の件数は動かない。**
+
+**件数をさらに更新した（2026-08-14・Verification レビュー指摘の反映で 5 件追加）。** 内訳は
+`YamlFormatReaderInvalidInputTest` ＋2（掃引項目 28 ＝ `issues.md` **YML-11** の固定）、
+`YamlFormatReaderRealFileTest` ＋3（生存していた変異 3 件を閉じるもの＝
+`preservesListMapColumnOrderAndExcludesMarkerFromRealYaml` ／ `keepsFwHeaderNamedRecordInFileFromRealYaml` ／
+`stringifiesNonStringDirectiveValuesFromRealYaml`）。**`readsAllThirteenDataTypesFromRealYaml` は
+件数を増やさずフィクスチャのセクション順を定義順の逆に変えた**（記述順の保持を固定するため）。
+このうち §2.3 の件数を動かすものは無い（`stringifiesNonStringDirectiveValuesFromRealYaml` は
+既に ✅ の C-11(値あり) を非文字列記法で確かめたもの、
+`preservesListMapColumnOrderAndExcludesMarkerFromRealYaml` は既に ✅ の C-08／C-09 を
+カラム順とマーカー除外の観点で確かめたものである）。
 
 3 クラスとも `new YamlFormatReader().read(...)` を本番配線で呼ぶ。`YamlFormatReaderTest` 20 件が
 `loadRawMap` を in-memory `Map` へ差し替えて**スカラー解決もスキーマ検証も通らない**のに対し、
@@ -973,6 +984,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 | 25 | `$defs.field_def.properties.length` の `"0"` | パターンは許すが意味（ダミーフィールド）は description にだけ書かれている | `"0"` が忠実に `FieldDef.length` へ入る（例外にも既定値の補完にもならない）。課題なし |
 | 26 | 識別子系プロパティの `minLength` 不在（`$defs.table_data.properties.table` ／ `$defs.file_data.properties.path` ／ `$defs.list_map_data.properties.id` ／ `$defs.message_data.properties.id` ／ `$defs.record_fragment.properties.record_type` ／ `$defs.field_def.properties.name`）。`group_id` と `$defs.field_def.properties.type` には `minLength: 1` があるという非対称 | 空文字の識別子が書ける | 6 つとも例外にならず、**空の識別子がそのまま中間モデルへ入る**（`table: ""` → `""`、`path: ""` → `""`、`id: ""` → `""`、`name: ""` → `""`）。`table: "   "` は器が trim するため `""` になる。**`record_type: ""` は `null` ではなく `""` で入り、省略（`null`）と分かれる**（C-16 の「省略＝`null`」と隣接する事実。辺①の **XLS-06** は逆に実 `.xlsx` 経路で省略が `""` になる）。黙って消えるものは無いため課題なし |
 | 27 | **器が行う正規化**（スキーマが縛っていない箇所ではなく、スキーマが触れていない箇所）。`$defs.table_data.properties.table` の description は「NTF により trim・大文字変換される」と書くが、**カラム名の大文字化についてはスキーマのどこにも記述が無い** | テーブル系は器（`TableData`）がテーブル名とカラム名を大文字化する（`my_table` → `MY_TABLE`、`user_id` → `USER_ID`）。LIST_MAP は原文の大小のまま | **YML-10**（大小だけが違うキーが大文字化で衝突し、値が黙って消えて列名が重複する）。大文字化そのものは `issues.md`「課題としないと判断した観測結果（#24）」に記録 |
+| 28 | **YAML 記法そのもの**（スキーマは `rows` の値を `["string","null"]` としか縛らず、引用符の要否に踏み込まない） | 引用符なしのプレーンスカラーも文字列として通る | **YML-11**（前後の空白が消える／`#` 以降がコメントとして落ちる。YAML 仕様どおりだが書いた値と食い違う）。引用符付き（軸D の D2-11／D2-12）は保たれる |
 
 **掃引項目 24 を課題とした理由（記録する／しないの判断・2026-08-14）**
 
@@ -1001,10 +1013,26 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 - **軸D の 12 ケースを掃引の各項目へ掛け合わせてはいない**（上の 3 点目の「1 回ずつ」と同じ理由）。
 - **値のサイズ・行数の上限は掃引していない**（2026-08-14・3 巡目レビュー指摘で追記）。
   辺③には D3-07（Excel のセル文字数上限 32767 を超える値。`issues.md` **XLS-19**）があるが、
-  辺②の軸D 12 ケースにも上の掃引 27 項目にもサイズの観点は無い。**1 回だけ観測した**結果、
+  辺②の軸D 12 ケースにも上の掃引 28 項目にもサイズの観点は無い。**1 回だけ観測した**結果、
   40,000 文字の値は中間モデルへ同じ長さ・同じ内容で入り、5,000 行のテーブルも行数どおり入った
   （例外にも切り詰めにもならない）。スキーマは `rows` の値を `["string","null"]` としか縛らず
   長さ・件数の上限を持たないため**上限そのものは掃引していない**。テストは足していない。
+
+**担保の強さについて開示すること（2026-08-14・Verification レビュー指摘で追記）**
+
+- **軸D の 27 件が固定しているのは、大半が「器と snakeyaml-engine のスカラー解決の結果」であって
+  converter のコードではない。** `src/main` の変異で殺せるのは `addTableBlocks` の
+  `value == null ? null : value.toString()` の null 分岐だけであり（実測: この 1 か所を空文字へ変える変異で
+  落ちる軸D テストは 3 件）、残りは characterization である。**軸D の ✅ を converter の実装の担保として
+  読まないこと。** 辺②で軸D を測る目的は「YAML 記法 → 中間モデルの値」を記録・固定することであり、
+  この性質はタスクの狙いどおりである。
+- **行・分岐 100% は変異に耐えることを意味しない。** `YamlFormatReader` は行 201/201・分岐 108/108 だが、
+  その状態でも 3 つの変異（LIST_MAP のカラム順をソートする／セクションを記述順でなく定義順に走査する／
+  ファイル系でも `FW_HEADER` レコードを落とす）が生存していた（2026-08-14・Verification レビューで判明）。
+  いずれも**入力の作り方が偏っていた**ことが原因で、テストを 3 件足して閉じた
+  （`preservesListMapColumnOrderAndExcludesMarkerFromRealYaml` ／ `readsAllThirteenDataTypesFromRealYaml` の
+  セクション逆順化 ／ `keepsFwHeaderNamedRecordInFileFromRealYaml`）。
+  **#26 ではカバレッジ数値だけを担保の根拠にしないこと。**
 
 <a id="s2-3"></a>
 
@@ -1028,11 +1056,11 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 | D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 27 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）。要素別の担保テストメソッドは §2.1-2 の軸D 表。27 件のうち 4 件は D2-06／D2-11 を LIST_MAP 経路・レコード断片経路で確認したもので、**軸要素としては別勘定にしない**（§2.1-2 の「別経路での確認」表） | 12 |
 | E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **25**。差の 17 件は掃引の固定テスト（`issues.md` YML-04〜YML-08・YML-10）であり、**軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件と 15 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **27**。差の 19 件は掃引の固定テスト（`issues.md` YML-04〜YML-08・YML-10・YML-11）であり、**軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件と 15 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
 | **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
 
-**軸F の 8 件と、差の 17 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 25 は上の表に
-コマンドを併記しているが、内訳の 8 と 17 は数字のまま置かれていた）。
+**軸F の 8 件と、差の 19 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 27 は上の表に
+コマンドを併記しているが、内訳の 8 と 19 は数字のまま置かれていた）。
 `YamlFormatReaderInvalidInputTest` は軸F の節（F2-01〜F2-05）を先頭に、掃引の節（YML-04 以降）を
 後ろに置いており、境界は節見出しのコメント行である:
 
@@ -1068,8 +1096,8 @@ awk '/YML-04 先頭行のキー集合/,0' \
 （`normalizeRecordType` の `"default"` 分岐——**修正ラウンド 2 で到達可能と判明しテストで閉じた**／
 C-15 は実ファイル経路では到達不能／軸D の 10 ケースは 1 経路でしか測っていない／
 YML-02・YML-03 で「警告が出ないこと」を実行可能な形にしていない）と、
-**掃引で列挙した 27 項目および「見ていない範囲」6 点**は
-空欄・穴として残る（§2.1-2 の「開示（修正ラウンド 2）」。項目 24〜27 と「見ていない範囲」6 点目は
+**掃引で列挙した 28 項目および「見ていない範囲」6 点**は
+空欄・穴として残る（§2.1-2 の「開示（修正ラウンド 2）」。項目 24〜28 と「見ていない範囲」6 点目は
 修正ラウンド 3 で足した）。**掃引はここで閉じる。**
 
 導出コマンド（自由度の項目数 26。掃引表は §2.1-2 の中で唯一「先頭列が番号」の表である）:

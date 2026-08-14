@@ -86,6 +86,14 @@ public class YamlFormatReaderRealFileTest {
      * Then : {@code DataType.DEFAULT} を除く 13 種すべてが、YAML の記述順どおりに生成される。
      *
      * <p>
+     * <b>フィクスチャのセクションはスキーマの定義順と逆に並べてある。</b>
+     * {@code YamlFormatReader#read} は {@code yaml.keySet()} を走査するという実装であり、
+     * 定義順どおりに書いたフィクスチャでは「記述順に読んでいる」のか
+     * 「定義順で読んでいる」のかを区別できないためである。逆順にすることで、
+     * この 1 件が<b>記述順の保持</b>を固定する。
+     * </p>
+     *
+     * <p>
      * {@code DEFAULT} は {@code YamlFormatReader#addBlocksForSection} が既知セクションキーのみを
      * 分岐に持ち、いずれの分岐も {@code DEFAULT} を渡さないため辺②では到達不能である。
      * </p>
@@ -102,20 +110,20 @@ public class YamlFormatReaderRealFileTest {
         for (TestDataBlock block : YamlFixture.blocks(container)) {
             actual.add(block.getDataType());
         }
-        assertThat(actual, is(Arrays.asList(
-                DataType.SETUP_TABLE_DATA,
-                DataType.EXPECTED_TABLE_DATA,
-                DataType.EXPECTED_COMPLETED,
-                DataType.LIST_MAP,
-                DataType.SETUP_FIXED,
-                DataType.SETUP_VARIABLE,
+        assertThat("スキーマ定義順でも辞書順でもなく、YAML に書いた順であること", actual, is(Arrays.asList(
+                DataType.RESPONSE_BODY_MESSAGES,
+                DataType.RESPONSE_HEADER_MESSAGES,
+                DataType.EXPECTED_REQUEST_BODY_MESSAGES,
+                DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
+                DataType.MESSAGE,
                 DataType.EXPECTED_FIXED,
                 DataType.EXPECTED_VARIABLE,
-                DataType.MESSAGE,
-                DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                DataType.EXPECTED_REQUEST_BODY_MESSAGES,
-                DataType.RESPONSE_HEADER_MESSAGES,
-                DataType.RESPONSE_BODY_MESSAGES)));
+                DataType.SETUP_FIXED,
+                DataType.SETUP_VARIABLE,
+                DataType.LIST_MAP,
+                DataType.EXPECTED_COMPLETED,
+                DataType.EXPECTED_TABLE_DATA,
+                DataType.SETUP_TABLE_DATA)));
     }
 
     // ------------------------------------------------------------------ 軸B
@@ -421,8 +429,119 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat("器が既定ディレクティブを増やしたら気づけるよう件数も固定する",
+                block.getDirectives().size(), is(2));
         assertThat(block.getDirectives().get("text-encoding"), is("Windows-31J"));
         assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code record-length}（integer）と {@code required-decimal-point}（boolean）を書いた
+     *        固定長ファイルエントリ。スキーマ {@code $defs.directives} はこの 2 つを
+     *        文字列ではなく integer ／ boolean として定義している。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 中間モデルの {@code directives} には<b>文字列化した値</b>（{@code "3"} ／ {@code "true"}）が入る。
+     *
+     * <p>
+     * {@code YamlFormatReader#toStringDirectives} が {@code Object#toString()} に委ねているため。
+     * 行値（{@code rows}）と違い<b>ディレクティブ値は非文字列を書ける</b>ので、その型変換をここで固定する。
+     * </p>
+     *
+     * <p>担保する軸要素: C-11（{@code FileDataBlock.directives} 値あり）を非文字列記法で確認したもの。</p>
+     */
+    @Test
+    public void stringifiesNonStringDirectiveValuesFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    directives:\n"
+                + "      record-length: 3\n"
+                + "      required-decimal-point: true\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"3\"}\n"
+                + "        rows:\n"
+                + "          - [\"abc\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("integer が文字列になる", block.getDirectives().get("record-length"), is("3"));
+        assertThat("boolean が文字列になる", block.getDirectives().get("required-decimal-point"), is("true"));
+    }
+
+    /**
+     * Given: {@code list_maps} に、辞書順と逆に並べた 2 カラム（{@code val} → {@code key}）と
+     *        マーカーカラム {@code "[no]"} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code columnNames} は<b>原文の記述順</b> {@code [val, key]} になり（辞書順なら {@code [key, val]}）、
+     *        マーカーカラムは除外される。
+     *
+     * <p>
+     * <b>カラム名を辞書順と逆にしてあるのは意図である。</b>steering #15 は「LIST_MAP のカラム順が
+     * アルファベット順になる」ことを不具合として直しており、その再発を検知するには
+     * 記述順とソート順が食い違う入力でなければならない。
+     * </p>
+     *
+     * <p>
+     * あわせて {@code YamlFormatReader#nonMarkerColumns} を<b>実ファイル経路で</b>通す唯一のテストでもある
+     * （テーブル系のカラムは器の {@code TableData#getColumnNames()} 由来であり、このメソッドを通らない）。
+     * </p>
+     *
+     * <p>担保する軸要素: B-2／C-08(値あり)／C-09(値あり)。カラム順とマーカー除外の担保。</p>
+     */
+    @Test
+    public void preservesListMapColumnOrderAndExcludesMarkerFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - val: \"1\"\n"
+                + "        key: \"2\"\n"
+                + "        \"[no]\": \"9\"\n");
+
+        // Then
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
+        assertThat("辞書順（[key, val]）ではなく原文の記述順であること",
+                block.getColumnNames(), is(Arrays.asList("val", "key")));
+        assertThat("マーカーカラムは値ごと除外される", block.getRows(), is(Arrays.asList(Arrays.asList("1", "2"))));
+    }
+
+    /**
+     * Given: {@code setup_files} のレコードに {@code record_type: "FW_HEADER"} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件）。
+     *
+     * <p>
+     * <b>メッセージ系との非対称を固定する。</b>同じ {@code record_type: "FW_HEADER"} を
+     * {@code messages} に書くとレコードは捨てられる
+     * （{@link #dropsFwHeaderNamedRecordFromRealYaml}。{@code coverage/issues.md} <b>YML-03</b>）。
+     * ファイル系は {@code YamlFormatReader#addFileBlocks} が {@code records(entry)} を、
+     * メッセージ系は {@code #recordsWithoutFwHeader(entry)} を使うためである。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の固定）。</p>
+     */
+    @Test
+    public void keepsFwHeaderNamedRecordInFileFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("ファイル系では FW_HEADER 名のレコードも残る", block.getRecords().size(), is(1));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("a"))));
     }
 
     // ------------------------------------------------------------------ 軸E
@@ -842,37 +961,45 @@ public class YamlFormatReaderRealFileTest {
      */
     private static String allSectionsYaml() {
         return ""
-                + "setup_tables:\n"
-                + "  - table: \"T1\"\n"
-                + "    rows:\n"
-                + "      - C: \"1\"\n"
-                + "expected_tables:\n"
-                + "  - table: \"T2\"\n"
-                + "    rows:\n"
-                + "      - C: \"2\"\n"
-                + "expected_complete_tables:\n"
-                + "  - table: \"T3\"\n"
-                + "    rows:\n"
-                + "      - C: \"3\"\n"
-                + "list_maps:\n"
-                + "  - id: \"lm\"\n"
-                + "    rows:\n"
-                + "      - K: \"v\"\n"
-                + "setup_files:\n"
-                + "  - path: \"sf.dat\"\n"
-                + "    type: \"fixed\"\n"
+                + "response_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG4\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"b2\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
-                + "          - [\"a\"]\n"
-                + "  - path: \"sv.csv\"\n"
-                + "    type: \"variable\"\n"
+                + "          - [\"i\"]\n"
+                + "response_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG3\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "          - {name: \"h2\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
-                + "          - [\"b\"]\n"
+                + "          - [\"h\"]\n"
+                + "expected_request_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG2\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"g\"]\n"
+                + "expected_request_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"f\"]\n"
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"e\"]\n"
                 + "expected_files:\n"
                 + "  - path: \"ef.dat\"\n"
                 + "    type: \"fixed\"\n"
@@ -888,44 +1015,36 @@ public class YamlFormatReaderRealFileTest {
                 + "          - {name: \"c2\", type: \"半角英字\"}\n"
                 + "        rows:\n"
                 + "          - [\"d\"]\n"
-                + "messages:\n"
-                + "  - id: \"RM01\"\n"
+                + "setup_files:\n"
+                + "  - path: \"sf.dat\"\n"
+                + "    type: \"fixed\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
-                + "          - [\"e\"]\n"
-                + "expected_request_header_messages:\n"
-                + "  - group_id: \"g\"\n"
-                + "    id: \"MSG1\"\n"
+                + "          - [\"a\"]\n"
+                + "  - path: \"sv.csv\"\n"
+                + "    type: \"variable\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
                 + "        rows:\n"
-                + "          - [\"f\"]\n"
-                + "expected_request_body_messages:\n"
-                + "  - group_id: \"g\"\n"
-                + "    id: \"MSG2\"\n"
-                + "    records:\n"
-                + "      - fields:\n"
-                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
-                + "        rows:\n"
-                + "          - [\"g\"]\n"
-                + "response_header_messages:\n"
-                + "  - group_id: \"g\"\n"
-                + "    id: \"MSG3\"\n"
-                + "    records:\n"
-                + "      - fields:\n"
-                + "          - {name: \"h2\", type: \"半角英字\", length: \"1\"}\n"
-                + "        rows:\n"
-                + "          - [\"h\"]\n"
-                + "response_body_messages:\n"
-                + "  - group_id: \"g\"\n"
-                + "    id: \"MSG4\"\n"
-                + "    records:\n"
-                + "      - fields:\n"
-                + "          - {name: \"b2\", type: \"半角英字\", length: \"1\"}\n"
-                + "        rows:\n"
-                + "          - [\"i\"]\n";
+                + "          - [\"b\"]\n"
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - K: \"v\"\n"
+                + "expected_complete_tables:\n"
+                + "  - table: \"T3\"\n"
+                + "    rows:\n"
+                + "      - C: \"3\"\n"
+                + "expected_tables:\n"
+                + "  - table: \"T2\"\n"
+                + "    rows:\n"
+                + "      - C: \"2\"\n"
+                + "setup_tables:\n"
+                + "  - table: \"T1\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n";
     }
 }

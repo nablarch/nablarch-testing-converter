@@ -890,6 +890,70 @@ public class YamlFormatReaderInvalidInputTest {
                 thrown.getMessage(), is("field-separator must be one character.but was "));
     }
 
+    // ------------------------------------------------------------------ YML-11 引用符なしスカラーの値落ち
+
+    /**
+     * Given: 前後に空白を付けた値を<b>引用符なし</b>で書いた YAML（{@code - V:   pad  }）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にも警告にもならず</b>前後の空白が消え、{@code "pad"} が入る。
+     *
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code rows} の値の型は {@code ["string","null"]} であり、
+     * 引用符なしのプレーンスカラーも文字列として通る。空白が消えるのは YAML の仕様
+     * （プレーンスカラーは前後の空白を含まない）だが、変換ツールから見ると
+     * <b>作成者が書いた値と中間モデルの値が食い違う</b>。
+     * {@code coverage/issues.md} に <b>YML-11</b> として記録した（{@code src/main} は無変更）。
+     * </p>
+     *
+     * <p>
+     * 引用符付きの {@code "  pad  "}（D2-11）は空白が保たれる
+     * （{@link YamlFormatReaderScalarTest#readsSurroundingWhitespacePreserved}）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-11 の根拠テスト）。</p>
+     */
+    @Test
+    public void dropsSurroundingSpacesFromUnquotedScalar() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - V:   pad  \n");
+
+        // Then
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat("前後の空白が消える", block.getRows(), is(Arrays.asList(Arrays.asList("pad"))));
+    }
+
+    /**
+     * Given: {@code #} を含む値を<b>引用符なし</b>で書いた YAML（{@code - V: a #b}）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にも警告にもならず</b> {@code #} 以降がコメントとして落ち、{@code "a"} が入る。
+     *
+     * <p>
+     * {@link #dropsSurroundingSpacesFromUnquotedScalar} と同じく YAML の仕様どおりだが、
+     * 書いた値の一部が黙って消える点は同じである（{@code coverage/issues.md} <b>YML-11</b>）。
+     * 引用符付きの {@code "a #b"}（D2-12）はそのまま入る
+     * （{@link YamlFormatReaderScalarTest#readsHashContainingStringAsIs}）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-11 の根拠テスト）。</p>
+     */
+    @Test
+    public void dropsCommentPartFromUnquotedScalarContainingHash() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - V: a #b\n");
+
+        // Then
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat("# 以降が消える", block.getRows(), is(Arrays.asList(Arrays.asList("a"))));
+    }
+
     // ------------------------------------------------------------------ YML-10 カラム名の大小衝突
 
     /**

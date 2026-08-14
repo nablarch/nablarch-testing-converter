@@ -1114,6 +1114,11 @@ ID は発見順に振り、振り直さない。
 - `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
   （`grep -rn 'FW_HEADER' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
   対象PJの実データでの発現は未知である。
+- **ファイル系との非対称**: 同じ `record_type: "FW_HEADER"` を `setup_files` に書いた場合は
+  **レコードは捨てられずに残る**（担保テスト `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInFileFromRealYaml`）。
+  `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks` ／
+  `#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使うためである。
+  同じ記法が置き場所によって残ったり消えたりする点も、作成者から見れば予測できない。
 - 判断: **仕様として不適切**（スキーマの description が「予約値はない」と明言する値を実装が予約値として扱い、
   黙ってデータを落とす）。**帰属は yaml 側**である（description を実装に合わせるか、実装から
   `skipFwHeader` の特別扱いを外すかは yaml 側の判断）。本作業では修正しない（`src/main` 無変更）。
@@ -1242,12 +1247,12 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 **本節は 2026-08-14 の 2 巡目レビュー指摘（「軸の枠に沿って埋める作り方では拾えない壊れ方が残っている」）を受けて
 実施した掃引の結果である。** 掃引の手順と、列挙したスキーマ上の自由度の一覧は
 `inventory.md` §2.1-2 の「開示」に載せた（どこまで見たか・見ていない範囲もそこに書いてある）。
-**掃引はその後のレビュー指摘を受けて項目 27 まで広げ、そこで YML-09（項目 24）と YML-10（項目 27）を見つけた**
+**掃引はその後のレビュー指摘を受けて項目 28 まで広げ、そこで YML-09（項目 24）・YML-10（項目 27）・YML-11（項目 28）を見つけた**
 （同じ掃引の続きであるため節を分けずに本節へ入れている）。
 
-**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08・YML-09・YML-10）を
-先に置き、loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない
-（YML-09・YML-10 は最後に見つかったが検出できない側であるため YML-07 より前に来る）。
+**掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない**もの（YML-04・YML-05・YML-06・YML-08・YML-09・
+YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最後に置く。課題 ID は発見順のまま振り直していない
+（YML-09〜YML-11 は最後に見つかったが検出できない側であるため YML-07 より前に来る）。
 既出の YML-01（**変換時には**検出できない）・YML-02・YML-03（検出できない）もすべて検出できない側であるため、
 本節を後ろに置くことは並び順の原則に反しない（ID 昇順と発見順が一致しているだけである）。
 
@@ -1284,9 +1289,21 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
   - yaml 側: `nablarch/test/core/reader/yaml/YamlSection.java` の `resolveColumns` が
     `new ArrayList<String>(castMap(rows.get(0)).keySet())`、すなわち**先頭行のキー集合だけ**を返す。
     テーブル経路（`YamlTableDataBuilder`）・LIST_MAP 経路ともこれを使う。
-  - converter: `YamlFormatReader#nonMarkerColumns` が `YamlSection.resolveColumns(...)` の結果を
-    そのまま（マーカーを除いただけで）カラム順に使う。器が返す行 Map には 2 行目以降のキーも入っているが、
-    converter は列挙したカラムぶんしか取り出さない。
+  - converter（**LIST_MAP 経路のみ**）: `YamlFormatReader#nonMarkerColumns` が
+    `YamlSection.resolveColumns(...)` の結果をそのまま（マーカーを除いただけで）カラム順に使う。
+    器が返す行 Map には 2 行目以降のキーも入っているが、converter は列挙したカラムぶんしか取り出さない。
+  - **テーブル経路は `nonMarkerColumns` を通らない。** `YamlFormatReader#addTableBlocks` は
+    器の `TableData#getColumnNames()` を使う（`nonMarkerColumns` の呼び出し元は `addListMapBlocks` の
+    1 か所だけである）。テーブル経路でカラムが先頭行だけで決まるのは、`TableData` を組み立てる
+    yaml 側の `YamlTableDataBuilder` が同じ `resolveColumns` を使うためであり、**帰属は yaml 側だけ**である。
+
+    再現コマンド:
+
+    ```sh
+    grep -n 'nonMarkerColumns' src/main/java/nablarch/test/tool/converter/yaml/YamlFormatReader.java
+    ```
+
+    出力は 2 行（`addListMapBlocks` 内の呼び出し 1 行と定義 1 行）だけで、`addTableBlocks` には現れない。
 
   再現コマンド:
 
@@ -1576,6 +1593,32 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
   それが警告なしに片方だけ残る。NTF 実行時も同じ大文字化を行うため後段のテストは通ってしまう。
 - 判断: **仕様として不適切**（少なくとも「大文字化後に同名となるカラムがある」ことを検知して
   WARN すべきである。辺①が F1-05 で行っているのと同じ扱い）。
+  修正はこの作業では行わない（`src/main` 無変更）。
+
+### YML-11 引用符なしで書いたスカラーは、前後の空白と `#` 以降が黙って落ちる（影響度 中・**検出できない**）
+
+| 入力（`rows` の値） | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
+|---|---|---|
+| `- V:   pad  `（引用符なし） | **`"pad"`**（前後の空白が消える） | `dropsSurroundingSpacesFromUnquotedScalar` |
+| `- V: a #b`（引用符なし） | **`"a"`**（`#` 以降がコメントとして落ちる） | `dropsCommentPartFromUnquotedScalarContainingHash` |
+| `- V: "  pad  "` / `- V: "a #b"`（引用符あり） | そのまま入る（D2-11／D2-12。`YamlFormatReaderScalarTest#readsSurroundingWhitespacePreserved` ／ `#readsHashContainingStringAsIs`） | — |
+
+例外にも警告にもならない。
+
+- **この入力はスキーマ上の仕様内である。** `rows` の値の型は `["string","null"]` であり、
+  引用符なしのプレーンスカラーも文字列として通る。
+- 原因: **YAML の仕様である**（プレーンスカラーは前後の空白を含まず、`#` はコメントを開始する）。
+  帰属は converter でも yaml 側でもなく**記法そのもの**にある。
+- **スキーマの description は引用を指示している。** `$defs.table_data.properties.rows` は
+  「数値・真偽値も必ず文字列（クォート付き）で記述すること」と書いている。**ただしその指示は
+  数値・真偽値についてのものであり、空白や `#` を含む文字列には触れていない。**
+- 影響: 作成者が書いた値と変換結果が食い違うのに、例外にも警告にもならない。
+  Excel から移行してきた作成者は引用符の要否を意識しないため踏みやすい。
+- **軸D との関係**: 軸D の 12 ケース（D2-11 空文字・前後空白／D2-12 特殊文字）は**引用符付きの形**で
+  ユーザー確定している（steering Decisions）。ここに記録するのは、その裏側にあたる
+  引用符なしの形の挙動である。**12 ケース定義は変えていない。**
+- 判断: **記録にとどめる**（YAML 仕様どおりであり converter で直す対象ではない）。
+  ただし「黙って値が変わる」点は YML-04 と同じ性質のため、課題として残す。
   修正はこの作業では行わない（`src/main` 無変更）。
 
 ### YML-07 長さ省略記法 `"-"` は `text-encoding` を書かないと手掛かりの無い `NullPointerException` になる（影響度 低・loud に失敗するため検出できる）

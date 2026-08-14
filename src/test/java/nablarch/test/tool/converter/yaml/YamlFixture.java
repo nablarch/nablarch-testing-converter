@@ -48,7 +48,15 @@ final class YamlFixture {
      * キャッシュを空にする責務は利用側テストクラスの {@code @After clearLoaderCache} に一本化してある
      * （既存の {@code RoundTripTest} ほかと同じ形）。本フィクスチャを使うテストはすべて
      * {@link org.junit.rules.TemporaryFolder} が用意するテストごとに別のディレクトリへ書くため、
-     * 1 つのテストメソッドの中で同一パスを書き直さない限りキャッシュは衝突しない。
+     * テストメソッドをまたいでキャッシュが衝突することはない。
+     * </p>
+     *
+     * <p>
+     * <b>1 つのテストメソッドの中で 2 回呼ぶと {@link IllegalStateException} で止まる。</b>
+     * 書き出し先が固定名（{@link #RESOURCE}{@code .yaml}）であるため、2 回目は同じパスになり
+     * ローダのキャッシュが<b>1 回目のパース結果を返す</b> —— すなわち 2 回目に書いた YAML は
+     * 読まれないまま緑になる。黙って誤った観測をするより止めるほうがよいので、
+     * 既に書き出し済みなら例外にする。2 パターン読みたい場合はテストメソッドを分けること。
      * </p>
      *
      * @param dir      書き出し先ディレクトリ
@@ -57,6 +65,11 @@ final class YamlFixture {
      */
     static TestDataContainer read(Path dir, String yamlText) {
         Path file = dir.resolve(RESOURCE + ".yaml");
+        if (Files.exists(file)) {
+            throw new IllegalStateException("fixture already written in this test: " + file
+                    + " — 同一テストメソッド内の 2 回目の read はローダのキャッシュが 1 回目の結果を返すため、"
+                    + "テストメソッドを分けること");
+        }
         try {
             Files.createDirectories(dir);
             Files.write(file, yamlText.getBytes(StandardCharsets.UTF_8));
