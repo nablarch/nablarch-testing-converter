@@ -378,6 +378,34 @@ grep -oE '\+ "[^"]*\\n"' $f | grep -vE ': \\"'
 | 担保の穴は、テストを足さない場合でも台帳に開示する | OK。§2.1-2 の「開示」に、掃引で列挙した 28 項目の全件と「見ていない範囲」6 点、軸D を 1 経路でしか測っていない件、および**担保の強さについての 2 点**（軸D の大半は characterization であって converter の実装を固定しない／行・分岐 100% でも変異は生存しうる）を書いた |
 | 逆引き表（軸要素 → 担保テストメソッド）を新設していない | **新設していない**。§2.1-2 の各表は #19〜#23 が §1.2-2／§3.1-2／§3.1-3 で用いた「その要素を #24 が埋めたことを示す差分表」と同じ形式である。掃引表は「スキーマ上の自由度 → 観測結果」であり逆引きではない。逆引きの正は #27 の `coverage/axis-matrix.md`（steering Rules） |
 
+## QA Expert Review
+
+| Aspect | Verdict | Evidence / Improvement |
+|---|---|---|
+| 検証のやり方が目的に対して意味を持っているか（「実行できた」で終わっていないか） | OK | 3 巡とも「Completion criteria は全項目 OK。検証のやり方も目的に合っている」と評価。FAIL の理由は毎回**台帳の記述精度**であり、テストの内容ではなかった |
+| 台帳・課題一覧の主張が一次情報と一致するか | OK（3 巡目で是正） | 3 巡目レビューが `inventory.md`・`issues.md` の再現コマンドを**全件そのまま実行**し「書かれた値が出なかったコマンドは 1 件もない」と報告。1・2 巡目で見つかった 4 件（`awk` の 15→19、掃引表 26→28、YML-04 の帰属、YML-03 の担保状態）は是正済み |
+
+## Expert Reviews
+
+### Craft Expert（coding）
+
+| Aspect | Verdict | Evidence / Improvement |
+|---|---|---|
+| 媒体別ベストプラクティス | OK | 3 巡で 20 件超の指摘を反映（`assertThrows`／ダイヤモンド演算子／static import 順／`assertTrue`→`assertThat` 13 か所／ヘルパ抽出と配置／例外メッセージのアサート 3 類型の明文化） |
+| 既存スタイルとの一貫性 | OK | 兄弟クラス（`XlsFixture` ／ `XlsFormatReaderRealFileTest` ／ `XlsFormatReaderInvalidInputTest`）との差はすべて解消または理由を明記。`YamlFixture` が中間モデル側のヘルパを引き受ける線引きの違いは Javadoc に記録 |
+
+### Verification Expert（test）
+
+| Aspect | Verdict | Evidence / Improvement |
+|---|---|---|
+| テストが実際に挙動を固定しているか（変異で確認） | OK（3 巡目で PASS） | 3 巡で計 9 件の生存変異が見つかり、**全件を閉じた**。1 巡目 3 件（セクション走査順／LIST_MAP カラム順／ファイル系の FW_HEADER 保持）、2 巡目 3 件（`fw_header` の記述順／`normalizeRecordType` の `FW_HEADER`／送信系の FW_HEADER 除外）、3 巡目 3 件（レコード断片のフィールド並び／テーブルのカラム順／ファイル系の代表データタイプ）。**共通の原因は入力の作り方の偏り**で、順序を主張する入力が辞書順・定義順と一致していたこと。閉じたあと同じ変異を入れ直して検知を確認した |
+| エッジケースの網羅 | OK | 掃引 28 項目、ローダの失敗経路 3 本のうち 2 本を追加で固定。残る穴は台帳の「開示」に列挙 |
+
 ## Overall Verdict
 
 - Self-check: OK
+- QA: OK（3 巡目で是正済み）
+- Design expert: N/A（構造・アプローチを新設・変更しないタスクのため spawn していない）
+- Craft expert: OK
+- Verification expert: OK
+- Ready to check off: **ユーザー判断待ち**（レビュー往復の上限 3 巡に到達し、3 巡目の指摘まで反映済み。4 巡目は回していない）
