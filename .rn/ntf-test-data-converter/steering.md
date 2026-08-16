@@ -946,22 +946,22 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 
 **Steps**:
 
-- [ ] **（先に 1 コミット）緑の嘘を消す。** 不具合の挙動を緑のアサートで固定しているテストを列挙し、`@Ignore("課題ID: 一行説明")` を付ける。列挙は `issues.md` の各課題の「担保テスト」欄から機械的に導き、**どのテストを対象にしたか・なぜそれが不具合の固定に当たるかを一覧で残す**
-- [ ] YML-02（辺②）: `group_id` 省略時はデフォルトグループのブロックとして読む
-- [ ] YML-12（辺④）: レコードが空のファイルブロックで `records: []` を出力する（4 形のうち 1 つ目のみ。残り 3 形は記録のまま）
-- [ ] XLS-16（辺③）: シート名を黙って切り詰めない。31 文字超は `XlsFormatWriter#build` が `createSheet` の前に検査して例外で落とす
-- [ ] XLS-06（辺①）: レコード種別の空セルに `null` を入れる（辺②と同じ）
-- [ ] YML-08（辺②）: `record-separator` ／ `field-separator` を辺①と同じ逆正規化に通す
-- [ ] YML-03: 仕様どおりの期待値を書いた `@Ignore("YML-03: yaml側の修正待ち")` のテストを置く（修正はしない）
-- [ ] XLS-01: テストを削除せず、アサートを「仕様外入力のため値は保証しない」旨へ書き直して実挙動の記録として残す
-- [ ] `issues.md` の全 35 件に「NTF 仕様としての判定」欄を追加し、要対応 6 件／対応不要 29 件を出典つきで明記する。**既存の「判断」欄は往復基準（変換結果が入力と一致するか）で書かれており、辺ごとの判定とは別物なので、両方を残して区別する**
-- [ ] YML-08 の「未確認」を潰す: 中間モデルに入った実改行を辺④が書き出したとき、読み戻しで空文字になるかを**実行して**確かめ、結果を `issues.md` に記録する
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] `inventory.md` のテスト件数を、増減した箇所すべてコマンドから導き直す（Rules）
-- [ ] self-check（OK/NG per completion criterion、checks/task-25.5.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] **（先に 1 コミット）緑の嘘を消す。** 不具合の挙動を緑のアサートで固定しているテストを列挙し、`@Ignore("課題ID: 一行説明")` を付ける。列挙は `issues.md` の各課題の「担保テスト」欄から機械的に導き、**どのテストを対象にしたか・なぜそれが不具合の固定に当たるかを一覧で残す**
+- [x] YML-02（辺②）: `group_id` 省略時はデフォルトグループのブロックとして読む
+- [x] YML-12（辺④）: レコードが空のファイルブロックで `records: []` を出力する（4 形のうち 1 つ目のみ。残り 3 形は記録のまま）
+- [x] XLS-16（辺③）: シート名を黙って切り詰めない。31 文字超は `XlsFormatWriter#build` が `createSheet` の前に検査して例外で落とす
+- [x] XLS-06（辺①）: レコード種別の空セルに `null` を入れる（辺②と同じ）
+- [x] YML-08（辺②）: `record-separator` ／ `field-separator` を辺①と同じ逆正規化に通す
+- [x] YML-03: 仕様どおりの期待値を書いた `@Ignore("YML-03: yaml側の修正待ち")` のテストを置く（修正はしない）
+- [x] XLS-01: テストを削除せず、アサートを「仕様外入力のため値は保証しない」旨へ書き直して実挙動の記録として残す
+- [x] `issues.md` の全 35 件に「NTF 仕様としての判定」欄を追加し、要対応 6 件／対応不要 29 件を出典つきで明記する。**既存の「判断」欄は往復基準（変換結果が入力と一致するか）で書かれており、辺ごとの判定とは別物なので、両方を残して区別する**
+- [x] YML-08 の「未確認」を潰す: 中間モデルに入った実改行を辺④が書き出したとき、読み戻しで空文字になるかを**実行して**確かめ、結果を `issues.md` に記録する
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [x] `inventory.md` のテスト件数を、増減した箇所すべてコマンドから導き直す（Rules）
+- [x] self-check（OK/NG per completion criterion、checks/task-25.5.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, coding）
+- [x] Verification expert review（subagent, test）
 
 **Completion criteria**:
 
@@ -1015,7 +1015,7 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 - [ ] `.rn/ntf-test-data-converter/coverage/axis-matrix.md` に4辺ぶんの軸×要素対応表を作る。各要素に担保テストメソッド名を記す
 - [ ] 空欄が残る要素には理由を書く
 - [ ] 表に記したテストメソッド名が実在することを、テストソースと突き合わせて確認する
-- [ ] `issues.md` を通読し、#19〜#26 で記録した課題が漏れなく載っていること・いずれも修正されていない（src/main 無変更）ことを確認する
+- [ ] `issues.md` を通読し、#19〜#26 で記録した課題が漏れなく載っていること・**#25.5 で修正した 5 件を除き**修正されていないことを確認する
 - [ ] self-check（OK/NG per completion criterion、checks/task-27.md に記録）
 - [ ] QA expert review（subagent）
 - [ ] Craft expert review（subagent, writing）
@@ -1026,7 +1026,7 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 - `axis-matrix.md` に辺①〜辺④の4表があり、軸A〜F の全要素が行として存在する
 - 各要素に担保テストメソッド名が記されており、記された全メソッド名がテストソースに実在する
 - 空欄の要素には理由が書かれている
-- `issues.md` に本作業で見つかった課題が一覧化されており、`git diff` 上 src/main への変更がゼロであることが確認されている
+- `issues.md` に本作業で見つかった課題が一覧化されており、`git diff` 上 src/main への変更が **#25.5 で修正した 5 件に限られている**ことが確認されている
 
 ---
 
@@ -1049,8 +1049,11 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 
 # State
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-17
+- **Last completed**: #25.5 不具合修正（TDD） —— 16 ステップ全消化。self-check ＋ 4 レビュー（QA／Design／Craft／Verification）完了、指摘 16 件は反映済み（triage 1 巡目完了、上限 3 巡）
+- **Next**: 保留中の XLS-22 をユーザーに確認 → #25.5 の最終判定を `checks/task-25.5.md` の Overall Verdict へ書いて締める → #26 カバレッジ計測と未到達分岐の列挙
+- **Notes**:
+  - ブランチ `ntf-test-data-converter`（push 済み、PR 未作成）。`mvn -o clean test -Djacoco.skip=true` → `Tests run: 540, Failures: 0, Errors: 0, Skipped: 2`
+  - **未決（ユーザー判断待ち・再開時に必ず聞く）**: `coverage/issues.md` の XLS-22 の「NTF 仕様としての判定」。現在は **対応不要**（今回の対象外）だが、XLS-22 本文は `testdata_notation.rst:886`「フィールド名称リストまたはデータ型リストが未指定または空である」を記法上のエラー条件として引いており、要対応（今回の対象外）とも読める。要対応へ倒すと集計が **要対応 6 ／ 対応不要 30 → 要対応 7 ／ 対応不要 29** へ動く。ユーザー指示は「後ほど判断する、再開後にもう一度聞いて」
+  - #26 の作業指示書はスクラッチパッドの `wo-26.md`（セッション破棄で消えるため、必要なら作り直す）
