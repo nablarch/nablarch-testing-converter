@@ -1049,11 +1049,12 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 
 # State
 
-- **Status**: paused
-- **Date**: 2026-08-17
-- **Last completed**: #25.5 不具合修正（TDD） —— 16 ステップ全消化。self-check ＋ 4 レビュー（QA／Design／Craft／Verification）完了、指摘 16 件は反映済み（triage 1 巡目完了、上限 3 巡）
-- **Next**: 保留中の XLS-22 をユーザーに確認 → #25.5 の最終判定を `checks/task-25.5.md` の Overall Verdict へ書いて締める → #26 カバレッジ計測と未到達分岐の列挙
-- **Notes**:
-  - ブランチ `ntf-test-data-converter`（push 済み、PR 未作成）。`mvn -o clean test -Djacoco.skip=true` → `Tests run: 540, Failures: 0, Errors: 0, Skipped: 2`
-  - **未決（ユーザー判断待ち・再開時に必ず聞く）**: `coverage/issues.md` の XLS-22 の「NTF 仕様としての判定」。現在は **対応不要**（今回の対象外）だが、XLS-22 本文は `testdata_notation.rst:886`「フィールド名称リストまたはデータ型リストが未指定または空である」を記法上のエラー条件として引いており、要対応（今回の対象外）とも読める。要対応へ倒すと集計が **要対応 6 ／ 対応不要 30 → 要対応 7 ／ 対応不要 29** へ動く。ユーザー指示は「後ほど判断する、再開後にもう一度聞いて」
-  - #26 の作業指示書はスクラッチパッドの `wo-26.md`（セッション破棄で消えるため、必要なら作り直す）
+(written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
+session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
+so only a genuinely suspended session reads `paused`.)
+
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
