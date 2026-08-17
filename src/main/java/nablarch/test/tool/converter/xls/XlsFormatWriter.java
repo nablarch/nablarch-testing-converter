@@ -274,17 +274,32 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * データ行と誤読され版面対称性が崩れる（書いたものを読み戻せない）。読み戻せない版面を黙って書かず、
      * 前提崩れとして即座に失敗させる（{@link XlsFormatReader} の番人と同じ思想）。
      * </p>
+     * <p>
+     * フィールド 0 件のレコードレイアウトも同じ思想で弾く。フィールドが無いと名前行がレコード種別セル
+     * 1 個だけになり、本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない
+     * （{@code coverage/issues.md} <b>XLS-22</b>）。そもそもフィールドを持たないレコードレイアウトは
+     * Excel 記法に存在しない形であり（{@code testdata_notation.rst:886}）、
+     * {@link RecordLayout} の契約としても 1 件以上を要求する。
+     * </p>
      *
      * @param l          版面
      * @param records    レコードレイアウト群
      * @param fixed      固定長（長さ行を持つ）なら真
      * @param sendSync   送信系（データ行の列 0 に no を置く）なら真
      * @param identifier 識別子（診断メッセージ用）
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウトが含まれる場合
+     * @throws IllegalStateException    2 レコード目以降のレコード種別が空の場合
      */
     private void appendRecords(BlockLayout l, List<RecordLayout> records,
                                boolean fixed, boolean sendSync, String identifier) {
         for (int i = 0; i < records.size(); i++) {
             RecordLayout record = records.get(i);
+            if (record.getFields().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "フィールドを持たないレコードレイアウトは書き出せません"
+                                + "（名前行がレコード種別セル 1 個だけになり本体パーサが読み戻せません）。"
+                                + " identifier=[" + identifier + "] レコード番号=" + i);
+            }
             String recordType = record.getRecordType();
             if (i > 0 && (recordType == null || recordType.isEmpty())) {
                 throw new IllegalStateException(

@@ -424,9 +424,10 @@ public class YamlFormatWriterTest {
     }
 
     @Test
-    public void serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists() {
-        // Given
-        RecordLayout empty = new RecordLayout(null, new ArrayList<FieldDef>(), rows());
+    public void serialize_recordWithEmptyRows_emitsEmptyFlowList() {
+        // Given: フィールドは 1 件（0 件は書き出し時に弾かれる）、データ行だけが空
+        RecordLayout empty = new RecordLayout(null,
+                list(new FieldDef("c1", "半角英字", "5")), rows());
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
                 FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(empty));
 
@@ -436,8 +437,43 @@ public class YamlFormatWriterTest {
                 + "  - path: \"f.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    records:\n"
-                + "      - fields: []\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\", length: \"5\"}\n"
                 + "        rows: []\n"));
+    }
+
+    /**
+     * Given: フィールドを 1 件も持たないレコードレイアウトのファイルブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（フィールド 0 件のレコードレイアウトは YAML スキーマ
+     *        （{@code $defs.record_fragment.fields.minItems} ＝ 1）が認めない形であり、
+     *        書き出しても読み戻せないため、黙って書かず早期に失敗する）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serialize_recordWithoutFieldsInFileBlock_rejected() {
+        // Given
+        RecordLayout empty = new RecordLayout(null, new ArrayList<FieldDef>(), rows(row("v")));
+        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
+                FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(empty));
+
+        // When / Then
+        serialize(block);
+    }
+
+    /**
+     * Given: フィールドを 1 件も持たないレコードレイアウトのメッセージブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serialize_recordWithoutFieldsInMessageBlock_rejected() {
+        // Given
+        RecordLayout empty = new RecordLayout(null, new ArrayList<FieldDef>(), rows(row("v")));
+        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                directives(), directives(), Collections.singletonList(empty));
+
+        // When / Then
+        serialize(block);
     }
 
     @Test

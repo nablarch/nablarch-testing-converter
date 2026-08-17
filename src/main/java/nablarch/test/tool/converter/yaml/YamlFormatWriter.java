@@ -254,11 +254,18 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * メッセージ系（偽）は {@code records:} 自体を出力しない（{@code $defs.message_data} の
      * {@code records} は {@code minItems: 1} であり、空配列はスキーマ違反になるため）。
      * </p>
+     * <p>
+     * フィールド 0 件のレコードレイアウトは書き出さずに弾く。{@code $defs.record_fragment} は
+     * {@code fields} を必須かつ {@code minItems} ＝ 1 とするため、どう書いても読み戻せないからである
+     * （{@code coverage/issues.md} <b>YML-12</b> の 3 形目。辺③の同じ形は <b>XLS-22</b>）。
+     * {@link RecordLayout} の契約としてもフィールドは 1 件以上である。
+     * </p>
      *
      * @param sb            出力先
      * @param parent        親エントリ
      * @param records       レコードレイアウト群
      * @param emitEmptyList 空のときに {@code records: []} を出力するなら true
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウトが含まれる場合
      */
     private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
                              boolean emitEmptyList) {
@@ -271,6 +278,12 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header("records");
         int recordLevel = parent.childLevel();
         for (RecordLayout record : records) {
+            if (record.getFields().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "フィールドを持たないレコードレイアウトは書き出せません"
+                                + "（$defs.record_fragment.fields は minItems = 1 のため読み戻せません）。"
+                                + " record_type=[" + record.getRecordType() + "]");
+            }
             YamlSeq item = new YamlSeq(sb, recordLevel);
             if (record.getRecordType() != null) {
                 item.prop("record_type", record.getRecordType());

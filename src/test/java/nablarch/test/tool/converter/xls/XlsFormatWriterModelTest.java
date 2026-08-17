@@ -1,12 +1,10 @@
 package nablarch.test.tool.converter.xls;
 
 import static nablarch.test.tool.converter.xls.XlsFixture.line;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -46,10 +44,14 @@ import org.junit.rules.TemporaryFolder;
  *   <li><b>軸A 送信同期 3 件（レビュー指摘で追加）</b>: A-12 {@code EXPECTED_REQUEST_BODY_MESSAGES}／
  *       A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}。
  *       識別セルを固定するテストが辺③に 1 件も無かった（詳細は該当セクションのコメント）</li>
- *   <li><b>軸C 9 件</b>: C-02 {@code sections} 空／C-04 {@code blocks} 空／C-08 {@code columnNames} 空／
+ *   <li><b>軸C 8 件</b>: C-02 {@code sections} 空／C-04 {@code blocks} 空／C-08 {@code columnNames} 空／
  *       C-09 {@code rows} 空／C-12 {@code FileDataBlock.records} 空／
  *       C-13 {@code MessageDataBlock.directives} 値あり／C-15 {@code MessageDataBlock.records} 空／
- *       C-17 {@code RecordLayout.fields} 空／C-18 {@code RecordLayout.rows} 空</li>
+ *       C-18 {@code RecordLayout.rows} 空。
+ *       <b>C-17（{@code RecordLayout.fields} 空）は本クラスの対象から外した。</b>
+ *       {@link RecordLayout} の契約が 1 件以上を要求するようになり、辺③は書き出さずに弾く
+ *       （番人は {@code XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock} ／
+ *       {@code #rejectsRecordWithoutFieldsInMessageBlock} が担保する。{@code issues.md} XLS-22）</li>
  *   <li><b>軸E 3 件</b>: E-1(0 件)＝セクション内ブロック数 0／E-2(0 件)＝ブロック内行数 0／
  *       E-3(0 件)＝ファイル内レコードレイアウト数 0</li>
  * </ul>
@@ -67,12 +69,14 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
  * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
- * （XLS-20〜XLS-23）として記録してあり、実装（src/main）は変更していない。
+ * （XLS-20〜XLS-23）として記録してある。<b>このうち XLS-22 は #25.5 の追加分で修正済み</b>であり、
+ * フィールド 0 件のレコードレイアウトは辺③が書き出さずに弾くようになった。残る XLS-20／XLS-21／XLS-23 の
+ * 実装（src/main）は変更していない。
  * </p>
  *
  * <p>
- * <b>末尾 3 件だけは軸要素の担保ではない。</b>書き出したブックを {@link XlsFormatReader} で読み戻し、
- * {@code issues.md} の XLS-20／XLS-21／XLS-22 が主張する「読み戻すとどうなるか」を実検査する。
+ * <b>末尾 2 件だけは軸要素の担保ではない。</b>書き出したブックを {@link XlsFormatReader} で読み戻し、
+ * {@code issues.md} の XLS-20／XLS-21 が主張する「読み戻すとどうなるか」を実検査する。
  * これらは辺③の担保としても辺①の担保としても数えない（steering Rules フェーズ2 の
  * 往復テストの扱いに従う）。置く理由は、この 3 件が無いと本体パーサの挙動が変わったときに
  * 上の担保テストは緑のまま {@code issues.md} の記述だけが誤りになるためである
@@ -587,39 +591,6 @@ public class XlsFormatWriterModelTest {
     }
 
     /**
-     * Given: フィールド 0 件・データ行 1 件のレコードレイアウトを持つ固定長ファイルブロック。
-     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
-     * Then : 名前行はレコード種別セルだけ（右は空セル）、型行・長さ行は空セルだけになり、
-     *        データ行の値は<b>フィールド定義が無いまま書かれる</b>。
-     *
-     * <p>
-     * 担保する軸要素: C-17（{@code RecordLayout.fields} 空）。フィールドが無くてもデータ行の値は
-     * そのまま出るため、版面はカラム名を持たない値の行になる。この版面は読み戻せない
-     * （{@code issues.md} <b>XLS-22</b>。
-     * {@code #failsToReadBackRecordWithoutFields} が実検査する）。
-     * </p>
-     */
-    @Test
-    public void writesRecordWithoutFieldColumnsWhenFieldsAreEmpty() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
-
-        // When
-        Sheet sheet = writeAndReopenSheet(container("noFields", file));
-
-        // Then
-        assertThat(line(sheet, 0), is(Arrays.asList("SETUP_FIXED=f.dat")));
-        assertThat("名前行はレコード種別だけ（フィールド名の列が無い）", line(sheet, 1), is(Arrays.asList("data", "")));
-        assertThat("型行は空セルだけ", line(sheet, 2), is(Arrays.asList("", "")));
-        assertThat("長さ行は空セルだけ", line(sheet, 3), is(Arrays.asList("", "")));
-        assertThat("データ行の値はフィールド定義が無いまま書かれる（issues.md XLS-22）",
-                line(sheet, 4), is(Arrays.asList("", "v")));
-    }
-
-    /**
      * Given: フィールド 1 件・データ行 0 件のレコードレイアウトを持つ固定長ファイルブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 名前行・型行・長さ行までが書かれ、データ行は 1 行も無い。
@@ -649,9 +620,9 @@ public class XlsFormatWriterModelTest {
     // ------------------------- issues.md の主張を腐らせないための読み戻し検査（軸要素の担保ではない）
 
     /*
-     * 以下 3 件は軸A・軸C・軸E のどの要素の担保にも数えない（辺①の担保にも数えない）。
+     * 以下 2 件は軸A・軸C・軸E のどの要素の担保にも数えない（辺①の担保にも数えない）。
      * 上の担保テストが固定しているのは「どんな版面が書かれるか」だけであり、
-     * 「その版面を読み戻すと何が起きるか」＝ issues.md の XLS-20／XLS-21／XLS-22 が主張している内容は
+     * 「その版面を読み戻すと何が起きるか」＝ issues.md の XLS-20／XLS-21 が主張している内容は
      * 検査していない。本体パーサや PoiXlsReader の挙動が変われば、上のテストは緑のまま
      * issues.md の記述だけが誤りになる。それを防ぐために読み戻しを実検査する。
      */
@@ -707,58 +678,5 @@ public class XlsFormatWriterModelTest {
         assertThat("データ行の値がカラム名になる（テーブル経路は大文字化。issues.md XLS-21）",
                 block.getColumnNames(), is(Arrays.asList("V1", "V2")));
         assertThat("データ行は 0 件になる（値が失われる）", block.getRows().size(), is(0));
-    }
-
-    /**
-     * Given: フィールド 0 件のレコードレイアウトを書き出した実 {@code .xlsx}。
-     * When : {@link XlsFormatReader} で読み戻す。
-     * Then : {@link IllegalStateException}（{@code can't get data}）になり読み戻せない。
-     *        原因は本体パーサの {@code directive or data names row must have two columns at least.}。
-     *
-     * <p>
-     * {@code issues.md} <b>XLS-22</b> の実検査。{@link XlsFormatWriter} は
-     * 「本体パーサが読み戻せる版面で書く」ことを Javadoc で謳っているが、この入力では成り立たない。
-     * </p>
-     *
-     * <p>
-     * <b>本メソッドが固定しているのは「本体パーサが読み戻せない版面を書けてしまう」という現状の記録で
-     * あって、NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。XLS-22 はユーザ確定の
-     * スコープ外として #25.5 では修正しておらず、残置の一覧は {@code coverage/issues.md} の
-     * 「残置している『緑の嘘』」にまとめた。
-     * </p>
-     */
-    @Test
-    public void failsToReadBackRecordWithoutFields() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
-        TestDataContainer container = container("noFieldsReadBack", file);
-
-        // When / Then
-        IllegalStateException thrown = assertThrows(IllegalStateException.class,
-                () -> writeAndReadBack(container));
-        assertThat("読み戻しに失敗する（issues.md XLS-22）",
-                thrown.getMessage(), containsString("can't get data"));
-        assertThat("原因は名前行の列数（本体パーサ）",
-                causeOf(thrown).getMessage(), containsString("names row must have two columns at least"));
-    }
-
-    /**
-     * 例外連鎖の原因例外を 1 段たどる。
-     *
-     * <p>
-     * 原因例外の有無を先に確かめてから返す。{@code thrown.getCause().getMessage()} を直に書くと、
-     * 連鎖が変わったときに「読める失敗」ではなく {@link NullPointerException} で落ちるためである
-     * （{@code XlsFormatReaderInvalidInputTest} の同名ヘルパと同じ）。
-     * </p>
-     *
-     * @param thrown 例外
-     * @return 原因例外
-     */
-    private static Throwable causeOf(Throwable thrown) {
-        assertThat("原因例外が連鎖していること", thrown.getCause(), is(notNullValue()));
-        return thrown.getCause();
     }
 }

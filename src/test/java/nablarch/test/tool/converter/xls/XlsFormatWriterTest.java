@@ -344,6 +344,41 @@ public class XlsFormatWriterTest {
     }
 
     /**
+     * Given: フィールドを 1 件も持たないレコードレイアウトの固定長ファイル。
+     * When : build。
+     * Then : IllegalArgumentException（フィールド 0 件のレコードレイアウトは Excel 記法として存在しない形で
+     *        あり、書き出しても本体パーサが読み戻せないため、黙って書かず早期に失敗する）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsRecordWithoutFieldsInFileBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
+                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
+
+        // When / Then
+        build(container("book", "sheet", file));
+    }
+
+    /**
+     * Given: フィールドを 1 件も持たないレコードレイアウトのメッセージブロック。
+     * When : build。
+     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsRecordWithoutFieldsInMessageBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                map(), map(), Collections.singletonList(record));
+
+        // When / Then
+        build(container("book", "sheet", message));
+    }
+
+    /**
      * Given: 2 レコード目のレコード種別が空文字の固定長ファイル。
      * When : build。
      * Then : IllegalStateException（空文字も列 0 が空になるため null と同様に弾く）。
