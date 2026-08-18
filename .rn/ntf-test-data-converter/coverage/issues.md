@@ -875,17 +875,18 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 
 **読み戻しの側も担保テストを持たせてある。** 下表の「読み戻すとどうなるか」は辺③の担保ではないが、
 テストを置かないと本体パーサ・`PoiXlsReader` の挙動が変わったときに**辺③の担保テストは緑のまま
-本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 2 件
-（`#dropsDefaultDataTypeBlockWhenReadBack` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`）
-が読み戻しを実検査する。これらは軸要素の担保としては数えない（steering Rules フェーズ2（往復テストの扱い））。
-**3 件目だった `#failsToReadBackRecordWithoutFields`（XLS-22）は削除した**——XLS-22 を修正して
-その版面自体が書き出されなくなったため、読み戻しを検査する対象が無くなった。
+本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 1 件
+（`#dropsDefaultDataTypeBlockWhenReadBack`）が読み戻しを実検査する。これは軸要素の担保としては数えない
+（steering Rules フェーズ2（往復テストの扱い））。
+**もとは 3 件あったが 2 件を削除した**——`#failsToReadBackRecordWithoutFields`（XLS-22）は XLS-22 の修正で、
+`#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`（XLS-21）は XLS-27 の番人（`57c1b0d`）で、
+いずれもその版面自体が書き出されなくなり、読み戻しを検査する対象が無くなったため。
 
 ### XLS-21 カラム名 0 件のブロックを書き出すと、読み戻しでデータ行がカラム名へ昇格し値が消える（影響度 中・**検出できない**）
 
 | 入力（中間モデル） | 書き出される版面 | 読み戻した中間モデル | 担保テスト |
 |---|---|---|---|
-| `SETUP_TABLE=T`／`columnNames=[]`／`rows=[[v1, v2]]` | 識別行 `SETUP_TABLE=T`／カラム名行 **空セル 2 個**（データ行の幅へ矩形整形される）／データ行 `v1`, `v2` | `columnNames=[V1, V2]`（値がカラム名になり、テーブル経路の大文字化が掛かる）／`rows=[]`（**データ行 0 件**） | 版面: `XlsFormatWriterModelTest#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／読み戻し: `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` |
+| `SETUP_TABLE=T`／`columnNames=[]`／`rows=[[v1, v2]]` | 識別行 `SETUP_TABLE=T`／カラム名行 **空セル 2 個**（データ行の幅へ矩形整形される）／データ行 `v1`, `v2` | `columnNames=[V1, V2]`（値がカラム名になり、テーブル経路の大文字化が掛かる）／`rows=[]`（**データ行 0 件**） | **削除済み**（XLS-27 の番人で辺③が弾くようになったため到達不能。`57c1b0d`。番人の担保は `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames`） |
 
 - 原因: `XlsFormatWriter#render` はカラム名行を版面幅へ矩形整形するため、カラム名 0 件でも
   **空セルだけの行**が出る。この行は `PoiXlsReader#isBlankLine` が空行として読み飛ばすため
@@ -904,6 +905,13 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   手で組み立てた場合にだけ到達する。読み戻しで消える機構自体は XLS-05 と同じ `notation:1535` である。
   **上の「判断」（仕様として不適切・データ損失）と食い違う。** 記法の外にある入力を守れという明文が無いため
   「対応不要」とするが、危険性の指摘としては「判断」欄が正しい。
+- 関連（§5・ユーザー確定 2026-08-18）: **この機構が実データで発現するのが XLS-27 である。**
+  本項は「カラム名 0 件かつ値を持つ行」を手で組み立てた場合の話で辺①・辺②は作らないが、
+  **XLS-27 は辺②が実際に作る形**（`rows: []` ＝ カラム名 0 件かつ行 0 件）で同じ空カラム名行が書かれ、
+  読み飛ばされた結果**次のブロックの識別子行**がカラム名へ昇格する。昇格するものがデータ行か
+  次ブロックの識別子行かの違いだけで、根は同じ「空セルだけのカラム名行が空行として読み飛ばされる」である。
+- 判定は**対応不要のまま**（到達経路が無い）。ただし XLS-27 の当面の対応（辺③の番人・`57c1b0d`）により、
+  この形は辺③で弾かれるようになったため、結果として本項の危険も塞がっている。
 
 ### XLS-20 `DataType.DEFAULT` の扱いが辺③と辺④で非対称で、辺③が書いたブロックは読み戻すと消える（影響度 中・**検出できない**）
 
@@ -2326,6 +2334,20 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   1 の番人は両方を同時に塞ぐ。
 - 関連: XLS-08 の正規化（マーカーカラムだけのブロックを `columnNames=[]`／`rows=[]` にする）を入れると、
   マーカーカラムだけのブロックも 1 の番人に当たる。**想定どおりである**（ユーザー確定）。
+- **副作用（実測 2026-08-18・要判断）**: 1 の番人を入れると、**サンプルプロジェクト自身のテストデータが
+  変換できなくなる**。`nablarch-system-development-guide` の climan サンプルから取り込んだ
+  `SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml`／`testFindNoClients.yaml`／
+  `ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml`（計 4 箇所）が `rows: []` を持つためである。
+  「空のテーブルを用意する」は NTF の日常的なテストパターンであり、**当面の対応の間、0 件テーブルを含む
+  YAML は Excel へ変換できない**。無言で壊れた `.xlsx` を書くよりは中止が正しいという判断で入れているが、
+  2（本体修正後の切り替え）が済むまでは実運用上の制約として残る。
+- 修正（当面の対応・1）: `57c1b0d`。`XlsFormatWriter#layoutColumnRow` の先頭で `columnNames` が空なら
+  `IllegalArgumentException` で止める。テストは `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames`／
+  `#rejectsListMapBlockWithoutColumnNames`。`SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`
+  が上記の副作用を固定する（**本体修正後は変換成功を確認するテストへ戻す**）。
+  この番人により到達不能になった現状固定テスト 2 件
+  （`XlsFormatWriterModelTest#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／
+  `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`）は削除した。
 
 ### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**）
 
