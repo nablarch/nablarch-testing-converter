@@ -212,11 +212,37 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
     /**
      * テーブル／LIST_MAP の版面を組み立てる（識別行 → カラム名行 → データ行）。
+     * <p>
+     * カラム名を 1 件も持たないブロックは書き出さずに弾く。Excel 記法はデータ行が無くても
+     * カラム名の行を省略できないためである（{@code testdata_notation.rst:802}
+     * 「データ行を書かない場合でも、カラム名の行は省略できない。識別子行の次の行がカラム名の行として
+     * 読み込まれるため、カラム名の行を書かないと、その次に現れた行がカラム名の行になる」。
+     * {@code LIST_MAP} も {@code :628}「2行目を Map のキー、3行目以降を Map の値として読み込む」の
+     * とおりキー行が構成上必須である。いずれも {@code 30a8271} 時点）。
+     * </p>
+     * <p>
+     * <b>黙って書くと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、次のブロックの
+     * 識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。
+     * </p>
+     * <p>
+     * <b>これは当面の対応である。</b>本体（{@code nablarch-testing}）の {@code TableDataParser} が
+     * 「識別子行の次の行が識別子行なら、カラム名 0 個の 0 件テーブルとみなす」と読めるようになったら、
+     * ここは「識別子行だけを書く」実装へ切り替える（XLS-27 の 2 段構え）。
+     * </p>
      *
      * @param block カラム・行ブロック
      * @return 版面
+     * @throws IllegalArgumentException カラム名が 0 件の場合
      */
     private BlockLayout layoutColumnRow(ColumnRowDataBlock block) {
+        if (block.getColumnNames().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "カラム名を 1 件も持たないブロックは書き出せません。Excel 形式ではデータ行が無くても"
+                    + "カラム名の行を省略できず、省略すると次のブロックの識別子行がカラム名の行として"
+                    + "読み込まれてそのブロックが消えるため、変換を中止しました。"
+                    + "ブロック=[" + marker(block) + "]");
+        }
         BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         List<String> columns = block.getColumnNames();

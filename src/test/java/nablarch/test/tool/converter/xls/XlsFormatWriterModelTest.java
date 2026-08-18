@@ -457,34 +457,6 @@ public class XlsFormatWriterModelTest {
     }
 
     /**
-     * Given: カラム名 0 件・データ行 1 件のテーブルブロック。
-     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
-     * Then : カラム名行が<b>空セルだけの行</b>としてデータ行と同じ幅で書かれる。
-     *
-     * <p>
-     * 担保する軸要素: C-08（{@code columnNames} 空）。カラム名行は
-     * {@code XlsFormatWriter#render} が版面幅（ここではデータ行の 2 列）へ矩形整形するため、
-     * 行そのものは消えず空セル 2 個になる。この版面を読み戻すと空行として読み飛ばされ
-     * データ行がカラム名行に昇格する（{@code issues.md} <b>XLS-21</b>。
-     * {@code #promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack} が実検査する）。
-     * </p>
-     */
-    @Test
-    public void writesEmptyHeaderRowWhenColumnNamesAreEmpty() {
-        // Given
-        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                Collections.<String>emptyList(), Collections.singletonList(row("v1", "v2")));
-
-        // When
-        Sheet sheet = writeAndReopenSheet(container("emptyColumns", table));
-
-        // Then
-        assertThat(line(sheet, 0), is(Arrays.asList("SETUP_TABLE=T")));
-        assertThat("カラム名行はデータ行の幅ぶんの空セルになる", line(sheet, 1), is(Arrays.asList("", "")));
-        assertThat(line(sheet, 2), is(Arrays.asList("v1", "v2")));
-    }
-
-    /**
      * Given: カラム名 2 件・データ行 0 件のテーブルブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 識別行とカラム名行だけが書かれ、データ行は 1 行も無い。
@@ -629,30 +601,4 @@ public class XlsFormatWriterModelTest {
                 read.getSections().get(0).getBlocks().size(), is(0));
     }
 
-    /**
-     * Given: カラム名 0 件・データ行 1 件のブロックを書き出した実 {@code .xlsx}。
-     * When : {@link XlsFormatReader} で読み戻す。
-     * Then : 空のカラム名行が読み飛ばされ、<b>データ行がカラム名行に昇格して</b>
-     *        カラム名 {@code [V1, V2]}（テーブル経路は大文字化される）・データ行 0 件になる。
-     *
-     * <p>
-     * {@code issues.md} <b>XLS-21</b> の実検査。値がカラム名へ化けてデータ行が消えるため、
-     * 変換前後でモデルが変わるが警告は出ない。
-     * </p>
-     */
-    @Test
-    public void promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack() {
-        // Given
-        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                Collections.<String>emptyList(), Collections.singletonList(row("v1", "v2")));
-
-        // When
-        TestDataContainer read = writeAndReadBack(container("emptyColumnsReadBack", table));
-
-        // Then
-        ColumnRowDataBlock block = (ColumnRowDataBlock) read.getSections().get(0).getBlocks().get(0);
-        assertThat("データ行の値がカラム名になる（テーブル経路は大文字化。issues.md XLS-21）",
-                block.getColumnNames(), is(Arrays.asList("V1", "V2")));
-        assertThat("データ行は 0 件になる（値が失われる）", block.getRows().size(), is(0));
-    }
 }

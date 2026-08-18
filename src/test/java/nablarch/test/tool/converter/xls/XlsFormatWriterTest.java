@@ -417,6 +417,44 @@ public class XlsFormatWriterTest {
     }
 
     /**
+     * Given: カラム名を 1 件も持たないテーブルブロック（行も 0 件）。
+     * When : build。
+     * Then : IllegalArgumentException（Excel 記法はデータ行が無くてもカラム名の行を省略できない。
+     *        {@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
+     *        識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
+     *        その次に現れた行がカラム名の行になる」（{@code 30a8271} 時点）。
+     *        カラム名行を書けないブロックを書き出すと<b>次のブロックを食う</b>ため、黙って書かず早期に失敗する。
+     *        {@code coverage/issues.md} XLS-27）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsTableBlockWithoutColumnNames() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+
+        // When / Then
+        build(container("book", "sheet", table));
+    }
+
+    /**
+     * Given: カラム名を 1 件も持たない {@code LIST_MAP} ブロック。
+     * When : build。
+     * Then : IllegalArgumentException（番人はテーブル系・{@code LIST_MAP} の双方に効く。
+     *        {@code LIST_MAP} も {@code testdata_notation.rst:628}「1行目に {@code LIST_MAP=} に続けて
+     *        シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として
+     *        読み込む」のとおりキー行が構成上必須である）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsListMapBlockWithoutColumnNames() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "lm",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+
+        // When / Then
+        build(container("book", "sheet", listMap));
+    }
+
+    /**
      * Given: 本文レコードを 1 件も持たないメッセージブロック。
      * When : build。
      * Then : IllegalArgumentException（レコード 0 件の電文は Excel 記法にも YAML 記法にも存在しない形で
