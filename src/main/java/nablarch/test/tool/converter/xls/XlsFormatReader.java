@@ -158,7 +158,8 @@ public class XlsFormatReader implements TestDataFormatReader {
                 }
                 rows.add(row);
             }
-            result.add(new TableDataBlock(type, groupId, table.getTableName(), columnNames, rows));
+            result.add(new TableDataBlock(type, groupId, table.getTableName(), columnNames,
+                                          dropEmptyEntries(rows)));
         }
         return result;
     }
@@ -188,7 +189,8 @@ public class XlsFormatReader implements TestDataFormatReader {
             }
             rows.add(row);
         }
-        return new ListMapBlock(header.getGroupId(), header.getIdentifier(), columnNames, rows);
+        return new ListMapBlock(header.getGroupId(), header.getIdentifier(), columnNames,
+                                dropEmptyEntries(rows));
     }
 
     /**
@@ -540,6 +542,51 @@ public class XlsFormatReader implements TestDataFormatReader {
             return null;
         }
         return new InterpretationContext(value, QUOTATION_TRIMMER).invokeNext();
+    }
+
+    /**
+     * マーカーカラムを除外したあとの行から、空エントリ（全要素が {@code null} または空文字の行）を除く。
+     * <p>
+     * {@code notation:1535}「全要素が null または空文字のエントリは読み飛ばされる」を、
+     * <b>マーカーカラムの除外（{@code notation:1550}）のあとに</b>適用する。本体
+     * {@code PoiXlsReader#readLine} は除外前の生の行で空エントリを判定するため、
+     * マーカーカラムだけを持つ行は本体では空エントリにならず、除外後に「セルを 1 つも持たない行」として
+     * 残ってしまう。これは記法に無い形（{@code notation:652} のとおり、テーブルデータは
+     * カラム名とデータ行を持つ構成である）なので、ここで落とす。
+     * </p>
+     * <p>
+     * 記法は 2 つの規則の前後関係を定めていない。「除外 → 空エントリ判定」を前提とする
+     * （ユーザー確定・2026-08-18。解説書側へ明文化を申し送る）。課題は
+     * {@code coverage/issues.md} の XLS-08 に記録している。
+     * </p>
+     *
+     * @param rows マーカーカラム除外後の行
+     * @return 空エントリを除いた行
+     */
+    private static List<List<String>> dropEmptyEntries(List<List<String>> rows) {
+        List<List<String>> result = new ArrayList<>(rows.size());
+        for (List<String> row : rows) {
+            if (!isEmptyEntry(row)) {
+                result.add(row);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 行が空エントリ（全要素が {@code null} または空文字）かを判定する。
+     * <p>要素を 1 つも持たない行も空エントリとみなす。</p>
+     *
+     * @param row 判定対象の行
+     * @return 空エントリなら {@code true}
+     */
+    private static boolean isEmptyEntry(List<String> row) {
+        for (String value : row) {
+            if (value != null && !value.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

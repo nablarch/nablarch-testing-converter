@@ -119,7 +119,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * なお C-08 {@code columnNames} 空は #21 送りではなく<b>本クラスで担保する</b>
- * （{@link #readsEmptyColumnNamesFromMarkerOnlyTableInRealBook} ほか）。マーカー列だけのテーブルで
+ * （{@link #dropsMarkerOnlyRowsAsEmptyEntriesInRealBook} ほか）。マーカー列だけのテーブルで
  * 到達でき、軸E の 4 観点（E-1〜E-4）に対応する要素を持たないためである。
  * </p>
  *
@@ -347,8 +347,9 @@ public class XlsFormatReaderRealFileTest {
     /**
      * Given: マーカー列 {@code [no]} だけを持つ（データ列が 1 つも無い）{@code SETUP_TABLE} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : マーカー列は本体 {@code HeaderLine#getEffectiveColumnNames()} が除外するため列名は 0 件になる。
-     *        行は 0 件にはならず、<b>セルを 1 つも持たない行</b>がデータ行の件数ぶん入る。
+     * Then : マーカー列は本体 {@code HeaderLine#getEffectiveColumnNames()} が除外するため列名は 0 件になり、
+     *        <b>行も 0 件になる</b>。マーカー列を除外したあとの行は全要素が空であり、
+     *        {@code notation:1535}（全要素が null または空文字のエントリは読み飛ばされる）に当たるためである。
      *
      * <p>
      * 担保する軸要素: C-08（空）。本タスクの当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが、
@@ -357,13 +358,15 @@ public class XlsFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * {@code rows} が空リストではなく「セル 0 個の行が 1 件」になる点は実測どおりに固定した。
-     * この中間モデルを書き戻すと当該行は失われる（往復非安定）ため、課題として
-     * {@code coverage/issues.md} の XLS-08 に記録した（修正はしない）。
+     * <b>以前は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに固定していた（XLS-08）。</b>
+     * 空エントリ判定をマーカー列の除外より<b>あとに</b>行うよう辺①を直したため、期待値を置き換えた。
+     * 記法はこの順序を定めていないが（{@code notation:1535} の空エントリと {@code notation:1550} の
+     * マーカーカラム除外は前後関係が書かれていない）、「除外 → 空エントリ判定」を前提とする
+     * （ユーザー確定・2026-08-18。解説書側へ明文化を申し送る）。
      * </p>
      */
     @Test
-    public void readsEmptyColumnNamesFromMarkerOnlyTableInRealBook() {
+    public void dropsMarkerOnlyRowsAsEmptyEntriesInRealBook() {
         // Given
         book().row(text("SETUP_TABLE=T"))
                 .row(text("[no]"))
@@ -376,19 +379,19 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat("マーカー列は有効カラム名から除外される", table.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("データ行 2 件ぶん、セル 0 個の行が入る（XLS-08）",
-                table.getRows(), is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+        assertThat("除外後は全要素が空のエントリになるため読み飛ばされる（XLS-08）",
+                table.getRows(), is(Collections.<List<String>>emptyList()));
     }
 
     /**
      * Given: マーカー列 {@code [no]} だけを持つ {@code LIST_MAP} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : テーブル系と同じく列名 0 件・セル 0 個の行 1 件になる（経路が別なので個別に固定する）。
+     * Then : テーブル系と同じく列名 0 件・行 0 件になる（経路が別なので個別に固定する）。
      *
      * <p>担保する軸要素: C-08（空。{@link ListMapBlock} 側の経路）。</p>
      */
     @Test
-    public void readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook() {
+    public void dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook() {
         // Given
         book().row(text("LIST_MAP=lm"))
                 .row(text("[no]"))
@@ -400,8 +403,8 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat("マーカー列は有効カラム名から除外される", listMap.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("データ行 1 件ぶん、セル 0 個の行が入る（XLS-08）",
-                listMap.getRows(), is(Arrays.asList(Collections.<String>emptyList())));
+        assertThat("除外後は全要素が空のエントリになるため読み飛ばされる（XLS-08）",
+                listMap.getRows(), is(Collections.<List<String>>emptyList()));
     }
 
     // ------------------------------------------------------------------ 軸A ファイル系

@@ -350,14 +350,19 @@ public class XlsReferenceFixtureTest {
 
     /**
      * {@code LIST_MAP=requestParams} の期待値。マーカー列 {@code [no]} しか持たないため、
-     * 中間モデルには列名 0 件・値 0 件の行が 1 行入る。
+     * 中間モデルには列名 0 件・行 0 件が入る。
+     * <p>
+     * <b>以前は「列名 0 件・値 0 件の行が 1 行」を期待していた（XLS-08）。</b>
+     * 空エントリ判定をマーカー列の除外より<b>あとに</b>行うよう辺①を直したため、期待値を置き換えた。
+     * {@code nablarch-example-web} 由来の実フィクスチャにこの形が実在することを示す 1 例である。
+     * </p>
      *
      * @return 期待ブロック
      */
     private static TestDataBlock expectedRequestParams() {
         return new ListMapBlock("", "requestParams",
                 Collections.<String>emptyList(),
-                Arrays.asList(Collections.<String>emptyList()));
+                Collections.<List<String>>emptyList());
     }
 
     /**

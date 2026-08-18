@@ -537,7 +537,7 @@ public class XlsFormatReaderInvalidInputTest {
      * 担保する軸要素: F1-04。マーカーカラムの判定は本体 {@code HeaderLine} の
      * 「{@code [} で始まり {@code ]} で終わる」だけであり、角括弧を欠くと除外されない。
      * 角括弧付きのカラム行が除外される側の担保は
-     * {@code XlsFormatReaderRealFileTest#readsEmptyColumnNamesFromMarkerOnlyListMapInRealBook} にある。
+     * {@code XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook} にある。
      * </p>
      */
     @Test
