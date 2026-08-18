@@ -1278,7 +1278,7 @@ ID は発見順に振り、振り直さない。
   この明文に反する。**#25.5 で修正済み（36e94a4）**。`YamlFormatReader` が `group_id` 省略の送信同期エントリを
   デフォルトグループのブロックとして読むようにした。
 
-### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**・**修正済み（yaml 側 `0b53910` ＋ 本リポジトリ側 `e8101b8`）**）
+### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**・**修正済み（yaml 側 `0b53910` ＋ 本リポジトリ側 `f0f8718`）**）
 
 | 入力 | 中間モデルへ入る結果（修正前） | 中間モデルへ入る結果（修正後・現在） | 担保テスト |
 |---|---|---|---|
@@ -1368,7 +1368,7 @@ ID は発見順に振り、振り直さない。
   実装（`YamlFileBuilder#skipFwHeader`）が `FW_HEADER` を予約値として扱ってレコードを捨てていた。
   **修正の出典は yaml 側が `0b53910`（`nablarch-testing-yaml` ブランチ `feature/ntf-yaml`。
   「fix: record_type: FW_HEADER によるレコード読み飛ばしを廃止する」）、converter 側が
-  `e8101b8`**（`YamlFormatReader#recordsWithoutFwHeader` の廃止）である。
+  `f0f8718`**（`YamlFormatReader#recordsWithoutFwHeader` の廃止）である。
   #25.5 で置いた `@Ignore("YML-03: yaml側の修正待ち")` の待機テスト 2 件
   （`YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` ／
   `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml`）は `@Ignore` を外し、外した状態で緑になることを
