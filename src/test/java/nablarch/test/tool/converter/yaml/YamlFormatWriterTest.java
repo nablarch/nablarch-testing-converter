@@ -225,16 +225,47 @@ public class YamlFormatWriterTest {
                 + "          - [\"abc\"]\n"));
     }
 
-    @Test
-    public void serializeMessage_emptyBody_emitsIdOnly() {
+    /**
+     * Given: 本文レコードを 1 件も持たないメッセージブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（YAML スキーマの {@code $defs.message_data} は
+     *        {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
+     *        {@code records: []} と書いても読み戻せない。黙って書かず早期に失敗する）。
+     *
+     * <p>
+     * 0 バイトの空ファイル特例（{@code records: []}）は記法上あくまで<b>ファイル</b>に限った話であり
+     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。{@code 30a8271} 時点）、
+     * 電文についてレコード 0 件の記法は明文が無い。電文が存在しない場合は {@code :1257} のとおり
+     * <b>データブロックごと省略する</b>のが記法である（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * ファイルブロックの 0 件は {@code $defs.file_data} の {@code records.minItems} ＝ 0 のとおり合法で、
+     * {@code YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords} が担保する。
+     * </p>
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serializeMessage_withoutRecords_rejected() {
         // Given
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "EMPTY",
                 directives(), fwHeader(), Collections.<RecordLayout>emptyList());
 
         // When / Then
-        assertThat(serialize(block), is(""
-                + "messages:\n"
-                + "  - id: \"EMPTY\"\n"));
+        serialize(block);
+    }
+
+    /**
+     * Given: 本文レコードを 1 件も持たない送信系メッセージブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（番人は {@code messages} 経路・送信系 4 種の双方に効く。
+     *        {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} も
+     *        {@code records.minItems} ＝ 1 である）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serializeSendSync_withoutRecords_rejected() {
+        // Given
+        MessageDataBlock block = new MessageDataBlock(DataType.RESPONSE_BODY_MESSAGES, "[g]", "EMPTY",
+                directives(), fwHeader(), Collections.<RecordLayout>emptyList());
+
+        // When / Then
+        serialize(block);
     }
 
     // ------------------------------------------------------------------------
@@ -351,8 +382,9 @@ public class YamlFormatWriterTest {
     @Test
     public void serialize_quotesKeyContainingSpecialChars() {
         // Given: directives キーに YAML 特殊文字（コロン）／空白
+        // （本文レコードは電文の契約上 1 件以上が必要なため最小の 1 件を置く。検証対象はキーの引用のみ）
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "M",
-                directives("a:b", "1", "c d", "2"), fwHeader(), Collections.<RecordLayout>emptyList());
+                directives("a:b", "1", "c d", "2"), fwHeader(), Collections.singletonList(minimalBody()));
 
         // When / Then
         assertThat(serialize(block), is(""
@@ -360,21 +392,24 @@ public class YamlFormatWriterTest {
                 + "  - id: \"M\"\n"
                 + "    directives:\n"
                 + "      \"a:b\": \"1\"\n"
-                + "      \"c d\": \"2\"\n"));
+                + "      \"c d\": \"2\"\n"
+                + MINIMAL_BODY_YAML));
     }
 
     @Test
     public void serialize_emptyKey_isQuoted() {
         // Given: 空文字キー（退化ケース）→ クォートされる
+        // （本文レコードは電文の契約上 1 件以上が必要なため最小の 1 件を置く。検証対象はキーの引用のみ）
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "M",
-                directives("", "v"), fwHeader(), Collections.<RecordLayout>emptyList());
+                directives("", "v"), fwHeader(), Collections.singletonList(minimalBody()));
 
         // When / Then
         assertThat(serialize(block), is(""
                 + "messages:\n"
                 + "  - id: \"M\"\n"
                 + "    directives:\n"
-                + "      \"\": \"v\"\n"));
+                + "      \"\": \"v\"\n"
+                + MINIMAL_BODY_YAML));
     }
 
     @Test
@@ -548,8 +583,9 @@ public class YamlFormatWriterTest {
     @Test
     public void serialize_keyStartingWithIndicator_isQuoted() {
         // Given: 先頭が YAML インジケータ（'-'）のキー
+        // （本文レコードは電文の契約上 1 件以上が必要なため最小の 1 件を置く。検証対象はキーの引用のみ）
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "M",
-                directives("-x", "1"), fwHeader(), Collections.<RecordLayout>emptyList());
+                directives("-x", "1"), fwHeader(), Collections.singletonList(minimalBody()));
 
         // When / Then
         assertTrue(serialize(block).contains("      \"-x\": \"1\"\n"));
@@ -784,6 +820,24 @@ public class YamlFormatWriterTest {
         }
         return map;
     }
+
+    /**
+     * 電文の契約（本文レコードは 1 件以上）を満たすためだけの最小の本文レコードを作る。
+     * キーの引用など本文と無関係な検証で使う。出力は {@link #MINIMAL_BODY_YAML} と対になる。
+     *
+     * @return フィールド 1 件・データ行 1 件のレコードレイアウト
+     */
+    private static RecordLayout minimalBody() {
+        return new RecordLayout(null, list(field("f", "半角英字", "1")), rows(row("v")));
+    }
+
+    /** {@link #minimalBody()} が {@code messages} 経路で書き出される YAML。 */
+    private static final String MINIMAL_BODY_YAML = ""
+            + "    records:\n"
+            + "      - fields:\n"
+            + "          - {name: \"f\", type: \"半角英字\", length: \"1\"}\n"
+            + "        rows:\n"
+            + "          - [\"v\"]\n";
 
     private static MessageDataBlock sendSync(DataType type) {
         return new MessageDataBlock(type, "[g]", "ID", directives(), fwHeader(),

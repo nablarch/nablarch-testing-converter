@@ -44,17 +44,29 @@ public class MessageDataBlockTest {
     }
 
     @Test
-    public void FWヘッダ非使用経路は空Mapで表しディレクティブとレコードも空で保持する() {
+    public void FWヘッダ非使用経路は空Mapで表しディレクティブも空で保持する() {
         // Given/When: expected_request_body_messages 等は fw_header を読まない＝空 Map
         MessageDataBlock sut = new MessageDataBlock(
                 DataType.EXPECTED_REQUEST_BODY_MESSAGES, "", "RM11AC0101",
-                new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
+                new LinkedHashMap<>(), new LinkedHashMap<>(),
+                List.of(new RecordLayout(null, List.of(new FieldDef("f", "半角英字", "1")), List.of(List.of("v")))));
 
         // Then: 各コレクションが空であること
         assertThat(sut.getFwHeaderFields().isEmpty(), is(true));
         assertThat(sut.getDirectives().isEmpty(), is(true));
-        assertThat(sut.getRecords().isEmpty(), is(true));
         assertThat(sut.getDataType(), is(DataType.EXPECTED_REQUEST_BODY_MESSAGES));
+    }
+
+    @Test
+    public void 契約違反のレコード0件もモデル自身は検査せず保持する() {
+        // Given: records は 1 件以上が契約だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
+        // When
+        MessageDataBlock sut = new MessageDataBlock(
+                DataType.MESSAGE, "", "RM11AC0101",
+                new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
+
+        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
+        assertThat(sut.getRecords().isEmpty(), is(true));
     }
 
     @Test

@@ -567,30 +567,6 @@ public class XlsFormatWriterModelTest {
     }
 
     /**
-     * Given: ディレクティブと FW 制御ヘッダだけを持ち、本文レコード 0 件の {@code MESSAGE} ブロック。
-     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
-     * Then : 識別行 → ディレクティブ行 → FW 制御ヘッダ行までが書かれ、本文の行は 1 行も無い。
-     *
-     * <p>担保する軸要素: C-15（{@code MessageDataBlock.records} 空）／E-3(0 件)（メッセージ経路）。</p>
-     */
-    @Test
-    public void writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty() {
-        // Given
-        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                map("file-type", "Fixed"), map("requestId", "R01"),
-                Collections.<RecordLayout>emptyList());
-
-        // When
-        Sheet sheet = writeAndReopenSheet(container("messageNoRecords", message));
-
-        // Then
-        assertThat(line(sheet, 0), is(Arrays.asList("MESSAGE=msg1")));
-        assertThat(line(sheet, 1), is(Arrays.asList("file-type", "Fixed")));
-        assertThat(line(sheet, 2), is(Arrays.asList("requestId", "R01")));
-        assertThat("本文レコードの行は 1 行も書かれない", sheet.getRow(3), is(nullValue()));
-    }
-
-    /**
      * Given: フィールド 1 件・データ行 0 件のレコードレイアウトを持つ固定長ファイルブロック。
      * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 名前行・型行・長さ行までが書かれ、データ行は 1 行も無い。

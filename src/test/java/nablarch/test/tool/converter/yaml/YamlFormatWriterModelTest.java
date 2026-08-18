@@ -66,12 +66,18 @@ import org.junit.rules.TemporaryFolder;
  * 該当する 4 つの形（{@code records} 空 2 種／{@code fields} 空／{@code FieldDef.type} 省略）は
  * いずれも辺②では<b>到達不能</b>と判定済みであり（{@code inventory.md} §2.3）、
  * 辺④からだけ作れる。{@code issues.md} <b>YML-12</b> に記録した。
- * <b>ただし 3 形目（{@code fields} 空）と 4 形目（{@code FieldDef.type} 省略）は #25.5 の追加分で
- * 修正済み</b>で、辺④が書き出さずに弾くようになったため本クラスには残っていない（番人は
+ * <b>ただし 4 形すべて #25.5 で修正済み</b>で、辺④が書き出さずに弾くようになったため
+ * 本クラスには 1 つも残っていない。番人は
  * {@code YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected} ／
- * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected} ／
+ * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected}（3 形目）／
  * {@code #serialize_fieldWithNullTypeInFileBlock_rejected} ／
- * {@code #serialize_fieldWithNullTypeInMessageBlock_rejected} が担保する）。
+ * {@code #serialize_fieldWithNullTypeInMessageBlock_rejected}（4 形目）／
+ * {@code #serializeMessage_withoutRecords_rejected} ／
+ * {@code #serializeSendSync_withoutRecords_rejected}（2 形目 —— 電文の {@code records} 空）が担保する。
+ * 1 形目（ファイルブロックの {@code records} 空）だけは記法・スキーマとも<b>合法な形が存在する</b>ため
+ * 弾くのではなく {@code records: []} を書くように直してあり、本クラスの
+ * {@link #writesEmptyRecordsListForFileBlockWithoutRecords()}（記法）と
+ * {@link #readsBackFileBlockWithEmptyRecords()}（読み戻し）が固定する。
  * </p>
  *
  * <p>
@@ -609,10 +615,13 @@ public class YamlFormatWriterModelTest {
     @Test
     public void quotesBooleanAndDateLookingValuesInFwHeader() {
         // Given
+        // 本文レコードは電文の契約上 1 件以上が必要なため最小の 1 件を置く（検証対象は fw_header の値のみ）
         MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "RM01",
                 map("text-encoding", "UTF-8"),
                 map("resendFlag", "true", "dateSent", "2026-08-07"),
-                Collections.<RecordLayout>emptyList());
+                Collections.singletonList(new RecordLayout(null,
+                        Collections.singletonList(new FieldDef("f", "半角英字", "1")),
+                        Collections.singletonList(Collections.singletonList("v")))));
 
         // When / Then
         assertThat(serialize(block), is(""
@@ -622,7 +631,12 @@ public class YamlFormatWriterModelTest {
                 + "      text-encoding: \"UTF-8\"\n"
                 + "    fw_header:\n"
                 + "      resendFlag: \"true\"\n"
-                + "      dateSent: \"2026-08-07\"\n"));
+                + "      dateSent: \"2026-08-07\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"v\"]\n"));
     }
 
     // ------------------------------------------------------------------ キーのクォート
@@ -766,36 +780,6 @@ public class YamlFormatWriterModelTest {
         assertThat(back.getIdentifier(), is("n.dat"));
         assertThat(back.getFileType(), is(FileDataBlock.FileType.FIXED));
         assertThat(back.getRecords().size(), is(0));
-    }
-
-    /**
-     * Given: レコードレイアウトを 1 件も持たないメッセージブロック。
-     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
-     * Then : 書き出しは成功するが、読み戻しは {@code required}（{@code records}）違反で失敗する。
-     *
-     * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-12</b>）。
-     * この形は既存の {@code YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly} が
-     * <b>書き出し側だけ</b>固定していた（C-15 空）。読み戻せないことは誰も通していなかった。
-     * </p>
-     *
-     * <p>
-     * <b>本メソッドが固定しているのは「スキーマが認めない形を書けてしまう」という現状の記録であって、
-     * NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。#25.5 で修正したのは YML-12 の
-     * 1 形目（ファイルブロックの {@code records} 欠落）だけで、本形はユーザ確定のスコープ外として
-     * 残置している。残置の一覧は {@code coverage/issues.md} の「残置している『緑の嘘』」にまとめた。
-     * </p>
-     */
-    @Test
-    public void failsToReadBackMessageBlockWithoutRecords() {
-        // Given / When
-        YamlSchemaValidationException e = assertFailsToReadBack(
-                new MessageDataBlock(DataType.MESSAGE, "", "EMPTY", map(), map(),
-                        Collections.<RecordLayout>emptyList()));
-
-        // Then
-        assertThat(types(e), is(Arrays.asList("required")));
-        assertThat(locations(e), is(Arrays.asList("$.messages[0]")));
     }
 
     // ------------------------------------------------------------------ 往復で値が変わる形（既知の課題）

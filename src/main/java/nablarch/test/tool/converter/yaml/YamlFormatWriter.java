@@ -177,7 +177,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         entry.prop("path", block.getIdentifier());
         entry.prop("type", block.getFileType() == FileDataBlock.FileType.FIXED ? "fixed" : "variable");
         emitMap(sb, entry, "directives", block.getDirectives());
-        emitRecords(sb, entry, block.getRecords(), true);
+        emitRecords(sb, entry, block.getRecords());
     }
 
     /**
@@ -186,17 +186,39 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * グループ ID が非空なら {@code group_id:}（送信系）、FW 制御ヘッダが非空なら {@code fw_header:}（MESSAGE）を
      * 出力する。いずれもブロックの内容に応じて自然に切り替わる。
      * </p>
+     * <p>
+     * 本文レコード 0 件の電文は書き出さずに弾く。{@code $defs.message_data} ／
+     * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} はいずれも
+     * {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
+     * {@code records: []} と書いても読み戻せないからである。記法にも電文のレコード 0 件を表す書き方の
+     * 明文が無く、電文が存在しない場合は {@code testdata_notation.rst:1257}（{@code 30a8271} 時点）の
+     * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} の契約としても本文レコードは
+     * 1 件以上である（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * </p>
+     * <p>
+     * <b>この検査は共通の {@link #emitRecords} には置かない。</b>ファイルデータブロックのレコード 0 件は
+     * 0 バイトの空ファイルを表す<b>合法な形</b>であり、{@link #emitFile} 経由で {@code records: []} を
+     * 出す正当な経路だからである（{@code testdata_notation.rst:881}／{@code :1109}／
+     * {@code :1146}。スキーマも {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
+     * </p>
      *
      * @param sb    出力先
      * @param block メッセージブロック
+     * @throws IllegalArgumentException 本文レコードが 0 件の場合
      */
     private void emitMessage(StringBuilder sb, MessageDataBlock block) {
+        if (block.getRecords().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "本文レコードを 1 件も持たない電文は書き出せません"
+                            + "（電文の records は minItems = 1 のため records: [] と書いても読み戻せません）。"
+                            + " identifier=[" + block.getIdentifier() + "]");
+        }
         YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("id", block.getIdentifier());
         emitMap(sb, entry, "directives", block.getDirectives());
         emitMap(sb, entry, "fw_header", block.getFwHeaderFields());
-        emitRecords(sb, entry, block.getRecords(), false);
+        emitRecords(sb, entry, block.getRecords());
     }
 
     // ------------------------------------------------------------------------
@@ -246,13 +268,13 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     /**
      * レコードレイアウト群を出力する。
      * <p>
-     * 空の場合の書き方はブロック種別で異なる。ファイル系（{@code emitEmptyList} が真）は
-     * {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
+     * 空なら {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
      * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法仕様が定めているためである
      * （{@code testdata_notation.rst:879}／{@code :1144}。本体スキーマも
      * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
-     * メッセージ系（偽）は {@code records:} 自体を出力しない（{@code $defs.message_data} の
-     * {@code records} は {@code minItems: 1} であり、空配列はスキーマ違反になるため）。
+     * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
+     * {@link #emitMessage} が 0 件を送出で弾いてある（{@code $defs.message_data} の {@code records} は
+     * {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。
      * </p>
      * <p>
      * フィールド 0 件のレコードレイアウトは書き出さずに弾く。{@code $defs.record_fragment} は
@@ -267,19 +289,15 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@code type} は必須である。弾くのは {@code null} だけで、空文字は弾かない。
      * </p>
      *
-     * @param sb            出力先
-     * @param parent        親エントリ
-     * @param records       レコードレイアウト群
-     * @param emitEmptyList 空のときに {@code records: []} を出力するなら true
+     * @param sb      出力先
+     * @param parent  親エントリ
+     * @param records レコードレイアウト群
      * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、またはデータ型が
      *                                  {@code null} のフィールド定義が含まれる場合
      */
-    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
-                             boolean emitEmptyList) {
+    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records) {
         if (records.isEmpty()) {
-            if (emitEmptyList) {
-                parent.line(key("records") + ": []");
-            }
+            parent.line(key("records") + ": []");
             return;
         }
         parent.header("records");

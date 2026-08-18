@@ -47,7 +47,7 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 YML-08・YML-12）／**対応不要 29 件**である。
 
 要対応のうち **7 件すべてが修正済み**である（XLS-06・XLS-16・XLS-22・YML-02・YML-03・YML-08・YML-12。
-ただし YML-12 は 4 形のうち 1 形目・3 形目・4 形目のみ）。**YML-03 は帰属が nablarch-testing-yaml 側だったため
+**YML-12 は 4 形すべてが修正済みになった**）。**YML-03 は帰属が nablarch-testing-yaml 側だったため
 `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いて待っていたが、yaml 側が `0b53910` で修正されたため
 2026-08-18 に両側そろって解消した**（converter 側は `YamlFormatReader#recordsWithoutFwHeader` の廃止。
 `@Ignore` は残っていない）。詳細は各課題の判定欄と steering Decisions
@@ -1014,7 +1014,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 | `DataType.DEFAULT` のヘッダ色がその他グループ（`HEADER_OTHER`）になる | 妥当（`BlockLayout#headerFill` の Javadoc が `DEFAULT` を「それ以外」に明記している） |
 | ブロック 0 件のセクションが、行を 1 行も持たないシートになる（C-04 / E-1(0)） | 妥当（読み戻すとブロック 0 件のセクションに戻る＝往復が安定する。実測） |
 | データ行 0 件のブロックが識別行とカラム名行だけになる（C-09 / E-2(0)） | 妥当（読み戻すと `rows=[]` に戻る。実測） |
-| レコードレイアウト 0 件のファイル／メッセージが識別行とディレクティブ行（FW 制御ヘッダ行）だけになる（C-12 / C-15 / E-3(0)） | 妥当（読み戻すと `records=[]` に戻る。実測） |
+| レコードレイアウト 0 件のファイル／メッセージが識別行とディレクティブ行（FW 制御ヘッダ行）だけになる（C-12 / C-15 / E-3(0)） | **ファイル（C-12）のみ妥当**（読み戻すと `records=[]` に戻る。実測）。**メッセージ（C-15）は 2026-08-18・#25.5 で判断を変えた** —— レコード 0 件の電文は記法にもスキーマにも存在しない形のため、`XlsFormatWriter#layoutMessage` が `IllegalArgumentException` で弾くようにした（**YML-12** の 2 形目）。この観測を固定していた `XlsFormatWriterModelTest#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` は削除し、番人テスト `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords` へ置き換えた |
 | 値行 0 件のレコードレイアウトが名前行・型行・長さ行だけになる（C-18） | 妥当（読み戻すと `rows=[]` に戻る。実測） |
 | `MessageDataBlock.directives` に値があると、ディレクティブ行が FW 制御ヘッダ行の**上**に出る（C-13） | 妥当（`layoutMessage` の記述順どおり。読み戻すと `directives` と `fwHeaderFields` に分かれて戻ることを実測） |
 | C-12 の入力に書いていない `file-type` が、読み戻した `directives` に現れる | 既知（**XLS-07**。器が既定ディレクティブを注入する） |
@@ -1985,15 +1985,17 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 | 入力（中間モデル） | 書き出される YAML | 読み戻し（違反キーワード・位置） | 担保テスト（`YamlFormatWriterModelTest#`） |
 |---|---|---|---|
 | `FileDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない ／ **#25.5 後**: `records: []` が出る | **#25.5 前**: `required` ／ `$.setup_files[0]` ／ **#25.5 後**: 読み戻せる（違反なし） | 記法: `writesEmptyRecordsListForFileBlockWithoutRecords`（旧名 `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`） ／ 読み戻し: `readsBackFileBlockWithEmptyRecords`（旧名 `failsToReadBackFileBlockWithoutRecords`） |
-| `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（記法は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
+| `MessageDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない（`id:` だけになる） ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `required` ／ `$.messages[0]` | 番人: `YamlFormatWriterTest#serializeMessage_withoutRecords_rejected`／`#serializeSendSync_withoutRecords_rejected`（旧 `failsToReadBackMessageBlockWithoutRecords` と旧 `serializeMessage_emptyBody_emitsIdOnly` は削除）。辺③側は `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords`／`#rejectsSendSyncMessageBlockWithoutRecords`（旧 `XlsFormatWriterModelTest#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` は削除）。境界＝ファイルブロックの 0 件は合法であることは `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` ／ `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` が担保 |
 | `RecordLayout.fields` が空 | **#25.5 前**: `fields: []` が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `minItems` ／ `$.setup_files[0].records[0].fields` | 番人: `YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected`／`#serialize_recordWithoutFieldsInMessageBlock_rejected`（旧 `failsToReadBackRecordWithoutFields` と旧 `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` は削除） |
 | `FieldDef.type` が `null` | **#25.5 前**: `{name: "c1"}`（`type` を省略）が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `required` ／ `$.expected_files[0].records[0].fields[0]` | 番人: `YamlFormatWriterTest#serialize_fieldWithNullTypeInFileBlock_rejected`／`#serialize_fieldWithNullTypeInMessageBlock_rejected`（旧 `failsToReadBackFieldWithoutType` と旧 `serialize_fieldWithNullType_omitsType` は削除。境界＝空文字は弾かないことは `#serialize_fieldWithEmptyType_emitsEmptyType` が担保） |
 
 - 原因（**#25.5 前**）: 直列化は中間モデルの形をそのまま写していた（`emitRecords` は空なら `records:` を出さず、
   `emitFlowList` は空なら `key: []` を出し、`fieldFlow` は `type` が `null` なら書かない。
   **#25.5 後の `fieldFlow` は `type` を常に書く**——`null` は `emitRecords` の番人が弾くため）。
-  **#25.5 で `emitRecords` だけを直し、ファイルデータブロックに限り空でも `records: []` を出すようにした**
-  （メッセージ系は `records.minItems` ＝ 1 で `[]` も通らないため、従来どおりキーを出さない）。
+  **#25.5 で `emitRecords` を直し、空なら `records: []` を出すようにした**（1 形目）。
+  **メッセージ系は `records.minItems` ＝ 1 で `[]` も通らないため、`emitMessage` が 0 件を
+  `IllegalArgumentException` で弾くようにした**（2 形目。これにより `emitRecords` に空が入るのは
+  ファイルデータブロック経由だけになったので、`emitEmptyList` の引数は削った）。
   スキーマ側の該当箇所は次のとおりで、**`file_data` と `message_data` で `records` の扱いが違う**
   （2026-08-14 に jar 内の実スキーマを展開して確認した。導出コマンドは下記）。
 
@@ -2024,7 +2026,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
     にもかかわらず辺④は空を「キーごと省略」で表していたため落ちていた（**#25.5 で修正済み**）。
   - **2 件目（`MessageDataBlock.records` 空）は表現の問題ではない。**
     `message_data` は `records.minItems` ＝ 1 であり、`records: []` と書いても通らない。
-    すなわちスキーマは「レコードを 1 件も持たないメッセージ」という形そのものを認めていない。
+    すなわちスキーマは「レコードを 1 件も持たないメッセージ」という形そのものを認めていない
+    （送信系の `expected_request_message_data` ／ `group_message_data` も同じ。**#25.5 で修正済み**）。
   - 3・4 件目（`fields` 空／`type` 省略）も同じく、スキーマが認めない形を辺④が書けてしまうという話である
     （`fields.minItems` ＝ 1 ／ `type` 必須）。
 - **到達経路がある（実測・2026-08-14）。** 上 2 件（`records` 空）は**辺①が生成できる**。
@@ -2034,6 +2037,11 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   `records:` を持たない `.yaml` が生成され、それを読み直すと上表のとおりスキーマ違反で失敗する。
   **すなわち XLS→YAML 変換の成果物が NTF で読めなくなる。**
   再現に使った `.xlsx` は `XlsFormatWriter` で生成したものであり、**Excel で手書きした版面での再現は未確認**である。
+  **#25.5 後はどちらも解消した** —— ファイルブロックは `records: []` を書くようになって読み戻せるようになり、
+  メッセージブロックは書き出し時に `IllegalArgumentException` で止まる（黙って読めない `.yaml` を作らない）。
+  なお辺①がレコード 0 件のメッセージブロックを作れること自体は変わらない
+  （`XlsFormatReaderRealFileTest#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`）。
+  そのような `.xlsx` を変換しようとすると、**#25.5 後は変換が loud に失敗する**。
 - 下 2 件（`fields` 空／`type` 省略）は辺②では到達不能である（`inventory.md` §2.3。スキーマが弾く）。
   **`fields` 空は辺③でも同じ形が「書けるが読み戻せない `.xlsx`」になる（XLS-22）。同じ中間モデル値の
   辺③版・辺④版であり、#25.5 で両辺に同じ番人を置いて同時に閉じた**（`b9ff38e`）。
@@ -2049,8 +2057,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   - **1 件目のみ「空のコレクションを `records: []` と書く」**（スキーマが受け付ける形が存在するため）。
   - **2・3・4 件目は「書き出し時に弾く」**（スキーマが形そのものを認めていないため、
     どう書いても読み戻せない。辺③の `XlsFormatWriter#appendRecords` が同種の前提崩れを
-    送出で弾いているのと同じ思想）。**3・4 件目は #25.5 で実現済み**（残るのは 2 件目のみ）。
-- NTF 仕様としての判定: **要対応**（4 形のうち 1 形目・3 形目・4 形目）。`notation:879`「0バイトの空ファイルは、レコード定義を
+    送出で弾いているのと同じ思想）。**2・3・4 件目とも #25.5 で実現済み**（残りは無い）。
+- NTF 仕様としての判定: **要対応**（4 形すべて）。`notation:879`「0バイトの空ファイルは、レコード定義を
   持たないファイルデータブロックとして表現する」／`notation:1144`「0バイトの空ファイルを表現するには、`records:` に
   空配列 `[]` を記載する」に反する（`records:` キーごと落としていた）。**#25.5 で 1 形目を修正済み（aec82f2）**。
   `YamlFormatWriter` がレコード 0 件のファイルデータブロックに `records: []` を書き出すようにした。
@@ -2068,12 +2076,46 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   「`type` は必須（`null` 不可）」の契約を明記し、`XlsFormatWriter#appendRecords` ／
   `YamlFormatWriter#emitRecords` が `null` を `IllegalArgumentException` で弾くようにした
   （弾くのは `null` のみ。空文字は弾かない）。
-  残る 1 形（`message_data.records` 空）は
-  **スキーマが形そのものを認めておらず `[]` を書いても読み戻せない**ため、現時点ではユーザー確定で対象外
-  （steering Decisions「この 3 形は今回の対象外とし、記録のみのまま残す」。3 形目・4 形目が上記のとおり
-  対象へ移った。残る 1 形の扱いはユーザーへ判断を上げてある）。
+  **2 形目（`message_data.records` 空）も要対応へ倒し、#25.5 で修正済み**（ユーザー確定・2026-08-18)。
+  根拠は記法とスキーマの明文である。
 
-  1 形目・3 形目・4 形目の修正はいずれも本リポジトリ内で完結した（1・3 形目は `YamlFormatWriter` のみ、
+  **以下の行番号はすべて `30a8271` 時点のもの**であり、次のコマンドで確かめられる
+  （本書の他の箇所が使う基準 `df7bff7` ではない）。
+
+  ```sh
+  cd /home/tie303177/work/nablarch/nablarch-document
+  for n in 881 1109 1146 1158 1257; do
+    printf '%s: ' "$n"
+    git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
+  done
+  ```
+
+  - **電文についてレコード 0 件の記法は明文が無い。** 電文が存在しない場合の記法は
+    `notation:1257`「応答不要メッセージ受信では…`expectedMessages` のデータブロックを
+    記述する必要はない」＝**ブロックごと省略する**である。
+  - **0 バイト空ファイル特例は電文に及ばない。** 同特例は `notation:881`「0バイトの空ファイルは、
+    レコード定義を持たないファイルデータブロックとして表現する」／`:1109`「0バイトの空ファイルを
+    表現するには、ディレクティブのみを記述してレコード定義を省略する。」／`:1146`
+    「`setup_files`・`expected_files` の各エントリには `path`・`type`・`records` の3キーが必須であり、
+    いずれかを省略するとエラーになる。0バイトの空ファイルを表現するには、`records:` に空配列 `[]` を
+    記載する。」と、いずれも**ファイルに限定**して書かれている。
+    `notation:1158`「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
+    フィールド長・データという、前述のファイルデータと同じ構成を持つ」は直前の列挙のとおり
+    **カラム構成のみ**を指しており、空ファイル特例まで及ぶ読み方はしない。
+  - スキーマは `$defs.message_data` ／ `$defs.expected_request_message_data` ／
+    `$defs.group_message_data` が `required` ＝ `["id","records"]` かつ `records.minItems` ＝ **1**、
+    `$defs.file_data` だけが `records.minItems` ＝ **0** である。**この非対称は不整合ではなく、
+    明文の有無に対応した意図的なものと扱う**（スキーマは変更対象ではない）。
+
+  `MessageDataBlock` の Javadoc に「`records` は 1 件以上（0 件不可）」の契約を明記し、
+  `XlsFormatWriter#layoutMessage` ／ `YamlFormatWriter#emitMessage` が 0 件を
+  `IllegalArgumentException` で弾くようにした。**番人は共通の `appendRecords` ／ `emitRecords` には
+  置かない**——ファイルデータブロックの 0 件は 0 バイト空ファイルを表す合法な形であり、
+  `emitFile` は `records: []` を出す正当な経路だからである（この番人を置いたことで `emitRecords` に
+  空が入るのはファイル経路だけになり、`emitEmptyList` 引数は到達不能な分岐ごと削った）。
+
+  4 形すべての修正はいずれも本リポジトリ内で完結した（1・3 形目は `YamlFormatWriter` のみ、
+  2 形目は `MessageDataBlock` の Javadoc と `XlsFormatWriter` ／ `YamlFormatWriter`、
   4 形目は `FieldDef` の Javadoc と `XlsFormatWriter` ／ `YamlFormatWriter`）。
 
 ### YML-13 折り返しの起きるキーを書き出すと、YAML として読めないファイルになる（影響度 低・**変換時には検出できない**／読み戻し時に loud）
@@ -2178,29 +2220,28 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 ### 残置している「緑の嘘」
 
-次の 1 本は `mvn test` で緑になるが、**固定しているのは「スキーマや本体パーサが認めない形を書けてしまう」
-という現状の記録であって NTF の仕様ではない。実行結果からは「仕様どおり」と区別がつかない。**
-ユーザー確定のスコープ外のため #25.5 では修正せず、テストの Javadoc に
-（XLS-01 と同じ粒度で）その旨を書き足した。
+**残置は 0 本になった（2026-08-18）。** 「緑の嘘」とは、`mvn test` で緑になるが**固定しているのは
+「スキーマや本体パーサが認めない形を書けてしまう」という現状の記録であって NTF の仕様ではない**テストを指す
+（実行結果からは「仕様どおり」と区別がつかない）。
 
-| テスト | 課題 | 何を現状として固定しているか |
-|---|---|---|
-| `YamlFormatWriterModelTest#failsToReadBackMessageBlockWithoutRecords` | YML-12（2 形目） | メッセージブロックの `records` 欠落 |
-
-**残置は 4 本 → 2 本 → 1 本へ減った（2026-08-18）。** XLS-22 と YML-12 の 3 形目を要対応へ倒して修正した
-ときに 2 本（`XlsFormatWriterModelTest#failsToReadBackRecordWithoutFields`／
+**4 本 → 2 本 → 1 本 → 0 本へ減った。** XLS-22 と YML-12 の 3 形目を要対応へ倒して修正したときに
+2 本（`XlsFormatWriterModelTest#failsToReadBackRecordWithoutFields`／
 `YamlFormatWriterModelTest#failsToReadBackRecordWithoutFields`）を、YML-12 の 4 形目を修正したときに
-1 本（`YamlFormatWriterModelTest#failsToReadBackFieldWithoutType`）を削除し、いずれも番人テストへ
-置き換えた。
-**#25.5 で直したのは YML-12 の 1 形目（ファイルブロックの `records` 欠落）・3 形目（`fields` 欠落）・
-4 形目（`FieldDef.type` 欠落）、および XLS-22 である。**
+1 本（`YamlFormatWriterModelTest#failsToReadBackFieldWithoutType`）を、YML-12 の 2 形目を修正したときに
+1 本（`YamlFormatWriterModelTest#failsToReadBackMessageBlockWithoutRecords`）を削除し、
+いずれも番人テストへ置き換えた。
+**#25.5 で直したのは YML-12 の 4 形すべて（1 形目＝ファイルブロックの `records` 欠落／
+2 形目＝メッセージブロックの `records` 欠落／3 形目＝`fields` 欠落／4 形目＝`FieldDef.type` 欠落）、
+および XLS-22 である。**
 
-残置が 1 本であることは、上表の行数と次のコマンドの一致で確かめられる（削除した 3 本が
-`src/test` に存在しないことを示す）。
+残置が 0 本であることは、次のコマンドで確かめられる（削除した 4 本が `src/test` に存在しないことを示す）。
 
 ```
-$ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType' src/test --include=*.java | wc -l
+$ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\|failsToReadBackMessageBlockWithoutRecords' src/test --include=*.java | wc -l
 0
-$ grep -rn 'public void failsToReadBackMessageBlockWithoutRecords' src/test --include=*.java | wc -l
-1
 ```
+
+`src/test` に残る `failsToReadBack…` は 2 本だけで、いずれも「緑の嘘」ではない
+（`grep -rn 'failsToReadBack' src/test --include=*.java | grep 'public void'` で確かめられる）。
+`YamlFormatWriterScalarTest#failsToReadBackFoldedKey` は **YML-13**（判定は対応不要）の実挙動の記録、
+`YamlFormatWriterModelTest#failsToReadBackLiteralTabFieldSeparator` は **YML-08** の実挙動の記録である。
