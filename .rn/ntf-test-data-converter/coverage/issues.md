@@ -2308,6 +2308,49 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   - 0 件テーブルのみの読み込み単位も往復する（ブロック 1 件のまま）
   - 直後が `LIST_MAP` の場合、`LIST_MAP` は別パスで読まれるため残るが、`SETUP_TABLE` 側は
     `columnNames=[LIST_MAP=LM]` を食う（**両方に現れる二重取り**になる）
+- **観測（追試・実測 2026-08-18）**: 証拠として残すため、`EMPTY_T`（`rows: []`）の直後に
+  `NEXT_T`（カラム `C1`／データ 1 行 `v1`）を置いた YAML で追試した。
+  **観測方法**: 辺③には現在 XLS-27 の番人（`57c1b0d`。`XlsFormatWriter#layoutColumnRow`）が
+  入っており、そのままでは `IllegalArgumentException` で止まる。番人を入れる前の版
+  （`git show 57c1b0d^:src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java`）を
+  scratchpad へ取り出して単独コンパイルし、**クラスパスの先頭に置いて現行クラスを覆う**方法で
+  辺③を走らせた（`src/main` は無変更。プローブはリポジトリに残していない）。
+  同じプローブをクラスパスの覆い無しで走らせると、番人の
+  `IllegalArgumentException: カラム名を 1 件も持たないブロックは書き出せません。…ブロック=[SETUP_TABLE=EMPTY_T]`
+  で止まることも確認した（＝覆いが効いていること、番人が現行に入っていることの両方の裏取り）。
+
+  ```
+  [辺②] SETUP_TABLE_DATA[]=EMPTY_T columnNames=[] rows=[]
+        SETUP_TABLE_DATA[]=NEXT_T columnNames=[C1] rows=[[v1]]      ← ブロック 2 件
+  [辺③] | 'SETUP_TABLE=EMPTY_T' |
+        | '' |
+        （空行）
+        | 'SETUP_TABLE=NEXT_T' |
+        | 'C1' |
+        | 'v1' |
+  [辺①] SETUP_TABLE_DATA[]=EMPTY_T columnNames=[SETUP_TABLE=NEXT_T] rows=[[C1], [v1]]
+                                                                    ← ブロック 2 → 1 件
+  ```
+
+  **`NEXT_T` のブロックが丸ごと消え、`EMPTY_T` の `rows` に `NEXT_T` 側の `"C1"` と `"v1"` が
+  2 行として入る。** 識別子行 `SETUP_TABLE=NEXT_T` は `EMPTY_T` のカラム名へ吸われている。
+  上の `SETUP_TABLE_DATA` は中間モデルの `DataType` 名、`SETUP_TABLE=` は Excel のマーカー表記であり、
+  同じデータタイプの別表記である。
+- **警告は出ない（実測 2026-08-18）。** 上のプローブは辺②③①を走らせている間だけ
+  `System.out`／`System.err` を差し替えて捕捉し、あわせて `java.util.logging` の root ロガーへ
+  `Level.ALL` のハンドラを足して全レコードを溜めた。結果は**標準出力 0 バイト／
+  `java.util.logging` レコード 0 件**である。標準エラーには 186 バイト出たが、中身は SLF4J の
+  初期化通知 3 行（`No SLF4J providers were found.` ほか）だけで、変換に関する出力ではない。
+  **コード側でも裏を取った。`src/main` 全体でログ出力・標準出力の呼び出しは 1 か所しか無く、
+  それは重複カラム名の警告（`XlsFormatReader#deduplicateColumnNames`）である。**
+
+  ```
+  $ grep -rn 'LOGGER\.\|System\.out\|System\.err' src/main/java | wc -l
+  1
+  $ grep -rln 'LOGGER\.\|System\.out\|System\.err' src/main/java
+  src/main/java/nablarch/test/tool/converter/xls/XlsFormatReader.java
+  ```
+
 - 原因（記法の非対称）: **Excel はカラム名行を省略できず、YAML はカラム名を書く場所が無い。**
   - Excel: `notation:802`「データ行を書かない場合でも、カラム名の行は省略できない。識別子行の次の行が
     カラム名の行として読み込まれるため、カラム名の行を書かないと、その次に現れた行がカラム名の行になる」
@@ -2334,20 +2377,76 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   1 の番人は両方を同時に塞ぐ。
 - 関連: XLS-08 の正規化（マーカーカラムだけのブロックを `columnNames=[]`／`rows=[]` にする）を入れると、
   マーカーカラムだけのブロックも 1 の番人に当たる。**想定どおりである**（ユーザー確定）。
-- **副作用（実測 2026-08-18・要判断）**: 1 の番人を入れると、**サンプルプロジェクト自身のテストデータが
-  変換できなくなる**。`nablarch-system-development-guide` の climan サンプルから取り込んだ
-  `SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml`／`testFindNoClients.yaml`／
-  `ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml`（計 4 箇所）が `rows: []` を持つためである。
-  「空のテーブルを用意する」は NTF の日常的なテストパターンであり、**当面の対応の間、0 件テーブルを含む
-  YAML は Excel へ変換できない**。無言で壊れた `.xlsx` を書くよりは中止が正しいという判断で入れているが、
-  2（本体修正後の切り替え）が済むまでは実運用上の制約として残る。
+- **影響範囲（制約・実測 2026-08-18）**: 1 の番人が入っている間、**0 件テーブルを含む YAML は
+  Excel へ変換できない**。「空のテーブルを用意する」は NTF の日常的なテストパターンであり、
+  **本体修正（2）またはマーカーカラム案が入るまで解けない、実運用上の制約である**
+  （マーカーカラム案は steering #25.5 §1 の別ステップ。**成否は現時点で未確認**）。
+  無言で壊れた `.xlsx` を書くよりは中止が正しいという判断で入れているが、制約であることは変わらない。
+  - **同梱サンプル自身がこの制約に当たる。** `nablarch-system-development-guide` の climan サンプルから
+    取り込んだテストデータに `rows: []` が **3 ファイル・4 箇所**ある。
+
+    ```
+    $ grep -rn 'rows: \[\]' src --include=*.yaml | wc -l
+    4
+    $ grep -rln 'rows: \[\]' src --include=*.yaml | wc -l
+    3
+    ```
+
+  - **4 箇所のうち、番人に当たるのは 2 箇所である**（実測 2026-08-18・追試で判明。**従来ここには
+    3 ファイルすべてが当たると書いていたが、誤りだったので訂正する**）。
+    `SampleConversionTest/ClientActionTest/testFindNoClients.yaml:3` と
+    `SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml:3` の 2 箇所が
+    `setup_tables` 配下の 0 件**テーブル**であり、変換すると
+    `ブロック=[SETUP_TABLE=CLIENT]` で中止される。
+
+    ```
+    $ grep -rn -B1 'rows: \[\]' src --include=*.yaml | grep 'table:'
+    src/test/java/nablarch/test/tool/converter/SampleConversionTest/ClientActionTest/testFindNoClients.yaml-2-  - table: "CLIENT"
+    src/test/java/nablarch/test/tool/converter/SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml-2-  - table: "CLIENT"
+    ```
+
+  - 残る 2 箇所（`SampleConversionTest/ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173`
+    ／`:199`）は `expected_files` 配下の**ファイルデータの 0 件レコード**であり、
+    番人（`layoutColumnRow` ＝ テーブル／`LIST_MAP` のみを通る）には当たらない。
+    **このディレクトリだけを入力にすると変換は成功する**（実測 2026-08-18。
+    `TestDataConverter.convert(YAML→XLS, overwrite=true)` の戻り値 1）。
+    したがって `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable` の Javadoc が
+    3 ファイルをまとめて「`rows: []` のテーブルを持つ」としているのは不正確である
+    （**本ステップの編集範囲は本ファイルに限られるため、訂正は本項の記録に留める**）。
 - 修正（当面の対応・1）: `57c1b0d`。`XlsFormatWriter#layoutColumnRow` の先頭で `columnNames` が空なら
   `IllegalArgumentException` で止める。テストは `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames`／
   `#rejectsListMapBlockWithoutColumnNames`。`SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`
-  が上記の副作用を固定する（**本体修正後は変換成功を確認するテストへ戻す**）。
+  が上記の制約を固定する（**本体修正後は変換成功を確認するテストへ戻す**）。
   この番人により到達不能になった現状固定テスト 2 件
   （`XlsFormatWriterModelTest#writesEmptyHeaderRowWhenColumnNamesAreEmpty`／
   `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`）は削除した。
+
+### 0 件テーブル制約の申し送り（XLS-27。解説書担当・対象 PJ 宛。ユーザー指示 2026-08-18）
+
+XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用条件を変える**。使い手に伝わらないと
+「変換が突然エラーで止まる」としか見えないため、以下 2 者へ伝えること。**#25.5 の中では伝達まで行わない**
+（本項は伝達待ちの記録である）。
+
+**宛先**: 解説書担当／対象 PJ。
+
+**伝える中身（制約）**
+
+- **0 件テーブル（YAML の `rows: []` を持つテーブル系エントリ。`setup_tables`・`expected_tables` など）を
+  含む YAML は、Excel へ変換できない。** 変換は `IllegalArgumentException`
+  （「カラム名を 1 件も持たないブロックは書き出せません…」）で中止される。
+- **対象はテーブル系ブロック（テーブル／`LIST_MAP`）だけである。** ファイルデータの 0 件レコード
+  （`expected_files` 配下の `rows: []`）は番人に当たらず、変換できる。
+- **なぜ止めるのか**: 止めずに書くと、**0 件テーブルの直後のブロックが読み戻しで丸ごと消える**
+  （XLS-27 の観測・追試）。**警告も出ない**ため、変換後の Excel を見ても消えたことが分からない。
+  黙って壊れた `.xlsx` を書くより中止が正しい、という判断による。
+- **回避策は本作業では検討していない（未確認）。**
+
+**伝える中身（解除条件）**
+
+- 本体（`nablarch-testing`）の `TableDataParser` が「識別子行の次の行が識別子行なら、カラム名 0 個の
+  0 件テーブルとみなす」と読めるようになり、辺③を「識別子行だけを書く」実装へ切り替えたとき
+  （XLS-27 の 2 段構えの 2）。**本体の起票は converter 側では行わない**（記録のみ・ユーザー確定）。
+- あるいはマーカーカラム案が成立したとき（steering #25.5 §1 の別ステップ。**成立するかは未確認**）。
 
 ### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**）
 
