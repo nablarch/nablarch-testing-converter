@@ -415,6 +415,12 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 | `src/main` / `src/test` のソースがすべてテキストのままである（`grep` が黙って読み飛ばすファイルが無い） | OK | コミット 12。`YamlTestCoreAdapter.java` L48 に生の NUL（U+0000）が 2 個入っており `file` が `data`、`git diff` が `Binary files ... differ`、`grep -rn DEFAULT_GROUP_MARKER src/` が **exit 1・0 件**（`-a` を付けると 4 件）になっていた。Java の 8 進エスケープ `"\0default-group\0"` へ置き換えて解消。**`\u0000` は使っていない**（ソース全体の前処理で置換され、結局同じ生 NUL がトークン列に入るため）。修正後は `file` → `Java source, Unicode text, UTF-8 text`／`grep -rn` が `-a` なしで **4 件**／`git diff` が通常のテキスト差分。挙動不変であることは class ファイル定数プールで確認（修正後も modified UTF-8 の `C0 80 default-group C0 80` が 1 件、生 NUL 0 件）。混入元は **`36e94a4`（YML-02）** で、当該ファイル 1 本のみ（各コミットを `git diff --numstat <c>^ <c>` で走査し、`-` 行が出るのは `36e94a4` と修正コミット `51dbca0` だけ。他 10 コミットは 0）。**修正後は `git diff --numstat 8c327d0..HEAD` に `-` 行が 1 本も無く**、当該ファイルは `54  2` とテキストで数えられる。番兵の値そのものは `520e890`（レビュー B-1）で素の `default-group` へ変えた。同じ混入を**この台帳の本文でもしていた**（L272 に生 NUL 1 個）ため合わせて除去し、`file` → `Unicode text, UTF-8 text` ／ `grep -rlP '\x00' .rn/ src/` → **0 件**を確認した | OK | 自己申告の Evidence を照合。個別の追試は記録なし |
 | `FieldDef.type` ／ `MessageDataBlock.records` の契約が Javadoc に明記され、辺③（`XlsFormatWriter`）と辺④（`YamlFormatWriter`）の双方が `IllegalArgumentException` で弾く。現状挙動を固定していたテストは置き換えられている | **OK（`FieldDef.type` のみ）** ／ `MessageDataBlock.records`（YML-12 2形目）は**別タスクで未着手** | 上の「追補 — YML-12 4形目」。`FieldDef` のクラス Javadoc に契約と出典（`notation:883`／`:888`（`30a8271` 時点）・`$defs.field_def.required`）を明記し、辺③ `XlsFormatWriter#appendRecords` と辺④ `YamlFormatWriter#emitRecords` に番人を置いた。担保は `rejectsFieldWithoutTypeInFileBlock`／`rejectsFieldWithoutTypeInMessageBlock`／`serialize_fieldWithNullTypeInFileBlock_rejected`／`serialize_fieldWithNullTypeInMessageBlock_rejected` の 4 本と、境界（空文字は弾かない）の `writesOmittedMetaAndFieldAsEmpty`／`serialize_fieldWithEmptyType_emitsEmptyType`。旧挙動を固定していた 2 本（`serialize_fieldWithNullType_omitsType`／`failsToReadBackFieldWithoutType`）は削除済みで、`grep -rn 'failsToReadBack' src/test --include=*.java` に残る「緑の嘘」は 2 形目の `failsToReadBackMessageBlockWithoutRecords`（L790）だけである（`failsToReadBackLiteralTabFieldSeparator` は YML-08 の実挙動記録）。`mvn clean test -Djacoco.skip=true` → `Tests run: 545, Failures: 0, Errors: 0, Skipped: 0` | — | — |
 | `mvn clean test -Djacoco.skip=true` が PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true` → **`Tests run: 540, Failures: 0, Errors: 0, Skipped: 2`** ／ `BUILD SUCCESS`。基準線 `8c327d0` は 536／Skipped 0 で、差は YML-03 の待機テスト 2 本と、レビュー対応で足した担保 4 本（`rejectsNullSheetName` ＋ `YamlTestCoreAdapterTest` のデフォルトグループ 3 本）である | OK | Verification expert が同じコマンドを独立に実行し PASS を実測（レビュー時点 536／Skipped 2） |
+| XLS-27 の 0 件テーブルの現象が `issues.md` に追試の証拠として残り、「警告が出ない」の根拠・制約・同梱サンプルの該当箇所（導出コマンド付き）・申し送りが揃っている | OK | **追試は自分で実行した。** 番人（`57c1b0d`）が入っているため、`git show 57c1b0d^:src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` を scratchpad で単独コンパイルし、クラスパスの先頭に置いて現行クラスを覆う方法で辺②③①を通した（`src/main`／`src/test` は無変更。プローブはリポジトリに残していない）。覆い無しでは番人の `IllegalArgumentException`（`ブロック=[SETUP_TABLE=EMPTY_T]`）で止まることも実行して確認。得た出力（`[辺②]`／`[辺③]`／`[辺①]`）はそのまま `issues.md` XLS-27 の「観測（追試・実測 2026-08-18）」へ貼った —— `NEXT_T` が消え、`EMPTY_T` の `rows` が `[[C1], [v1]]`、`columnNames` が `[SETUP_TABLE=NEXT_T]` になる。**「警告が出ない」は実行とコードの両方で裏を取った** —— (a) 辺②③①の実行中だけ `System.out`／`System.err` を差し替え、`java.util.logging` の root へ `Level.ALL` のハンドラを足して捕捉 → 標準出力 0 バイト／ログレコード 0 件（標準エラーの 186 バイトは SLF4J の初期化通知 3 行のみ）、(b) `grep -rn 'LOGGER\.\|System\.out\|System\.err' src/main/java | wc -l` → **1**（`XlsFormatReader:618` の重複カラム名警告だけ）。**制約**（本体修正またはマーカーカラム案が入るまで 0 件テーブルを含む YAML は Excel へ変換できない）を「影響範囲（制約）」として整理し直し、旧「副作用」欄の事実を吸収して重複を作っていない。**同梱サンプルは導出コマンド付き** —— `grep -rn 'rows: \[\]' src --include=*.yaml | wc -l` → **4**、`grep -rln …` → **3 ファイル**。さらに追試で **4 箇所のうち番人に当たるのは 2 箇所だけ**であることが判明したため（`grep -rn -B1 'rows: \[\]' src --include=*.yaml | grep 'table:'` → 2 行。`testNormalEnd.yaml` の 2 箇所は `expected_files` 配下のファイルデータで、そのディレクトリ単独では`TestDataConverter.convert` が戻り値 1 で成功することを実行して確認）、従来の記述を訂正して記録した。**申し送りは機械的に拾える見出し** —— `### 0 件テーブル制約の申し送り（XLS-27。解説書担当・対象 PJ 宛。ユーザー指示 2026-08-18）` をXLS-27 の節の直後に置き、宛先・制約の中身・解除条件を書いた（`grep -n '申し送り' issues.md` で拾える）。**`src/main`／`src/test` は無変更**（`git status --short` の差分は `coverage/issues.md` と本ファイルの 2 本だけ。本ファイルはコミットしない） | — | — |
+| `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable` の Javadoc が、番人に当たるサンプルの箇所を実物どおりに書いている | OK | 旧 Javadoc は「3 ファイルが `rows: []` のテーブルを持つ」と書いていたが、実物を開いて誤りを確認した —— `grep -rn 'rows: \[\]' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → **4 箇所・3 ファイル**。うち `ClientActionTest/testFindNoClients.yaml:3` と `ClientActionTest/testShowWithEmptyClientTable.yaml:3` は `setup_tables:` 直下の 0 件テーブル、`ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173`／`:199` は `grep -n '^[a-z_]*:' → list_maps:1／setup_tables:61／expected_files:93` と `sed -n '160,205p'` のとおり `expected_files` 配下のファイルデータの 0 件レコードで、直上に `fields:` を持つ。番人は `XlsFormatWriter#layout` が `ColumnRowDataBlock` のときだけ呼ぶ `layoutColumnRow`（L238）にあり、`expected_files` は `YamlFormatReader:236` で `FileDataBlock` になるため通らない。Javadoc を「4 箇所のうち番人に当たるのは `ClientActionTest` の 2 箇所だけ」「`testNormalEnd.yaml` の 2 箇所は綴りが同じでも別物で番人に当たらない」と読める形へ訂正し、出典（`testdata_notation.rst:819`／`:836`・`issues.md` XLS-27）は活かした。**「2 冊」は実測で正しいことを確認** —— サンプル一式を scratchpad へ複製して 0 件テーブルの 2 ファイルだけ除き、`TestDataConverter.convert(YAML→XLS)` を実行 → 戻り値 **2**、出力は `ClientActionTest.xlsx` と `ExportProjectsInPeriodActionRequestTest.xlsx` の **2 冊**（`testNormalEnd.yaml` は `rows: []` を含んだまま成功した。これが「番人に当たらない」の実行側の裏でもある）。プローブはリポジトリに残していない。`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true -Dtest=SampleConversionTest` → **`Tests run: 1, Failures: 0, Errors: 0, Skipped: 0`**／`BUILD SUCCESS`。変更は当該 Javadoc のみでアサート本体は無変更 | — | — |
+| §1-B: `FileDataBlock.fileType` の契約が Javadoc に明記され、辺③（`XlsFormatWriter#layoutFile`）と辺④（`YamlFormatWriter#emitFile`）の双方が `IllegalArgumentException` で弾く。現状挙動を固定していた既存テストが 2 本残っていない | OK | 下の「追補 — §1-B（`FileDataBlock.fileType` が `null`）の修正」。根拠は `notation:883`（記法はファイルデータを固定長と可変長の 2 種類に尽くす）／`notation:1146`（`type` は必須キー）／`$defs.file_data` の `required` ＝ `["path","type","records"]`・`type.enum` ＝ `["fixed","variable"]`（`30a8271` の実物と本体スキーマ JSON を自分で開いて確認。実装の挙動は根拠にしていない）。赤は `src/main` に触れる前に実測（`Tests run: 3, Failures: 2` ／ 出力そのままを追補に貼付）、緑は `mvn clean test -Djacoco.skip=true` → **`Tests run: 550, Failures: 0, Errors: 0, Skipped: 0`**。**現状挙動を固定していた既存テストは無し** —— `HEAD` の `src/test` の `new FileDataBlock(` 全 39 箇所の第 4 引数を機械的に切り出し、`FileType.FIXED`／`.VARIABLE` 以外は仮引数素通しのヘルパ 2 箇所だけ（その呼び出し側も全件 `FIXED`／`VARIABLE`）であることを確認した。`inventory.md` は steering の取り決めにより未更新 | — | — |
+| §1-C: `FieldDef.length` の条件つき必須（固定長ファイル・電文では `null` 不可／可変長ファイルでは省略可）が Javadoc に明記され、辺③（`XlsFormatWriter#appendRecords`）と辺④（`YamlFormatWriter#emitRecords`）の双方が固定長ファイル・電文でだけ `IllegalArgumentException` で弾く。現状挙動を緑で固定していた既存テストが残っていない | OK | 下の「追補 — §1-C（`FieldDef.length` が `null`）の修正」。根拠は `notation:883`（固定長は 3 リスト同サイズで必須／可変長はフィールド長不要）／`:889`（3 リストのサイズ不一致は記述時エラー）／`:1158`（電文のメッセージボディはファイルデータと同じ構成）。本体スキーマ `$defs.field_def.required` は `["name","type"]` で `length` を含まないが、同スキーマの `length` の説明が「固定長ファイルでは実質必須…可変長ファイルでは不要（省略可）」であり**解説書と食い違っていない**（食い違いが無いこと自体を `FieldDef` の Javadoc と `issues.md` に記録した）。赤は `src/main` に触れる前に実測（`Tests run: 4, Failures: 4` ／ 出力そのままを追補に貼付）、緑は `mvn clean test -Djacoco.skip=true` → **`Tests run: 554, Failures: 0, Errors: 0, Skipped: 0`**。旧挙動を緑で固定していた既存テスト **3 本**は削除ではなく入力を直した（担保している別観点が失われるため。理由は各テストの Javadoc に記載）。可変長で弾かないことは既存の 2 本（`writesVariableFileWithoutLengthRow`／`serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`）が担保する。`inventory.md` は steering の取り決めにより未更新 | — | — |
+| §1-D: `FieldDef.name` が `null` のフィールドについて、番人を置く前にその形が記法の外であることを明文で確かめている。明文が届いていなければ番人を置かず「明文が無い」と記録している | **OK（番人は置かず保留）** | 下の「追補 — §1-D（`FieldDef.name` が `null`）の明文確認」。`30a8271` の実物を開いて `:871`／`:883`／`:885-893`／`:1057-1064`／`:1140`／`:1158` を読み、**解説書の明文は個別要素の `null` まで届いていない**と判定した —— `:888` は「フィールド名称リストまたはデータ型リスト**が**未指定または空である」で主語がリストであり、要素 1 個が `null` の形は「未指定」でも「空」でもない。`:889` はサイズの話で、名称だけ `null` でもサイズは一致しうる（「名称 `null` は名称リストを 1 つ短くする」と読むなら**同じ読みが空文字にも当てはまり**、`null` だけを弾く番人の境界と矛盾する）。個別要素に届く `:871`「各フィールドの名称」／`:1060`「フィールドの数だけ記載する」は、**Excel の版面に `null` と空文字を区別するセルの状態が無い**ため境界を導けない。YAML の `:1140`「`fields:` の各要素は `{name:, type:, length:}` の形式」は個別要素に届くが、同じ列挙に可変長では不要な `length` が入っており必須要件の行ではない。**届いている明文は本体スキーマ `$defs.field_def` だけ**（`required` ＝ `["name","type"]`・`name` ＝ `{"type":"string"}`）。**実測** —— 辺④の出力 `- {name: null, type: "半角英字", length: "10"}` を `YamlTestDataValidator` に掛けると `$.setup_files[0].records[0].fields[0].name: null が見つかりました、string が予期されました`、`name: ""` では検出 0 件。よってユーザー指示（「明文が届いていなければ番人を置かない」）に従い**辺③④のどちらにも番人を置かず**、事実と未決を `issues.md` XLS-31 に記録した（`src/main`・`src/test` は無変更） | — | — |
+| §1-E: `TestDataBlock.groupId` が `null` のブロックについて、番人を置く前にその形が記法の外であることを明文で確かめている。明文が届いていなければ番人を置かず「明文が無い」と記録している | **OK（番人は置かず保留）** | 下の「追補 — §1-E（`TestDataBlock.groupId` が `null`）の明文確認」。`30a8271` の実物を開いて `:198`／`:254`／`:269`／`:278`／`:330`／`:1016`／`:1265` を読み、本体スキーマ JSON の `group_id` を 4 定義（`table_data`／`file_data`／`expected_request_message_data`／`group_message_data`）とも `python3` で取り出して確認した（コマンドは下の「読んだ実物」）。**明文が定めているのは版面／YAML に書かれる文字列であって、その「書かれない」状態を中間モデルのどの Java 値で表すかは決めていない** —— `""` も `null` も Excel では「データタイプ名の直後に何も無い」、YAML では「`group_id:` を置かない」という**同じ 1 つの出力**にしかならず、記法はこの 2 つを区別しない（§1-D と同じ構造）。**本体スキーマも `null` を排除しない** —— `group_id` は 4 定義とも `{"type":"string","minLength":1}` だが **`required` に入っていない任意キー**なので、`null` を「キーを置かない」と写せば適合する（§1-D の `$defs.field_def` は `name` が `required` で `null` を逃がせず、そこだけは明文が届いていた。**§1-E はそこも届かない**）。よってユーザー指示（「明文が届いていなければ番人を置かない」）に従い**辺③④のどちらにも番人を置かず**、事実と未決を `issues.md` XLS-32 に記録した（`src/main`・`src/test` は無変更）。**明文で決着している事実が 1 つある** —— 辺③の現状出力 `SETUP_TABLEnull=T` は `:198`・`:278` の示す形に無いため**現状維持は選べない**が、是正は「弾く」と「`null` を省略として正規化する」の 2 通りあり、後者も明文に違反しないため明文からは決まらない（未決・推奨は弾く側）。**現状の挙動は自分で実行して確かめ**（使い捨てプローブ。リポジトリには残していない）、XLS-32 の「観測」欄と一致した。`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` → **`Tests run: 554, Failures: 0, Errors: 0, Skipped: 0`**／`BUILD SUCCESS` | — | — |
 
 ---
 
@@ -561,3 +567,579 @@ Tests run: 547, Failures: 0, Errors: 0, Skipped: 0
 
 - OK —— TDD（赤 4 件を実測 → 実装 → 緑 547 件）、台帳（`issues.md` ／ `inventory.md`）反映、
   引用行はすべて自分で `git show 30a8271:… | sed -n 'Np'` で開いて確認済み。`checks/` はコミットに含めていない。
+
+---
+
+## 追補 — §1-B（`FileDataBlock.fileType` が `null`）の修正（2026-08-18・コミット `44469b2`）
+
+中間モデルの契約として **`FileDataBlock.fileType` は必須（`null` 不可）** を宣言し、書き出しの 2 辺
+（辺③ `XlsFormatWriter#layoutFile` ／ 辺④ `YamlFormatWriter#emitFile`）が `null` を
+`IllegalArgumentException` で弾くようにした。番人は**モデルのコンストラクタには置かない**
+（steering Decisions「`RecordLayout` コンストラクタに番人は置かない」と同じ理由。写せない値を止める場所は
+書き出し辺である）。番人は辺ごとに書いた（共通化しない）—— 弾く理由の明文が辺③（Excel 記法の
+固定長／可変長の二分）と辺④（スキーマの `required` ＋ `enum`）で別であり、診断メッセージも別だからである。
+
+### 判定の根拠（解説書と本体スキーマの明文のみ。実装の挙動は根拠にしていない）
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git log -1 --format='%H %ci' 30a8271
+for n in 883 1146; do
+  printf '%s: ' "$n"
+  git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
+done
+```
+
+出力（`30a8271f6ada3259b014618abea72a588db043d9 2026-08-18 08:54:15 +0900`）を自分で開いて一致を確認した。
+
+- `notation:883`（Excel／YAML 共通の記法制約）——「固定長ファイルと可変長ファイルには、それぞれ固有の
+  記法制約がある。固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり…
+  可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である。」
+  ——**記法はファイルデータをこの 2 種類に尽くしており、どちらでもないファイルデータブロックは存在しない。**
+  固定長と可変長では長さ行の有無という版面そのものが違うため、種別が決まらないと版面を決められない。
+- `notation:1146`（YAML）——「`setup_files`・`expected_files` の各エントリには `path`・`type`・`records` の
+  3キーが必須であり、いずれかを省略するとエラーになる。」
+- **本体スキーマ** `nablarch-testing-yaml` の
+  `src/main/resources/nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.file_data` ——
+  `required` ＝ `["path", "type", "records"]`、`type` ＝ `{"type": "string", "enum": ["fixed", "variable"]}`
+  （`python3` で JSON を読み出して確認。`null` は `string` ではなく `enum` にも無い）。
+
+**判定は覆らなかった**（`issues.md` XLS-29 の「NTF 仕様としての判定: **要対応**」のまま）。
+明文は Excel 側・YAML 側の双方にあり、「到達できないから」「実装がそう動くから」は根拠に使っていない。
+
+### TDD — 赤（`src/main` に触れる前の実行出力そのまま）
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -q test -Djacoco.skip=true \
+  -Dtest='XlsFormatWriterTest#rejectsFileBlockWithoutFileType,YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected,FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する' \
+  -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+```
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.732 s <<< FAILURE! - in nablarch.test.tool.converter.yaml.YamlFormatWriterTest
+[ERROR] serialize_fileBlockWithoutFileType_rejected(nablarch.test.tool.converter.yaml.YamlFormatWriterTest)  Time elapsed: 0.645 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.637 s <<< FAILURE! - in nablarch.test.tool.converter.xls.XlsFormatWriterTest
+[ERROR] rejectsFileBlockWithoutFileType(nablarch.test.tool.converter.xls.XlsFormatWriterTest)  Time elapsed: 0.637 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] Failures:
+[ERROR]   XlsFormatWriterTest.rejectsFileBlockWithoutFileType Expected exception: java.lang.IllegalArgumentException
+[ERROR]   YamlFormatWriterTest.serialize_fileBlockWithoutFileType_rejected Expected exception: java.lang.IllegalArgumentException
+[ERROR] Tests run: 3, Failures: 2, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:2.22.2:test (default-test) on project nablarch-testing-converter: There are test failures.
+```
+
+3 件目（`FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する`）は**赤の時点で緑**である。
+モデル自身は検査しないことを述べるテストであり、修正の前後で挙動が変わらないのが正しい。
+
+### TDD — 緑
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
+```
+
+```
+[INFO] Tests run: 550, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+テスト総数は **547 → 550**（削除 0・追加 3）。導出:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+git grep -c '^    @Test' HEAD -- 'src/test/**/*.java' | awk -F: '{s+=$NF} END {print s}'   # 547（本コミット前）
+grep -rc '^    @Test' src/test --include=*.java | awk -F: '{s+=$2} END {print s}'          # 550（本コミット）
+```
+
+### 削除した既存テストと担保の移し先
+
+**無し。** 現状挙動（`null` を黙って可変長にする）を緑のアサートで固定していたテストは 1 件も無かった。
+根拠は次の全件走査である —— 修正前（`HEAD`）の `src/test` にある `new FileDataBlock(` の呼び出しを
+**39 箇所**取り出し、括弧の深さを数えて第 4 引数（`fileType`）だけを機械的に切り出した。
+`FileDataBlock.FileType.FIXED` ／ `.VARIABLE` を渡さないものは **2 箇所**だけで、いずれも仮引数
+`fileType` をそのまま素通しするヘルパ（`RoundTripTest#file`（L843）／
+`FileDataBlockTest#assertFileBlock`（L69））であり、その呼び出し側も全件が `FIXED` ／ `VARIABLE` を
+渡していた（`RoundTripTest` の 8 箇所・`FileDataBlockTest#固定可変とSETUP_EXPECTEDの全組合せを保持する`
+の 4 箇所）。したがって `null` を渡すテストは修正前に 1 件も存在しない。
+
+```sh
+# 第 4 引数の切り出し（HEAD の src/test 全件）
+python3 - <<'PY'
+import subprocess, re
+files = [f for f in subprocess.run(['git','ls-files','src/test'],capture_output=True,text=True).stdout.split()
+         if f.endswith('.java')]
+n = 0
+for f in files:
+    src = subprocess.run(['git','show','HEAD:'+f],capture_output=True,text=True).stdout
+    for m in re.finditer(r'new FileDataBlock\(', src):
+        i, depth, args, cur = m.end(), 1, [], ''
+        while depth > 0:
+            c = src[i]
+            if c == '(': depth += 1
+            elif c == ')':
+                depth -= 1
+                if depth == 0: break
+            if depth == 1 and c == ',': args.append(cur.strip()); cur = ''
+            else: cur += c
+            i += 1
+        args.append(cur.strip())
+        n += 1
+        fourth = ' '.join(args[3].split())
+        if 'FileType' not in fourth:
+            print('NON-FILETYPE ARG:', f, src[:m.start()].count('\n') + 1, fourth)
+print('total', n)
+PY
+# → NON-FILETYPE ARG: RoundTripTest.java 843 fileType
+#   NON-FILETYPE ARG: FileDataBlockTest.java 69 fileType
+#   total 39
+```
+
+追加した 3 件:
+
+| 追加したテスト | 何を担保するか |
+|---|---|
+| `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` | 辺③が `IllegalArgumentException` で弾く（従来は長さ行の無い可変長の版面へ黙って倒れていた） |
+| `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected` | 辺④が `IllegalArgumentException` で弾く（従来は `type: "variable"` と黙って書いていた） |
+| `FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する` | 中間モデル自身は検査せず保持するだけであること（番人の置き場所が書き出し辺であることの裏） |
+
+### `src/main` で変更したファイル
+
+| ファイル | 変更 |
+|---|---|
+| `src/main/java/nablarch/test/tool/converter/model/FileDataBlock.java` | クラス Javadoc に「`fileType` は必須（`null` 不可）」の契約と出典（`notation:883`／`:1146`（`30a8271` 時点）・`$defs.file_data` の `required` と `enum`）、番人は書き出し辺にある旨を追記。コンストラクタの `@param` と `getFileType()` の `@return` にも必須である旨を書いた。**検査は入れていない** |
+| `src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` | `layoutFile` の先頭に `getFileType() == null` の番人を追加（診断に `identifier=[...]`）。Javadoc に根拠を記載 |
+| `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` | `emitFile` の先頭に同じ番人を追加（診断に `identifier=[...]`）。Javadoc に根拠を記載 |
+
+### 台帳へ反映したこと
+
+- `coverage/issues.md` —— XLS-29 の見出しに「**#25.5 で修正済み**」を足し、「修正」欄（番人の置き場所・
+  テストメソッド名・削除した既存テストが無いことと、その根拠）を追加した。判定欄（**要対応**）は変えていない
+- `coverage/inventory.md` —— **触っていない**（件数の導き直しは §1-B〜G・XLS-28 が全部済んでから 1 回でやると
+  steering で決めてあるため）
+
+### 未決（コーディネーター判断）
+
+- **本修正のコミット SHA を `issues.md` に書けない。** コミットは自分自身の SHA を含められないため、
+  `b9ff38e`（修正）→ 別コミット（記録）の前例どおり、SHA の記録には別の `docs` コミットが要る。
+  **実際の SHA は `44469b2`**（push 済み）。`issues.md` XLS-29 の「修正」欄に埋めること
+- **steering のチェックボックス（§1-B）は未チェックのまま。** steering はコーディネーターの持ち物のため編集していない
+
+### Self-check
+
+- OK —— TDD（赤 2 件を `src/main` に触れる前に実測 → 実装 → 緑 550 件）、明文の確認（`30a8271` の実物と
+  本体スキーマの JSON を自分で開いた）、削除対象テストの全件走査（無しを走査結果で確認）、
+  `issues.md` 反映。`checks/` はコミットに含めていない
+
+---
+
+## 追補 — §1-C（`FieldDef.length` が `null`）の修正（2026-08-18）
+
+中間モデルの契約として **`FieldDef.length` は条件つきで必須**——固定長ファイル・電文のフィールド定義では
+`null` 不可、**可変長ファイルのフィールド定義では省略可（`null` が正）**——を宣言し、書き出しの 2 辺
+（辺③ `XlsFormatWriter#appendRecords` ／ 辺④ `YamlFormatWriter#emitRecords`）が、
+**固定長ファイル・電文のときだけ** `null` を `IllegalArgumentException` で弾くようにした。
+番人は**モデルのコンストラクタには置かない**（steering Decisions「`RecordLayout` コンストラクタに番人は
+置かない」と同じ理由）。
+
+辺③はすでに `appendRecords` が `boolean fixed` を受け取っており、そこに条件を足した。辺④の
+`emitRecords` は同じ文脈を持っていなかったため、**引数 `lengthRequired` を足して辺③と対称にした**
+（`emitFile` は `fileType == FIXED`、`emitMessage` は常に `true` を渡す）。0 件レコードの検査を
+「共通の `emitRecords` には置かない」としてある既存の Javadoc とは別の判断であることを、
+その理由（0 件検査はブロック単位でありファイルでは 0 件が正／長さの検査はフィールド単位で、
+呼び出し側へ移すと入れ子ループが重複する）とともに Javadoc に併記した。
+
+### 判定の根拠（解説書と本体スキーマの明文のみ。実装の挙動・到達可能性は根拠にしていない）
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git log -1 --format='%H %ci' 30a8271
+for n in 849 883 889 1158; do
+  printf '%s: ' "$n"
+  git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
+done
+```
+
+- `notation:883`——「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで
+  必須であり…可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、
+  フィールド長は不要である。」**固定長で必須、可変長で不要**が同じ 1 行に書かれている。
+- `notation:889`（ファイルデータの記述時にエラーとなるケース）——「フィールド名称・データ型・フィールド長
+  リストのサイズが一致していない」。
+- `notation:1158`——「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
+  フィールド長・データという、前述のファイルデータと同じ構成を持つ」＝**電文も同じ制約に掛かる**。
+- **`:883` は形式に依らない。** 節の見出しと下線の水準を抽出して確かめた——`:848`
+  「ファイルのデータを記述する」は水準 3（`~~~`）で、`:883` はその直下にある。Excel 形式（`:1006`）・
+  YAML 形式（`:1121`）は水準 4（`^^^`）で **`:883` より後**に現れる。したがって `:883` の制約は
+  Excel／YAML の双方に掛かる。
+
+**本体スキーマとの関係（食い違いは無い）**——`nablarch-testing-yaml` の
+`src/main/resources/nablarch/test/ntf-testdata-yaml-schema.json` を `python3` で読み出して確認した。
+`$defs.field_def.required` は `["name", "type"]` であり **`length` を含まない**。`$defs.record_fragment` が
+固定長ファイル・可変長ファイル・電文で共用されるため、条件つきの必須を `required` では表せないからである。
+ただし同スキーマ自身が `length` の説明に「固定長ファイルでは実質必須（省略すると NTF が record-length を
+計算できない）。可変長ファイルでは不要（省略可）」と書いており、**`notation:883` と一致する。**
+番人の根拠は解説書の明文に置き、スキーマが強制していない事実はそのまま `FieldDef` の Javadoc と
+`issues.md` XLS-30 に記録した（片方だけを都合よく引いていない）。
+
+**判定は覆らなかった**（`issues.md` XLS-30 の「NTF 仕様としての判定: **要対応**」のまま）。
+
+### TDD — 赤（`src/main` に触れる前の実行出力そのまま）
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -q test -Djacoco.skip=true \
+  -Dtest='XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock+rejectsFieldWithoutLengthInMessageBlock,YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected+serialize_fieldWithoutLengthInMessageBlock_rejected' \
+  -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+```
+[ERROR] Tests run: 2, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 0.975 s <<< FAILURE! - in nablarch.test.tool.converter.yaml.YamlFormatWriterTest
+[ERROR] serialize_fieldWithoutLengthInMessageBlock_rejected(nablarch.test.tool.converter.yaml.YamlFormatWriterTest)  Time elapsed: 0.871 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] serialize_fieldWithoutLengthInFixedFileBlock_rejected(nablarch.test.tool.converter.yaml.YamlFormatWriterTest)  Time elapsed: 0.001 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] Tests run: 2, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 1.057 s <<< FAILURE! - in nablarch.test.tool.converter.xls.XlsFormatWriterTest
+[ERROR] rejectsFieldWithoutLengthInMessageBlock(nablarch.test.tool.converter.xls.XlsFormatWriterTest)  Time elapsed: 0.941 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] rejectsFieldWithoutLengthInFixedFileBlock(nablarch.test.tool.converter.xls.XlsFormatWriterTest)  Time elapsed: 0.116 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] Failures:
+[ERROR]   XlsFormatWriterTest.rejectsFieldWithoutLengthInFixedFileBlock Expected exception: java.lang.IllegalArgumentException
+[ERROR]   XlsFormatWriterTest.rejectsFieldWithoutLengthInMessageBlock Expected exception: java.lang.IllegalArgumentException
+[ERROR]   YamlFormatWriterTest.serialize_fieldWithoutLengthInFixedFileBlock_rejected Expected exception: java.lang.IllegalArgumentException
+[ERROR]   YamlFormatWriterTest.serialize_fieldWithoutLengthInMessageBlock_rejected Expected exception: java.lang.IllegalArgumentException
+[ERROR] Tests run: 4, Failures: 4, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:2.22.2:test (default-test) on project nablarch-testing-converter: There are test failures.
+```
+
+（この出力は、実装後に `git checkout HEAD --` で `src/main` の 3 ファイルだけを番人の入る前へ戻し、
+新規テスト 4 本だけを実行して採取した。採取後に実装を復元してある。）
+
+### TDD — 緑
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
+```
+
+```
+[INFO] Tests run: 554, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+テスト総数は **550 → 554**（削除 0・追加 4）。導出:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+git grep -c '^    @Test' HEAD -- 'src/test/**/*.java' | awk -F: '{s+=$NF} END {print s}'   # 550（本コミット前）
+grep -rc '^    @Test' src/test --include=*.java | awk -F: '{s+=$2} END {print s}'          # 554（本コミット）
+```
+
+### 現状挙動を緑で固定していた既存テストと担保の移し先
+
+**削除は 0 本。3 本の入力を直した**（削除すると同じテストが担保している別の観点——空文字境界・
+directives・複数レコード・実リーダでの往復——まで失われるため）。3 本とも改変の理由と出典を
+Javadoc に書いた。全件は、修正前の `src/test` にある 3 引数の `new FieldDef(...)` ／ `field(...)` の
+呼び出しを括弧の深さを数えて機械的に切り出し（第 3 引数が `null` のものは **25 箇所**）、
+その 1 件ずつを開いて文脈（可変長か固定長か・辺③④か辺①②か）を判定して洗い出した。
+25 箇所のうち番人に当たるのは下記 3 本だけで、残りは可変長ファイルか読み込み側（辺①②）の
+フィクスチャだった。
+
+| テスト | 直したこと | 担保の移し先 |
+|---|---|---|
+| `XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty` | `new FieldDef("f1", "", null)` → `("f1", "", "")` | **空文字境界**（番人は `null` だけを弾き、空文字は弾かない）の担保として同じテストが持つ。データ型の番人で `f80c192` が取ったのと同じ扱い |
+| `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndOmittedLength` → `#serializeFile_fixedWithDirectivesAndMultipleRecords` に改名 | `field("f2", "数値", null)` → `("f2", "数値", "5")`。期待 YAML も `length: "5"` を含む形へ | `length` 省略は `#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`（可変長）が担保 |
+| `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | `field("f2", "数値", null)` → `("f2", "数値", "5")`、`assertFieldDef(..., "f2", "数値", null)` → `"5"` | 同上 |
+
+追加した 4 件と、可変長で**弾かない**ことの担保:
+
+| テスト | 何を担保するか |
+|---|---|
+| `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` | 辺③が固定長ファイルで弾く（従来は長さセルを空文字で書いていた） |
+| `XlsFormatWriterTest#rejectsFieldWithoutLengthInMessageBlock` | 辺③が電文で弾く |
+| `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` | 辺④が固定長ファイルで弾く（従来は `length` キーを落としていた） |
+| `YamlFormatWriterTest#serialize_fieldWithoutLengthInMessageBlock_rejected` | 辺④が電文で弾く |
+| `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（既存） | **可変長では弾かない**。番人の範囲を広げると落ちる。Javadoc に範囲と出典（`:883`）を追記した |
+| `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`（既存） | 同上（辺④） |
+
+重複テストは作っていない（steering Rules の「重複テストを書かない」に従い、
+既存の可変長テストに範囲の記述を足す形にした。データ型の番人で `f80c192` が取ったのと同じ方法）。
+
+### `src/main` で変更したファイル
+
+| ファイル | 変更 |
+|---|---|
+| `src/main/java/nablarch/test/tool/converter/model/FieldDef.java` | クラス Javadoc に `length` の条件つき必須の契約と出典（`notation:883`／`:889`／`:1158`（`30a8271` 時点）・本体スキーマが `required` では強制していない事実とその理由）を追記。`@param length`／`getLength()` の `@return` も条件つき必須へ書き換え。**検査は入れていない** |
+| `src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` | `appendRecords` のフィールド走査に `fixed && getLength() == null` の番人を追加（診断に `identifier=[...]`・`レコード番号=`・`フィールド名=[...]`）。Javadoc に根拠と、`layoutMessage` が常に `fixed` ＝ 真で呼ぶこと・可変長では `null` が正であることを記載 |
+| `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` | `emitRecords` に引数 `lengthRequired` を追加し、同じ番人を置いた（診断に `record_type=[...]`・`フィールド名=[...]`）。呼び出し側は `emitFile` が `fileType == FIXED`、`emitMessage` が `true`。共通メソッドへ置いた理由を Javadoc に記載 |
+
+### 台帳へ反映したこと
+
+- `coverage/issues.md` —— XLS-30 の見出しに「**#25.5 で修正済み**」を足し、本体スキーマとの関係（食い違いが
+  無いこと）と「修正」欄（番人の置き場所・診断メッセージ・テストメソッド名・入力を直した 3 本と担保の
+  移し先・`inventory.md` が古くなる箇所）を追加した。判定欄（**要対応**）は変えていない
+- `coverage/inventory.md` —— **触っていない**（件数の導き直しは §1-B〜G・XLS-28 が全部済んでから 1 回でやると
+  steering で決めてあるため）。上の 3 本の書き換えでテスト名・観点が古くなる行があることは `issues.md` に
+  書き残した
+
+### 未決（コーディネーター判断）
+
+- **本修正のコミット SHA を `issues.md` に書けない。** コミットは自分自身の SHA を含められないため、
+  `b9ff38e`（修正）→ 別コミット（記録）／`44469b2` → `b7c1f86` の前例どおり、SHA の記録には別の `docs`
+  コミットが要る。`issues.md` XLS-30 の「修正」欄に埋めること
+- **steering のチェックボックス（§1-C）は未チェックのまま。** steering はコーディネーターの持ち物のため編集していない
+
+### Self-check
+
+- OK —— TDD（赤 4 件を番人の入る前の `src/main` で実測 → 実装 → 緑 554 件）、明文の確認（`30a8271` の実物と
+  本体スキーマの JSON を自分で開き、`:883` が形式に依らない位置にあることを見出しの水準で確かめた）、
+  旧挙動を固定していたテストの全件走査（`null` 長さの 25 箇所を 1 件ずつ読んで 3 本を特定）、
+  `issues.md` 反映。`checks/` はコミットに含めていない
+
+
+---
+
+## 追補 — §1-D（`FieldDef.name` が `null`）の明文確認（2026-08-18）
+
+**結論: 番人を置かなかった。** 解説書（`testdata_notation.rst`・`30a8271`）の明文は、
+`fields` の**個別要素**の名称が `null` である形までは届いていない。届いている明文は
+本体スキーマ `$defs.field_def` だけであり、それだけを根拠に辺③（Excel）へも番人を置いてよいかは
+ユーザー判断に委ねた。`src/main`・`src/test` は無変更で、記録だけを `issues.md` XLS-31 に足した。
+
+steering Decisions「中間モデル一巡点検で出た 7 件を全件 #25.5 に含める」の**条件 1**
+（「番人を置く前に、その形が記法の外であることを明文で確かめる。明文が無ければ番人を置かず、
+『明文が無い』と記録する」）と**条件 2**（「到達可能性を根拠にしない」）に従った。
+**実装の挙動も到達可能性も根拠にしていない**（steering Decisions「記法の根拠に実装の挙動を使わない」）。
+
+### 読んだ実物
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst > /tmp/notation.rst
+grep -n 'フィールド名称' /tmp/notation.rst      # 871 / 883 / 887 / 889 / 890 / 892 / 1025-1026 / 1059-1060 / 1070 / 1074 / 1082 / 1158 / 1162 / 1208 / 1267 / 1269 / 1271
+sed -n '860,895p;1055,1075p;1136,1146p' /tmp/notation.rst
+python3 -c "import json;print(json.load(open('/home/tie303177/work/nablarch/nablarch-testing-yaml/src/main/resources/nablarch/test/ntf-testdata-yaml-schema.json'))['\$defs']['field_def'])"
+```
+
+### 判定 —— 明文はどこまで届くか
+
+| 出典 | 本文 | 個別要素の `null` に届くか |
+|---|---|---|
+| `:888` | 「フィールド名称リストまたはデータ型リスト**が**未指定または空である」 | **届かない。** 未指定・空の主語は**リスト**。`fields` が 1 件以上あり 1 件の名称だけが `null` という形は、リストが未指定でも空でもない |
+| `:889` | 「フィールド名称・データ型・フィールド長リストのサイズが一致していない」 | **届かない。** 名称だけ `null` でも 3 リストのサイズは一致しうる。「名称 `null` は名称リストを 1 つ短くする」と読むなら**同じ読みが空文字にも当てはまり**、`null` だけを弾く番人の境界（既存の `type` の番人と同じ）と矛盾する |
+| `:887` / `:890` / `:1070` / `:1162` | 「同一レコード種別内でフィールド名称が重複している」／「存在しないフィールド名称を指定している」／重複禁止の important 2 本 | **届かない。** いずれも名称が在ることを前提に**重複**と**引き当て**を言っているだけで、名称が無ければならないとは書いていない |
+| `:892` | 「ディレクティブまたはレコード種別・フィールド名称定義の要素数が2未満である」 | **届かない。** 行（リスト）の要素数の話 |
+| `:871` / `:1060` | 「フィールド名称——各フィールドの名称」／「フィールド名称——フィールドの数だけ記載する」 | **個別要素には届くが境界を決められない。** Excel の版面には「名称が `null`」と「名称が空文字」を区別するセルの状態が無い（どちらも空セル）。番人の境界はまさにその区別である |
+| `:1140` | 「``fields:`` の各要素は `{name: フィールド名, type: データ型, length: バイト長}` の形式」 | **個別要素には届くが、必須要件の行ではない。** 同じ列挙に `length` が入っており、`length` は可変長ファイルでは不要（`:883`。§1-C／XLS-30）。つまりこの行は「形」を示している |
+| 本体スキーマ `$defs.field_def` | `required` ＝ `["name","type"]`／`name` ＝ `{"type": "string"}` | **届く。** キー省略は `required` 違反、値 `null` は `string` 違反 |
+
+### 実測（明文の確認を裏付けるためだけの使い捨てプローブ。リポジトリには残していない）
+
+`FieldDef(null, "半角英字", "10")` を持つ `SETUP_FIXED` ブロックを辺③④へ渡した。
+
+```
+[辺③] java.lang.NullPointerException: Cannot invoke "String.length()" because "value" is null
+[辺④] 例外なし
+--- sheet.yaml ---
+setup_files:
+  - path: "bad.dat"
+    type: "fixed"
+    records:
+      - record_type: "data"
+        fields:
+          - {name: null, type: "半角英字", length: "10"}
+        rows:
+          - ["v"]
+```
+
+その出力を `YamlTestDataValidator` に掛けた結果:
+
+```
+[.../sheet.yaml] $.setup_files[0].records[0].fields[0].name: [V-SCH] スキーマ非適合:
+$.setup_files[0].records[0].fields[0].name: null が見つかりました、string が予期されました
+```
+
+`name: ""` へ差し替えると**検出 0 件**（`$defs.field_def.properties.name` に `minLength` が無いため）。
+**スキーマの境界（`null` 不可・空文字は可）が、置こうとしていた番人の境界とちょうど一致している。**
+
+> この実測は**判定の根拠ではない**（steering Decisions「記法の根拠に実装の挙動を使わない」）。
+> 判定は上の表のとおり明文だけで組み立てており、実測はスキーマ違反が実際に検出されること・
+> `issues.md` XLS-31 の「観測」欄が実物と一致することの確認に使った。
+
+### `type` の先例（`f80c192`）はそのままは及ばない
+
+- **解説書の中では名称とデータ型は対称である。** どちらも `:883`（3 リスト／2 リストが同サイズで必須）と
+  `:888`（名称リスト**または**データ型リストが未指定または空）に**並んで**書かれており、
+  **リストの水準**である点も、個別要素まで届いていない点も同じである。
+- **差が出るのはスキーマのほうである。** `$defs.field_def.properties.type` には `minLength: 1` があるが
+  `name` には無い。つまりスキーマは `type: ""` を弾き、`name: ""` は通す。
+- したがって「`type` に番人を置いたのだから `name` にも置く」は自動的には言えない。
+  逆に言えば、**辺③の `type` の番人も解説書の同じ行に依っている**という事実がここで見えた。
+  これは §1-D の作業範囲外なので触っていない（報告のみ）。
+
+### 未決（ユーザー判断）
+
+- **本体スキーマ `$defs.field_def` だけを根拠に番人を置いてよいか。** 置くなら、スキーマが直接掛かるのは
+  YAML（辺④）であり、**Excel（辺③）にはこれに当たる明文が無い**。辺③にも置くか、辺④だけに置くかは
+  判断が要る。判断が付くまで**どちらにも置いていない**。
+- **steering のチェックボックス（§1-D）は未チェックのまま。** steering はコーディネーターの持ち物のため編集していない。
+- **`issues.md` 冒頭の集計（「課題は全部で 37 件」「要対応 7 件」）は現物とずれている**——
+  `grep -c '^### \(XLS\|YML\)-'` → **44**、判定欄の `**要対応**` → **14**（XLS-08・XLS-27〜XLS-33 が
+  後から増えたため）。本作業では判定を 1 件も動かしていないのでずれを持ち込んでもいないが、
+  §1-B〜G・XLS-28 が済んだあとの一括の導き直し（steering `#25.5` の残タスク）で直す対象である。
+
+### Self-check
+
+- OK —— 明文の確認（`30a8271` の実物と本体スキーマ JSON を自分で開き、`フィールド名称` の全 17 箇所を
+  行番号ごとに読んで届く／届かないを判定した）、条件 2（到達可能性を根拠にしない）の遵守、
+  番人を置かないという結論と未決の `issues.md` への記録。**`src/main`・`src/test` は無変更**のため
+  TDD の赤は不要（steering の指示どおり `docs` コミットにした）。`checks/` はコミットに含めていない。
+
+---
+
+## 追補 — §1-E（`TestDataBlock.groupId` が `null`）の明文確認（2026-08-18）
+
+**結論: 番人を置かなかった。** 解説書（`testdata_notation.rst`・`30a8271`）と本体スキーマの明文が
+定めているのは**版面／YAML に書かれる文字列**であって、その「書かれない」状態を中間モデルの
+どの Java 値（`null` か空文字か）で表すかは決めていない。`src/main`・`src/test` は無変更で、
+記録だけを `issues.md` XLS-32 に足した。
+
+steering Decisions「中間モデル一巡点検で出た 7 件を全件 #25.5 に含める」の**条件 1**
+（「番人を置く前に、その形が記法の外であることを明文で確かめる。明文が無ければ番人を置かず、
+『明文が無い』と記録する」）と**条件 2**（「到達可能性を根拠にしない」）に従った。
+**実装の挙動も到達可能性も根拠にしていない**（steering Decisions「記法の根拠に実装の挙動を使わない」）。
+
+### 読んだ実物
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst > /tmp/notation.rst
+grep -n 'group_id\|グループID' /tmp/notation.rst    # 20/126/131/138/178-187/248-254/269/272/274/278/282/306/310/318/326/330/335/342/364/423/432/441/444/455/459/482-497/540-549/904/1016/1051-1052/1210/1253/1265/1273
+sed -n '192,200p;244,280p;326,342p' /tmp/notation.rst
+python3 - <<'PY'
+import json
+d=json.load(open('/home/tie303177/work/nablarch/nablarch-testing-yaml/src/main/resources/nablarch/test/ntf-testdata-yaml-schema.json'))
+for n,v in d['$defs'].items():
+    if 'group_id' in v.get('properties',{}):
+        print(n, v.get('required'), v['properties']['group_id'])
+PY
+```
+
+### 判定 —— 明文はどこまで届くか
+
+| 出典 | 本文 | 何が決まるか／`null` に届くか |
+|---|---|---|
+| `:198` | 「データブロック先頭セルに ``データタイプ=識別子の値`` の形式で記載する。データタイプ名で始まっていれば合致する（前方一致）。例: ``SETUP_TABLE=USER_MASTER``」 | **Excel の識別子セルの形（グループ ID を書かない場合）が決まる** |
+| `:278` | 「データタイプ名の直後に ``[グループID]`` を付ける。例: ``SETUP_TABLE[case_001]=EMPLOYEE_TABLE``」 | **Excel の識別子セルの形（書く場合）が決まる。括弧付きである** |
+| `:1016` ／ `:1265` | ``SETUP_FIXED[グループID]=ファイルパス`` ／ ``EXPECTED_REQUEST_BODY_MESSAGES[グループID]=リクエストID`` | 同じ形がファイル系・電文系にも示されている |
+| `:254` | 「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が対象になる。…」 | **省略が正当な状態であることが決まる。`null` には触れていない。** 「省略か値ありの 2 値」を定めているのはこの行ではない |
+| `:269` | 「グループIDが一致する複数ブロックを収集する。Excel形式では ``データタイプ + グループID + '='`` による前方一致…」 | **収集の判定方法。式に括弧が含まれるか読み取れないため、出力形の根拠には使わない**（`:278` に置く） |
+| `:330` | 「エントリに ``group_id:`` フィールドを設ける。」 | YAML の書き方（キーを置く／置かない） |
+| 本体スキーマ `$defs.table_data` ／ `file_data` ／ `expected_request_message_data` ／ `group_message_data` の `group_id` | 4 定義とも `{"type":"string","minLength":1}`。**`required` に入っていない任意キー。** description に「省略時はグループIDなし（デフォルトグループ）扱い」「空文字 `""` は誤マッチを引き起こすため `minLength: 1` で禁止」 | **書くなら 1 文字以上の文字列。書かない（キーを置かない）ことは適合。したがって `null` をキー省略へ写せば適合してしまい、`null` を排除しない** |
+
+**届かない理由（§1-D と同じ構造）**
+
+- `""` も `null` も、Excel では「データタイプ名の直後に何も無い」、YAML では「`group_id:` を置かない」という
+  **同じ 1 つの出力**にしかならない。記法はこの 2 つを区別しない。§1-D で `FieldDef.name` の `null` と
+  空文字を Excel の版面が区別できなかったのと同じである。
+- **§1-D より弱い。** §1-D では `$defs.field_def.required` が `name` を含むため `null` をキー省略へ
+  逃がせず、スキーマだけは明文が届いていた。**§1-E の `group_id` は任意キーなので、そこも届かない。**
+- したがって「`null` を省略として正規化する」という是正も明文には一切違反せず、
+  **明文だけからは「弾く」と「省略として扱う」のどちらが正しいかを決められない。**
+- 「中間モデルの Javadoc 契約が『省略時は空文字』だから `null` は契約の外」は正しいが、
+  **それは中間モデル自身の契約であって記法の明文ではない。**
+
+**明文で決着していること（§1-D との違い）**
+
+- **辺③の現状出力 `SETUP_TABLEnull=T` は記法に無い形である**（`:198`・`:278`。括弧の無い `null` が
+  データタイプ名と `=` の間に入る形はどの行にも無い）。**したがって現状維持は選べない。**
+- 辺④の `NullPointerException`（`Cannot invoke "String.isEmpty()" because "groupId" is null`）も
+  原因を示さないため直す対象である。
+
+### 実測（明文の確認を裏付けるためだけの使い捨てプローブ。リポジトリには残していない）
+
+`TableDataBlock(SETUP_TABLE_DATA, groupId, "T", ["C1"], [["v1"]])` を辺③（`XlsFormatWriter#build`）と
+辺④（`YamlFormatWriter#serialize`）へ渡した（`build`／`serialize` がパッケージプライベートのため、
+プローブは `...converter.xls` と `...converter.yaml` の 2 本に分けて置き、実行後に削除した）。
+
+```
+### XLS groupId=null
+XLS OK:
+[SETUP_TABLEnull=T]
+[C1]
+[v1]
+
+### XLS groupId=""
+XLS OK:
+[SETUP_TABLE=T]
+
+### XLS groupId="[g1]"
+XLS OK:
+[SETUP_TABLE[g1]=T]
+
+### YAML groupId=null
+YAML EX: java.lang.NullPointerException: Cannot invoke "String.isEmpty()" because "groupId" is null
+
+### YAML groupId=""
+YAML OK:
+setup_tables:
+  - table: "T"
+    rows:
+      - C1: "v1"
+
+### YAML groupId="[g1]"
+YAML OK:
+setup_tables:
+  - group_id: "g1"
+    table: "T"
+    rows:
+      - C1: "v1"
+```
+
+**`issues.md` XLS-32 の「観測」欄の記述と一致した。** 記録を鵜呑みにせず自分で実行して確かめている。
+
+### 空文字（＝省略）が正しい形であることの確認と、番人を置く場合の担保
+
+- 明文: `:254`（省略は正当な状態）＋スキーマ description（「省略時はグループIDなし（デフォルトグループ）扱い」
+  ／「空文字 `""` は…`minLength: 1` で禁止」）。**空文字は「書いてはいけない」のであって、中間モデルが
+  空文字で省略を表すこと自体は禁じられていない** —— 辺④は空文字のとき `group_id:` キーごと書かない。
+- 実測: 上のとおり、空文字は辺③が `SETUP_TABLE=T`（括弧なし）、辺④が `group_id:` 行なしを出す。
+- **番人を置く場合に「空文字を弾かない」ことを担保する既存テスト**（新規に足す必要はない）:
+  - 辺③ `XlsFormatWriterTest#writesTableBlock`（`groupId` ＝ `""` → `SETUP_TABLE=USERS`）
+  - 辺④ `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation`
+    （`groupId` ＝ `""` の出力を全文一致でアサートし、`group_id:` 行が無いことを固定している）
+  - 値ありの側は 辺③ `XlsFormatWriterTest#writesTableMarkerWithGroupId`（`EXPECTED_TABLE[g1]=USERS`）／
+    辺④ `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId`
+- **置く場合の置き場所**（実装はしていない。調べた結果のみ）: `groupId` は `TestDataBlock` の共通フィールドで
+  **ブロック 4 種別すべてが持つ**ため、辺③は `XlsFormatWriter#marker`（`getDataType().getName() +
+  getGroupId() + "=" + getIdentifier()` を組む唯一の場所）、辺④は `YamlFormatWriter#rawGroup`
+  （`emitGroupId` から呼ばれ、`emitTable`／`emitListMap`／`emitFile`／`emitMessage` の 4 経路が合流する）で、
+  **どちらも 1 箇所で全種別を覆える**。ブロック種別ごとに検査を書き散らす必要はない。
+
+### 未決（ユーザー判断）
+
+- **是正の手段をどちらにするか。** 明文はどちらも許す。判断が付くまで**辺③④のどちらにも番人を置いていない**。
+  - (a) **番人を置く**（§1-B・§1-C と同じ形）。根拠は記法の明文ではなく**中間モデルの Javadoc 契約**になる。
+  - (b) **`null` を省略として正規化する**（`""` と同じ扱い）。出力は記法に適合するが、同じ意味に 2 表現を
+    許すことになり、本作業が排してきた「黙って倒す」側の挙動でもある。
+  - **推奨は (a)** —— 中間モデルの契約が既に 1 表現に定めていること、§1-B・§1-C・`f80c192` と揃えて
+    「契約違反は書き出し辺で loud に止める」形が 4 辺の担保として一貫すること。**根拠が明文でない以上、判断は委ねる。**
+- **steering のチェックボックス（§1-E）は未チェックのまま。** steering はコーディネーターの持ち物のため編集していない。
+- **括弧の無い非空グループ ID（例 `"g1"`）を中間モデルが保持できてしまう穴は §1-E の対象外**として触れていない
+  （`issues.md` XLS-32 に記録のみ。**実行しての確認はしていない —— 未確認**）。
+- **`issues.md` 冒頭の集計のずれ**（§1-D の追補で開示したもの）は本作業でも動かしていない。
+
+### Self-check
+
+- OK —— 明文の確認（`30a8271` の実物と本体スキーマ JSON を自分で開き、`グループID`／`group_id` の全出現を
+  行番号ごとに読んで届く／届かないを判定した）、条件 2（到達可能性を根拠にしない）の遵守、
+  現状挙動の自力実測（XLS-32 の記録と一致）、空文字が正しい形であることの確認と担保テストの特定、
+  番人を置かないという結論と未決の `issues.md` への記録。**`src/main`・`src/test` は無変更**のため
+  TDD の赤は不要（指示どおり `docs` コミットにした）。
+- OK —— `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` →
+  **`Tests run: 554, Failures: 0, Errors: 0, Skipped: 0`**／`BUILD SUCCESS`。
+- OK —— `checks/task-25.5.md` はコミットに含めていない。QA 列・`## QA Expert Review`・
+  `## Expert Reviews`・`## Overall Verdict` には触れていない。

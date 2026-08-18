@@ -1209,8 +1209,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-18
+- **Last completed**: #25.5 §1-C（`3000baf`。`FieldDef.length` の番人。固定長ファイル・電文に限る）。§1-D（`7e4525a`）と §1-E（`11643e7`）は明文確認まで済ませ、**番人は置かずに保留**した
+- **Next**: **ユーザー判断 3 件を先に受け取る** —— (1) §1-D: 本体スキーマだけを根拠に番人を置いてよいか (2) §1-D: 置くなら辺④だけか辺③にもか (3) §1-E: `null` を弾くか省略へ正規化するか。私の推奨はいずれも「置く／両辺／弾く」。判断を受けたら §1-D・§1-E を実装し、その後 §1-F（`TestDataSection.name`。**着手直後に中断。`issues.md` 側の準備コミット `f521694` だけが入っており実装は未着手**）→ §1-G → XLS-28 → §6 → §5 の順に進める
+- **Notes**: 判断待ち 3 件の根拠は `coverage/issues.md` の XLS-31「§1-D の明文確認」節と XLS-32「§1-E の明文確認」節にある。`checks/task-25.5.md` は §1-B〜§1-E の追補が未コミットだったため本セッションの `wip:` コミットに含めた
