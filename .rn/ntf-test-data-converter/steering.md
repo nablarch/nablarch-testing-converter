@@ -1107,7 +1107,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [ ] **最後に 1 回だけ**、課題 ID 単位で要対応／対応不要の実数を確定する（①②の反映と中間モデル点検の後）
 - [x] `mvn clean install` を手順として Decisions に定着させる（`steering.md` の Decisions「ビルド・テストの実行方法」に記載）
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [x] `inventory.md` のテスト件数を、増減した箇所すべてコマンドから導き直す（Rules）
+- [ ] `inventory.md` のテスト件数を、増減した箇所すべてコマンドから導き直す（Rules）。**2026-08-18 に一度済ませたが、§1-B〜G・XLS-28 でテストが増えるため無効になった。これらが済んだあとに 1 回だけやり直す**
 - [ ] self-check（OK/NG per completion criterion、checks/task-25.5.md に記録）**#25.5 へ追加したステップの分を再実施する**
 - [ ] QA expert review（subagent）**追加ステップの分を再実施する**
 - [ ] Craft expert review（subagent, coding）**追加ステップの分を再実施する**
