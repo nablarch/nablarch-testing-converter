@@ -921,7 +921,7 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * 記法が定めるのはシンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意の
-     * リテラル文字列である（{@code testdata_notation.rst:945-946}）。中間モデルには辺①
+     * リテラル文字列である（{@code testdata_notation.rst:947-948}）。中間モデルには辺①
      * （{@code XlsFormatReader#normalizeDirectiveValue}）と同じ逆正規化を通した値を入れる。
      * </p>
      *
@@ -962,7 +962,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 本体の器は {@code LineSeparator.evaluate} でシンボルを実改行へ変換するが、
      * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）も辺②
      * （{@code YamlFormatReader#toStringDirectives}）も同じ逆正規化でシンボルへ戻すため、
-     * 同じ入力表記が同じ中間モデル値になる。記法の出典は {@code testdata_notation.rst:1114}
+     * 同じ入力表記が同じ中間モデル値になる。記法の出典は {@code testdata_notation.rst:1116}
      * （{@code record-separator CRLF}）。{@code coverage/issues.md} <b>YML-08</b>。
      * </p>
      */

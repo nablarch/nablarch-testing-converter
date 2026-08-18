@@ -554,10 +554,10 @@ public class YamlFormatWriterModelTest {
      *
      * <p>
      * 記法仕様は「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」
-     * （{@code testdata_notation.rst:879}）、「{@code setup_files}・{@code expected_files} の各エントリには
+     * （{@code testdata_notation.rst:881}）、「{@code setup_files}・{@code expected_files} の各エントリには
      * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる。
      * 0バイトの空ファイルを表現するには、{@code records:} に空配列 {@code []} を記載する」
-     * （{@code testdata_notation.rst:1144}）と定めている。
+     * （{@code testdata_notation.rst:1146}）と定めている。
      * </p>
      *
      * <p>
@@ -766,7 +766,7 @@ public class YamlFormatWriterModelTest {
      * 本体スキーマの {@code $defs.file_data.required} は {@code records} を要求するが
      * {@code minItems} は 0 であり、<b>空配列なら通る</b>（キーごと省略すると通らない）。
      * 記法仕様も 0 バイトの空ファイルを {@code records: []} で表すと定めている
-     * （{@code testdata_notation.rst:1144}）。
+     * （{@code testdata_notation.rst:1146}）。
      * </p>
      */
     @Test

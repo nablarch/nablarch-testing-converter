@@ -8,6 +8,7 @@
 
 - 作成日: 2026-08-12
 - 対象コミット: `c1d2d21`（棚卸し実施時 HEAD）
+- 出典 `testdata_notation.rst`／`notation:nnn` の行番号: `nablarch-document` の `30a8271`（2026-08-18 08:54:15 +0900）時点。本書の引用は全件この基準にそろえてある
 - 判定方法: 全テストメソッドのテスト本文を読み、実際にアサートしている対象のみを「担保」とした。
   推測で埋めていない。アサートが間接的・副次的なものは 🔺 で区別した。
 
@@ -671,7 +672,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 
 **追補（2026-08-18・#25.5）: C-17 `RecordLayout.fields` の「空許容」は型定義上の話であり、契約としては
 1 件以上である。** Excel 記法・YAML スキーマのどちらもフィールドを持たないレコードレイアウトを
-認めていないため（Excel は `testdata_notation.rst:886`、YAML は本体スキーマ
+認めていないため（Excel は `testdata_notation.rst:888`、YAML は本体スキーマ
 `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment` が `fields` 必須かつ `minItems` ＝ 1）、
 空を保持できるのは中間モデルだけという**契約の穴**だった。#25.5 で `RecordLayout` の Javadoc に
 「1 件以上」を明記し、書き出し側（`XlsFormatWriter` ／ `YamlFormatWriter`）が空を受けたら
@@ -681,9 +682,9 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 
 **追補（2026-08-18・#25.5）: C-20 `FieldDef.type` の「省略可」は型定義上の話であり、契約としては
 必須（`null` 不可）である。** Excel 記法・YAML スキーマのどちらもデータ型を持たないフィールド定義を
-認めていないため（Excel は `testdata_notation.rst:883`（`30a8271` 時点。本書の基準 `df7bff7` では
-881 行目）が固定長で「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」・可変長で
-「フィールド名称・データ型の2リストが同サイズで必須」と定め、`:888`（同。`df7bff7` では 886 行目）が
+認めていないため（Excel は `testdata_notation.rst:883` が固定長で
+「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」・可変長で
+「フィールド名称・データ型の2リストが同サイズで必須」と定め、`:888` が
 「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる。
 YAML は本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.field_def` が
 `required` ＝ `["name", "type"]`）、`null` を保持できるのは中間モデルだけという**契約の穴**だった。

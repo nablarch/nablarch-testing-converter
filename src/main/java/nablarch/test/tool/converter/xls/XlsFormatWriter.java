@@ -139,7 +139,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * POI の {@code XSSFWorkbook#createSheet(String)} は 31 文字を超える名前を
      * {@code substring(0, 31)} で黙って切り詰めてから禁止文字を検査する。シート名は呼び出し側が
-     * データを引き当てるためのキーであり（{@code testdata_notation.rst:588}）、別名へ変わると引けなくなる。
+     * データを引き当てるためのキーであり（{@code testdata_notation.rst:590}）、別名へ変わると引けなくなる。
      * また切り詰めが先に走ることで、禁止文字が 32 文字目以降にある名前は禁止文字検査に到達しない。
      * どちらも {@code createSheet} の前に文字数を検査すれば閉じる（{@code issues.md} XLS-16）。
      * </p>
@@ -300,7 +300,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * フィールド 0 件のレコードレイアウトも同じ思想で弾く。フィールドが無いと名前行がレコード種別セル
      * 1 個だけになり、本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない
      * （{@code coverage/issues.md} <b>XLS-22</b>）。そもそもフィールドを持たないレコードレイアウトは
-     * Excel 記法に存在しない形であり（{@code testdata_notation.rst:886}）、
+     * Excel 記法に存在しない形であり（{@code testdata_notation.rst:888}）、
      * {@link RecordLayout} の契約としても 1 件以上を要求する。
      * </p>
      * <p>

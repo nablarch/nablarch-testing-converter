@@ -54,8 +54,8 @@ public final class DirectiveUtil {
      * 本体の器は {@code record-separator} を {@code LineSeparator.evaluate} で実改行（{@code \r\n} 等）へ、
      * {@code field-separator} の 2 文字記法を実タブへ変換して保持する。一方、記法が定めるのは
      * シンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意のリテラル文字列
-     * （{@code testdata_notation.rst:945-946}）と、タブを表す {@code field-separator=\t}
-     * （{@code testdata_notation.rst:1078}）である。実制御文字のまま中間モデルへ入れると、
+     * （{@code testdata_notation.rst:947-948}）と、タブを表す {@code field-separator=\t}
+     * （{@code testdata_notation.rst:1080}）である。実制御文字のまま中間モデルへ入れると、
      * 書き出した値を本体が読み戻せない（{@code DataFile#setDirective} の {@code trim()} で失われる）。
      * </p>
      * <p>

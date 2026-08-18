@@ -270,7 +270,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * 空なら {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
      * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法仕様が定めているためである
-     * （{@code testdata_notation.rst:879}／{@code :1144}。本体スキーマも
+     * （{@code testdata_notation.rst:881}／{@code :1146}。本体スキーマも
      * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
      * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
      * {@link #emitMessage} が 0 件を送出で弾いてある（{@code $defs.message_data} の {@code records} は

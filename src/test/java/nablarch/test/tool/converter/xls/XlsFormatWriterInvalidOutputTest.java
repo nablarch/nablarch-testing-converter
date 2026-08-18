@@ -500,7 +500,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        <b>ブックは作られない。</b>
      *
      * <p>
-     * シート名は呼び出し側が渡す引き当てキーである（{@code testdata_notation.rst:588}
+     * シート名は呼び出し側が渡す引き当てキーである（{@code testdata_notation.rst:590}
      * 「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
      * List 形式または Map 形式でデータを取得できる」、
      * 続く {@code TestSupport#getListMap(String sheetName, String id)}）。
@@ -538,7 +538,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *
      * <p>
      * {@code TestDataSection} はセクション名の null を拒まないため、中間モデルとしては組める。
-     * 一方シート名は呼び出し側が渡す引き当てキーであり（{@code testdata_notation.rst:588}）、
+     * 一方シート名は呼び出し側が渡す引き当てキーであり（{@code testdata_notation.rst:590}）、
      * null では引けない。文字数超過と同じ番人で落とす（{@code issues.md} <b>XLS-16</b>）。
      * </p>
      *

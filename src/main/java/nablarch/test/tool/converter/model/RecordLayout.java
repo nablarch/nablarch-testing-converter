@@ -13,7 +13,7 @@ import java.util.List;
  * <p>
  * <b>{@code fields} は 1 件以上でなければならない。</b>Excel 記法・YAML 記法のいずれもフィールドを
  * 持たないレコードレイアウトを認めていないためである（Excel は
- * {@code testdata_notation.rst:886} が「フィールド名称リストまたはデータ型リストが未指定または空である」を
+ * {@code testdata_notation.rst:888} が「フィールド名称リストまたはデータ型リストが未指定または空である」を
  * 記述時のエラーに挙げる。YAML は本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
  * {@code $defs.record_fragment} が {@code fields} を必須かつ {@code minItems} ＝ 1 とする）。
  * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。本クラス自身は検査しないが、書き出し側
