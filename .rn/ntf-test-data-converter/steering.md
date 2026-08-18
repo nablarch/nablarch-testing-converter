@@ -1039,11 +1039,11 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 - [x] XLS-01: テストを削除せず、アサートを「仕様外入力のため値は保証しない」旨へ書き直して実挙動の記録として残す
 - [x] `issues.md` の全 36 件に「NTF 仕様としての判定」欄を追加し、要対応 7 件／対応不要 29 件を出典つきで明記する（XLS-22 の判定変更を反映した 2026-08-18 時点の実数。導出コマンドは `issues.md` 冒頭）。**既存の「判断」欄は往復基準（変換結果が入力と一致するか）で書かれており、辺ごとの判定とは別物なので、両方を残して区別する**
 - [x] YML-08 の「未確認」を潰す: 中間モデルに入った実改行を辺④が書き出したとき、読み戻しで空文字になるかを**実行して**確かめ、結果を `issues.md` に記録する
-- [ ] **（方法論の訂正）** `notation:nnn` の引用を `nablarch-document` の `30a8271` 基準へ貼り直し、基準コミットを本文に明記する（`issues.md`・`steering.md`・`inventory.md`・`src` の Javadoc。ずれは 499 行目以降が一律 +2 で、実測で全件突き合わせ済み）
+- [x] **（方法論の訂正）** `notation:nnn` の引用を `nablarch-document` の `30a8271` 基準へ貼り直し、基準コミットを本文に明記する（`issues.md`・`steering.md`・`inventory.md`・`src` の Javadoc）→ `179fb07`（steering）／`a667893`（issues・inventory・src）。**「499 行目以降が一律 +2」は目安であり、既に `30a8271` 基準の引用が混在していたため、全件を引用文と実物で突き合わせて決めた。`grep -rn "df7bff7" src .rn/ntf-test-data-converter/coverage` は 0 件**
 - [x] **YML-12 4形目（辺③④）**: `FieldDef.type` は必須（`null` 不可）を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）→ `f80c192`
 - [x] **YML-12 2形目（辺③④）**: `MessageDataBlock.records` は 1 件以上を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）→ `04873de`
-- [ ] `RecordLayout` コンストラクタに番人を**置かない**判断と、却下した理由・実測を `issues.md` に残す
-- [ ] 本体パーサ（`MessageParser` ／ `FixedLengthFileParser`）がレコード 0 件を受け付ける事実を、**新規 ID** で `issues.md` に記録する（判定「本作業の対象外・記録のみ」／モジュールは `nablarch-testing` 本体）
+- [x] `RecordLayout` コンストラクタに番人を**置かない**判断と、却下した理由・実測を `issues.md` に残す（`XLS-22` の節）→ `ea52297`
+- [x] 本体パーサがレコード 0 件を受け付ける事実を、**新規 ID `XLS-26`** で `issues.md` に記録する（判定「本作業の対象外・記録のみ」／モジュールは `nablarch-testing` 本体）→ `a37eeb3`。**対象は `MessageParser`（電文）に限定した。`FixedLengthFileParser` 単体のレコード 0 件は 0 バイト空ファイルとして `notation:881`／`:1109`／`:1146` に明文があり不具合ではない**
 - [ ] 中間モデルの全クラス・全フィールドを一巡し、「両形式が表現できない値を中間モデルが保持できる」箇所が他に無いかを点検して結果を記録する（無ければ「無し」と明記する）
 - [ ] **最後に 1 回だけ**、課題 ID 単位で要対応／対応不要の実数を確定する（①②の反映と中間モデル点検の後）
 - [x] `mvn clean install` を手順として Decisions に定着させる（`steering.md` の Decisions「ビルド・テストの実行方法」に記載）
