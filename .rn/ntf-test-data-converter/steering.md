@@ -640,18 +640,22 @@ nablarch-testing-yaml 側にあり converter だけでは直せない」であ�
 > **499 行目以降が一律 +2**（`@@ -497,6 +497,8 @@` でラベル行と空行が入ったため）で、
 > 引用している全行を両版から取り出して本文一致を突き合わせ済みである。読み直すときは
 > `git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst` を開く。
+>
+> なお `testdata_notation.rst` は `30a8271` と `nablarch-document` の現 HEAD `51bcd12` とで**無変更**である
+> （`git diff --stat 30a8271 HEAD -- ja/.../testdata_notation.rst` が空）。`30a8271` 基準の行番号は
+> そのまま現 HEAD の行番号でもある。
 
 ### 修正する 7 件
 
 | ID | 辺 | 現在の挙動 | 仕様どおりの期待値 | 出典（確認済み） |
 |---|---|---|---|---|
 | YML-02 | ② | `group_id` を省略した送信同期エントリをブロックごと落とす | 省略時はデフォルトグループのブロックとして読む | `notation:254`「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が対象になる」 |
-| YML-12 | ④ | レコードが空のファイルブロックで `records:` キーごと落とす | `records: []` を出力する | `notation:879`「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」／`notation:1144`「0バイトの空ファイルを表現するには、`records:` に空配列 `[]` を記載する」 |
+| YML-12 | ④ | レコードが空のファイルブロックで `records:` キーごと落とす | `records: []` を出力する | `notation:881`「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」／`notation:1146`「0バイトの空ファイルを表現するには、`records:` に空配列 `[]` を記載する」 |
 | XLS-16 | ③ | シート名を 31 文字へ黙って切り詰める | 黙って切り詰めない。31 文字超は例外で落とす | `notation:588`（下記の訂正を参照） |
 | XLS-06 | ① | レコード種別の空セルを `""` にする | `null` を入れる（辺②と同じ） | `RecordLayout.java:26`「レコード種別（省略時は `null`）」 |
-| XLS-22 | ③④ | `fields` が空の `RecordLayout` を、Excel は読み戻せない版面として・YAML は `fields: []` として書き出してしまう | 書き出し側が `IllegalArgumentException` で落とす（`RecordLayout` の Javadoc に「`fields` は 1 件以上」の契約を明記する） | `notation:886`「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる（＝**その形は Excel 記法として存在しない**）／YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment` が `fields` を必須かつ `minItems` ＝ 1 とする |
+| XLS-22 | ③④ | `fields` が空の `RecordLayout` を、Excel は読み戻せない版面として・YAML は `fields: []` として書き出してしまう | 書き出し側が `IllegalArgumentException` で落とす（`RecordLayout` の Javadoc に「`fields` は 1 件以上」の契約を明記する） | `notation:888`「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる（＝**その形は Excel 記法として存在しない**）／YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment` が `fields` を必須かつ `minItems` ＝ 1 とする |
 | YML-03 | ② | `record_type: "FW_HEADER"` のレコードを、メッセージ系・送信系でだけ黙って捨てる（ファイル系では残る） | 3 経路とも捨てずに残す | YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment.properties.record_type.description`「可読性のために任意の名前を記述してよい。**FW_HEADER のような予約値はない**」／`$defs.message_data.properties.records.description`「**旧形式の record_type: FW_HEADER は廃止**」。修正の出典は yaml 側 `0b53910`（ブランチ `feature/ntf-yaml`） |
-| YML-08 | ② | ディレクティブ値の実制御文字を素通しする | 辺①（`XlsFormatReader#normalizeDirectiveValue`）と同じ逆正規化を通す。対象は `record-separator` ／ `field-separator` | `notation:945`（`record-separator` は シンボル または任意のリテラル文字列）／`notation:1078`（`field-separator=\t`）／`notation:1114`（`record-separator CRLF`）。いずれもシンボルとエスケープ 2 文字の記法しか示していない |
+| YML-08 | ② | ディレクティブ値の実制御文字を素通しする | 辺①（`XlsFormatReader#normalizeDirectiveValue`）と同じ逆正規化を通す。対象は `record-separator` ／ `field-separator` | `notation:947`（`record-separator` は シンボル または任意のリテラル文字列）／`notation:1080`（`field-separator=\t`）／`notation:1116`（`record-separator CRLF`）。いずれもシンボルとエスケープ 2 文字の記法しか示していない |
 
 **XLS-16 の出典を訂正した。** 当初示された `notation:68`（「シート名をテストメソッド名と同名にする」）は
 実際には `notation:69` であり、**その直後 `notation:73` の tip が「シート名とテストメソッド名の対応は
