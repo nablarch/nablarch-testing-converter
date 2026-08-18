@@ -1150,8 +1150,8 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-18
-- **Last completed**: #25.5 の修正 3 件（`f80c192` YML-12 4形目／`04873de` YML-12 2形目／`ea52297` RecordLayout 非番人の記録）と、`a667893` の notation 貼り直し・`a37eeb3` の XLS-26 起票
-- **Next**: #25.5 の残り 6 ステップ ——（1）中間モデル点検（§4）の結果を `issues.md` へ記録 →（2）課題 ID 単位の最終集計（1 回だけ）→（3）self-check →（4）QA／Craft／Verification の 3 レビュー
-- **Notes**: ブランチ `ntf-test-data-converter`（push 済み）。**ユーザー判断待ちが 1 件あり、これが解けるまで（1）以降に進めない** —— 中間モデル点検で見つかった 7 箇所（A `ColumnRowDataBlock.columnNames` 空／B `FileDataBlock.fileType` null／C `FieldDef.length` null（FIXED 内）／D `FieldDef.name` null／E `TestDataBlock.groupId` null／F `TestDataSection.name` null／G `TestDataBlock.dataType` DEFAULT）を #25.5 の要対応に含めるか、記録のみに留めるか。**A は既存 XLS-21、G は既存 XLS-20 として「対応不要（到達経路が無い）」と判定済みだが、その根拠は XLS-22 の判断で明示的に捨てた基準である**（Decisions「中間モデルの契約の穴は要対応とする」）。含めるなら要対応は 7 → 最大 14 件。点検の一次記録は `/tmp/claude-1000/-home-tie303177-work-nablarch-nablarch-testing-converter/b7e25ea1-0b15-4d14-b1e3-38d8ed8d22ec/scratchpad/model-sweep.md`（**表中の `notation:588` は `:590` が正**）。集計（2）は（1）の後に 1 回だけ行うこと。`issues.md` の要対応 7 件の導出コマンドは現状 6 を返す（YML-03 の判定欄だけ書式が違うため。件数 7 自体は正）——（2）で書式か集計コマンドのどちらを直すか決める。判定の 3 値目「本作業の対象外」（XLS-26）の扱いも（2）で決める。`checks/` は時点の証拠記録のため現行定義へ揃えない。
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
