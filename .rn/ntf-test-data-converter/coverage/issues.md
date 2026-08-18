@@ -73,8 +73,18 @@ $ awk '/^### (XLS|YML)-/{id=$2} /^- NTF 仕様としての判定/{print id" "$0}
 
 出典に付す `notation:nnn` は
 `~/work/nablarch/nablarch-document/ja/development_tools/testing_framework/implementation/testdata_notation.rst`
-の行番号（`nablarch-document` の `df7bff7` 時点。`df7bff7..HEAD` で同ファイルに変更が無いことを
-`git diff --stat` で確認済み）。`tsrc L…` は本体 `nablarch-testing` の sources jar を展開した原文の行番号である。
+の行番号（`nablarch-document` の `df7bff7` 時点）。
+
+> **訂正（2026-08-18 実測）。** ここには「`df7bff7..HEAD` で同ファイルに変更が無いことを `git diff --stat` で
+> 確認済み」と書いてあったが、**その後 `nablarch-document` の HEAD が進み、現在は変更がある**
+> （`git diff --stat df7bff7..HEAD -- …/testdata_notation.rst` → `10 insertions(+), 8 deletions(-)`。
+> HEAD は `30a8271`）。**行番号がずれるのは 1 箇所だけで、`df7bff7` の 499 行目以降が HEAD では +2 行ずれる**
+> （`@@ -497,6 +497,8 @@` でラベル行 `.. _testdata_notation-command_line:` と空行が入ったため。
+> 例: `notation:886` ＝ HEAD の 888 行目。両者の本文が同一であることを実物で確認した）。
+> **本書の `notation:nnn` は従来どおり `df7bff7` 時点の行番号であり、読むときは
+> `git show df7bff7:ja/development_tools/testing_framework/implementation/testdata_notation.rst` を開くこと。**
+
+`tsrc L…` は本体 `nablarch-testing` の sources jar を展開した原文の行番号である。
 
 **「判断」欄の書式は全件そろっている。** #25.5 のレビュー 1 巡目で XLS-24 だけが
 `- **判断**: `（太字）だったのを `- 判断: ` へ揃えた。
