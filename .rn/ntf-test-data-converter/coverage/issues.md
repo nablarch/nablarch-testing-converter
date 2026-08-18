@@ -46,10 +46,12 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 課題は全部で **36 件**（課題 ID 単位）。内訳は **要対応 7 件**（XLS-06・XLS-16・XLS-22・YML-02・YML-03・
 YML-08・YML-12）／**対応不要 29 件**である。
 
-要対応のうち **6 件は #25.5 で修正済み**（XLS-06・XLS-16・XLS-22・YML-02・YML-08・YML-12。ただし
-YML-12 は 4 形のうち 1 形目と 3 形目のみ）。残る YML-03 は帰属が nablarch-testing-yaml 側のため
-`@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いて待つ
-（steering Decisions「不具合修正の対象と手順（#25.5）」）。
+要対応のうち **7 件すべてが修正済み**である（XLS-06・XLS-16・XLS-22・YML-02・YML-03・YML-08・YML-12。
+ただし YML-12 は 4 形のうち 1 形目と 3 形目のみ）。**YML-03 は帰属が nablarch-testing-yaml 側だったため
+`@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いて待っていたが、yaml 側が `0b53910` で修正されたため
+2026-08-18 に両側そろって解消した**（converter 側は `YamlFormatReader#recordsWithoutFwHeader` の廃止。
+`@Ignore` は残っていない）。詳細は各課題の判定欄と steering Decisions
+「不具合修正の対象と手順（#25.5）」を参照。
 
 > **XLS-22 を対応不要から要対応へ変えた（2026-08-18・ユーザー判断）。** 判定の根拠を「到達可能性」から
 > 「両形式が表現できない値を中間モデルだけが保持できる＝中間モデルの契約の穴」へ一本化したことによる。
@@ -1276,11 +1278,11 @@ ID は発見順に振り、振り直さない。
   この明文に反する。**#25.5 で修正済み（36e94a4）**。`YamlFormatReader` が `group_id` 省略の送信同期エントリを
   デフォルトグループのブロックとして読むようにした。
 
-### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**・**未修正／nablarch-testing-yaml 側の修正待ち**）
+### YML-03 `record_type: FW_HEADER` のレコードが黙って捨てられる（影響度 中・**検出できない**・**修正済み（yaml 側 `0b53910` ＋ 本リポジトリ側 `e8101b8`）**）
 
-| 入力 | 中間モデルへ入る結果 | 担保テスト |
-|---|---|---|
-| `messages` に `record_type: "FW_HEADER"` のレコード 1 件だけ（`fw_header:` は書かない） | ブロックは生成されるが `records` **0 件**・`fwHeaderFields` **0 件**。書いたフィールド定義とデータ行が消える。**例外は出ない** | **現在この挙動を固定しているアクティブなテストは無い**（#25.5 で `dropsFwHeaderNamedRecordFromRealYaml` を、仕様どおりの期待値を書いた `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml`（`@Ignore("YML-03: yaml側の修正待ち")`）へ置き換えたため。観測は本表が唯一の記録である） |
+| 入力 | 中間モデルへ入る結果（修正前） | 中間モデルへ入る結果（修正後・現在） | 担保テスト |
+|---|---|---|---|
+| `messages` に `record_type: "FW_HEADER"` のレコード 1 件だけ（`fw_header:` は書かない） | ブロックは生成されるが `records` **0 件**・`fwHeaderFields` **0 件**。書いたフィールド定義とデータ行が消える。**例外は出ない** | `records` **1 件**（`recordType` は原文どおり `FW_HEADER`。フィールド定義・データ行とも残る）・`fwHeaderFields` **0 件**（`fw_header:` を書いていないため） | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml`（`@Ignore` を外して緑） |
 
 - **この入力はスキーマ上の仕様内である。** `$defs.record_fragment.properties.record_type` に `enum` は無く、
   その description は「メッセージング系（messages / expected_request_\* / response_\*）では NTF 内部で常に
@@ -1302,14 +1304,24 @@ ID は発見順に振り、振り直さない。
   "
   ```
 
-- 原因: 落としているのは **converter と本体器の両方**である。
+- 原因（修正前）: 落としていたのは **converter と本体器の両方**であった。
   - 本体器（yaml 側）: `nablarch/test/core/reader/yaml/YamlFileBuilder.java` の `buildFragmentsInternal` が
-    `if (skipFwHeader && FW_HEADER_RECORD_TYPE.equals(recordType)) { continue; }` で断片を作らない
+    `if (skipFwHeader && FW_HEADER_RECORD_TYPE.equals(recordType)) { continue; }` で断片を作らなかった
     （`skipFwHeader` はメッセージ系・送信系で真）。`FW_HEADER_RECORD_TYPE` は
-    `nablarch/test/core/reader/yaml/YamlSection.java` で `"FW_HEADER"` と定義されている。
-  - converter: `YamlFormatReader#recordsWithoutFwHeader` が同じ名前のレコードを原文側からも除く。
+    `nablarch/test/core/reader/yaml/YamlSection.java` で `"FW_HEADER"` と定義されていた。
+  - converter: `YamlFormatReader#recordsWithoutFwHeader` が同じ名前のレコードを原文側からも除いていた。
     除かなければ「器の断片数と原文レコード数の不一致」で `IllegalStateException` になるため、
-    converter 側だけを直しても解決しない。
+    converter 側だけを直しても解決しなかった。
+- **修正（2026-08-18）**: 両側そろって直した。
+  - **yaml 側**: `nablarch-testing-yaml` の `0b53910`（ブランチ `feature/ntf-yaml`。
+    「fix: record_type: FW_HEADER によるレコード読み飛ばしを廃止する」）。同リポジトリの `8e1ea76` の祖先に含まれる
+    （`git merge-base --is-ancestor 0b53910 HEAD` で確認）。修正後は `grep -rn "FW_HEADER_RECORD_TYPE" src/` が
+    ヒット 0 件で、定数ごと消えている。`mvn clean install` で `~/.m2` の
+    `nablarch-testing-yaml-1.0.0-SNAPSHOT.jar` を差し替えた（2026-08-13 17:04 → 2026-08-18 09:30）。
+  - **converter 側**: `YamlFormatReader#recordsWithoutFwHeader` を廃止し、メッセージ系（`#addMessageBlocks`）・
+    送信系（`#addSendSyncBlocks`）の呼び出しをファイル系と同じ `#records(entry)` に揃えた。
+    `YamlSection.FW_HEADER_RECORD_TYPE` が yaml 側で消えたため、この廃止は**コンパイルを通すために必須**でもある
+    （そのままでは converter の `compile` が落ちる）。
 
   再現コマンド:
 
@@ -1319,48 +1331,51 @@ ID は発見順に振り、振り直さない。
     && grep -n 'FW_HEADER_RECORD_TYPE' nablarch/test/core/reader/yaml/YamlFileBuilder.java nablarch/test/core/reader/yaml/YamlSection.java
   ```
 
-- 実測: 上表のとおり。`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残ること、
-  送信系（`response_body_messages`）でも同じく落ちることは、いずれも
-  #25.5 まで `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
+- 実測: 上表のとおり。修正前の観測（`FW_HEADER` レコードに本文レコードを 1 件足した入力では本文だけが残る、
+  送信系（`response_body_messages`）でも同じく落ちる）は、#25.5 まで
+  `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
   **1 件で両方とも固定していた**（送信系に `FW_HEADER` ＋本文を 1 件ずつ置き、本文だけが残ることをアサート）。
-  **#25.5 で同テストは `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（`@Ignore`）へ置き換えたため、
-  現在この観測を固定しているアクティブなテストは無い。**
-  **未固定なのは「送信系に `FW_HEADER` のみを置いた形」だけ**である（ブロックだけが残ることを
-  プローブで確認済み。掃引表 項目 21）。
-  YML-02 と同じく、警告が 1 件も出ないことは未確認である。
-- 影響: スキーマの description を読んで「FW_HEADER は予約値ではないので可読性のために使ってよい」と
+  現在は同じ入力で **2 件とも残る**ことを `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` が固定している。
+  **修正前の挙動を固定しているアクティブなテストは無い**（残す必要が無くなったため）。
+  修正前の「送信系に `FW_HEADER` のみを置いた形」の観測（ブロックだけが残る。掃引表 項目 21）も同様である。
+- 影響（修正前）: スキーマの description を読んで「FW_HEADER は予約値ではないので可読性のために使ってよい」と
   判断した作成者が `record_type: "FW_HEADER"` と書くと、そのレコードのフィールド定義もデータ行も
-  変換後の成果物から消える。入力と出力を突き合わせない限り気づけない。
-  なお NTF 実行時も同じ器（`YamlFileBuilder`）が同じレコードを落とすため、**converter の変換は
-  NTF の解釈に忠実である**。食い違っているのは**スキーマの description と実装**の側である。
+  変換後の成果物から消えた。入力と出力を突き合わせない限り気づけない。
+  当時は NTF 実行時も同じ器（`YamlFileBuilder`）が同じレコードを落としていたため **converter の変換は
+  NTF の解釈に忠実**であり、食い違っていたのは**スキーマの description と実装**の側であった。
+  修正後は description と実装が一致し、converter もそれに追随している。
 - `nablarch-example-web`（サンプルアプリ）由来の変換出力 YAML には発現していない
   （`grep -rn 'FW_HEADER' src/test/java/nablarch/test/tool/converter/SampleConversionTest/` → ヒット 0）。
   対象PJの実データでの発現は未知である。
-- **3 経路で扱いが違う**（いずれもテストあり。ただしメッセージ系・送信系は #25.5 以降 `@Ignore` の待機テストであり、
-  現状挙動を固定してはいない）:
+- **3 経路で扱いが揃った**（修正前は経路によって違った。いずれもアクティブなテストで固定している）:
 
-  | 経路 | `record_type: "FW_HEADER"` のレコード | 担保テスト（`YamlFormatReaderRealFileTest#`） |
-  |---|---|---|
-  | ファイル系（`setup_files` ／ `expected_files`） | **残る** | `keepsFwHeaderNamedRecordInFileFromRealYaml` |
-  | メッセージ系（`messages`） | 落ちる | `keepsFwHeaderNamedRecordInMessageFromRealYaml`（**`@Ignore` の待機テスト**。仕様どおり「残る」を期待値に書いてあるので現状では赤。旧テスト `dropsFwHeaderNamedRecordFromRealYaml` を置き換えたもの） |
-  | 送信系（`response_body_messages` ほか） | 落ちる | `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（**同上**。旧テスト `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` を置き換えたもの） |
+  | 経路 | 修正前 | 修正後・現在 | 担保テスト（`YamlFormatReaderRealFileTest#`） |
+  |---|---|---|---|
+  | ファイル系（`setup_files` ／ `expected_files`） | **残る** | **残る** | `keepsFwHeaderNamedRecordInFileFromRealYaml` |
+  | メッセージ系（`messages`） | 落ちる | **残る** | `keepsFwHeaderNamedRecordInMessageFromRealYaml`（旧テスト `dropsFwHeaderNamedRecordFromRealYaml` を置き換えたもの） |
+  | 送信系（`response_body_messages` ほか） | 落ちる | **残る** | `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（旧テスト `dropsFwHeaderNamedRecordFromSendSyncInRealYaml` を置き換えたもの） |
 
-  `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks`）と
-  送信系（`#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使うためである。
-  同じ記法が置き場所によって残ったり消えたりする点も、作成者から見れば予測できない。
+  修正前は `YamlFormatReader#addFileBlocks` が `records(entry)` を、メッセージ系（`#addMessageBlocks`）と
+  送信系（`#addSendSyncBlocks`）が `#recordsWithoutFwHeader(entry)` を使っていたためである。
+  現在は 3 経路とも `#records(entry)` を使う。
 - 判断: **仕様として不適切**（スキーマの description が「予約値はない」と明言する値を実装が予約値として扱い、
-  黙ってデータを落とす）。**帰属は yaml 側**である（description を実装に合わせるか、実装から
-  `skipFwHeader` の特別扱いを外すかは yaml 側の判断）。**#25.5 でも converter 側は無変更**であり、
-  下の判定のとおり待機テストを置いて yaml 側の修正を待っている。
-- NTF 仕様としての判定: **要対応**（ただし帰属は nablarch-testing-yaml 側）。本体スキーマ
+  黙ってデータを落とす）。**この「判断」は #19〜#25 の時点のもので、当時は帰属が yaml 側にあり
+  本リポジトリだけでは直せなかった。** yaml 側が `0b53910` で `skipFwHeader` の特別扱いを外したため、
+  下の判定のとおり両側そろって修正済みである。
+- NTF 仕様としての判定: **要対応 → 修正済み（2026-08-18）**。本体スキーマ
   `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment.properties.record_type.description` が
   「可読性のために任意の名前を記述してよい。**FW_HEADER のような予約値はない**」と明言しているのに対し、
-  実装（`YamlFileBuilder#skipFwHeader`）は `FW_HEADER` を予約値として扱ってレコードを捨てている。
-  converter 側だけを直すと `YamlFormatReader#toRecordLayouts`（L330-333）の
-  `IllegalStateException`（器の断片構造と原文レコードの件数不一致）になるため、**修正せず、仕様どおりの期待値を
-  書いた `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いた（9e8fd6b）**
+  実装（`YamlFileBuilder#skipFwHeader`）が `FW_HEADER` を予約値として扱ってレコードを捨てていた。
+  **修正の出典は yaml 側が `0b53910`（`nablarch-testing-yaml` ブランチ `feature/ntf-yaml`。
+  「fix: record_type: FW_HEADER によるレコード読み飛ばしを廃止する」）、converter 側が
+  `e8101b8`**（`YamlFormatReader#recordsWithoutFwHeader` の廃止）である。
+  #25.5 で置いた `@Ignore("YML-03: yaml側の修正待ち")` の待機テスト 2 件
   （`YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` ／
-  `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml`。赤になることを実行して確認済み）。
+  `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml`）は `@Ignore` を外し、外した状態で緑になることを
+  実行して確認した。あわせて、修正前の挙動を固定していた
+  `YamlFormatReaderTest#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` を
+  `#readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord`（2 件とも残ることを期待値に書いたもの）へ
+  置き換えた（2 本残さない）。
 
 ### 対象としない入力（辺②）
 
@@ -1461,7 +1476,7 @@ D2-04（`readsQuotedTrailingZeroDecimalAsString`）／D2-05（`readsQuotedTrueAs
 | C-11 `FileDataBlock.directives` 空 ／ C-13 `MessageDataBlock.directives` 空 | **XLS-07** と同じ（本体 `DataFile` のコンストラクタが `file-type` を必ず注入する）。YAML で `directives` を 1 つも書かなくても空 Map にならない | `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile` ／ `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage` |
 | C-17 `RecordLayout.fields` 空 | スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1。`fields: []` はスキーマ違反となり中間モデルへ到達しない | `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` |
 | C-20 `FieldDef.type` 省略（`null`） | スキーマ `$defs.field_def.required` が `type` を必須とする。型を書かないフィールド定義は中間モデルへ到達しない | `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` |
-| C-15 `MessageDataBlock.records` 空（**上の但し書きのとおり、この行だけ「要追加」からの移動ではない**） | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | 実 `.yaml` で `records` 0 件のブロックが**別経路で**生じることは **YML-03**（`record_type: FW_HEADER` のレコードだけを書くと器も原文も 0 件になる）が示す。ただしこれは仕様上の到達手段ではなく課題であり、#25.5 で当該テストが `@Ignore` の待機テストへ置き換わったため、現在この観測を固定しているアクティブなテストは無い |
+| C-15 `MessageDataBlock.records` 空（**上の但し書きのとおり、この行だけ「要追加」からの移動ではない**） | スキーマ `$defs.message_data.properties.records.minItems` ＝ 1（送信系の `expected_request_message_data` も同じ）。**実ファイル経路では到達できない**。#18 が ✅ としているのは in-memory 経路（`YamlFormatReaderTest#readMessage_emptyBody_isStillMapped`）である | 修正前は、実 `.yaml` で `records` 0 件のブロックが**別経路で**生じることを **YML-03**（`record_type: FW_HEADER` のレコードだけを書くと器も原文も 0 件になる）が示していた。**YML-03 が 2026-08-18 に修正されたため、この経路は無くなった**（同じ入力で `records` は 1 件になる）。実ファイル経路で C-15 に到達する手段は現在も無い |
 
 **#23 の「未確認」への回答**: `issues.md` の「未確認（#23）」に
 「**XLS-22 の到達経路（辺②の YAML で `fields: []` を書けるか）は未確認**」と残していた。

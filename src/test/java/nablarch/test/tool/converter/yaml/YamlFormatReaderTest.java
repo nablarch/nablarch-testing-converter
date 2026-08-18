@@ -283,8 +283,8 @@ public class YamlFormatReaderTest {
     // ------------------------------------------------------------------------
 
     @Test
-    public void readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord() {
-        // Given: fw_header（${...} 未加工）と FW_HEADER レコード＋本文レコードの併存
+    public void readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord() {
+        // Given: fw_header（${...} 未加工）と FW_HEADER を名乗るレコード＋本文レコードの併存
         Map<String, Object> yaml = map(
                 "messages", list(
                         map("id", "RM01",
@@ -300,17 +300,21 @@ public class YamlFormatReaderTest {
         // When
         TestDataContainer container = reader(yaml).read(DIR, RESOURCE);
 
-        // Then: FW ヘッダは原文・MESSAGE 種別・グループ空、本文は FW_HEADER レコードを除いた 1 件
+        // Then: FW ヘッダは原文・MESSAGE 種別・グループ空、レコードは記述順のまま 2 件とも残る
         MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
         assertThat(block.getDataType(), is(DataType.MESSAGE));
         assertThat(block.getGroupId(), is(""));
         assertThat(block.getIdentifier(), is("RM01"));
         assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
         assertThat(block.getFwHeaderFields().get("userId"), is("${user}"));
-        assertThat(block.getRecords().size(), is(1));
-        assertThat(block.getRecords().get(0).getRecordType(), is("body"));
-        assertFieldDef(block.getRecords().get(0).getFields().get(0), "m1", "半角英字", "3");
-        assertThat(block.getRecords().get(0).getRows().get(0), is(Arrays.asList("abc")));
+        assertThat("FW_HEADER を名乗るレコードも落とさない（ファイル系と同じ扱い）",
+                block.getRecords().size(), is(2));
+        assertThat(block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertFieldDef(block.getRecords().get(0).getFields().get(0), "h1", "半角英字", "1");
+        assertThat(block.getRecords().get(0).getRows().get(0), is(Arrays.asList("z")));
+        assertThat(block.getRecords().get(1).getRecordType(), is("body"));
+        assertFieldDef(block.getRecords().get(1).getFields().get(0), "m1", "半角英字", "3");
+        assertThat(block.getRecords().get(1).getRows().get(0), is(Arrays.asList("abc")));
     }
 
     @Test

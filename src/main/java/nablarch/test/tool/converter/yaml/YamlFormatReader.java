@@ -38,7 +38,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * （本体 {@code reader} パッケージ相乗りのアダプタ）へ委譲し、本クラスは
  * {@link YamlTestCoreAdapter#loadRawMap(String, String) トップレベル Map}（{@link java.util.LinkedHashMap}
  * ＝YAML 記述順）を走査して既知セクションをブロックへ展開するオーケストレーションに徹する。
- * グループ絞り込み・fixed/variable 判定・FW_HEADER スキップ・送信系グループ／NO 扱い・テーブル名／
+ * グループ絞り込み・fixed/variable 判定・送信系グループ／NO 扱い・テーブル名／
  * カラム名の大文字化・マーカー除外といった YAML 構造解釈はすべてアダプタ（本体器）側が担う。
  * </p>
  *
@@ -265,7 +265,7 @@ public class YamlFormatReader implements TestDataFormatReader {
             blocks.add(new MessageDataBlock(DataType.MESSAGE, "", id,
                     toStringDirectives(view.getDirectives()),
                     new LinkedHashMap<>(content.getFwHeader()),
-                    toRecordLayouts(view, recordsWithoutFwHeader(entry))));
+                    toRecordLayouts(view, records(entry))));
         }
     }
 
@@ -299,7 +299,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 blocks.add(new MessageDataBlock(type, formatGroup(entry), body.getPath(),
                         toStringDirectives(view.getDirectives()),
                         new LinkedHashMap<>(),
-                        toRecordLayouts(view, recordsWithoutFwHeader(entry))));
+                        toRecordLayouts(view, records(entry))));
             }
         }
     }
@@ -321,7 +321,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * </p>
      *
      * @param view           器のビュー
-     * @param alignedRecords 器の断片と整列済みの原文レコード Map（FILE は全件／MESSAGE・送信系は FW_HEADER 除外済み）
+     * @param alignedRecords 器の断片と整列済みの原文レコード Map（FILE・MESSAGE・送信系とも全件。スキップするレコードはない）
      * @return レコードレイアウト群
      */
     private List<RecordLayout> toRecordLayouts(FileView view, List<Map<String, Object>> alignedRecords) {
@@ -379,7 +379,8 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリの {@code records} を Map のリストとして取り出す（全件・スキップなし）。
+     * エントリの {@code records} を Map のリストとして取り出す（全件。{@code record_type} による
+     * スキップはしない。器も {@code FW_HEADER} 断片を落とさない）。
      *
      * @param entry エントリ Map
      * @return レコード Map のリスト
@@ -388,25 +389,6 @@ public class YamlFormatReader implements TestDataFormatReader {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Object recordObj : YamlSection.getList(entry, YamlSection.FIELD_RECORDS)) {
             result.add(YamlSection.castMap(recordObj));
-        }
-        return result;
-    }
-
-    /**
-     * エントリの {@code records} を Map のリストとして取り出し、{@code record_type} が {@code FW_HEADER} の
-     * レコードを除外する（メッセージ系で器の断片と整列させるため。器は FW_HEADER 断片を生成しない）。
-     *
-     * @param entry エントリ Map
-     * @return FW_HEADER を除いたレコード Map のリスト
-     */
-    private static List<Map<String, Object>> recordsWithoutFwHeader(Map<String, Object> entry) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Object recordObj : YamlSection.getList(entry, YamlSection.FIELD_RECORDS)) {
-            Map<String, Object> record = YamlSection.castMap(recordObj);
-            if (YamlSection.FW_HEADER_RECORD_TYPE.equals(YamlSection.toStr(record.get(YamlSection.FIELD_RECORD_TYPE)))) {
-                continue;
-            }
-            result.add(record);
         }
         return result;
     }

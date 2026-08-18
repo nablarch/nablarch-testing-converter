@@ -130,6 +130,26 @@
 >   への書き直しで C-17(空) の担保が外れたこと、`YamlFormatWriterModelTest` 17 → **16** 件）を注記した。
 >   C-17(空) の担保は `YamlFormatWriterTest` の番人テスト 2 件へ移った。
 >
+> **YML-03 追補（yaml 側の修正取り込み。2026-08-18）**
+>
+> `record_type: FW_HEADER` のレコードが黙って捨てられる問題（**YML-03**）は帰属が
+> `nablarch-testing-yaml` 側にあり、#25.5 では仕様どおりの期待値を書いた `@Ignore` の待機テスト 2 件を
+> 置いて待っていた。yaml 側が `0b53910`（ブランチ `feature/ntf-yaml`）で `skipFwHeader` の特別扱いを
+> 廃止したため、本リポジトリ側も `YamlFormatReader#recordsWithoutFwHeader` を廃止して
+> メッセージ系・送信系の呼び出しをファイル系と同じ `#records(entry)` に揃えた
+> （判定と根拠は `issues.md` **YML-03**）。本書には次の箇所へ反映した。
+>
+> - **§0.1-2** — 待機テスト（`@Ignore`）が **2 件 → 0 件**になったこと、`mvn test` の
+>   `Skipped: 2 → 0`（`Tests run` は 541 のまま）、`YamlFormatReader` の JaCoCo 実測を追補した。
+> - **§2.1（辺② の #18 表・11 行目）** — 挙動を固定していた
+>   `YamlFormatReaderTest#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` を
+>   `#readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord` へ書き直した（2 件とも残ることが期待値）。
+>   **担保する軸要素は変えていない。**
+> - **§2.1-2 / §2.3 まわりの注記** — 「`@Ignore` の待機テストなので現状挙動を固定していない」旨の
+>   記述を、現在の事実（アクティブなテストで固定している）へ直した。
+>
+> **テストメソッド総数は変わっていない**（改名のみ。541 件）。
+
 > **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
 > **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
@@ -330,6 +350,47 @@ Tests run: 541, Failures: 0, Errors: 0, Skipped: 2
 | `YamlFormatWriter` | `line 160/161 branch 91/94` | **`line 163/164 branch 93/96`** | 変化なし（行 1・分岐 3。同上） |
 | `YamlFormatReader` | `line 200/200 branch 106/106` | **同左** | 変化なし |
 | `DirectiveUtil` | `line 20/20 branch 17/18` | **同左** | 変化なし（下の開示のとおり） |
+
+**追補その 2（2026-08-18 実測。YML-03 の解消ぶん）**
+
+yaml 側の `0b53910` を `mvn clean install` で `~/.m2` へ取り込み（jar のタイムスタンプが
+2026-08-13 17:04 → 2026-08-18 09:30 に変わることで確認できる）、converter 側の
+`YamlFormatReader#recordsWithoutFwHeader` を廃止した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 541
+② （ヒット 0 件。待機テストは無くなった）
+③ 8c327d0: 536
+   HEAD: 541
+```
+
+```
+Tests run: 541, Failures: 0, Errors: 0, Skipped: 0
+```
+
+**総数は変わらない**（`@Ignore` を 2 件外し、挙動を固定していた
+`YamlFormatReaderTest#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` を
+`#readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord` へ改名・書き直しただけで、
+テストメソッドの増減はないため）。`Skipped` が 2 → 0 になった点だけが動いている。
+
+**`src/main` に手を入れたファイル**（上の 2 つの表への追加ぶん）:
+
+| ファイル | 課題 | 変更の要点 |
+|---|---|---|
+| `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatReader.java` | **YML-03** | メッセージ系・送信系専用だった `#recordsWithoutFwHeader` を廃止し、ファイル系と同じ `#records(entry)` に揃えた（yaml 側で `YamlSection.FW_HEADER_RECORD_TYPE` が消えたため、コンパイルを通すためにも必須） |
+
+**JaCoCo 実測（2026-08-18。導出コマンドは下の開示に載せたものと同じで `$3` を変えるだけ）**
+
+| クラス | 追補その 1（同日） | 追補その 2（同日・現在） | 未到達の増減 |
+|---|---|---|---|
+| `YamlFormatReader` | `line 200/200 branch 106/106`（※ 下記） | **`line 192/192 branch 102/102`** | 変化なし（0 件のまま） |
+| `XlsFormatWriter` | `line 159/160 branch 103/106` | 同左 | 変化なし |
+| `YamlFormatWriter` | `line 163/164 branch 93/96` | 同左 | 変化なし |
+| `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
+
+※ 追補その 1 の表では `YamlFormatReader` を `branch 106/106` と記したが、これは
+`recordsWithoutFwHeader`（分岐 4 件・行 8 件。すべて到達済み）を含む値である。同メソッドの廃止で
+行 8 件・分岐 4 件が丸ごと消え、**未到達は 0 件のまま**である。
 
 **開示（`DirectiveUtil` に残る未到達分岐 1 件 —— #25.5 で足した箇所ではない）**
 
@@ -1029,7 +1090,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | 8 | `readFile_setupVariable_mapsSetupVariableType` | A-08 | B-3 | C-05, C-10(VARIABLE) | — | E-1(1) | — |
 | 9 | `readFile_recordTypeOmitted_keepsNullRecordType` | A-06 | B-3 | **C-16(省略=null)** ✅ | — | E-3(1) | — |
 | 10 | `readFile_recordTypeDefault_normalizedToNull` | A-08 | B-3 | C-16(`"Default"`→null) | — ※特殊値の正規化 | E-3(1) | — |
-| 11 | `readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord` | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | — ※`${}` | E-3(1) | — |
+| 11 | `readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord`<br>（**2026-08-18・YML-03 の解消で改名**。旧名 `#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`。担保する軸要素は不変） | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | — ※`${}` | E-3(1) | — |
 | 12 | `readMessage_emptyBody_isStillMapped` | A-10 | B-4 | C-07, **C-14(空)**, **C-15(空)** | — | **E-3(0)** ✅ | — |
 | 13 | `readMessage_nullContent_isSkipped` | — | — | C-04(空) | — | E-1(0) | ※器が null を返す場合のスキップ |
 | 14 | `readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | — ※`${}`・`no` フィールド保持 | E-1(複数=3) | — |
@@ -1095,7 +1156,7 @@ D2-11 の担保の限界＝ YML-05 を実行可能な形にしたもの）、`Ya
 **件数をさらに更新した（2026-08-14・Verification 再レビュー指摘の反映で 3 件追加）。** 内訳は
 `YamlFormatReaderRealFileTest` ＋1（`dropsFwHeaderNamedRecordFromSendSyncInRealYaml`。送信系の
 FW_HEADER 除外が変異で生存していたため。**#25.5 で仕様どおりの期待値を書いた
-`keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（`@Ignore("YML-03: yaml側の修正待ち")`）へ
+`keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（**2026-08-18 に `@Ignore` を外し緑**）へ
 置き換えた**ので、この名前のテストは現在は存在しない。件数は 1 のままである）、`YamlFormatReaderInvalidInputTest` ＋2
 （`failsWhenYamlRootIsNotMapping` ／ `failsWhenSameKeyAppearsTwiceInOneMapping`。ローダの他の失敗経路）。
 **どれも §2.3 の件数は動かさない**（前 2 件は軸F の 5 ケースに属さないローダの分岐、
@@ -1243,10 +1304,11 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
   `records` 0 件を観測していたが、これは C-15 の担保に数えない** —— 書いたレコードが
   YML-03 で落とされた結果であって、仕様上の到達手段ではないためである
   （2026-08-14・QA レビュー指摘。同テストの「担保する軸要素」からも C-15 を外し、
-  同じ但し書きを Javadoc に置いた）。**#25.5 で同テストは仕様どおりの期待値を書いた
-  `keepsFwHeaderNamedRecordInMessageFromRealYaml`（`@Ignore("YML-03: yaml側の修正待ち")`）へ
-  置き換えたため、`records` 0 件という観測を固定しているアクティブなテストは現在ゼロである**
-  （観測そのものは `issues.md` **YML-03** に残っている）。C-15 の判定（実 `.yaml` 経路では到達不能）は変わらない。
+  同じ但し書きを Javadoc に置いた）。#25.5 で同テストは仕様どおりの期待値を書いた
+  `keepsFwHeaderNamedRecordInMessageFromRealYaml` へ置き換え、**2026-08-18 の YML-03 修正で
+  `@Ignore` を外して緑になった。同じ入力で `records` は 1 件になるため、`records` 0 件という観測は
+  そもそも起きなくなっている**（修正前の観測は `issues.md` **YML-03** に残っている）。
+  C-15 の判定（実 `.yaml` 経路では到達不能）は変わらない。
 - **軸D の 12 ケースのうち 10 ケースは 1 経路（`setup_tables`）でしか測っていない。**
   `YamlFormatReaderScalarTest#readValue` は常に `setup_tables` へ値を置く。行値の取り出しは
   テーブル／LIST_MAP／レコード断片の 3 系統あり、スキーマも別パスで型を課すため、残り 2 経路での
@@ -1302,7 +1364,7 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
 | 18 | `rows` の行オブジェクトのキー順 | 行ごとに順序が違ってよい | 値は名前で対応付けられるため順序差の影響は出ない。課題なし |
 | 19 | マーカーカラム `[COL]` | スキーマは通常のキーと区別しない（全カラムがマーカーでも通る） | カラム 0 件・値を持たない行になる。辺①の **XLS-08** と同型（テストで固定） |
 | 20 | `$defs.file_data.properties.records` の `minItems: 0` ／ `rows` の空配列 | 空を許す | 既に担保済み（C-12／C-09／E-2(0)／E-3(0)） |
-| 21 | `$defs.message_data.properties.records` に `FW_HEADER` 名を書ける | `enum` が無い | **YML-03**（既記録）。送信系（`response_body_messages`）でも落ちる。**#25.5 で、この挙動を固定していたテストは仕様どおりの期待値を書いた `keepsFwHeaderNamedRecordInSendSyncFromRealYaml` ／ `keepsFwHeaderNamedRecordInMessageFromRealYaml`（ともに `@Ignore("YML-03: yaml側の修正待ち")`）へ置き換えた**ため、現在この挙動を固定しているアクティブなテストは無い（観測は `issues.md` **YML-03** に残る）。未固定なのは「FW_HEADER のみ」を置いてブロックだけが残る形（プローブでの観測） |
+| 21 | `$defs.message_data.properties.records` に `FW_HEADER` 名を書ける | `enum` が無い | **YML-03**（既記録）。送信系（`response_body_messages`）でも落ちていた。**2026-08-18 に yaml 側 `0b53910` ＋ 本リポジトリの `YamlFormatReader#recordsWithoutFwHeader` 廃止で解消済み**であり、現在は 3 経路とも残る。それを `keepsFwHeaderNamedRecordInSendSyncFromRealYaml` ／ `keepsFwHeaderNamedRecordInMessageFromRealYaml` ／ `#keepsFwHeaderNamedRecordInFileFromRealYaml` がアクティブに固定している（`@Ignore` は外した。修正前の観測は `issues.md` **YML-03** に残る） |
 | 22 | `$defs.message_data.properties.records` に断片を 2 件以上書ける | 件数の上限が無い | 2 件とも保持される。辺①では **XLS-15** により不可能な形が辺②では作れる。課題なし |
 | 23 | `expected_request_header_messages` と `expected_request_body_messages` の件数一致 | スキーマは縛らず description にだけ書かれている | converter は片方だけでもブロックを作る。NTF 実行時の制約であり変換の正しさとは別。課題なし |
 | 24 | セクション配列内でのエントリの並び（`$defs.table_data` ／ `$defs.file_data` ／ `$defs.group_message_data` の `group_id`） | 同じ `group_id` のエントリが配列内で連続することを要求していない（順序の制約が無い） | **YML-09**（`g1` → `g2` → `g1` と書くとブロックがグループの初出順にまとめ直され、原文の記述順と食い違う。テーブル系・ファイル系・送信系の 3 経路とも同じ。**課題として記録した** — 判断の根拠は下の「掃引項目 24 を課題とした理由」） |

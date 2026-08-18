@@ -24,7 +24,6 @@ import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -55,10 +54,10 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>
  * 妥当でないと判断した挙動は {@code coverage/issues.md} に課題として記録した（{@code YML-02} ／ {@code YML-03}）。
- * このうち <b>{@code YML-02}</b>（{@code group_id} 省略の送信同期エントリが落ちる）は <b>#25.5 で修正済み</b>で、
- * 該当テストは現状の固定ではなく<b>記法どおりの仕様</b>を書いている。{@code YML-03}（{@code FW_HEADER} を
- * 名乗るレコードが捨てられる）は yaml 側の修正待ちのため、仕様どおりの期待値を書いた待機テストを
- * {@code @Ignore} で置いてある。
+ * このうち <b>{@code YML-02}</b>（{@code group_id} 省略の送信同期エントリが落ちる）は <b>#25.5 で修正済み</b>、
+ * <b>{@code YML-03}</b>（{@code FW_HEADER} を名乗るレコードが捨てられる）は <b>yaml 側の {@code 0b53910}
+ * ＋ 本リポジトリの {@code YamlFormatReader} 修正で解消済み</b>である。該当テストはいずれも現状の固定ではなく
+ * <b>記法どおりの仕様</b>を期待値に書いており、{@code @Ignore} は残っていない。
  * </p>
  *
  * @author kiyobot
@@ -615,7 +614,7 @@ public class YamlFormatReaderRealFileTest {
      * Then : <b>2 件とも残る</b>（ファイル系と同じ扱いになる）。
      *
      * <p>
-     * <b>仕様どおりの期待値を書いた待機テストである（現時点では赤）。</b>
+     * <b>記法どおりの仕様を書いたテストである（{@code YML-03} の修正で緑になった）。</b>
      * スキーマ {@code $defs.record_fragment.properties.record_type} の description は
      * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
      * {@code $defs.message_data.properties.records} の description も
@@ -624,18 +623,17 @@ public class YamlFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>本リポジトリだけでは直せない。</b>器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal}）が
-     * {@code skipFwHeader && FW_HEADER_RECORD_TYPE.equals(recordType)} で {@code continue} し断片を作らない
-     * （{@code YamlFileBuilder.java:177}、{@code YamlSection.java:78}）。converter 側の
-     * {@code YamlFormatReader#recordsWithoutFwHeader} だけをやめると器の断片数（1）と原文レコード数（2）が
-     * 食い違い、{@code YamlFormatReader#toRecordLayouts}（{@code YamlFormatReader.java:330-333}）が
-     * {@code IllegalStateException} を投げる。修正は yaml 側で行う必要がある。
+     * <b>修正は 2 リポジトリにまたがった。</b>器（yaml jar の {@code YamlFileBuilder}）が
+     * {@code FW_HEADER} を名乗る断片を作らなかったのを {@code nablarch-testing-yaml} の {@code 0b53910}
+     * （ブランチ {@code feature/ntf-yaml}）でやめ、本リポジトリ側は {@code YamlFormatReader} の
+     * メッセージ系専用の除外（旧 {@code #recordsWithoutFwHeader}）を廃止してファイル系と同じ
+     * {@code #records(entry)} に揃えた。器の断片数と原文レコード数が両側で揃うため、
+     * {@code #toRecordLayouts} の不整合チェックにも掛からない。
      * </p>
      *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の担保）。</p>
      */
     @Test
-    @Ignore("YML-03: yaml側の修正待ち")
     public void keepsFwHeaderNamedRecordInSendSyncFromRealYaml() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
@@ -671,13 +669,13 @@ public class YamlFormatReaderRealFileTest {
      * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件）。
      *
      * <p>
-     * <b>3 経路のうち、仕様どおりに動いている唯一の経路である。</b>同じ
-     * {@code record_type: "FW_HEADER"} を {@code messages}／送信系に書くとレコードは捨てられる
+     * <b>3 経路で扱いが揃っていることの確認である。</b>同じ {@code record_type: "FW_HEADER"} を
+     * {@code messages}／送信系に書いてもレコードは残る
      * （{@link #keepsFwHeaderNamedRecordInMessageFromRealYaml} ／
-     * {@link #keepsFwHeaderNamedRecordInSendSyncFromRealYaml} は、あるべき姿を書いた
-     * {@code @Ignore} の待機テストである。{@code coverage/issues.md} <b>YML-03</b>）。
-     * ファイル系は {@code YamlFormatReader#addFileBlocks} が {@code records(entry)} を、
-     * メッセージ系は {@code #recordsWithoutFwHeader(entry)} を使うためである。
+     * {@link #keepsFwHeaderNamedRecordInSendSyncFromRealYaml}。{@code coverage/issues.md} <b>YML-03</b>）。
+     * {@code YML-03} の修正前はファイル系だけが残っていた。メッセージ系の除外
+     * （旧 {@code YamlFormatReader#recordsWithoutFwHeader}）を廃止し、3 経路とも
+     * {@code #records(entry)} を使うようにしたためである。
      * </p>
      *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の固定）。</p>
@@ -975,30 +973,28 @@ public class YamlFormatReaderRealFileTest {
      * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件。ファイル系と同じ扱い）。
      *
      * <p>
-     * <b>仕様どおりの期待値を書いた待機テストである（現時点では赤）。</b>
+     * <b>記法どおりの仕様を書いたテストである（{@code YML-03} の修正で緑になった）。</b>
      * {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、その description は
      * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
      * {@code $defs.message_data.properties.records} の description も
      * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。
-     * にもかかわらず現状は、本体器（yaml jar の {@code YamlFileBuilder#buildFragmentsInternal} が
-     * {@code skipFwHeader} 時に {@code FW_HEADER} を {@code continue} でスキップする。
-     * {@code YamlFileBuilder.java:177}）と converter（{@code YamlFormatReader#recordsWithoutFwHeader}）の
-     * 双方がこの名前のレコードを落とし、レコードも FW 制御ヘッダも 0 件になる
-     * （書いたフィールド定義とデータ行が黙って消える）。
+     * 修正前は、本体器（yaml jar の {@code YamlFileBuilder} が {@code FW_HEADER} を断片にしない）と
+     * converter（旧 {@code YamlFormatReader#recordsWithoutFwHeader}）の双方がこの名前のレコードを落とし、
+     * レコードも FW 制御ヘッダも 0 件になっていた（書いたフィールド定義とデータ行が黙って消える）。
      * {@code coverage/issues.md} <b>YML-03</b>。
      * </p>
      *
      * <p>
-     * <b>本リポジトリだけでは直せない。</b>converter 側の除外だけをやめると、器の断片数（0）と
-     * 原文レコード数（1）が食い違い、{@code YamlFormatReader#toRecordLayouts}
-     * （{@code YamlFormatReader.java:330-333}）が {@code IllegalStateException} を投げる。
-     * 修正は yaml 側（{@code skipFwHeader} の特別扱いを外すか、description を実装へ合わせるか）で行う。
+     * <b>修正は 2 リポジトリにまたがった。</b>器の特別扱いは {@code nablarch-testing-yaml} の
+     * {@code 0b53910}（ブランチ {@code feature/ntf-yaml}）で廃止され、本リポジトリ側は
+     * メッセージ系専用の除外をやめてファイル系と同じ {@code #records(entry)} に揃えた。
+     * 片側だけを直すと器の断片数と原文レコード数が食い違い、{@code YamlFormatReader#toRecordLayouts} の
+     * 不整合チェックが {@code IllegalStateException} を投げるため、両側そろって初めて成立する。
      * </p>
      *
-     * <p>担保する軸要素: なし（あるべき姿の待機。緑になるまで何も担保しない）。</p>
+     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の担保）。</p>
      */
     @Test
-    @Ignore("YML-03: yaml側の修正待ち")
     public void keepsFwHeaderNamedRecordInMessageFromRealYaml() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
