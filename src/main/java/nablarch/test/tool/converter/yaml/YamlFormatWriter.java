@@ -260,12 +260,19 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * （{@code coverage/issues.md} <b>YML-12</b> の 3 形目。辺③の同じ形は <b>XLS-22</b>）。
      * {@link RecordLayout} の契約としてもフィールドは 1 件以上である。
      * </p>
+     * <p>
+     * データ型が {@code null} のフィールド定義も同じ思想で弾く。{@code $defs.field_def} は
+     * {@code required} ＝ {@code ["name", "type"]} であり、{@code type} を省略した形は読み戻せないからである
+     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）。{@link FieldDef} の契約としても
+     * {@code type} は必須である。弾くのは {@code null} だけで、空文字は弾かない。
+     * </p>
      *
      * @param sb            出力先
      * @param parent        親エントリ
      * @param records       レコードレイアウト群
      * @param emitEmptyList 空のときに {@code records: []} を出力するなら true
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウトが含まれる場合
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、またはデータ型が
+     *                                  {@code null} のフィールド定義が含まれる場合
      */
     private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
                              boolean emitEmptyList) {
@@ -283,6 +290,15 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
                         "フィールドを持たないレコードレイアウトは書き出せません"
                                 + "（$defs.record_fragment.fields は minItems = 1 のため読み戻せません）。"
                                 + " record_type=[" + record.getRecordType() + "]");
+            }
+            for (FieldDef field : record.getFields()) {
+                if (field.getType() == null) {
+                    throw new IllegalArgumentException(
+                            "データ型を持たないフィールド定義は書き出せません"
+                                    + "（$defs.field_def の required は type を含むため読み戻せません）。"
+                                    + " record_type=[" + record.getRecordType() + "]"
+                                    + " フィールド名=[" + field.getName() + "]");
+                }
             }
             YamlSeq item = new YamlSeq(sb, recordLevel);
             if (record.getRecordType() != null) {
@@ -337,7 +353,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * フィールド定義をフロー map 記法へ整形する（{@code type}／{@code length} は null なら省略）。
+     * フィールド定義をフロー map 記法へ整形する（{@code length} は null なら省略。
+     * {@code type} は必須のため常に出力する。{@code null} は {@link #emitRecords} が弾いてある）。
      *
      * @param field フィールド定義
      * @return フロー map 文字列
@@ -345,9 +362,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     private static String fieldFlow(FieldDef field) {
         StringBuilder b = new StringBuilder("{");
         b.append(key("name")).append(": ").append(q(field.getName()));
-        if (field.getType() != null) {
-            b.append(", ").append(key("type")).append(": ").append(q(field.getType()));
-        }
+        b.append(", ").append(key("type")).append(": ").append(q(field.getType()));
         if (field.getLength() != null) {
             b.append(", ").append(key("length")).append(": ").append(q(field.getLength()));
         }

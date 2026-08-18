@@ -150,6 +150,22 @@
 >
 > **テストメソッド総数は変わっていない**（改名のみ。541 件）。
 
+> **#25.5 追補（YML-12 4形目 の修正・TDD。2026-08-18）**
+>
+> `FieldDef.type` が `null` の値は **Excel 記法にも YAML スキーマにも存在しない**——それを中間モデルだけが
+> 保持できるのは**契約の穴**である、という判断（ユーザー確定・2026-08-18。XLS-22 ／ YML-12 3形目 と同じ）に
+> 基づき、`FieldDef` の Javadoc に「`type` は必須（`null` 不可）」の契約を明記し、辺③ `XlsFormatWriter` と
+> 辺④ `YamlFormatWriter` に `IllegalArgumentException` の番人を置いた
+> （判定と根拠は `issues.md` **YML-12 4形目**）。弾くのは `null` だけで、空文字は弾かない。
+> 本書には次の箇所へ反映した。
+>
+> - **§0.4** — C-20 の「省略可」が**型定義上の話**であり契約は必須（`null` 不可）であることを、
+>   表の下に追補した（表そのものは #18 時点の実定義の読み取りとして残す）。
+> - **§0.1-2** — テストメソッド件数（541 → **545**）・`src/main` の変更ファイル・`mvn clean test` の
+>   結果行を 2026-08-18 実測で追補した。
+> - **§3.1（辺③ の #18 表・30 行目）／§4.1（辺④ の #18 表・22 行目）** — C-20(省略) を担保していた
+>   2 件の扱いが変わったことを、各表の下に注記した。
+
 > **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
 > **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
@@ -392,6 +408,52 @@ Tests run: 541, Failures: 0, Errors: 0, Skipped: 0
 `recordsWithoutFwHeader`（分岐 4 件・行 8 件。すべて到達済み）を含む値である。同メソッドの廃止で
 行 8 件・分岐 4 件が丸ごと消え、**未到達は 0 件のまま**である。
 
+**追補（2026-08-18 実測。YML-12 4形目 の修正ぶん）**
+
+`FieldDef.type` の契約（必須・`null` 不可）を辺③④の番人で担保するようにしたため、件数が動いた。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 545
+② （ヒット 0 件。待機テストは無い）
+③ 8c327d0: 536
+   HEAD: 545
+```
+
+```
+Tests run: 545, Failures: 0, Errors: 0, Skipped: 0
+```
+
+541 → 545 の内訳は **削除 2 件・追加 6 件**である。削除したのは現状挙動を固定していた
+`YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`（`{name: "c1"}` を書くことを固定）と
+`YamlFormatWriterModelTest#failsToReadBackFieldWithoutType`（書けて読み戻せないことを固定）の 2 件
+（修正で「書き出せてしまう」出力そのものが無くなったため、期待値を書き直す先が無い）。
+追加したのは番人の担保 4 件（`XlsFormatWriterTest#rejectsFieldWithoutTypeInFileBlock` ／
+`#rejectsFieldWithoutTypeInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithNullTypeInFileBlock_rejected` ／
+`#serialize_fieldWithNullTypeInMessageBlock_rejected`）、境界（空文字は弾かない）の担保 1 件
+（`YamlFormatWriterTest#serialize_fieldWithEmptyType_emitsEmptyType`）、
+`FieldDefTest` の分割 1 件（`型と長さの省略をnullで保持する` を `長さの省略をnullで保持する` と
+`契約違反のnull型もモデル自身は検査せず保持する` の 2 件に分けた）である。
+なお `XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty` は入力の型を `null` から空文字へ変えた
+（辺③の境界の担保を兼ねる）ので、この 1 件は増減に入らない。
+
+**`src/main` に手を入れたファイル**（上の 3 つの表への追加ぶん）:
+
+| ファイル | 課題 | 変更の要点 |
+|---|---|---|
+| `src/main/java/nablarch/test/tool/converter/model/FieldDef.java` | **YML-12 4形目** | Javadoc に「`type` は必須（`null` 不可）」の契約を明記（検査は書き出し側） |
+| `src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` | **YML-12 4形目** | `type` が `null` のフィールド定義を `IllegalArgumentException` で落とす |
+| `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` | **YML-12 4形目** | 同上。あわせて `fieldFlow` は `type` を常に出力する（`null` は番人が弾くため） |
+
+**JaCoCo 実測（2026-08-18。導出コマンドは下の開示に載せたものと同じで `$3` を変えるだけ）**
+
+| クラス | 追補その 2 | 追補その 3（現在） | 未到達の増減 |
+|---|---|---|---|
+| `XlsFormatWriter` | `line 159/160 branch 103/106` | **`line 164/165 branch 107/110`** | 変化なし（未到達 行 1・分岐 3 のまま） |
+| `YamlFormatWriter` | `line 163/164 branch 93/96` | **`line 168/169 branch 95/98`** | 変化なし（未到達 行 1・分岐 3 のまま） |
+| `YamlFormatReader` | `line 192/192 branch 102/102` | 同左 | 変化なし（0 件のまま） |
+| `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
+
 **開示（`DirectiveUtil` に残る未到達分岐 1 件 —— #25.5 で足した箇所ではない）**
 
 JaCoCo 実測は **行 20/20（100%）・分岐 17/18（94.4%）** である。導出コマンド:
@@ -540,6 +602,20 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 `IllegalArgumentException` で落とすようにした（`issues.md` **XLS-22** ／ **YML-12 3形目**）。
 **上表の「空許容」列は #18 時点の実定義の読み取りとしてそのまま残す**（`RecordLayout` は
 自分では検査しないため、型としては空リストを保持できる）。
+
+**追補（2026-08-18・#25.5）: C-20 `FieldDef.type` の「省略可」は型定義上の話であり、契約としては
+必須（`null` 不可）である。** Excel 記法・YAML スキーマのどちらもデータ型を持たないフィールド定義を
+認めていないため（Excel は `testdata_notation.rst:883`（`30a8271` 時点。本書の基準 `df7bff7` では
+881 行目）が固定長で「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」・可変長で
+「フィールド名称・データ型の2リストが同サイズで必須」と定め、`:888`（同。`df7bff7` では 886 行目）が
+「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる。
+YAML は本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.field_def` が
+`required` ＝ `["name", "type"]`）、`null` を保持できるのは中間モデルだけという**契約の穴**だった。
+#25.5 で `FieldDef` の Javadoc に「`type` は必須（`null` 不可）」を明記し、書き出し側
+（`XlsFormatWriter` ／ `YamlFormatWriter`）が `null` を受けたら `IllegalArgumentException` で
+落とすようにした（`issues.md` **YML-12 4形目**）。**弾くのは `null` だけで、空文字は弾かない。**
+`C-21`（`length`）は従来どおり省略可である。**上表の「省略可」列は #18 時点の実定義の読み取りとして
+そのまま残す**（`FieldDef` は自分では検査しないため、型としては `null` を保持できる）。
 
 **steering との差異（コーディネータ判断を仰ぐ点）**: steering #20 の Steps は
 「`groupId` / `identifier` / `fileType` / `directives` / `fwHeaderFields` / `recordType` / `FieldDef.type` / `FieldDef.length` は
@@ -1607,6 +1683,15 @@ C-16 の正規化を実 `.yaml` で確かめたもので、C-16 は #18 時点�
 | 39 | `roundTripsMessage` | A-10 | B-4 | C-05, C-07, C-14(値あり), C-17, C-18, C-19 | — | E-3(1) | — |
 | 40 | `roundTripsSendSyncMessage` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19 | — | E-3(1) | — |
 
+**上表 #30 `writesOmittedMetaAndFieldAsEmpty` の入力は #25.5 追補（2026-08-18）で書き直した
+（本表は #18 時点のスナップショットのため表そのものは書き換えない）。** `issues.md`
+**YML-12 4形目** を修正し、`type` が `null` のフィールド定義は `IllegalArgumentException` で
+落とすようにしたため、**C-20(省略＝`null`) はこのテストの担保から外れた**。入力の型を空文字へ変えて
+「空セルとして書かれる」記法検査と **C-21(省略)** ・C-11(値 null) の担保は残し、同時に
+**番人の境界（弾くのは `null` だけで空文字は弾かない）**を担保する位置づけにした。
+`null` を弾くことの担保は `XlsFormatWriterTest#rejectsFieldWithoutTypeInFileBlock` ／
+`#rejectsFieldWithoutTypeInMessageBlock` の 2 件である。
+
 **上表 #31 `writesSequenceNoForAllSendSyncTypes` の軸A 欄「A-11, A-12, A-13, A-14」は誤りである
 （2026-08-13・#23 レビュー指摘。本表は #18 時点のスナップショットのため書き換えない）。**
 同メソッドは 4 タイプのブロックを入力に与えるが、アサートするのは 4 タイプ共通の連番 `"1"` だけで、
@@ -2135,6 +2220,14 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 記法検査は残した）。C-17(空) は番人の担保
 `YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected` ／
 `#serialize_recordWithoutFieldsInMessageBlock_rejected` の 2 件へ移った。
+
+**上表 #22 `serialize_fieldWithNullType_omitsType` は #25.5 追補（2026-08-18）で削除した（本表は
+#18 時点のスナップショットのため表そのものは書き換えない）。** `issues.md` **YML-12 4形目** を修正し、
+`type` が `null` のフィールド定義は `IllegalArgumentException` で落とすようにしたため、
+**このテストが固定していた `{name: "c1"}` という出力そのものが無くなった**（C-20(省略) は辺④の
+担保から外れた）。代わりに置いたのは番人の担保 2 件
+（`#serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#serialize_fieldWithNullTypeInMessageBlock_rejected`）と、
+境界（弾くのは `null` だけで空文字は弾かない）を主張する `#serialize_fieldWithEmptyType_emitsEmptyType` 1 件である。
 
 **上表 #10 `serializeSendSync_allFourSectionKeys` の軸A 欄「A-11, A-12, A-13, A-14」は誤りである
 （2026-08-14・#25 レビュー指摘。本表は #18 時点のスナップショットのため書き換えない）。**

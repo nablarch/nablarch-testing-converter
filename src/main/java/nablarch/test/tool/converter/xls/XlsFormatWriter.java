@@ -281,13 +281,22 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * Excel 記法に存在しない形であり（{@code testdata_notation.rst:886}）、
      * {@link RecordLayout} の契約としても 1 件以上を要求する。
      * </p>
+     * <p>
+     * データ型が {@code null} のフィールド定義も同じ思想で弾く。Excel 記法はフィールド名称・データ型の
+     * リストを必須としており（{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。
+     * {@code :888} は「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに
+     * 挙げる）、データ型を持たないフィールド定義は Excel 記法に存在しない形だからである
+     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）。{@link FieldDef} の契約としても
+     * {@code type} は必須である。弾くのは {@code null} だけで、空文字は弾かない。
+     * </p>
      *
      * @param l          版面
      * @param records    レコードレイアウト群
      * @param fixed      固定長（長さ行を持つ）なら真
      * @param sendSync   送信系（データ行の列 0 に no を置く）なら真
      * @param identifier 識別子（診断メッセージ用）
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウトが含まれる場合
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、またはデータ型が
+     *                                  {@code null} のフィールド定義が含まれる場合
      * @throws IllegalStateException    2 レコード目以降のレコード種別が空の場合
      */
     private void appendRecords(BlockLayout l, List<RecordLayout> records,
@@ -299,6 +308,15 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                         "フィールドを持たないレコードレイアウトは書き出せません"
                                 + "（名前行がレコード種別セル 1 個だけになり本体パーサが読み戻せません）。"
                                 + " identifier=[" + identifier + "] レコード番号=" + i);
+            }
+            for (FieldDef field : record.getFields()) {
+                if (field.getType() == null) {
+                    throw new IllegalArgumentException(
+                            "データ型を持たないフィールド定義は書き出せません"
+                                    + "（Excel 記法はフィールド名称・データ型のリストを必須としています）。"
+                                    + " identifier=[" + identifier + "] レコード番号=" + i
+                                    + " フィールド名=[" + field.getName() + "]");
+                }
             }
             String recordType = record.getRecordType();
             if (i > 0 && (recordType == null || recordType.isEmpty())) {

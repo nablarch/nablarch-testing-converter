@@ -45,14 +45,24 @@ public class FieldDefTest {
     }
 
     @Test
-    public void 型と長さの省略をnullで保持する() {
-        // Given: 可変長 FW_HEADER 等、型・長さなし
+    public void 長さの省略をnullで保持する() {
+        // Given: 可変長ファイル等、長さなし（型は必須なので省略しない）
         // When
-        FieldDef sut = new FieldDef("dataKbn", null, null);
+        FieldDef sut = new FieldDef("dataKbn", "半角英字", null);
 
         // Then
         assertThat(sut.getName(), is("dataKbn"));
-        assertThat(sut.getType(), is(nullValue()));
+        assertThat(sut.getType(), is("半角英字"));
         assertThat(sut.getLength(), is(nullValue()));
+    }
+
+    @Test
+    public void 契約違反のnull型もモデル自身は検査せず保持する() {
+        // Given: type は必須（null 不可）だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
+        // When
+        FieldDef sut = new FieldDef("dataKbn", null, null);
+
+        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
+        assertThat(sut.getType(), is(nullValue()));
     }
 }

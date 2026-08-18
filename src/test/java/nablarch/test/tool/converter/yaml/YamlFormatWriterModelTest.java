@@ -66,10 +66,12 @@ import org.junit.rules.TemporaryFolder;
  * 該当する 4 つの形（{@code records} 空 2 種／{@code fields} 空／{@code FieldDef.type} 省略）は
  * いずれも辺②では<b>到達不能</b>と判定済みであり（{@code inventory.md} §2.3）、
  * 辺④からだけ作れる。{@code issues.md} <b>YML-12</b> に記録した。
- * <b>ただし 3 形目（{@code fields} 空）は #25.5 の追加分で修正済み</b>で、辺④が書き出さずに弾くように
- * なったため本クラスには残っていない（番人は
+ * <b>ただし 3 形目（{@code fields} 空）と 4 形目（{@code FieldDef.type} 省略）は #25.5 の追加分で
+ * 修正済み</b>で、辺④が書き出さずに弾くようになったため本クラスには残っていない（番人は
  * {@code YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected} ／
- * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected} が担保する）。
+ * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected} ／
+ * {@code #serialize_fieldWithNullTypeInFileBlock_rejected} ／
+ * {@code #serialize_fieldWithNullTypeInMessageBlock_rejected} が担保する）。
  * </p>
  *
  * <p>
@@ -94,10 +96,10 @@ import org.junit.rules.TemporaryFolder;
  * このうち <b>{@code YML-12} の 1 形目</b>（レコードが空のファイルブロックで {@code records:} キー自体が
  * 書かれず、読み戻しがスキーマの {@code required} 違反になる）は <b>#25.5 で修正済み</b>で、該当テストは
  * 現状の固定ではなく<b>記法どおりの仕様</b>（{@code records: []} を書く）を書いている。
- * <b>3 形目</b>（{@code fields} 欠落）も #25.5 の追加分で修正済みで、書き出し時に送出で弾くようになった
+ * <b>3 形目</b>（{@code fields} 欠落）と <b>4 形目</b>（{@code type} 欠落）も #25.5 の追加分で修正済みで、
+ * 書き出し時に送出で弾くようになった
  * （該当テストは本クラスから外し、{@code YamlFormatWriterTest} の番人テストへ置き換えた）。
- * 残る 2 形目（メッセージブロックの {@code records} 欠落）と 4 形目（{@code type} 欠落）は
- * 今回の対象外のため、現状の固定のままである。
+ * 残る 2 形目（メッセージブロックの {@code records} 欠落）は今回の対象外のため、現状の固定のままである。
  * </p>
  *
  * @author kiyobot
@@ -794,39 +796,6 @@ public class YamlFormatWriterModelTest {
         // Then
         assertThat(types(e), is(Arrays.asList("required")));
         assertThat(locations(e), is(Arrays.asList("$.messages[0]")));
-    }
-
-    /**
-     * Given: {@code type} を省略したフィールド定義。
-     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
-     * Then : 書き出しは成功するが、読み戻しは {@code required}（{@code type}）違反で失敗する。
-     *
-     * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-12</b>）。
-     * 既存の {@code YamlFormatWriterTest#serialize_fieldWithNullType_omitsType} が
-     * {@code {name: "c1"}} を書くことを固定している（C-20 省略）。
-     * </p>
-     *
-     * <p>
-     * <b>本メソッドが固定しているのは「スキーマが認めない形を書けてしまう」という現状の記録であって、
-     * NTF の仕様ではない。</b>緑であることは「仕様どおり」を意味しない。#25.5 で修正したのは YML-12 の
-     * 1 形目（ファイルブロックの {@code records} 欠落）だけで、本形はユーザ確定のスコープ外として
-     * 残置している。残置の一覧は {@code coverage/issues.md} の「残置している『緑の嘘』」にまとめた。
-     * </p>
-     */
-    @Test
-    public void failsToReadBackFieldWithoutType() {
-        // Given / When
-        YamlSchemaValidationException e = assertFailsToReadBack(
-                new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                        FileDataBlock.FileType.VARIABLE, map(),
-                        Collections.singletonList(new RecordLayout(null,
-                                Collections.singletonList(new FieldDef("c1", null, null)),
-                                Collections.singletonList(Collections.singletonList("v"))))));
-
-        // Then
-        assertThat(types(e), is(Arrays.asList("required")));
-        assertThat(locations(e), is(Arrays.asList("$.expected_files[0].records[0].fields[0]")));
     }
 
     // ------------------------------------------------------------------ 往復で値が変わる形（既知の課題）
