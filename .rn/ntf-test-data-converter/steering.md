@@ -1079,8 +1079,8 @@ List 形式または Map 形式でデータを取得できる」。続く `TestS
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-18
+- **Last completed**: #25.5 YML-03（`record_type: FW_HEADER` を捨てない）の修正まで（`f0f8718` ／ ハッシュ記録 `4bbd1fa`）
+- **Next**: #25.5 の残り —— ユーザー判断待ちの 3 点に着手し、`checks/task-25.5.md` の Overall Verdict（現在 **未確定**）を確定させる
+- **Notes**: ブランチ `ntf-test-data-converter`（未 push）。**ユーザー回答が来るまで着手禁止**の 3 点＝ ①YML-12 4形目（`FieldDef.type` null。XLS-22 と同型の契約の穴＝要対応を推奨）②YML-12 2形目（`MessageDataBlock.records` 空。Excel は表現でき YAML スキーマ `minItems: 1` だけが禁じる形式間の非対称＝記録のみを推奨）③`RecordLayout` コンストラクタ番人（辺①②のテストは壊れないが `RecordLayoutTest#レコード種別省略をnullで保持する` 1 件が落ち、辺③④の番人テスト 4 件が書き出し側を検査しなくなる＝置かないことを推奨）。根拠は `coverage/issues.md` の XLS-22 ／ YML-12。その後 #26（カバレッジ計測）へ。**yaml 側の jar は `0b53910` 込みで `~/.m2` へ install 済み**（`mvn clean install`。`mvn install` は `target/` の JaCoCo 計装済みクラスで失敗するため clean が要る）
