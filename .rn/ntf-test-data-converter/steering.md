@@ -1038,7 +1038,7 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 - [x] YML-08 の「未確認」を潰す: 中間モデルに入った実改行を辺④が書き出したとき、読み戻しで空文字になるかを**実行して**確かめ、結果を `issues.md` に記録する
 - [ ] **（方法論の訂正）** `notation:nnn` の引用を `nablarch-document` の `30a8271` 基準へ貼り直し、基準コミットを本文に明記する（`issues.md`・`steering.md`・`inventory.md`・`src` の Javadoc。ずれは 499 行目以降が一律 +2 で、実測で全件突き合わせ済み）
 - [x] **YML-12 4形目（辺③④）**: `FieldDef.type` は必須（`null` 不可）を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）→ `f80c192`
-- [ ] **YML-12 2形目（辺③④）**: `MessageDataBlock.records` は 1 件以上を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）
+- [x] **YML-12 2形目（辺③④）**: `MessageDataBlock.records` は 1 件以上を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）→ `04873de`
 - [ ] `RecordLayout` コンストラクタに番人を**置かない**判断と、却下した理由・実測を `issues.md` に残す
 - [ ] 本体パーサ（`MessageParser` ／ `FixedLengthFileParser`）がレコード 0 件を受け付ける事実を、**新規 ID** で `issues.md` に記録する（判定「本作業の対象外・記録のみ」／モジュールは `nablarch-testing` 本体）
 - [ ] 中間モデルの全クラス・全フィールドを一巡し、「両形式が表現できない値を中間モデルが保持できる」箇所が他に無いかを点検して結果を記録する（無ければ「無し」と明記する）
