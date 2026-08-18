@@ -4,7 +4,7 @@
 または挙動を固定できなかったものを記録する。
 
 **#19〜#25 の間は、記録した課題を修正しなかった**（steering Rules フェーズ2。この間の `src/main` への
-変更はゼロである）。**#25.5 で方針が変わり、「NTF 仕様としての判定」が要対応とした 6 件のうち 5 件を修正した**
+変更はゼロである）。**#25.5 で方針が変わり、「NTF 仕様としての判定」が要対応とした 7 件のうち 6 件を修正した**
 （steering Decisions「不具合修正の対象と手順（#25.5）」）。修正済みの課題は各項の
 「NTF 仕様としての判定」欄にコミットを添えてある。それ以外は従来どおり記録のみである。
 
@@ -43,16 +43,33 @@
 食い違う 13 件（XLS-05・XLS-10・XLS-12・XLS-14・XLS-20・XLS-21・YML-01・YML-04・YML-05・YML-06・YML-07・
 YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判断」欄は 1 件も取り消していないので、両方を読むこと。**
 
-内訳は **要対応 6 件**（YML-02・YML-12・XLS-16・XLS-06・YML-08・YML-03）／**対応不要 30 件**である。
+課題は全部で **36 件**（課題 ID 単位）。内訳は **要対応 7 件**（XLS-06・XLS-16・XLS-22・YML-02・YML-03・
+YML-08・YML-12）／**対応不要 29 件**である。
 
-> **対応不要は 29 件から 30 件に増えた（#25.5 レビュー 1 巡目）。** レビューで指摘された
-> 「辺③④の番人の例外型が `ConverterException` に揃っていない」を **XLS-25** として新規に記録し、
-> その判定が **対応不要**（今回は直さない）になったためである。**既存 35 件の判定は 1 件も変えていない。**
-> なお XLS-22 の判定（`対応不要`／`要対応`）はレビューで論点が挙がっており、
-> ユーザー確認待ちのため触っていない。
-要対応のうち 5 件は #25.5 で修正済み、YML-03 は帰属が nablarch-testing-yaml 側のため
+要対応のうち **6 件は #25.5 で修正済み**（XLS-06・XLS-16・XLS-22・YML-02・YML-08・YML-12。ただし
+YML-12 は 4 形のうち 1 形目と 3 形目のみ）。残る YML-03 は帰属が nablarch-testing-yaml 側のため
 `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを置いて待つ
 （steering Decisions「不具合修正の対象と手順（#25.5）」）。
+
+> **XLS-22 を対応不要から要対応へ変えた（2026-08-18・ユーザー判断）。** 判定の根拠を「到達可能性」から
+> 「両形式が表現できない値を中間モデルだけが保持できる＝中間モデルの契約の穴」へ一本化したことによる。
+> あわせて YML-12 の 3 形目（同じ中間モデル値の辺④版）も要対応へ移った。
+> **これに伴い 要対応 6 ／ 対応不要 30 → 要対応 7 ／ 対応不要 29 へ動いた。** 他の 35 件の判定は変えていない。
+
+**集計は課題 ID 単位で数えること。** 判定欄の本文は複数行にわたり、地の文にも「要対応」「対応不要」の語が
+現れるため、素の `grep -c` は判定欄以外の行を拾いうる。ID 単位の集計は次のコマンドで導ける
+（`###` 見出しから ID を拾い、その配下の判定欄 1 行だけを数える）。
+
+```
+$ grep -c '^### \(XLS\|YML\)-' .rn/ntf-test-data-converter/coverage/issues.md
+36
+$ awk '/^### (XLS|YML)-/{id=$2} /^- NTF 仕様としての判定/{print id" "$0}' \
+      .rn/ntf-test-data-converter/coverage/issues.md | grep -c '\*\*要対応\*\*'
+7
+$ awk '/^### (XLS|YML)-/{id=$2} /^- NTF 仕様としての判定/{print id" "$0}' \
+      .rn/ntf-test-data-converter/coverage/issues.md | grep -c '\*\*対応不要\*\*'
+29
+```
 
 出典に付す `notation:nnn` は
 `~/work/nablarch/nablarch-document/ja/development_tools/testing_framework/implementation/testdata_notation.rst`
@@ -819,10 +836,11 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 
 **読み戻しの側も担保テストを持たせてある。** 下表の「読み戻すとどうなるか」は辺③の担保ではないが、
 テストを置かないと本体パーサ・`PoiXlsReader` の挙動が変わったときに**辺③の担保テストは緑のまま
-本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 3 件
-（`#dropsDefaultDataTypeBlockWhenReadBack` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` ／
-`#failsToReadBackRecordWithoutFields`）が読み戻しを実検査する。
-これらは軸要素の担保としては数えない（steering Rules フェーズ2（往復テストの扱い））。
+本書の記述だけが誤りになる**。そのため `XlsFormatWriterModelTest` の末尾 2 件
+（`#dropsDefaultDataTypeBlockWhenReadBack` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`）
+が読み戻しを実検査する。これらは軸要素の担保としては数えない（steering Rules フェーズ2（往復テストの扱い））。
+**3 件目だった `#failsToReadBackRecordWithoutFields`（XLS-22）は削除した**——XLS-22 を修正して
+その版面自体が書き出されなくなったため、読み戻しを検査する対象が無くなった。
 
 ### XLS-21 カラム名 0 件のブロックを書き出すと、読み戻しでデータ行がカラム名へ昇格し値が消える（影響度 中・**検出できない**）
 
@@ -877,11 +895,19 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   **上の「判断」（仕様として不適切・非対称）と食い違う。** 揃えるのが筋であることは変わらないが、
   記法違反ではないため #25.5 の対象にしない。
 
-### XLS-22 フィールド 0 件のレコードレイアウトは、書き出せるが読み戻せない `.xlsx` になる（影響度 低・例外で止まるため検出できる）
+### XLS-22 フィールド 0 件のレコードレイアウトは、書き出せるが読み戻せない `.xlsx` になる（影響度 低・例外で止まるため検出できる・**#25.5 で修正済み**）
 
-| 入力（中間モデル） | 書き出される版面 | 読み戻し | 担保テスト |
+**辺④の同じ形は YML-12 の 3 形目**（`record_fragment.fields` 空）である。同じ中間モデル値
+（`RecordLayout.fields` が空）を辺③・辺④のそれぞれが書き出したときの現れ方であり、
+**#25.5 で両辺に同じ番人を置いて同時に閉じた**（`b9ff38e`）。
+
+| 入力（中間モデル） | #25.5 前に書き出されていた版面 | #25.5 前の読み戻し | 担保テスト |
 |---|---|---|---|
-| `SETUP_FIXED=f.dat`／`RecordLayout("data", fields=[], rows=[[v]])` | 識別行／名前行 `data`, 空セル／型行 空セル 2 個／長さ行 空セル 2 個／データ行 空セル, `v` | `IllegalStateException: can't get data. …` ← 原因 `IllegalStateException: directive or data names row must have two columns at least. [data]` | 版面: `XlsFormatWriterModelTest#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`／読み戻し: `#failsToReadBackRecordWithoutFields` |
+| `SETUP_FIXED=f.dat`／`RecordLayout("data", fields=[], rows=[[v]])` | 識別行／名前行 `data`, 空セル／型行 空セル 2 個／長さ行 空セル 2 個／データ行 空セル, `v` | `IllegalStateException: can't get data. …` ← 原因 `IllegalStateException: directive or data names row must have two columns at least. [data]` | **#25.5 後**は書き出し自体が `IllegalArgumentException` になる: `XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock`／`#rejectsRecordWithoutFieldsInMessageBlock` |
+
+**上表の版面・読み戻しは #25.5 前の実測である**（プローブ実行 2026-08-13）。修正後はこの版面自体が
+書き出されないため、当時の担保テスト（`XlsFormatWriterModelTest#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`
+／`#failsToReadBackRecordWithoutFields`）は削除し、番人テストへ置き換えた。
 
 - 原因: フィールドが 0 件だと名前行がレコード種別セル 1 個だけになる（版面幅への矩形整形で右は空セルになるが、
   本体パーサは空セルを行の使用範囲に数えない）。本体 `DataFileParser` が名前行に 2 列以上を要求するため弾かれる。
@@ -890,16 +916,26 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 - 実測: 上表のとおり。書き出し自体は成功し、例外になるのは読み戻し側である。
 - 影響: `XlsFormatWriter` の Javadoc は「本体パーサが読み戻せる版面で書く」と謳っているが、この入力では
   成り立たない。ただし読み戻しは loud に失敗するため、黙って壊れることはない。
-  また辺①はこの形の中間モデルを生成できない（上記のとおり到達不能）ため、辺②由来の YAML で
-  `fields: []` を書いた場合だけが到達経路になる（辺②側の到達可否は **未確認**）。
-- 判断: 記録に留める。**同種の前提崩れを書き出し時に弾く番人は既に 1 つある**
+  **到達経路は辺①・辺②のいずれにも無い**（辺①は上記のとおり到達不能。辺②も `$defs.record_fragment` が
+  `fields` を必須かつ `minItems` ＝ 1 とするため到達不能で、根拠は
+  `YamlFormatReaderInvalidInputTest` の C-17 到達不能テストである）。
+  **これは影響範囲の説明であって判定の根拠ではない**——判定の根拠は上記のとおり中間モデルの契約の穴である。
+- 判断: 仕様として不適切である。**同種の前提崩れを書き出し時に弾く番人は既に 1 つある**
   （`XlsFormatWriter#appendRecords` は 2 レコード目以降のレコード種別が空だと `IllegalStateException` を送出する）。
-  フィールド 0 件も同じ思想で書き出し時に弾くのが筋だが、修正はこの作業では行わない。
-- NTF 仕様としての判定: **対応不要**（今回の対象外）。`notation:886`「フィールド名称リストまたはデータ型リストが
-  未指定または空である」は**記法上のエラー条件**であり、その形を書き出せてしまう点は YML-12 の 2〜4 形目
-  （`record_fragment.fields` の空を含む）と同じ性質である。**ユーザー確定でこの 3 形は対象外**
-  （steering Decisions「この 3 形は今回の対象外とし、記録のみのまま残す」）。読み戻しは loud に失敗するため
-  黙ってデータが変わることはない。上の「判断」（記録に留める）と一致する。
+  フィールド 0 件も同じ思想で書き出し時に弾くのが筋である。**#25.5 で修正済み**（`b9ff38e`）。
+- NTF 仕様としての判定: **要対応**。**根拠は到達可能性ではなく、中間モデルの契約の穴である。**
+  フィールド 0 件のレコードレイアウトは **Excel 記法にも YAML 記法にも存在しない形**であり
+  （Excel は `notation:886` が「フィールド名称リストまたはデータ型リストが未指定または空である」を
+  記述時のエラーに挙げる。YAML は `$defs.record_fragment` が `fields` を必須かつ `minItems` ＝ 1 とする）、
+  **両形式が表現できない値を中間モデルだけが保持できる**状態になっていた。中間モデルの契約は
+  4 辺すべてが表現できる範囲で定めるべきであるから、これは辺③単体の不具合ではなく中間モデルの契約の穴である。
+  **`notation:886` は「ファイルデータの記述時にエラーとなるケース」の一覧であり、辺①②（読み取り）に
+  課される条件である。辺③（書き出し）に直接課す読み方はしない**——ここで根拠にしているのは
+  「その形は Excel 記法として存在しない」ことであって「辺③が `notation:886` に違反する」ことではない。
+  **#25.5 で修正済み**（`b9ff38e`）。`RecordLayout` の Javadoc に「`fields` は 1 件以上」を明記し、
+  `XlsFormatWriter#appendRecords` が `IllegalArgumentException` で弾くようにした。
+  **辺④の同じ形は YML-12 の 3 形目**（`record_fragment.fields` 空）であり、同じコミットで
+  `YamlFormatWriter#emitRecords` にも同じ番人を置いた。
 
 ### XLS-23 セクション 0 件のコンテナから、シートを 1 枚も持たない `.xlsx` が黙って書き出される（影響度 低・記録のみ）
 
@@ -1925,7 +1961,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 |---|---|---|---|
 | `FileDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない ／ **#25.5 後**: `records: []` が出る | **#25.5 前**: `required` ／ `$.setup_files[0]` ／ **#25.5 後**: 読み戻せる（違反なし） | 記法: `writesEmptyRecordsListForFileBlockWithoutRecords`（旧名 `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`） ／ 読み戻し: `readsBackFileBlockWithEmptyRecords`（旧名 `failsToReadBackFileBlockWithoutRecords`） |
 | `MessageDataBlock.records` が空 | 同上（`id:` だけになる） | `required` ／ `$.messages[0]` | `failsToReadBackMessageBlockWithoutRecords`（記法は既存の `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly`） |
-| `RecordLayout.fields` が空 | `fields: []` | `minItems` ／ `$.setup_files[0].records[0].fields` | `failsToReadBackRecordWithoutFields`（記法は既存の `YamlFormatWriterTest#serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists`） |
+| `RecordLayout.fields` が空 | **#25.5 前**: `fields: []` が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `minItems` ／ `$.setup_files[0].records[0].fields` | 番人: `YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected`／`#serialize_recordWithoutFieldsInMessageBlock_rejected`（旧 `failsToReadBackRecordWithoutFields` と旧 `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` は削除） |
 | `FieldDef.type` が `null` | `{name: "c1"}`（`type` を省略） | `required` ／ `$.expected_files[0].records[0].fields[0]` | `failsToReadBackFieldWithoutType`（記法は既存の `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType`） |
 
 - 原因（**#25.5 前**）: 直列化は中間モデルの形をそのまま写していた（`emitRecords` は空なら `records:` を出さず、
@@ -1973,7 +2009,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   **すなわち XLS→YAML 変換の成果物が NTF で読めなくなる。**
   再現に使った `.xlsx` は `XlsFormatWriter` で生成したものであり、**Excel で手書きした版面での再現は未確認**である。
 - 下 2 件（`fields` 空／`type` 省略）は辺②では到達不能である（`inventory.md` §2.3。スキーマが弾く）。
-  辺③でも同じ形が「書けるが読み戻せない `.xlsx`」になる（**XLS-22**）。
+  **`fields` 空は辺③でも同じ形が「書けるが読み戻せない `.xlsx`」になる（XLS-22）。同じ中間モデル値の
+  辺③版・辺④版であり、#25.5 で両辺に同じ番人を置いて同時に閉じた**（`b9ff38e`）。
 - 影響: 変換は成功し、`.yaml` も生成されるため、変換の時点では気づけない。
   気づくのは NTF がそのテストデータを読むとき（またはこのツールで読み戻すとき）である。
   スキーマ検証のメッセージは違反位置（`$.setup_files[0]`）を示すため、原因の特定自体は難しくない。
@@ -1987,11 +2024,16 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   持たないファイルデータブロックとして表現する」／`notation:1144`「0バイトの空ファイルを表現するには、`records:` に
   空配列 `[]` を記載する」に反する（`records:` キーごと落としていた）。**#25.5 で 1 形目を修正済み（aec82f2）**。
   `YamlFormatWriter` がレコード 0 件のファイルデータブロックに `records: []` を書き出すようにした。
-  残る 3 形（`message_data.records` 空／`record_fragment.fields` 空／`field_def.type` 省略）は
-  **スキーマが形そのものを認めておらず `[]` を書いても読み戻せない**ため、ユーザー確定で対象外
-  （steering Decisions「この 3 形は今回の対象外とし、記録のみのまま残す」）。
+  **3 形目（`record_fragment.fields` 空）も要対応へ倒し、#25.5 で修正済み**（`b9ff38e`）。
+  根拠は XLS-22 と同じ「中間モデルの契約の穴」である——フィールド 0 件のレコードレイアウトは
+  Excel 記法にも YAML 記法にも存在しない形であり、両形式が表現できない値を中間モデルだけが
+  保持できていた。`YamlFormatWriter#emitRecords` が `IllegalArgumentException` で弾くようにした。
+  残る 2 形（`message_data.records` 空／`field_def.type` 省略）は
+  **スキーマが形そのものを認めておらず `[]` を書いても読み戻せない**ため、現時点ではユーザー確定で対象外
+  （steering Decisions「この 3 形は今回の対象外とし、記録のみのまま残す」。3 形目だけが上記のとおり
+  対象へ移った。残る 2 形の扱いはユーザーへ判断を上げてある）。
 
-  1 形目の修正は本リポジトリ内で完結した（`YamlFormatWriter` のみ）。
+  1 形目・3 形目の修正はいずれも本リポジトリ内で完結した（`YamlFormatWriter` のみ）。
 
 ### YML-13 折り返しの起きるキーを書き出すと、YAML として読めないファイルになる（影響度 低・**変換時には検出できない**／読み戻し時に loud）
 
@@ -2095,7 +2137,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 ### 残置している「緑の嘘」
 
-次の 4 本は `mvn test` で緑になるが、**固定しているのは「スキーマや本体パーサが認めない形を書けてしまう」
+次の 2 本は `mvn test` で緑になるが、**固定しているのは「スキーマや本体パーサが認めない形を書けてしまう」
 という現状の記録であって NTF の仕様ではない。実行結果からは「仕様どおり」と区別がつかない。**
 ユーザー確定のスコープ外のため #25.5 では修正せず、各テストの Javadoc に
 （XLS-01 と同じ粒度で）その旨を書き足した。
@@ -2103,8 +2145,10 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 | テスト | 課題 | 何を現状として固定しているか |
 |---|---|---|
 | `YamlFormatWriterModelTest#failsToReadBackMessageBlockWithoutRecords` | YML-12（2 形目） | メッセージブロックの `records` 欠落 |
-| `YamlFormatWriterModelTest#failsToReadBackRecordWithoutFields` | YML-12（3 形目） | レコードの `fields` 欠落 |
 | `YamlFormatWriterModelTest#failsToReadBackFieldWithoutType` | YML-12（4 形目） | フィールドの `type` 欠落 |
-| `XlsFormatWriterModelTest#failsToReadBackRecordWithoutFields` | XLS-22 | 辺③で同じ形（フィールド 0 件）を書くと本体パーサが読み戻せない |
 
-**#25.5 で直したのは YML-12 の 1 形目（ファイルブロックの `records` 欠落）だけである。**
+**残置は 4 本から 2 本へ減った（2026-08-18）。** XLS-22 と YML-12 の 3 形目を要対応へ倒して修正したため、
+それを固定していた 2 本（`XlsFormatWriterModelTest#failsToReadBackRecordWithoutFields`／
+`YamlFormatWriterModelTest#failsToReadBackRecordWithoutFields`）は削除し、番人テストへ置き換えた。
+**#25.5 で直したのは YML-12 の 1 形目（ファイルブロックの `records` 欠落）と 3 形目（`fields` 欠落）、
+および XLS-22 である。**
