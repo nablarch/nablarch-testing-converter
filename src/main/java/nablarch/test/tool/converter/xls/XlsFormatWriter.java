@@ -261,11 +261,27 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
     /**
      * ファイルの版面を組み立てる（識別行 → ディレクティブ → レコード群）。
+     * <p>
+     * ファイル種別が {@code null} のブロックは書き出さずに弾く。Excel 記法はファイルデータを固定長と
+     * 可変長の 2 種類に尽くしており（{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
+     * 「固定長ファイルと可変長ファイルには、それぞれ固有の記法制約がある」。固定長は長さ行を持ち、
+     * 可変長は持たない）、どちらとも決まっていないファイルデータブロックは Excel 記法に存在しない形だからである
+     * （{@code coverage/issues.md} <b>XLS-29</b>）。判定せずに書くと長さ行の無い可変長の版面へ黙って
+     * 倒れ、固定長のつもりの入力が読み戻し時に可変長になる。{@link FileDataBlock} の契約としても
+     * {@code fileType} は必須である。
+     * </p>
      *
      * @param block ファイルブロック
      * @return 版面
+     * @throws IllegalArgumentException ファイル種別が {@code null} の場合
      */
     private BlockLayout layoutFile(FileDataBlock block) {
+        if (block.getFileType() == null) {
+            throw new IllegalArgumentException(
+                    "ファイル種別を持たないファイルデータブロックは書き出せません"
+                            + "（固定長か可変長かが決まらないと長さ行の有無を決められず、黙って可変長の版面になります）。"
+                            + " identifier=[" + block.getIdentifier() + "]");
+        }
         BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());

@@ -167,11 +167,29 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
 
     /**
      * ファイル系ブロックを出力する（{@code path:}/{@code type:}/{@code directives:}/{@code records:}）。
+     * <p>
+     * ファイル種別が {@code null} のブロックは書き出さずに弾く。{@code $defs.file_data} は {@code type} を
+     * 必須とし、値を {@code enum} ＝ {@code ["fixed", "variable"]} に限るため、どちらとも決まっていない
+     * ブロックを読み戻せる形には書けないからである。記法にも
+     * {@code testdata_notation.rst:1146}（{@code 30a8271} 時点）
+     * 「{@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
+     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになる」とある
+     * （{@code coverage/issues.md} <b>XLS-29</b>）。判定せずに書くと {@code type: "variable"} へ黙って
+     * 倒れる。{@link FileDataBlock} の契約としても {@code fileType} は必須である。
+     * </p>
      *
      * @param sb    出力先
      * @param block ファイルブロック
+     * @throws IllegalArgumentException ファイル種別が {@code null} の場合
      */
     private void emitFile(StringBuilder sb, FileDataBlock block) {
+        if (block.getFileType() == null) {
+            throw new IllegalArgumentException(
+                    "ファイル種別を持たないファイルデータブロックは書き出せません"
+                            + "（$defs.file_data の type は必須かつ enum = [\"fixed\", \"variable\"] のため"
+                            + "省略しても variable と書いても書き手の意図どおりには読み戻せません）。"
+                            + " identifier=[" + block.getIdentifier() + "]");
+        }
         YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("path", block.getIdentifier());

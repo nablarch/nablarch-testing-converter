@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
@@ -89,6 +90,17 @@ public class FileDataBlockTest {
         assertThat(sut.getRecords().size(), is(2));
         assertThat(sut.getRecords().get(0).getRecordType(), is("FW_HEADER"));
         assertThat(sut.getRecords().get(1).getRecordType(), is("data"));
+    }
+
+    @Test
+    public void 契約違反のnullファイル種別もモデル自身は検査せず保持する() {
+        // Given: fileType は必須（null 不可）だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
+        // When
+        FileDataBlock sut = new FileDataBlock(
+                DataType.SETUP_FIXED, "", "f.dat", null, new LinkedHashMap<>(), List.of());
+
+        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
+        assertThat(sut.getFileType(), is(nullValue()));
     }
 
     @Test

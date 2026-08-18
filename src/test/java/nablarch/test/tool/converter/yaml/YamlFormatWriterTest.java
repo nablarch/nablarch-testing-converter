@@ -580,6 +580,26 @@ public class YamlFormatWriterTest {
         assertTrue(serialize(block).contains("          - {name: \"c1\", type: \"\"}\n"));
     }
 
+    /**
+     * Given: ファイル種別（{@link FileDataBlock.FileType}）が {@code null} のファイルブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（YAML スキーマ（{@code $defs.file_data}）は {@code type} を
+     *        必須とし、値を {@code enum} ＝ {@code ["fixed", "variable"]} に限るため、どちらとも
+     *        決まっていないブロックは読み戻せる形に書けない。黙って {@code variable} へ倒さず
+     *        早期に失敗する）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serialize_fileBlockWithoutFileType_rejected() {
+        // Given
+        RecordLayout record = new RecordLayout(null,
+                list(field("c1", "半角英字", null)), rows(row("v")));
+        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
+                null, directives(), Collections.singletonList(record));
+
+        // When / Then
+        serialize(block);
+    }
+
     @Test
     public void serialize_keyStartingWithIndicator_isQuoted() {
         // Given: 先頭が YAML インジケータ（'-'）のキー

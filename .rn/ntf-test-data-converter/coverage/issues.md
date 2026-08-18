@@ -2481,7 +2481,7 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
 - NTF 仕様としての判定: **要対応**（`notation:44` の明文に反する入力を、
   検出せずに変換しているため）。
 
-### XLS-29 ファイル種別 `null` のファイルデータブロックが、黙って可変長として書き出される（影響度 中・**検出できない**）
+### XLS-29 ファイル種別 `null` のファイルデータブロックが、黙って可変長として書き出される（影響度 中・**検出できない**・**#25.5 で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: `FileDataBlock.fileType` に `null` を入れた中間モデルを
   辺③④へ渡すと、**どちらも例外なく書き出す**。
@@ -2497,6 +2497,25 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
   可変長へ倒してよい値ではない。**
 - NTF 仕様としての判定: **要対応**。中間モデルの契約を「`FileDataBlock.fileType` は必須（`null` 不可）」
   とし、辺③④で弾く。
+- 修正（**#25.5**・§1-B。**コミット SHA は本コミットが自分自身の SHA を含められないため未記載。
+  `b9ff38e` → 記録は別コミット、の前例どおり後続の `docs` コミットで埋める**）: `FileDataBlock` の Javadoc に「`fileType` は必須（`null` 不可）」の契約と
+  出典を明記し、辺③④の入口に番人を置いた（**中間モデル自身は検査しない**。Decisions
+  「`RecordLayout` コンストラクタに番人は置かない」と同じ方針）。
+  - 辺③: `XlsFormatWriter#layoutFile` の先頭で `getFileType()` が `null` なら
+    `IllegalArgumentException`（従来は `fileType == FIXED` の比較が `false` になり、長さ行の無い
+    可変長の版面へ黙って倒れていた）。
+  - 辺④: `YamlFormatWriter#emitFile` の先頭で `getFileType()` が `null` なら
+    `IllegalArgumentException`（従来は三項演算子の `else` 側に落ちて `type: "variable"` と書いていた）。
+  - テスト: `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` ／
+    `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected` ／
+    `FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する`（番人は書き出し側にあり
+    中間モデルは保持するだけであることを固定する）。
+  - **削除した既存テストは無い。** 修正前の `src/test` にある `new FileDataBlock(...)` の呼び出し
+    **39 箇所**を第 4 引数まで機械的に取り出したところ、`FileDataBlock.FileType.FIXED` ／
+    `.VARIABLE` を渡さないものは 2 箇所だけで、いずれも仮引数 `fileType` を素通しするヘルパ
+    （`RoundTripTest#file` ／ `FileDataBlockTest#assertFileBlock`）であり、その全呼び出しも
+    `FIXED` ／ `VARIABLE` を渡していた。したがって `null` を可変長として書き出す現状挙動を
+    緑のアサートで固定していたテストは 1 件も無い。
 
 ### XLS-30 固定長ファイル・電文でフィールド長 `null` のフィールド定義が、黙って長さ無しで書き出される（影響度 中・**検出できない**）
 
