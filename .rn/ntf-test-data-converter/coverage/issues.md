@@ -36,15 +36,15 @@
 | 欄 | 何を問うか | 取りうる値 |
 |---|---|---|
 | 判断 | **往復基準**。変換結果が入力と一致するか、あるべき姿は何か。原因が converter の外にあっても「仕様として不適切」と書く | 仕様として不適切／受容できる（記録のみ）／記録に留める など |
-| NTF 仕様としての判定 | **NTF の記法の明文に反するか**（＝ #25.5 で直す対象か）。解説書 `testdata_notation.rst`・本体スキーマ `ntf-testdata-yaml-schema.json`・中間モデルの Javadoc 契約に**明文の根拠があり**、現在の挙動がそれに反するかだけを見る | 要対応／対応不要 |
+| NTF 仕様としての判定 | **NTF の記法の明文に反するか**（＝ #25.5 で直す対象か）。解説書 `testdata_notation.rst`・本体スキーマ `ntf-testdata-yaml-schema.json`・中間モデルの Javadoc 契約に**明文の根拠があり**、現在の挙動がそれに反するかだけを見る | 要対応／対応不要／本作業の対象外（帰属が converter の外にある記録） |
 
 **2 つは食い違うことがある。** 「判断: 仕様として不適切」でも、記法に明文が無ければ「対応不要」になる
 （改善提案ではあるが記法違反ではない、という意味）。**「対応不要」は「問題ない」という意味ではない。**
 食い違う 13 件（XLS-05・XLS-10・XLS-12・XLS-14・XLS-20・XLS-21・YML-01・YML-04・YML-05・YML-06・YML-07・
 YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判断」欄は 1 件も取り消していないので、両方を読むこと。**
 
-課題は全部で **36 件**（課題 ID 単位）。内訳は **要対応 7 件**（XLS-06・XLS-16・XLS-22・YML-02・YML-03・
-YML-08・YML-12）／**対応不要 29 件**である。
+課題は全部で **37 件**（課題 ID 単位）。内訳は **要対応 7 件**（XLS-06・XLS-16・XLS-22・YML-02・YML-03・
+YML-08・YML-12）／**対応不要 29 件**／**本作業の対象外 1 件**（XLS-26）である。
 
 要対応のうち **7 件すべてが修正済み**である（XLS-06・XLS-16・XLS-22・YML-02・YML-03・YML-08・YML-12。
 **YML-12 は 4 形すべてが修正済みになった**）。**YML-03 は帰属が nablarch-testing-yaml 側だったため
@@ -64,7 +64,7 @@ YML-08・YML-12）／**対応不要 29 件**である。
 
 ```
 $ grep -c '^### \(XLS\|YML\)-' .rn/ntf-test-data-converter/coverage/issues.md
-36
+37
 $ awk '/^### (XLS|YML)-/{id=$2} /^- NTF 仕様としての判定/{print id" "$0}' \
       .rn/ntf-test-data-converter/coverage/issues.md | grep -c '\*\*要対応\*\*'
 7
@@ -72,6 +72,12 @@ $ awk '/^### (XLS|YML)-/{id=$2} /^- NTF 仕様としての判定/{print id" "$0}
       .rn/ntf-test-data-converter/coverage/issues.md | grep -c '\*\*対応不要\*\*'
 29
 ```
+
+> **上の 2 つ目のコマンドは現在 `6` を返す（2026-08-18 実測）。** YML-03 の判定欄だけが
+> `**要対応 → 修正済み（2026-08-18）**` という書き方になっており、`**要対応**` の完全一致に
+> 引っかからないためである。**要対応が 7 件であること自体は変わっていない**（XLS-06・XLS-16・
+> XLS-22・YML-02・YML-03・YML-08・YML-12）。書式をそろえるか集計コマンドを直すかは
+> 最終集計の際に決める。
 
 出典に付す `notation:nnn` は
 `~/work/nablarch/nablarch-document/ja/development_tools/testing_framework/implementation/testdata_notation.rst`
@@ -96,9 +102,9 @@ $ git -C ~/work/nablarch/nablarch-document show \
 
 ```
 $ grep -c '^- 判断: ' .rn/ntf-test-data-converter/coverage/issues.md
-36
+37
 $ grep -c '^- NTF 仕様としての判定' .rn/ntf-test-data-converter/coverage/issues.md
-36
+37
 ```
 
 ### 並び順の原則（2026-08-12・ユーザー指摘による訂正）
@@ -2215,6 +2221,45 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   上の「判断」（仕様として不適切）とは食い違う。**改善提案であって記法違反ではない。**
 - 次タスクの候補: **「辺③④の番人の例外型を `ConverterException` に揃える」**。
   対象は上記 4 本と、辺④（`YamlFormatWriter`）の同種の番人である。
+
+### XLS-26 本体 `MessageParser` は本文レコード 0 件の電文を受け付ける（**本作業の対象外・記録のみ**／モジュール: `nablarch-testing` 本体）
+
+**本項はモジュールが違う。** 記録するのは本体 `nablarch-testing` の挙動であり、
+**converter（本リポジトリ）の 4 辺の課題ではない**。凡例の影響度 4 段は「変換結果が入力と一致するか」で
+定義されるため本項には当てはまらないので、影響度は付けない。
+
+- 事実（実測）: 本体 `nablarch.test.core.reader.MessageParser` は、**本文レコード定義を 1 行も持たない
+  `MESSAGE` ブロック**（識別行 ＋ FW 制御ヘッダ行だけの版面）を**例外なく受け付け**、`MessagePool`
+  （`RequestTestingMessagePool`）を返す。`MessageParser#getResult` が `null` を返すのは委譲先
+  `FixedLengthFileParser` の結果が空のときだけであり（tsrc L126-133）、レコード定義が 0 件でも
+  `FixedLengthFile` は 1 件できるため、この版面は `null` にならない。
+- 証拠（既存テスト。新規プローブは書いていない）:
+  - `src/test/java/nablarch/test/core/reader/TestCoreReaderAdapterTest.java#readMessageReturnsRawMessagePool`
+    — `MESSAGE=msg1` ＋ `requestId`／`userId` の 2 行だけの版面を渡し、例外にならず
+    `assertNotNull(message.getBody())` まで通る。`TestCoreReaderAdapter#readMessage` は本体
+    `MessageParser` を直接 `new` している
+    （`src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java:179`）。
+  - `src/test/java/nablarch/test/tool/converter/xls/XlsFormatReaderRealFileTest.java#readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`
+    — 実 `.xlsx` を `XlsFormatReader`（本番配線）で読み、`getRecords()` が空リストになることを実測する。
+    この経路も `XlsFormatReader#readMessageBlock`（L226-227）→ `TestCoreReaderAdapter#readMessage` →
+    本体 `MessageParser` である。
+- なぜ課題か: **記法（`30a8271` 時点）には電文のレコード 0 件を表す書き方の明文が無い。**
+  電文が存在しない場合は `notation:1257`「応答不要メッセージ受信では…`expectedMessages` の
+  データブロックを記述する必要はない」のとおり**データブロックごと省略する**のが記法である。
+  すなわち**記法に無い形を本体が黙って通している**。
+- **スコープの限定（重要）**: 本体 `FixedLengthFileParser` が**ファイル**のレコード 0 件を受け付けるのは
+  **不具合ではない**。0 バイトの空ファイルには `notation:881`／`:1109`／`:1146` に明文がある。
+  **本項は電文（`MessageParser`）に限定した記録である。**
+- 関連: converter 側は `04873de`（YML-12 2形目）で辺③④に番人を置いたため、この形の中間モデルは
+  書き出しで `IllegalArgumentException` になる。**ただし辺①は実 `.xlsx` から今もこの形を読み取れる**
+  （上記 `readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook`）。したがって
+  **そのような `.xlsx` を変換しようとすると loud に失敗する**（黙って読めない成果物は作らない）。
+  この到達経路は塞いでいない。
+- 判断: 本体側の記法との食い違いとして記録に値する。**converter 側で直せるものではない**
+  （読み取りを本体パーサに委ねている以上、変換ツールが本体の受け入れ範囲を狭めるのは筋が違う）。
+- NTF 仕様としての判定: **本作業の対象外**（記録のみ。ユーザー確定・2026-08-18）。
+  帰属は `nablarch-testing` 本体であり、#25.5 の対象（converter の `src/main`）に含まれない。
+  **要対応／対応不要の二値のいずれでもない**ため、冒頭の内訳（要対応 7 件／対応不要 29 件）には数えない。
 
 ---
 
