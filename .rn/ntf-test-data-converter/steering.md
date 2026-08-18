@@ -641,12 +641,13 @@ nablarch-testing-yaml 側にあり converter だけでは直せない」であ�
 > 引用している全行を両版から取り出して本文一致を突き合わせ済みである。読み直すときは
 > `git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst` を開く。
 >
-> **`nablarch-document` の HEAD は作業中も動いている。** 2026-08-18 10:38 時点で `ntf-yaml-support` の
-> HEAD は `870e809` であり、`git diff --stat 30a8271 870e809 -- ja/.../testdata_notation.rst` は
-> `76 insertions(+), 76 deletions(-)`（総行数は 1554 行のまま）。差分を実物で確認したところ、
-> **変更は RST のエスケープ（``` `` ``` の前の `\ ` の有無）だけで本文の意味は変わっていない**ため、
-> 引用している行の本文と行番号は `870e809` でもそのまま通る。とはいえ HEAD は今後も動くので、
-> **基準は `30a8271` に固定したまま引用する**。
+> **`nablarch-document` の HEAD は作業中も動いている。** 2026-08-18 14:29 時点で `ntf-yaml-support` の
+> HEAD は `f2feca2`（2026-08-18 14:20:53 +0900）であり、
+> `git diff --stat 30a8271 f2feca2 -- ja/.../testdata_notation.rst` は
+> `76 insertions(+), 76 deletions(-)`（総行数は 1554 行のまま。両版とも `wc -l` は 1554）。
+> 差分を実物で確認したところ、**変更は RST のエスケープ（``` `` ``` の前の `\ ` の有無）だけで
+> 本文の意味は変わっていない**ため、引用している行の本文と行番号は `f2feca2` でもそのまま通る。
+> とはいえ HEAD は今後も動くので、**基準は `30a8271` に固定したまま引用する**（ユーザー確定・2026-08-18）。
 
 ### 修正する 7 件
 

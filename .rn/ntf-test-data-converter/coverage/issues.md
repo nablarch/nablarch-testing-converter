@@ -90,10 +90,11 @@ $ git -C ~/work/nablarch/nablarch-document show \
       30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n 'Np'
 ```
 
-> **`nablarch-document` の HEAD は基準より先へ進んでいる（2026-08-18 実測）。** 同リポジトリ
-> `ntf-yaml-support` ブランチの HEAD は `870e809` であり、
-> `git diff --stat 30a8271 870e809 -- …/testdata_notation.rst` は `76 insertions(+), 76 deletions(-)` を返す
-> （総行数は 1554 行のまま変わらないが本文が動いている）。**本書の行番号は HEAD ではなく `30a8271` で読むこと。**
+> **`nablarch-document` の HEAD は基準より先へ進んでいる（2026-08-18 14:29 実測）。** 同リポジトリ
+> `ntf-yaml-support` ブランチの HEAD は `f2feca2`（2026-08-18 14:20:53 +0900）であり、
+> `git diff --stat 30a8271 f2feca2 -- …/testdata_notation.rst` は `76 insertions(+), 76 deletions(-)` を返す
+> （総行数は両版とも 1554 行のまま変わらないが本文が動いている。差分は RST のエスケープのみ）。
+> **本書の行番号は HEAD ではなく `30a8271` で読むこと。**
 
 `tsrc L…` は本体 `nablarch-testing` の sources jar を展開した原文の行番号である。
 
