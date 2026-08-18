@@ -35,16 +35,24 @@ public class SampleConversionTest {
     private static final Path OUTPUT_BASE = Paths.get(".output/SampleConversionTest");
 
     /**
-     * climan サンプル: 0 件テーブル（{@code rows: []}）を含むため、現状は変換が中止される。
+     * climan サンプル: 0 件テーブル（{@code setup_tables} 配下の {@code rows: []}）を含むため、
+     * 現状は変換が中止される。
      *
      * <p>
-     * サンプルの {@code ClientActionTest/testShowWithEmptyClientTable.yaml} ／
-     * {@code testFindNoClients.yaml} ／ {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml}
-     * は {@code rows: []} のテーブルを持つ。YAML 記法では 0 件テーブルにカラム名を書く場所が無いため
-     * （{@code testdata_notation.rst:819}／{@code :836}）、中間モデルはカラム名 0 件になる。
+     * サンプル中の {@code rows: []} は 3 ファイル・4 箇所あるが、番人に当たるのは
+     * {@code ClientActionTest/testFindNoClients.yaml:3} と
+     * {@code ClientActionTest/testShowWithEmptyClientTable.yaml:3} の 2 箇所で、いずれも
+     * {@code setup_tables} 配下の 0 件テーブルである。YAML 記法ではカラム名が {@code rows:} の
+     * 先頭要素のキーで決まるため（{@code testdata_notation.rst:819}）、0 件テーブル
+     * （同 {@code :836}）にはカラム名を書く場所が無く、中間モデルはカラム名 0 件になる。
      * これを Excel へ書き出すと、次のブロックの識別子行がカラム名の行として読み込まれ、
      * そのブロックが丸ごと失われる（{@code issues.md} <b>XLS-27</b>）。
      * 無言で壊れた Excel を書かないため、辺③に番人を置いて変換を中止している。
+     * 残る {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173}／{@code :199} の
+     * {@code rows: []} は綴りは同じでも別物で、{@code expected_files} 配下のファイルデータの
+     * 0 件レコードであり、カラム名は {@code fields:} に持つ。番人
+     * （{@code XlsFormatWriter#layoutColumnRow}）はテーブル／{@code LIST_MAP} のブロックだけを通るため、
+     * ファイルデータであるこの 2 箇所は番人に当たらない。
      * </p>
      *
      * <p>
