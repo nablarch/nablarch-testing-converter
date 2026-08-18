@@ -275,6 +275,14 @@ public class XlsFormatWriterTest {
      * Given: 可変長ファイル（長さなし）。
      * When : build。
      * Then : 長さ行を持たない（名前行 → 型行 → データ行）。
+     *
+     * <p>
+     * フィールド長の番人の<b>範囲</b>も兼ねる。弾くのは固定長ファイルと電文だけであり、
+     * <b>可変長ファイルでは {@code length} が {@code null} であることが正しい</b>
+     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
+     * 「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」）。
+     * 番人の範囲を可変長まで広げるとこのテストが落ちる。
+     * </p>
      */
     @Test
     public void writesVariableFileWithoutLengthRow() {
@@ -408,6 +416,47 @@ public class XlsFormatWriterTest {
         // Given
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", null, "5")),
+                Collections.singletonList(row("v")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                map(), map(), Collections.singletonList(record));
+
+        // When / Then
+        build(container("book", "sheet", message));
+    }
+
+    /**
+     * Given: フィールド長が {@code null} のフィールドを持つ固定長ファイル。
+     * When : build。
+     * Then : IllegalArgumentException（Excel 記法は固定長ファイルについて「フィールド名称・データ型・
+     *        フィールド長の3リストが同サイズで必須」と定めており（{@code testdata_notation.rst:883}。
+     *        {@code 30a8271} 時点）、長さを持たないフィールド定義は書き表せないため、
+     *        空の長さセルを黙って書かず早期に失敗する）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsFieldWithoutLengthInFixedFileBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
+                Collections.singletonList(row("v")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
+                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
+
+        // When / Then
+        build(container("book", "sheet", file));
+    }
+
+    /**
+     * Given: フィールド長が {@code null} のフィールドを持つメッセージブロック。
+     * When : build。
+     * Then : IllegalArgumentException（メッセージボディは「フィールド名称・データ型・フィールド長・データ
+     *        という、前述のファイルデータと同じ構成」を持つ（{@code testdata_notation.rst:1158}。
+     *        {@code 30a8271} 時点）ため、固定長ファイルと同じ制約に掛かる）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsFieldWithoutLengthInMessageBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("v")));
         MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
                 map(), map(), Collections.singletonList(record));
@@ -955,20 +1004,28 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: 型が空文字・長さが null のフィールドと値が null のディレクティブを持つ固定長ファイル。
+     * Given: 型・長さが空文字のフィールドと値が null のディレクティブを持つ固定長ファイル。
      * When : build。
      * Then : 省略は空セルとして書かれる（{@code null} → 空文字。データ行の null とは区別）。
      *
      * <p>
-     * 番人の境界も兼ねる。弾くのはデータ型が {@code null} の場合だけであり、<b>空文字は弾かない</b>
-     * （{@link FieldDef} の契約は「{@code type} は必須（{@code null} 不可）」である）。
+     * 番人の境界も兼ねる。弾くのはデータ型・フィールド長が {@code null} の場合だけであり、
+     * <b>空文字は弾かない</b>（{@link FieldDef} の契約は「{@code type} は必須（{@code null} 不可）」
+     * 「{@code length} は固定長ファイル・電文では必須（{@code null} 不可）」である）。
+     * </p>
+     *
+     * <p>
+     * <b>入力は #25.5 §1-C（2026-08-18）で長さを {@code null} から空文字へ書き直した。</b>
+     * 固定長ファイルで長さを {@code null} にできた頃の版は「長さセルが空で書かれる」という
+     * XLS-30 の不具合そのものを緑で固定していたため、番人と両立しない
+     * （型を {@code null} から空文字へ書き直した YML-12 4 形目のときと同じ扱い）。
      * </p>
      */
     @Test
     public void writesOmittedMetaAndFieldAsEmpty() {
         // Given
         RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", "", null)),
+                Collections.singletonList(new FieldDef("f1", "", "")),
                 Collections.singletonList(row("v")));
         Map<String, String> directives = new LinkedHashMap<String, String>();
         directives.put("text-encoding", null);
@@ -982,7 +1039,7 @@ public class XlsFormatWriterTest {
         // ディレクティブ値 null → 空セル
         assertThat(cell(sheet, 1, 0), is("text-encoding"));
         assertThat(cell(sheet, 1, 1), is(""));
-        // 型・長さ null → 空セル
+        // 型・長さ 空文字 → 空セル
         assertThat(line(sheet, 3), is(Arrays.asList("", "")));   // 型行
         assertThat(line(sheet, 4), is(Arrays.asList("", "")));   // 長さ行
         // データ行の値は記法のまま

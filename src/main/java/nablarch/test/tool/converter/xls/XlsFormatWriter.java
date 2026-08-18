@@ -353,13 +353,29 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）。{@link FieldDef} の契約としても
      * {@code type} は必須である。弾くのは {@code null} だけで、空文字は弾かない。
      * </p>
+     * <p>
+     * フィールド長が {@code null} のフィールド定義は、<b>長さ行を持つ版面（{@code fixed} が真）に限り</b>弾く。
+     * Excel 記法は固定長ファイルについて「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と
+     * 定めており（{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。{@code :889} は
+     * 「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
+     * 長さを持たないフィールド定義は Excel 記法に存在しない形だからである
+     * （{@code coverage/issues.md} <b>XLS-30</b>）。判定せずに書くと長さセルだけが空の長さ行になる。
+     * 電文も同じ制約に掛かる——{@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、
+     * フィールド名称・データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つ」であり、
+     * {@link #layoutMessage} は {@code fixed} に常に真を渡す。
+     * <b>可変長ファイルでは {@code null} が正しい</b>ため弾かない（{@code :883}「可変長ファイルでは、
+     * フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」）。
+     * {@link FieldDef} の契約も「固定長ファイル・電文では必須、可変長ファイルでは省略可」という条件つきである。
+     * 弾くのは {@code null} だけで、空文字は弾かない（{@code type} の番人と同じ境界）。
+     * </p>
      *
      * @param l          版面
      * @param records    レコードレイアウト群
      * @param fixed      固定長（長さ行を持つ）なら真
      * @param sendSync   送信系（データ行の列 0 に no を置く）なら真
      * @param identifier 識別子（診断メッセージ用）
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、またはデータ型が
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、データ型が {@code null} の
+     *                                  フィールド定義、または {@code fixed} が真でフィールド長が
      *                                  {@code null} のフィールド定義が含まれる場合
      * @throws IllegalStateException    2 レコード目以降のレコード種別が空の場合
      */
@@ -378,6 +394,14 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                     throw new IllegalArgumentException(
                             "データ型を持たないフィールド定義は書き出せません"
                                     + "（Excel 記法はフィールド名称・データ型のリストを必須としています）。"
+                                    + " identifier=[" + identifier + "] レコード番号=" + i
+                                    + " フィールド名=[" + field.getName() + "]");
+                }
+                if (fixed && field.getLength() == null) {
+                    throw new IllegalArgumentException(
+                            "固定長ファイル・電文でフィールド長を持たないフィールド定義は書き出せません"
+                                    + "（Excel 記法はフィールド名称・データ型・フィールド長の 3 リストが"
+                                    + "同サイズであることを求めており、長さセルだけが空の長さ行になります）。"
                                     + " identifier=[" + identifier + "] レコード番号=" + i
                                     + " フィールド名=[" + field.getName() + "]");
                 }

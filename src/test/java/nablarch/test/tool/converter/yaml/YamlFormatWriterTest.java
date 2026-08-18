@@ -139,13 +139,23 @@ public class YamlFormatWriterTest {
     // ファイル系
     // ------------------------------------------------------------------------
 
+    /**
+     * <b>本メソッドは #25.5 §1-C（2026-08-18）で
+     * {@code serializeFile_fixedWithDirectivesAndOmittedLength} から書き直した。</b>
+     * 旧版は固定長ファイルの 2 レコード目に {@code length} を持たないフィールドを置き、
+     * {@code - {name: "f2", type: "数値"}} と<b>長さを落として書かれる</b>ことを緑で固定していた。
+     * これは XLS-30 の不具合そのものであり、番人（固定長ファイル・電文で {@code length} が
+     * {@code null} なら送出）と両立しないため、長さを与えた形へ改めた。
+     * {@code length} 省略の担保は可変長ファイルの
+     * {@link #serializeFile_variableOmitsDirectivesAndRecordTypeAndLength} が持つ。
+     */
     @Test
-    public void serializeFile_fixedWithDirectivesAndOmittedLength() {
-        // Given: 固定長・directives・record_type あり・length 省略フィールド・複数行
+    public void serializeFile_fixedWithDirectivesAndMultipleRecords() {
+        // Given: 固定長・directives・record_type あり・複数レコード・複数行
         RecordLayout head = new RecordLayout("head",
                 list(field("f1", "半角英字", "5")), rows(row("${a}")));
         RecordLayout data = new RecordLayout("data",
-                list(field("f2", "数値", null)), rows(row("12"), row("")));
+                list(field("f2", "数値", "5")), rows(row("12"), row("")));
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat",
                 FileDataBlock.FileType.FIXED, directives("file-type", "Fixed", "text-encoding", "UTF-8"),
                 Arrays.asList(head, data));
@@ -166,12 +176,19 @@ public class YamlFormatWriterTest {
                 + "          - [\"${a}\"]\n"
                 + "      - record_type: \"data\"\n"
                 + "        fields:\n"
-                + "          - {name: \"f2\", type: \"数値\"}\n"
+                + "          - {name: \"f2\", type: \"数値\", length: \"5\"}\n"
                 + "        rows:\n"
                 + "          - [\"12\"]\n"
                 + "          - [\"\"]\n"));
     }
 
+    /**
+     * フィールド長の番人の<b>範囲</b>も兼ねる。弾くのは固定長ファイルと電文だけであり、
+     * <b>可変長ファイルでは {@code length} が {@code null} であることが正しい</b>
+     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
+     * 「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」）。
+     * 番人の範囲を可変長まで広げるとこのテストが落ちる。
+     */
     @Test
     public void serializeFile_variableOmitsDirectivesAndRecordTypeAndLength() {
         // Given: 可変長・directives なし・record_type 省略（null）・length なし
@@ -581,6 +598,45 @@ public class YamlFormatWriterTest {
     }
 
     /**
+     * Given: フィールド長が {@code null} のフィールドを持つ固定長ファイルブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（記法は固定長ファイルについて「フィールド名称・データ型・
+     *        フィールド長の3リストが同サイズで必須」と定めており（{@code testdata_notation.rst:883}。
+     *        {@code 30a8271} 時点）、長さを落とした {@code fields:} は書き手の意図どおりには読み戻せないため、
+     *        黙って書かず早期に失敗する）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serialize_fieldWithoutLengthInFixedFileBlock_rejected() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                list(field("c1", "半角英字", null)), rows(row("v")));
+        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "in.dat",
+                FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(record));
+
+        // When / Then
+        serialize(block);
+    }
+
+    /**
+     * Given: フィールド長が {@code null} のフィールドを持つメッセージブロック。
+     * When : serialize。
+     * Then : IllegalArgumentException（メッセージボディは「フィールド名称・データ型・フィールド長・データ
+     *        という、前述のファイルデータと同じ構成」を持つ（{@code testdata_notation.rst:1158}。
+     *        {@code 30a8271} 時点）ため、固定長ファイルと同じ制約に掛かる）。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void serialize_fieldWithoutLengthInMessageBlock_rejected() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                list(field("c1", "半角英字", null)), rows(row("v")));
+        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                directives(), directives(), Collections.singletonList(record));
+
+        // When / Then
+        serialize(block);
+    }
+
+    /**
      * Given: ファイル種別（{@link FileDataBlock.FileType}）が {@code null} のファイルブロック。
      * When : serialize。
      * Then : IllegalArgumentException（YAML スキーマ（{@code $defs.file_data}）は {@code type} を
@@ -695,11 +751,18 @@ public class YamlFormatWriterTest {
         assertThat(back.getRows().get(1), is(Arrays.asList("2", "", "x")));
     }
 
+    /**
+     * <b>{@code f2} のフィールド長は #25.5 §1-C（2026-08-18）で {@code null} から {@code "5"} へ改めた。</b>
+     * 旧版は固定長ファイルで {@code length} を持たないフィールドが往復しても {@code null} のまま残ることを
+     * 緑で固定しており、XLS-30 の番人（固定長ファイル・電文で {@code length} が {@code null} なら送出）と
+     * 両立しなかったためである。{@code length} 省略の担保は可変長ファイルの
+     * {@link #serializeFile_variableOmitsDirectivesAndRecordTypeAndLength} が持つ。
+     */
     @Test
     public void roundTrip_fixedFile_isPreservedThroughRealReader() {
         // Given
         RecordLayout head = new RecordLayout("head", list(field("f1", "半角英字", "5")), rows(row("${a}")));
-        RecordLayout data = new RecordLayout("data", list(field("f2", "数値", null)), rows(row("12"), row("")));
+        RecordLayout data = new RecordLayout("data", list(field("f2", "数値", "5")), rows(row("12"), row("")));
         FileDataBlock original = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
                 FileDataBlock.FileType.FIXED, directives(), Arrays.asList(head, data));
 
@@ -715,7 +778,7 @@ public class YamlFormatWriterTest {
         assertFieldDef(back.getRecords().get(0).getFields().get(0), "f1", "半角英字", "5");
         assertThat(back.getRecords().get(0).getRows().get(0), is(Arrays.asList("${a}")));
         assertThat(back.getRecords().get(1).getRecordType(), is("data"));
-        assertFieldDef(back.getRecords().get(1).getFields().get(0), "f2", "数値", null);
+        assertFieldDef(back.getRecords().get(1).getFields().get(0), "f2", "数値", "5");
         assertThat(back.getRecords().get(1).getRows().get(0), is(Arrays.asList("12")));
         assertThat(back.getRecords().get(1).getRows().get(1), is(Arrays.asList("")));
     }

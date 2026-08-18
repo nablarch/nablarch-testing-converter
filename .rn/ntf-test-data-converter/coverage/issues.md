@@ -2516,7 +2516,7 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
     `FIXED` ／ `VARIABLE` を渡していた。したがって `null` を可変長として書き出す現状挙動を
     緑のアサートで固定していたテストは 1 件も無い。
 
-### XLS-30 固定長ファイル・電文でフィールド長 `null` のフィールド定義が、黙って長さ無しで書き出される（影響度 中・**検出できない**）
+### XLS-30 固定長ファイル・電文でフィールド長 `null` のフィールド定義が、黙って長さ無しで書き出される（影響度 中・**検出できない**・**#25.5 で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: `FieldDef.length` に `null` を入れた中間モデルを辺③④へ渡すと、
   固定長ファイル（`SETUP_FIXED`）でも電文（`MESSAGE`）でも**どちらも例外なく書き出す**。
@@ -2535,6 +2535,53 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
 - 判断: 仕様として不適切。長さの無い固定長フィールドは本体がレコード長を計算できない。
 - NTF 仕様としての判定: **要対応**。中間モデルの契約を
   「固定長ファイル・電文のフィールド定義では `FieldDef.length` は必須（`null` 不可）」とし、辺③④で弾く。
+- 本体スキーマとの関係（**食い違いは無い**）: 本体スキーマ
+  `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.field_def.required` は
+  `["name", "type"]` であり **`length` を含まない**。`$defs.record_fragment` が固定長ファイル・
+  可変長ファイル・電文で共用されるため、条件つきの必須を `required` では表せないからである。
+  ただし同スキーマ自身が `length` の説明に「固定長ファイルでは実質必須（省略すると NTF が
+  record-length を計算できない）。可変長ファイルでは不要（省略可）」と書いており、
+  `notation:883` の明文と一致する。したがって番人の根拠は解説書の明文（`:883`・`:889`・`:1158`）に置き、
+  スキーマが強制していない事実はそのまま `FieldDef` の Javadoc に記録した。
+- 修正（**#25.5**・§1-C。**コミット SHA は本コミットが自分自身の SHA を含められないため未記載。
+  `b9ff38e` → 記録は別コミット、の前例どおり後続の `docs` コミットで埋める**）: `FieldDef` の Javadoc に
+  「`length` は条件つきで必須（固定長ファイル・電文では `null` 不可、可変長ファイルでは省略可）」の契約と
+  出典を明記し、辺③④に番人を置いた（**中間モデル自身は検査しない**。Decisions
+  「`RecordLayout` コンストラクタに番人は置かない」と同じ方針）。
+  - 辺③: `XlsFormatWriter#appendRecords` のフィールド走査で、**`fixed` が真のときだけ**
+    `getLength()` が `null` なら `IllegalArgumentException`。メッセージは
+    「固定長ファイル・電文でフィールド長を持たないフィールド定義は書き出せません（…）。
+    identifier=[…] レコード番号=… フィールド名=[…]」。`layoutMessage` は常に `fixed` ＝ 真で呼ぶ
+    （`notation:1158`）。
+  - 辺④: `YamlFormatWriter#emitRecords` に引数 `lengthRequired` を足し、真のときだけ
+    `getLength()` が `null` なら `IllegalArgumentException`。メッセージは同文＋
+    `record_type=[…] フィールド名=[…]`。呼び出し側は `emitFile` が
+    `fileType == FIXED`、`emitMessage` が常に `true` を渡す。**辺③の `fixed` 引数と対称**にするため
+    共通メソッドへ置いた（0 件レコードの検査を共通メソッドへ置かなかった理由——ブロック単位であり
+    ファイルでは 0 件が正——とは別であることを Javadoc に併記した）。
+  - **弾かないこと（可変長）の担保**: 既存の `XlsFormatWriterTest#writesVariableFileWithoutLengthRow` ／
+    `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength` が
+    可変長ファイル＋`length` ＝ `null` を緑で通しており、番人の範囲を可変長へ広げると落ちる。
+    重複テストを増やさず、この 2 件の Javadoc に「番人の**範囲**も兼ねる」ことと出典（`:883`）を書いた
+    （`f80c192` がデータ型の番人で取った方法と同じ）。
+  - 追加したテスト: `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／
+    `#rejectsFieldWithoutLengthInMessageBlock` ／
+    `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／
+    `#serialize_fieldWithoutLengthInMessageBlock_rejected`。
+  - **現状挙動を緑で固定していた既存テストは 3 件あり、削除ではなく入力を直した**（担保している別の
+    観点が失われるため）。いずれも改変理由を Javadoc に書いた。
+    - `XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty`: `new FieldDef("f1", "", null)` →
+      `("f1", "", "")`。空文字境界（番人は `null` だけを弾く）の担保へ振り替えた。データ型で
+      `f80c192` が取ったのと同じ扱い。
+    - `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndOmittedLength` →
+      `#serializeFile_fixedWithDirectivesAndMultipleRecords` に改名し、`field("f2", "数値", null)` →
+      `("f2", "数値", "5")`。`length` 省略の担保は可変長側のテストが持つ。
+    - `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader`:
+      `field("f2", "数値", null)` → `("f2", "数値", "5")`、アサートも `"5"` へ。
+  - `coverage/inventory.md` は**触っていない**（§1-B の前例どおり。件数の導き直しは §1-B〜G・XLS-28 が
+    済んでから 1 回で行う）。上記 3 件の書き換えにより、`serializeFile_fixedWithDirectivesAndOmittedLength`
+    を参照する行・`roundTrip_fixedFile_isPreservedThroughRealReader` の行・
+    `writesOmittedMetaAndFieldAsEmpty` の行が古くなっている。
 
 ### XLS-31 フィールド名称 `null` のフィールド定義が、辺④では黙って書かれ、辺③では手掛かりの無い `NullPointerException` になる（影響度 中・**辺④は検出できない**）
 
