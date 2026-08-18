@@ -266,6 +266,139 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 
 ---
 
+## 追補 — YML-12 4形目（`FieldDef.type` が `null`）の修正（2026-08-18）
+
+中間モデルの契約として **`FieldDef.type` は必須（`null` 不可）** を宣言し、書き出しの 2 辺
+（辺③ `XlsFormatWriter` ／ 辺④ `YamlFormatWriter`）が `null` を `IllegalArgumentException` で弾くようにした。
+番人は**モデルのコンストラクタには置かない**（steering「`RecordLayout` コンストラクタに番人は置かない」と同じ理由。
+写せない値を止める場所は書き出し辺である）。**検査するのは `null` だけで、空文字 `""` は弾かない。**
+`length` は従来どおり省略可。**2 形目（`MessageDataBlock.records` 空）には手を触れていない。**
+
+### 判定の根拠（解説書と本体スキーマの明文のみ。実装の挙動は根拠にしていない）
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git log -1 --format='%H %ad' 30a8271
+git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '883p;885p;888p'
+```
+
+出力（`30a8271f6ada3259b014618abea72a588db043d9 Tue Aug 18 08:54:15 2026 +0900`）を実際に開いて一致を確認した。
+
+- `notation:883`（`30a8271` 時点。`df7bff7` では 881 行目）——「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」／「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり」
+- `notation:885`（同）——「ファイルデータの記述時にエラーとなるのは、以下のようなケースである。」
+- `notation:888`（同。`df7bff7` では 886 行目）——「- フィールド名称リストまたはデータ型リストが未指定または空である」
+- YAML 本体スキーマ `nablarch-testing-yaml`（`8e1ea76`）`src/main/resources/nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.field_def.required` ＝ `["name", "type"]`（`python3` で JSON を読み出して確認）
+
+**Excel 記法・YAML 記法のいずれも型の無いフィールド定義を認めていない**。したがってこれは中間モデルだけが
+保持できる「契約の穴」であり、辺③④の両方で塞ぐ。
+
+### TDD — 赤（実行時の出力そのまま）
+
+修正前の `src/main`（`9f2223e` 時点の `XlsFormatWriter` ／ `YamlFormatWriter`）に、新しい番人テストだけを載せて実行した。
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o test -Djacoco.skip=true \
+  -Dtest='XlsFormatWriterTest,YamlFormatWriterTest' -DfailIfNoTests=false
+```
+
+```
+[ERROR] Tests run: 37, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 1.319 s <<< FAILURE! - in nablarch.test.tool.converter.yaml.YamlFormatWriterTest
+[ERROR] serialize_fieldWithNullTypeInFileBlock_rejected(nablarch.test.tool.converter.yaml.YamlFormatWriterTest)  Time elapsed: 0.03 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] serialize_fieldWithNullTypeInMessageBlock_rejected(nablarch.test.tool.converter.yaml.YamlFormatWriterTest)  Time elapsed: 0.004 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[INFO] Running nablarch.test.tool.converter.xls.XlsFormatWriterTest
+[ERROR] Tests run: 44, Failures: 2, Errors: 0, Skipped: 0, Time elapsed: 3.868 s <<< FAILURE! - in nablarch.test.tool.converter.xls.XlsFormatWriterTest
+[ERROR] rejectsFieldWithoutTypeInMessageBlock(nablarch.test.tool.converter.xls.XlsFormatWriterTest)  Time elapsed: 0.095 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] rejectsFieldWithoutTypeInFileBlock(nablarch.test.tool.converter.xls.XlsFormatWriterTest)  Time elapsed: 0.024 s  <<< FAILURE!
+java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException
+
+[ERROR] Tests run: 81, Failures: 4, Errors: 0, Skipped: 0
+[INFO] BUILD FAILURE
+```
+
+### 緑（修正後）
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true
+```
+
+```
+[INFO] Tests run: 545, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+テスト総数は `9f2223e` の **541** から **545** へ（削除 2・追加 6）。導出:
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-testing-converter
+git grep -c '^    @Test' HEAD -- 'src/test/**/*.java' | awk -F: '{s+=$NF} END {print s}'   # 541（本コミット前）
+grep -rc '^    @Test' src/test --include=*.java | awk -F: '{s+=$2} END {print s}'          # 545（本コミット）
+```
+
+### 削除した既存テスト（旧挙動を緑で固定していたもの）と担保の移り先
+
+| 削除したテスト | 何を固定していたか | 担保の移り先 |
+|---|---|---|
+| `YamlFormatWriterTest#serialize_fieldWithNullType_omitsType` | 型 `null` のフィールドを `{name: "c1"}` と**型を落として書き出す**挙動 | 送出を弾く `serialize_fieldWithNullTypeInFileBlock_rejected` ／ `serialize_fieldWithNullTypeInMessageBlock_rejected`。「空文字は弾かず `type: ""` を書く」境界は `serialize_fieldWithEmptyType_emitsEmptyType` が持つ |
+| `YamlFormatWriterModelTest#failsToReadBackFieldWithoutType` | 型を落とした YAML が**読み戻せない**こと（不具合の再現を緑で固定） | 番人が送出時点で弾くため、読み戻せない YAML を作れなくなった。担保は上の 2 本。クラス Javadoc の「残置している緑の嘘」の記述も 2 形目 1 本だけへ改めた |
+
+置き換え（削除ではない）:
+
+- `XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty` —— 入力を `new FieldDef("f1", null, null)` から
+  `new FieldDef("f1", "", null)` へ改めた。空セルを書く担保はそのまま残り、**「`null` は弾くが空文字は弾かない」境界テストを兼ねる**。
+- `FieldDefTest#型と長さの省略をnullで保持する` —— `長さの省略をnullで保持する`（`length` は省略可）と
+  `契約違反のnull型もモデル自身は検査せず保持する`（番人は書き出し辺にあり、モデルは検査しない）の 2 本へ分けた。
+
+辺③側に旧挙動を緑で固定していたテストは無かった。型 `null` を渡す箇所は次で全件洗い出し、
+残っているのは**新しい番人テスト 4 本と、モデルが検査しないことを述べる `FieldDefTest` 1 本だけ**であることを確認した。
+
+```sh
+grep -rn 'FieldDef("[^"]*", *null' src/test --include=*.java   # 3 件（XlsFormatWriterTest L392／L410 の番人 2 本＋FieldDefTest L63）
+grep -rn 'field("[^"]*", *null' src/test --include=*.java      # 2 件（YamlFormatWriterTest L505／L522 の番人 2 本）
+```
+
+### `src/main` で変更したファイル
+
+| ファイル | 変更 |
+|---|---|
+| `src/main/java/nablarch/test/tool/converter/model/FieldDef.java` | クラス Javadoc の「型・長さの省略は `null`」が契約と矛盾していたので「長さの省略は `null`」へ改め、`type` が必須である理由（`notation:883`／`:888`（`30a8271` 時点）・`$defs.field_def.required`）と、番人は書き出し辺にある旨を追記。検査は入れていない |
+| `src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java` | `appendRecords` の `fields` 空番人の直後に、`type == null` を弾く番人を追加（識別子・レコード番号・フィールド名を診断に含む） |
+| `src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java` | `emitRecords` に同じ番人を追加（`record_type`・フィールド名を診断に含む）。`fieldFlow` の「`type` が `null` なら出力しない」分岐は到達不能になったので削除し、`type` を常に出力するようにした |
+
+### カバレッジ（JaCoCo 実測・2026-08-18。同一セッションで前後とも計測）
+
+前は `9f2223e` の一時ワークツリー、後は本作業ツリーで、いずれも次を実行した。
+
+```sh
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test jacoco:restore-instrumented-classes \
+  && JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec \
+  && awk -F, 'NR > 1 && ($3 == "XlsFormatWriter" || $3 == "YamlFormatWriter") \
+        { print $3 " line " $9 "/" ($8 + $9) " branch " $7 "/" ($6 + $7) }' target/site/jacoco/jacoco.csv
+```
+
+| クラス | 修正前（`9f2223e`） | 修正後 | 未到達の増減 |
+|---|---|---|---|
+| `XlsFormatWriter` | `line 159/160 branch 103/106` | `line 164/165 branch 107/110` | 行 1・分岐 3 のまま（増えた 4 分岐はすべて到達済み） |
+| `YamlFormatWriter` | `line 163/164 branch 93/96` | `line 168/169 branch 95/98` | 行 1・分岐 3 のまま |
+
+### 台帳へ反映したこと
+
+- `coverage/issues.md` —— YML-12 の 4 形目の行を修正前／修正後の形へ書き直し、番人テスト 4 本と境界テストを明記。判定を「要対応（4 形のうち 1・3・4 形目）」に更新し、根拠に `notation:883`／`:885`／`:888`（`30a8271` 時点。`df7bff7` の行番号も併記）と `$defs.field_def.required` を置いた。「残置している『緑の嘘』」の表は 2 行 → **1 行**（2 形目の `failsToReadBackMessageBlockWithoutRecords` のみ）になり、件数はその場に書いた `grep … | wc -l` で導いた
+- `coverage/inventory.md` —— §0 に本修正の変更ログ、§0.1-2 に件数（541 → 545）と JaCoCo の実測、§0.4／§3.1／§4.1 に C-20 の扱い（型レベルの「省略可」と契約の「必須」の別）と該当テスト行の注記を追加
+
+### 未決（コーディネーター判断）
+
+- **本修正のコミットハッシュを台帳に書けていない。** コミットは自分自身の SHA を含められないため、`b9ff38e`（修正）→ `aff5bb5`／`4bbd1fa`（記録）の前例どおり、記録は別の `docs` コミットが要る。現状 `issues.md` は「#25.5 で修正済み」とだけ書いてある
+- **`issues.md` 冒頭の「要対応 7 件」の導出コマンドは、いま実行すると 6 を返す。** 本修正より前からのずれで、原因は YML-03 の行が `- NTF 仕様としての判定: **要対応 → 修正済み（2026-08-18）**` と書式から外れていること（`git show 9f2223e:` でも 6）。steering の「最後に 1 回だけ件数を確定する」で扱う想定のため、本修正では触っていない
+- **steering の チェックボックス（YML-12 4形目）は未チェックのまま。** steering はコーディネーターの持ち物のため編集していない
+
+---
+
 ## Completion Criteria
 
 | Criterion | Self-check | Evidence | QA | QA Evidence |
@@ -280,6 +413,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 | `inventory.md` の件数がすべて実行可能な導出コマンドから導かれている | OK | `2e1413e`。§0.1-2 を新設し、テスト総数・`@Ignore` 2 件・`8c327d0` との比較の 3 コマンドを併記（総数は `2e1413e` 時点で 536、レビュー対応で担保を 4 件足した現在は **540**。`45194f9` で台帳を実測へ揃えた）。§1.3／§2.3／§3.3／§4.3 の 4 合計にも導出コマンドを付け、実行して **32 ／ 28 ／ 30 ／ 16** を再現した。`XlsFormatReaderCellTypeTest` の `@Test` 件数が 19 と書かれていた誤りを **10** へ訂正し、#25.5 の修正が原因ではないことを `git` で確かめて開示した | OK | 自己申告の Evidence を照合。個別の追試は記録なし |
 | 本体（nablarch-testing）・yaml（nablarch-testing-yaml）に書き込んでいない | OK | #25.5 のコミットはすべて `/home/tie303177/work/nablarch/nablarch-testing-converter` 配下のみ（`git log --stat 8c327d0..HEAD`）。両リポジトリとも最終確認時点で `git status --short` は 0 行。`pom.xml` も無変更（`git diff 8c327d0 HEAD -- pom.xml` → 0 行） | OK | コミット範囲が本リポジトリ配下のみであることを照合 |
 | `src/main` / `src/test` のソースがすべてテキストのままである（`grep` が黙って読み飛ばすファイルが無い） | OK | コミット 12。`YamlTestCoreAdapter.java` L48 に生の NUL（U+0000）が 2 個入っており `file` が `data`、`git diff` が `Binary files ... differ`、`grep -rn DEFAULT_GROUP_MARKER src/` が **exit 1・0 件**（`-a` を付けると 4 件）になっていた。Java の 8 進エスケープ `"\0default-group\0"` へ置き換えて解消。**`\u0000` は使っていない**（ソース全体の前処理で置換され、結局同じ生 NUL がトークン列に入るため）。修正後は `file` → `Java source, Unicode text, UTF-8 text`／`grep -rn` が `-a` なしで **4 件**／`git diff` が通常のテキスト差分。挙動不変であることは class ファイル定数プールで確認（修正後も modified UTF-8 の `C0 80 default-group C0 80` が 1 件、生 NUL 0 件）。混入元は **`36e94a4`（YML-02）** で、当該ファイル 1 本のみ（各コミットを `git diff --numstat <c>^ <c>` で走査し、`-` 行が出るのは `36e94a4` と修正コミット `51dbca0` だけ。他 10 コミットは 0）。**修正後は `git diff --numstat 8c327d0..HEAD` に `-` 行が 1 本も無く**、当該ファイルは `54  2` とテキストで数えられる。番兵の値そのものは `520e890`（レビュー B-1）で素の `default-group` へ変えた。同じ混入を**この台帳の本文でもしていた**（L272 に生 NUL 1 個）ため合わせて除去し、`file` → `Unicode text, UTF-8 text` ／ `grep -rlP '\x00' .rn/ src/` → **0 件**を確認した | OK | 自己申告の Evidence を照合。個別の追試は記録なし |
+| `FieldDef.type` ／ `MessageDataBlock.records` の契約が Javadoc に明記され、辺③（`XlsFormatWriter`）と辺④（`YamlFormatWriter`）の双方が `IllegalArgumentException` で弾く。現状挙動を固定していたテストは置き換えられている | **OK（`FieldDef.type` のみ）** ／ `MessageDataBlock.records`（YML-12 2形目）は**別タスクで未着手** | 上の「追補 — YML-12 4形目」。`FieldDef` のクラス Javadoc に契約と出典（`notation:883`／`:888`（`30a8271` 時点）・`$defs.field_def.required`）を明記し、辺③ `XlsFormatWriter#appendRecords` と辺④ `YamlFormatWriter#emitRecords` に番人を置いた。担保は `rejectsFieldWithoutTypeInFileBlock`／`rejectsFieldWithoutTypeInMessageBlock`／`serialize_fieldWithNullTypeInFileBlock_rejected`／`serialize_fieldWithNullTypeInMessageBlock_rejected` の 4 本と、境界（空文字は弾かない）の `writesOmittedMetaAndFieldAsEmpty`／`serialize_fieldWithEmptyType_emitsEmptyType`。旧挙動を固定していた 2 本（`serialize_fieldWithNullType_omitsType`／`failsToReadBackFieldWithoutType`）は削除済みで、`grep -rn 'failsToReadBack' src/test --include=*.java` に残る「緑の嘘」は 2 形目の `failsToReadBackMessageBlockWithoutRecords`（L790）だけである（`failsToReadBackLiteralTabFieldSeparator` は YML-08 の実挙動記録）。`mvn clean test -Djacoco.skip=true` → `Tests run: 545, Failures: 0, Errors: 0, Skipped: 0` | — | — |
 | `mvn clean test -Djacoco.skip=true` が PASS する | OK | `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true` → **`Tests run: 540, Failures: 0, Errors: 0, Skipped: 2`** ／ `BUILD SUCCESS`。基準線 `8c327d0` は 536／Skipped 0 で、差は YML-03 の待機テスト 2 本と、レビュー対応で足した担保 4 本（`rejectsNullSheetName` ＋ `YamlTestCoreAdapterTest` のデフォルトグループ 3 本）である | OK | Verification expert が同じコマンドを独立に実行し PASS を実測（レビュー時点 536／Skipped 2） |
 
 ---
@@ -341,8 +475,89 @@ QA は自己申告の Evidence を読むだけで済ませず、次の 2 つを�
 
 ## Overall Verdict
 
-- Self-check: OK —— レビュー 4 種の指摘 16 件はすべて反映済み（`520e890`／`b6be795`／`ccf3c1a`／`8d781b8`／`45194f9`）。保留は XLS-22 の「NTF 仕様としての判定」1 件のみで、ユーザー確認待ちのため未着手。
+- Self-check: OK —— YML-12 4形目（`FieldDef.type` 必須）を TDD で修正し、赤 4 件 → 実装 → 旧テスト 2 本の置き換えまで完了（上の「追補 — YML-12 4形目」。`Tests run: 545, Failures: 0, Errors: 0, Skipped: 0`）。**残る 2形目（`MessageDataBlock.records`）は別タスクで未着手**。レビュー 4 種の指摘 16 件はすべて反映済み（`520e890`／`b6be795`／`ccf3c1a`／`8d781b8`／`45194f9`）。保留は XLS-22 の「NTF 仕様としての判定」1 件のみで、ユーザー確認待ちのため未着手。
 - QA: OK —— Completion criteria 9 件すべて OK。指摘 4 件のうち 3 件は反映済み、XLS-22 の分類のみ保留。
 - Expert reviews: Design は方針・構造 OK／全体整合 NG（指摘 2 件は反映済み）、Craft OK、Verification OK。
 - **Coordinator: 未確定** —— 保留中の XLS-22 の判定をユーザーに確認したうえで最終判定する。
   それ以外に未解決の指摘は無い（triage 1 巡目完了、上限 3 巡）。
+
+---
+
+## 追補 — YML-12 2形目（`MessageDataBlock.records` が空）の修正（2026-08-18・コミット `04873de`）
+
+中間モデルの契約として **`MessageDataBlock.records` は 1 件以上（0 件不可）** を宣言し、書き出しの 2 辺
+（辺③ `XlsFormatWriter#layoutMessage` ／ 辺④ `YamlFormatWriter#emitMessage`）が 0 件を
+`IllegalArgumentException` で弾くようにした。番人は**モデルには置かない**（4形目 と同じ理由）。
+**共通の `appendRecords` ／ `emitRecords` にも置かない** —— ファイルデータブロックのレコード 0 件は
+0 バイト空ファイルを表す合法な形だからである。これで **YML-12 は 4 形すべて修正済み**になった。
+
+### 判定の根拠（解説書と本体スキーマの明文のみ。実装の挙動は根拠にしていない）
+
+```sh
+cd /home/tie303177/work/nablarch/nablarch-document
+git log -1 --format='%H %ci' 30a8271
+for n in 881 1109 1146 1158 1257; do
+  printf '%s: ' "$n"
+  git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
+done
+```
+
+出力（`30a8271f6ada3259b014618abea72a588db043d9 2026-08-18 08:54:15 +0900`）を自分で開いて一致を確認した。
+
+- **電文のレコード 0 件は記法に明文が無い。** 電文が存在しない場合は `:1257`「応答不要メッセージ受信では…
+  `expectedMessages` のデータブロックを記述する必要はない」＝**ブロックごと省略**が記法である。
+- **0 バイト空ファイル特例は電文に及ばない。** `:881`／`:1109`／`:1146` はいずれも**ファイルに限定**して
+  書かれている。`:1158`「…前述のファイルデータと同じ構成を持つ」は**カラム構成のみ**を指す。
+- **スキーマ**（`nablarch-testing-yaml` の `nablarch/test/ntf-testdata-yaml-schema.json`）:
+  `$defs.message_data` ／ `$defs.expected_request_message_data` ／ `$defs.group_message_data` はいずれも
+  `required` ＝ `["id","records"]` かつ `records.minItems` ＝ **1**、`$defs.file_data` だけが **0**。
+  この非対称は明文の有無に対応した意図的なものと扱い、スキーマは変更しない。
+
+### TDD — 赤（`src/main` に触れる前の実測）
+
+```
+Tests run: 547, Failures: 4, Errors: 0, Skipped: 0
+```
+
+失敗した 4 件（いずれも `java.lang.AssertionError: Expected exception: java.lang.IllegalArgumentException`）:
+
+- `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords`
+- `XlsFormatWriterTest#rejectsSendSyncMessageBlockWithoutRecords`
+- `YamlFormatWriterTest#serializeMessage_withoutRecords_rejected`
+- `YamlFormatWriterTest#serializeSendSync_withoutRecords_rejected`
+
+### TDD — 緑
+
+```
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true
+Tests run: 547, Failures: 0, Errors: 0, Skipped: 0
+```
+
+545 → 547 の内訳は **削除 3 件・追加 5 件**（`inventory.md` §0.1-2 の追補）。
+
+### 削除したテストと担保の移し先
+
+| 削除 | 何を固定していたか | 移し先 |
+|---|---|---|
+| `YamlFormatWriterTest#serializeMessage_emptyBody_emitsIdOnly` | 辺④が `id:` だけの電文を書くこと | `#serializeMessage_withoutRecords_rejected` ／ `#serializeSendSync_withoutRecords_rejected` |
+| `YamlFormatWriterModelTest#failsToReadBackMessageBlockWithoutRecords` | それが読み戻せないこと（「緑の嘘」の最後の 1 本） | 同上（出力そのものが無くなったため置き換え先は番人のみ） |
+| `XlsFormatWriterModelTest#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` | 辺③が識別行＋メタ行だけの版面を書くこと | `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords` |
+
+境界（ファイルブロックの 0 件は合法）は `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`
+／ `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` が担保する。
+
+### JaCoCo（`inventory.md` §0.1-2 の追補その 4）
+
+`XlsFormatWriter` `line 167/168 branch 109/112` ／ `YamlFormatWriter` `line 170/171 branch 95/98` ／
+`YamlFormatReader` `line 192/192 branch 102/102` ／ `DirectiveUtil` `line 20/20 branch 17/18`。
+**4 クラスとも未到達の件数は変化なし**（辺④は番人で 2 分岐増え、到達不能になった `emitEmptyList` 引数の
+削除で 2 分岐減った）。
+
+### 残置している「緑の嘘」
+
+**0 本**（4 → 2 → 1 → 0）。`issues.md`「残置している『緑の嘘』」節に検証コマンドを載せた。
+
+### Self-check
+
+- OK —— TDD（赤 4 件を実測 → 実装 → 緑 547 件）、台帳（`issues.md` ／ `inventory.md`）反映、
+  引用行はすべて自分で `git show 30a8271:… | sed -n 'Np'` で開いて確認済み。`checks/` はコミットに含めていない。
