@@ -655,7 +655,7 @@ nablarch-testing-yaml 側にあり converter だけでは直せない」であ�
 |---|---|---|---|---|
 | YML-02 | ② | `group_id` を省略した送信同期エントリをブロックごと落とす | 省略時はデフォルトグループのブロックとして読む | `notation:254`「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が対象になる」 |
 | YML-12 | ④ | レコードが空のファイルブロックで `records:` キーごと落とす | `records: []` を出力する | `notation:881`「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」／`notation:1146`「0バイトの空ファイルを表現するには、`records:` に空配列 `[]` を記載する」 |
-| XLS-16 | ③ | シート名を 31 文字へ黙って切り詰める | 黙って切り詰めない。31 文字超は例外で落とす | `notation:588`（下記の訂正を参照） |
+| XLS-16 | ③ | シート名を 31 文字へ黙って切り詰める | 黙って切り詰めない。31 文字超は例外で落とす | `notation:590`（下記の訂正を参照） |
 | XLS-06 | ① | レコード種別の空セルを `""` にする | `null` を入れる（辺②と同じ） | `RecordLayout.java:26`「レコード種別（省略時は `null`）」 |
 | XLS-22 | ③④ | `fields` が空の `RecordLayout` を、Excel は読み戻せない版面として・YAML は `fields: []` として書き出してしまう | 書き出し側が `IllegalArgumentException` で落とす（`RecordLayout` の Javadoc に「`fields` は 1 件以上」の契約を明記する） | `notation:888`「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる（＝**その形は Excel 記法として存在しない**）／YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment` が `fields` を必須かつ `minItems` ＝ 1 とする |
 | YML-03 | ② | `record_type: "FW_HEADER"` のレコードを、メッセージ系・送信系でだけ黙って捨てる（ファイル系では残る） | 3 経路とも捨てずに残す | YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment.properties.record_type.description`「可読性のために任意の名前を記述してよい。**FW_HEADER のような予約値はない**」／`$defs.message_data.properties.records.description`「**旧形式の record_type: FW_HEADER は廃止**」。修正の出典は yaml 側 `0b53910`（ブランチ `feature/ntf-yaml`） |
@@ -664,7 +664,7 @@ nablarch-testing-yaml 側にあり converter だけでは直せない」であ�
 **XLS-16 の出典を訂正した。** 当初示された `notation:68`（「シート名をテストメソッド名と同名にする」）は
 実際には `notation:69` であり、**その直後 `notation:73` の tip が「シート名とテストメソッド名の対応は
 『制約』ではなく『推奨』であり、両者が異なっていても正しく動作する」と明記している**。
-したがって「テストメソッド名と揃える推奨」から切り詰めの不当性は導けない。**根拠は `notation:588` に置く**
+したがって「テストメソッド名と揃える推奨」から切り詰めの不当性は導けない。**根拠は `notation:590` に置く**
 ——「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
 List 形式または Map 形式でデータを取得できる」。続く `TestSupport#getListMap(String sheetName, String id)`
 のとおり**シート名は呼び出し側が渡す引き当てキー**であり、黙って別名に変えれば呼び出し側から引けなくなる。
@@ -723,6 +723,45 @@ XLS-22 と同じ手順（Javadoc に契約を明記／辺③④に番人／現�
 NTF 仕様（解説書）がその形を記法として認めている根拠にはならない。** むしろ「記法に無い形を実装が通してしまう」
 なら、それ自体が不具合の候補である。**判定は解説書（`testdata_notation.rst`）と本体スキーマの明文だけから
 組み立てる。** ②の検討でこの誤りが出たため、以降のすべての判定に適用する。
+
+### 中間モデル一巡点検で出た 7 件を全件 #25.5 に含める（ユーザー確定・2026-08-18）
+
+中間モデルの一巡点検で見つかった「両形式が表現できない値を中間モデルだけが保持できる」7 件（A〜G）を、
+記録だけでなく**全件 #25.5 で修正する**。理由は 2 つ（ユーザー確定）——(1) 契約の穴を残したまま #26 へ進むと
+番人の分岐が増えてカバレッジ計測をやり直すことになる、(2) E・F・G の「辺③④の片方だけに番人がある非対称」は
+どちらが正しいかを決めないと 4 辺の担保にならない。
+
+**条件 2 つ（ユーザー指示）**:
+
+- **番人を置く前に、その形が記法の外であることを明文で確かめる。**「到達できないから」「実装がそう動くから」は
+  根拠にならない。明文が無ければ番人を置かず、「明文が無い」と記録する
+- **E・F・G の非対称は、どちらへ揃えるかを明文で決める。** 片側に合わせる理由を出典付きで書く
+
+**出典は全件、`30a8271` の実物を開いて確認済み。**
+
+| # | 項目 | 対象フィールド | 明文の出典 | 番人の要否・揃える先 |
+|---|---|---|---|---|
+| A | カラム名 0 件 | `ColumnRowDataBlock.columnNames` | `notation:652`（テーブルデータは「データタイプと識別子の値・カラム名・データ行」という共通の構成を持つ）／`notation:802`（Excel はカラム名行を省略できない）／`notation:628`（LIST_MAP） | **要**（辺③）→ **実装済み `57c1b0d`**（XLS-27 の当面の対応） |
+| B | ファイル種別 `null` | `FileDataBlock.fileType` | `notation:1146`／`notation:883`／YAML 本体スキーマ `$defs.file_data.required` に `type`、`type.enum` ＝ `["fixed","variable"]` | **要**（辺③④とも） |
+| C | フィールド長 `null` | `FieldDef.length` | `notation:883`／`notation:889`／`notation:1158`（電文も同構成） | **要**（辺③④とも）。ただし**固定長ファイルと電文に限る**。可変長では `null` が正 |
+| D | 名称 `null` | `FieldDef.name` | `notation:888`／YAML 本体スキーマ `$defs.field_def.required` ＝ `["name","type"]`・`name.type` ＝ `"string"` | **要**（辺③④とも）。既存の `type` 番人（`f80c192`）と同型 |
+| E | グループ ID `null` | `TestDataBlock.groupId` | `notation:254`（省略かデフォルトグループかの 2 値であり `null` は無い）／YAML 本体スキーマ `group_id` は `type: string, minLength: 1` | **要**（辺③④とも。現状どちらにも番人が無いので揃える先の判断は不要） |
+| F | セクション名 `null` | `TestDataSection.name` | `notation:590`（読み込み単位の名前は Excel 形式ではシート名、YAML 形式ではファイル名） | **要**。**辺③（弾く側）へ揃える** —— 辺④は現状 `null.yaml` を作る。`notation:590` は名前がファイル名／シート名になると定めており、名前が無い状態を認める明文が無い |
+| G | データタイプ `DEFAULT` | `TestDataBlock.dataType` | `notation:206-235`（「対応は、以下のとおりである」の YAML 最上位キー対応表に **`DEFAULT` の行が無い**） | **要**。**辺④（弾く側）へ揃える** —— 辺③は現状 `DEFAULT=T` と書けるが読み戻すと消える（XLS-20）。**根拠が「対応表に行が無い」という不在である点は記録に明示する** |
+
+**`DataType.DEFAULT` は記法の予約語である。** `notation:188-190` のデータタイプ表に載っている。
+`issues.md` **XLS-20** の「記法の予約語（`notation:126`）に無く」は事実誤りであり、G の実装と併せて訂正する。
+
+### XLS-27 の番人は 0 件テーブルを含む YAML を変換不能にする（実測・2026-08-18）
+
+A の番人（`57c1b0d`）を入れた結果、**同梱している climan サンプル自身が YAML→XLS 変換できなくなった**。
+`SampleConversionTest/ClientActionTest/testShowWithEmptyClientTable.yaml` ／ `testFindNoClients.yaml` ／
+`ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml` の計 4 箇所が `rows: []` を持つためである。
+「空のテーブルを用意する」は NTF の日常的なテストパターンであり、**本体修正が入るまで 0 件テーブルを含む
+YAML はすべて変換できない**。無言で壊れた `.xlsx` を書くよりは中止が正しいという判断で入れているが、
+XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切り替え）が済むまでは実運用上の制約として残る。
+`SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable` がこの制約を固定しており、
+**本体修正後は変換成功を確認するテストへ戻す。**
 
 ### 修正しない 2 件 →（2026-08-18 以降）1 件（判定の根拠つき）
 
@@ -1045,7 +1084,17 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 - [x] **YML-12 2形目（辺③④）**: `MessageDataBlock.records` は 1 件以上を Javadoc に契約として明記し、書き出し側が `IllegalArgumentException` で弾く（追加・ユーザー確定 2026-08-18）→ `04873de`
 - [x] `RecordLayout` コンストラクタに番人を**置かない**判断と、却下した理由・実測を `issues.md` に残す（`XLS-22` の節）→ `ea52297`
 - [x] 本体パーサがレコード 0 件を受け付ける事実を、**新規 ID `XLS-26`** で `issues.md` に記録する（判定「本作業の対象外・記録のみ」／モジュールは `nablarch-testing` 本体）→ `a37eeb3`。**対象は `MessageParser`（電文）に限定した。`FixedLengthFileParser` 単体のレコード 0 件は 0 バイト空ファイルとして `notation:881`／`:1109`／`:1146` に明文があり不具合ではない**
-- [ ] 中間モデルの全クラス・全フィールドを一巡し、「両形式が表現できない値を中間モデルが保持できる」箇所が他に無いかを点検して結果を記録する（無ければ「無し」と明記する）
+- [x] **XLS-08（辺①）**: マーカーカラム除外の**後**に空エントリ判定を行う（追加・ユーザー確定 2026-08-18。判定を「対応不要」→「要対応」へ変更）→ `a794a8e`
+- [x] **XLS-27（辺③・当面の対応）**: カラム名を 1 件も持たないテーブル系ブロックを `IllegalArgumentException` で弾く（新規課題・ユーザー確定 2026-08-18。本体修正後に「識別子行だけを書く」へ切り替える 2 段構えの 1 段目）→ `57c1b0d`
+- [x] **XLS-21 の機構を XLS-27 へつなぐ**（§5・ユーザー確定 2026-08-18。判定は対応不要のまま）→ `8f55f78`
+- [ ] **§1-B（辺③④）**: `FileDataBlock.fileType` が `null` のブロックを弾く
+- [ ] **§1-C（辺③④）**: `FieldDef.length` が `null` のフィールドを弾く（**固定長ファイルと電文に限る**。可変長では `null` が正）
+- [ ] **§1-D（辺③④）**: `FieldDef.name` が `null` のフィールドを弾く
+- [ ] **§1-E（辺③④）**: `TestDataBlock.groupId` が `null` のブロックを弾く（現状どちらの辺にも番人が無い）
+- [ ] **§1-F（辺④）**: `TestDataSection.name` が `null` のセクションを弾く。**辺③（弾く側）へ揃える**
+- [ ] **§1-G（辺③）**: `DataType.DEFAULT` のブロックを弾く。**辺④（弾く側）へ揃える**。あわせて `issues.md` XLS-20 の事実誤り（「`DEFAULT` は記法の予約語に無く」）を訂正する —— `DEFAULT` は `notation:188-190` のデータタイプ表に載っている。根拠は `notation:206-235` の YAML 最上位キー対応表に `DEFAULT` の行が無いことである
+- [ ] **XLS-28（辺①の入口）**: 同名で拡張子違いの Excel ブック（`Foo.xls` と `Foo.xlsx`）の同居を検出してエラーで止める（新規課題・ユーザー確定 2026-08-18。`notation:44`）
+- [ ] 中間モデルの全クラス・全フィールドを一巡し、「両形式が表現できない値を中間モデルが保持できる」箇所が他に無いかを点検して結果を記録する（無ければ「無し」と明記する）。**観点をもう 1 つ足す**（§6・ユーザー確定 2026-08-18）——**辺①が本体（`nablarch-testing`）経由で記法に無い形を中間モデルへ持ち込む経路が無いか**。XLS-08（マーカーカラムだけのブロックが「カラム 0 個・行 2 件」で入る）がその 1 例目である
 - [ ] **最後に 1 回だけ**、課題 ID 単位で要対応／対応不要の実数を確定する（①②の反映と中間モデル点検の後）
 - [x] `mvn clean install` を手順として Decisions に定着させる（`steering.md` の Decisions「ビルド・テストの実行方法」に記載）
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
@@ -1151,8 +1200,8 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-18
+- **Last completed**: #25.5 の XLS-08（`a794a8e`）・XLS-27 当面の対応（`57c1b0d`）・記録の追随（`8f55f78`）
+- **Next**: #25.5 の残ステップ。§1-B（`FileDataBlock.fileType`）から順に番人を 1 件 ＝ 1 コミットで実装する
+- **Notes**: 番人の出典と揃える先は Decisions「中間モデル一巡点検で出た 7 件を全件 #25.5 に含める」の表が正。A は実装済み、B〜G が残り。そのあと XLS-28 →一巡点検（§6 の観点を含む）→最後に 1 回だけ ID 単位の集計（現在 44 ID）→ self-check → QA/Craft/Verification レビュー。全 547 テスト緑。
