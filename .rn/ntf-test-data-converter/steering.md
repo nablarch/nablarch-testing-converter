@@ -675,9 +675,9 @@ Rules の該当 2 行と Acceptance criteria の 2 行はこの決定に合わ�
 > 件数を併記する場合は「2026-08-18 時点で 15 件」のように**時点を添える**。
 
 **現況（2026-08-19・`issues.md` 冒頭の導出コマンドで確認）**: 全 52 件・**要対応 22 ／ 対応不要 27 ／
-保留 2 ／ 本作業の対象外 1**。要対応 22 件の内訳は **修正済み 18 件**（XLS-06・XLS-08・XLS-16・XLS-20・
-XLS-22・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・XLS-34・XLS-35・XLS-36 ／ YML-02・YML-03・
-YML-08・YML-12）と **未完 4 件**（XLS-27 は当面の対応まで完了・本体修正待ち。**XLS-37・XLS-38・XLS-40 は
+保留 2 ／ 本作業の対象外 1**。要対応 22 件の内訳は **修正済み 19 件**（XLS-06・XLS-08・XLS-16・XLS-20・
+XLS-22・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・XLS-34・XLS-35・XLS-36・XLS-37 ／ YML-02・
+YML-03・YML-08・YML-12）と **未完 3 件**（XLS-27 は当面の対応まで完了・本体修正待ち。**XLS-38・XLS-40 は
 §6 の中間モデル一巡点検で起こしたもので未着手**）。内訳は `issues.md` 冒頭にも書いてある。
 
 **判定に「保留」を足した（ユーザー指示・2026-08-19）。** **明文が converter 側の判断で埋まらない**課題に
@@ -1205,7 +1205,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] **§6-A（中間モデル）**: `TestDataBlock` の生成時に `dataType` ＝ `null` を拒否する（`issues.md` XLS-34）→ `b905183`。**辺③④は無変更**（`XlsFormatWriter#marker` の `DataType#getName`・辺④の `switch` の `type.ordinal()` による NPE が到達不能になった）。**方針 4: 辺①②のどちらのリーダーも `DataType` の定数を直接渡しており `null` を作らない**。テスト 1 件
 - [x] **§6-B（中間モデル）**: `TestDataBlock` の生成時に `identifier` ＝ `null` を拒否する（`issues.md` XLS-35）→ `836a2a4`。**空文字は通す**（Excel は `id=[]` で往復し、YAML の `table: ""` はスキーマ適合）。**方針 4: 辺①は本体 `TestCoreReaderAdapter` がマーカー行の `=` の後ろを切り出し、辺②は `table` ／ `path` ／ `id` の必須キーから取るため `null` を作らない**。テスト 2 件
 - [x] **§6-C（中間モデル）**: 各具象ブロックの生成時に、自分の系統に属さない `DataType` を拒否する（`issues.md` XLS-36）→ `1244e2b`。**辺③④は無変更**。`TableDataBlock` ／ `FileDataBlock` ／ `MessageDataBlock` の各コンストラクタが `super(...)` の**直後**に `TestDataBlock#requireDataTypeOf` を呼ぶ形にした（`ListMapBlock` は `LIST_MAP` を直に渡すため対象外）。取りうるデータ種別は各クラスの `PERMITTED_TYPES`（`EnumSet`。テーブル 3 種／ファイル 4 種／電文 5 種）に置き、`notation:212-235` の対応表の区切りに合わせた。**`super(...)` の引数位置ではなく直後に置いた** —— 引数位置だと `null` を素通しにする分岐を足すことになるが、直後なら `super(...)` が先に `null`（§6-A）と `DEFAULT`（§1-G）を専用メッセージで拒否するため、**到達しない分岐を作らずに §6-A のメッセージを保てる**。**方針 4: 辺①は `isTableType` ／ `isFileType` ／ `isSendSyncType` と `LIST_MAP` ／ `MESSAGE` で系統ごとに分岐してから該当クラスを生成し、辺②は各セクションキーの処理に `DataType` の定数を直接与えるため、どちらも不整合な組を作らない**。テスト 3 件（`94b0fbe` の RED をそのまま GREEN にした）
-- [ ] **§6-D（中間モデル）**: `TestDataContainer` の生成時に `name` ＝ `null` を拒否する（`issues.md` XLS-37。§1-F と同型）
+- [x] **§6-D（中間モデル）**: `TestDataContainer` の生成時に `name` ＝ `null` を拒否する（`issues.md` XLS-37。§1-F と同型）→ `5803fe6`。**空文字は通す**（ブック名の書式は Excel 形式固有の制約であって中間モデルの不変条件ではない。§1-F と同じ扱い）。**辺③④は無変更**（辺③が文字列連結で作っていた `null.xlsx` は到達不能になり、辺④はもともと器の名前を出力パスに使わない）。**方針 4: 辺①は `XlsFormatReader.java:703-706`、辺②は `YamlFormatReader.java:94` のとおり、どちらのリーダーも `name` ＝ `null` を作らない**。テスト 2 件
 - [ ] **§6-E（中間モデル）**: コレクション・Map の `null` と要素 `null` を生成時に拒否する（`issues.md` XLS-38。10 箇所 ＋ `columnNames` の要素）
 - [ ] **§6-F（中間モデル）**: カラム名・フィールド名の重複を生成時に拒否する（`issues.md` XLS-40）
 - [x] **§6-G（中間モデル）**: **実装しない。記録へ切り替えた**（ユーザー確定・2026-08-19）。`fields` の件数と `rows` 各行の要素数の一致は**生成時に保証しない** —— `notation:883`（少ない側は `""` で補完され、`rows: []` の行は記法として明示的に案内されている）と本体スキーマ `$defs.record_fragment.rows`（一致しなければエラー）が**正面から食い違っており**、一致を強制すると仕様適合データを中間モデルが持てなくなる。**`issues.md` XLS-41 の判定を「要対応」から「保留」へ戻し、両方の出典を併記して矛盾の事実を記録した。** 明文が一致している「多い側」だけの切り出しは `notation:891` を根拠に要対応にできるが**ユーザー判断待ち**
