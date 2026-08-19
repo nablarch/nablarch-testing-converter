@@ -19,6 +19,30 @@ import java.util.List;
  * </p>
  *
  * <p>
+ * <b>カラム名 0 件で「セルを持つ行」を抱えるブロックは作れない。生成時点で拒否する</b>
+ * （{@code coverage/issues.md} <b>XLS-21</b>。判定の見直しと番人の設置は 2026-08-19）。
+ * {@code testdata_notation.rst:652}（{@code 30a8271} 時点）はテーブル系データを
+ * 「データタイプと識別子の値・カラム名・データ行という共通の構成を持つ」と定め、YAML はカラム名を
+ * {@code rows:} の先頭要素のキーで決めるため（{@code :819}）、値があってカラム名が無い形は書けない。
+ * Excel も {@code :802} によりカラム名の行を省略できず、この形を書き出すと<b>データ行がカラム名へ
+ * 昇格して値が消える</b>（実測。XLS-21）。
+ * </p>
+ *
+ * <p>
+ * <b>拒否するのは「セルを 1 つ以上持つ行」だけである。</b>次の 2 つは辺①②が仕様適合入力から実際に作るため、
+ * 拒否しない。
+ * </p>
+ * <ul>
+ *   <li><b>カラム名 0 件・行 0 件</b>——YAML の 0 件テーブル（{@code :836}「0 件のデータは、
+ *       {@code rows:} に空配列 {@code []} を記載する」）はカラム名を書く場所を持たない。辺③は
+ *       {@code :1515} のマーカーカラムを 1 つ書いて Excel の「カラム名の行は省略できない」制約を満たす
+ *       （<b>XLS-27</b>）</li>
+ *   <li><b>カラム名 0 件・セルを 1 つも持たない行が n 件</b>——マーカーカラムだけのブロックが
+ *       {@code :1550} の除外を受けるとこの形になる（<b>XLS-08</b> ／ <b>YML-04</b>）。値を持たないため
+ *       値の消失は起きず、扱いの非対称（辺①は落とし辺②は残す）は当該項の課題である</li>
+ * </ul>
+ *
+ * <p>
  * <b>{@code columnNames} の重複は拒否しない。番人も WARN も置かない</b>
  * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
  * 辺②が重複したカラム名を持つブロックを実際に作るためである —— 本体 {@code TableData} が
@@ -62,6 +86,19 @@ public abstract sealed class ColumnRowDataBlock extends TestDataBlock
         super(dataType, groupId, identifier);
         this.columnNames = ModelPreconditions.requireNoNulls("カラム名リスト", columnNames);
         this.rows = ModelPreconditions.requireNoNullRows("データ行のリスト", rows);
+        if (this.columnNames.isEmpty()) {
+            for (int i = 0; i < this.rows.size(); i++) {
+                if (!this.rows.get(i).isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "カラム名を 1 件も持たないブロックはセルを持つデータ行を持てません"
+                                    + "（記法のテーブル系データはデータタイプと識別子の値・カラム名・"
+                                    + "データ行という共通の構成を持ち、YAML ではカラム名が rows: の"
+                                    + "先頭要素のキーで決まるため、値があってカラム名が無い形は書けません）。"
+                                    + " 識別子=[" + identifier + "] 行番号=" + (i + 1)
+                                    + " セル数=" + this.rows.get(i).size());
+                }
+            }
+        }
     }
 
     /** @return カラム名リスト（マーカーカラムを含む。記述順・大文字化なし） */

@@ -208,39 +208,48 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     /**
      * テーブル／LIST_MAP の版面を組み立てる（識別行 → カラム名行 → データ行）。
      * <p>
-     * カラム名を 1 件も持たないブロックは書き出さずに弾く。Excel 記法はデータ行が無くても
-     * カラム名の行を省略できないためである（{@code testdata_notation.rst:802}
-     * 「データ行を書かない場合でも、カラム名の行は省略できない。識別子行の次の行がカラム名の行として
-     * 読み込まれるため、カラム名の行を書かないと、その次に現れた行がカラム名の行になる」。
-     * {@code LIST_MAP} も {@code :628}「2行目を Map のキー、3行目以降を Map の値として読み込む」の
-     * とおりキー行が構成上必須である。いずれも {@code 30a8271} 時点）。
+     * <b>カラム名を 1 件も持たない 0 件テーブルには、カラム名の行へマーカーカラム
+     * {@value #EMPTY_BLOCK_MARKER_COLUMN} を 1 つだけ書く。</b>3 つの明文を同時に満たす唯一の書き方だからである
+     * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19。いずれも {@code 30a8271} 時点）。
+     * </p>
+     * <ul>
+     *   <li>{@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
+     *       識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
+     *       その次に現れた行がカラム名の行になる」——<b>識別子行だけを書くことはできない。</b>
+     *       {@code LIST_MAP} も {@code :628}「2行目を Map のキー、3行目以降を Map の値として読み込む」の
+     *       とおりキー行が構成上必須である</li>
+     *   <li>{@code :819}「カラム名は、最初の行（{@code rows:} の先頭要素）のキーで決まる」／
+     *       {@code :836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」——
+     *       <b>YAML の 0 件テーブルにはカラム名を書く場所が無い</b>ため、辺②は
+     *       仕様適合入力からカラム名 0 件のブロックを正当に作る</li>
+     *   <li>{@code :1515}「カラム名を半角角括弧 {@code [ ]} で囲むと、そのカラムは「マーカーカラム」として
+     *       読み込み対象から除外される…Excel 形式の {@code SETUP_TABLE}・{@code EXPECTED_TABLE}・
+     *       {@code LIST_MAP}、YAML 形式の {@code setup_tables}・{@code expected_tables}・{@code list_maps}、
+     *       いずれのデータタイプでも使える」——<b>意味を持たないカラムを 1 つ置く正当な書き方がある</b></li>
+     * </ul>
+     * <p>
+     * <b>黙ってカラム名行を落とすと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、
+     * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。マーカーカラムは読み込み対象から除外されるため、
+     * 読み戻すと {@code columnNames} ／ {@code rows} とも 0 件に戻る
+     * （{@link XlsFormatReader} の XLS-08 の正規化。担保は
+     * {@code XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock}）。
      * </p>
      * <p>
-     * <b>黙って書くと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、次のブロックの
-     * 識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測。
-     * {@code coverage/issues.md} <b>XLS-27</b>）。
-     * </p>
-     * <p>
-     * <b>これは当面の対応である。</b>本体（{@code nablarch-testing}）の {@code TableDataParser} が
-     * 「識別子行の次の行が識別子行なら、カラム名 0 個の 0 件テーブルとみなす」と読めるようになったら、
-     * ここは「識別子行だけを書く」実装へ切り替える（XLS-27 の 2 段構え）。
+     * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>どちらの記法にも書けない形であり、
+     * {@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>（{@code coverage/issues.md} <b>XLS-21</b>。
+     * 番人の移設は 2026-08-19）。
      * </p>
      *
      * @param block カラム・行ブロック
      * @return 版面
-     * @throws IllegalArgumentException カラム名が 0 件の場合
      */
     private BlockLayout layoutColumnRow(ColumnRowDataBlock block) {
-        if (block.getColumnNames().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "カラム名を 1 件も持たないブロックは書き出せません。Excel 形式ではデータ行が無くても"
-                    + "カラム名の行を省略できず、省略すると次のブロックの識別子行がカラム名の行として"
-                    + "読み込まれてそのブロックが消えるため、変換を中止しました。"
-                    + "ブロック=[" + marker(block) + "]");
-        }
         BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
-        List<String> columns = block.getColumnNames();
+        List<String> columns = block.getColumnNames().isEmpty()
+                ? Arrays.asList(EMPTY_BLOCK_MARKER_COLUMN)
+                : block.getColumnNames();
         l.add(RowKind.HEADER, new ArrayList<>(columns));
         for (int c = 0; c < columns.size(); c++) {
             // カラム名が null の場合は isMarkerColumn 内で null チェックして false を返す。null カラムは非マーカーとして扱う。
@@ -512,6 +521,18 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param columnName カラム名
      * @return マーカーカラムなら真
      */
+    /**
+     * カラム名を 1 件も持たない 0 件テーブルのカラム名行へ書くマーカーカラム。
+     *
+     * <p>
+     * 半角角括弧で囲んであるため、本体は読み込み対象から除外する
+     * （{@code testdata_notation.rst:1515}。{@code 30a8271} 時点）。
+     * カラム名の行そのものは {@code :802} により省略できないため、意味を持たないカラムを 1 つ置いて
+     * 行の存在だけを満たす（{@code coverage/issues.md} <b>XLS-27</b>）。
+     * </p>
+     */
+    static final String EMPTY_BLOCK_MARKER_COLUMN = "[空]";
+
     private static boolean isMarkerColumn(String columnName) {
         return columnName != null && columnName.startsWith("[") && columnName.endsWith("]");
     }

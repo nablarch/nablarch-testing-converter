@@ -379,41 +379,63 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: カラム名を 1 件も持たないテーブルブロック（行も 0 件）。
+     * Given: カラム名を 1 件も持たない 0 件テーブルブロック。
      * When : build。
-     * Then : IllegalArgumentException（Excel 記法はデータ行が無くてもカラム名の行を省略できない。
-     *        {@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
-     *        識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
-     *        その次に現れた行がカラム名の行になる」（{@code 30a8271} 時点）。
-     *        カラム名行を書けないブロックを書き出すと<b>次のブロックを食う</b>ため、黙って書かず早期に失敗する。
-     *        {@code coverage/issues.md} XLS-27）。
+     * Then : カラム名の行にマーカーカラム {@code [空]} を 1 つだけ書く。
+     *
+     * <p>
+     * Excel 記法はデータ行が無くてもカラム名の行を省略できない
+     * （{@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
+     * 識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
+     * その次に現れた行がカラム名の行になる」。{@code 30a8271} 時点）。一方 YAML 記法では
+     * カラム名は {@code rows:} の先頭要素のキーで決まるため（{@code :819}）、0 件データ
+     * （{@code :836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」）には
+     * カラム名を書く場所が無い。{@code :1515} が定めるマーカーカラム（半角角括弧で囲むと
+     * 読み込み対象から除外される。{@code SETUP_TABLE}・{@code EXPECTED_TABLE}・{@code LIST_MAP} で
+     * 使える）を 1 つ置くことが、両方の明文を同時に満たす唯一の書き方である
+     * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19）。
+     * </p>
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsTableBlockWithoutColumnNames() {
+    @Test
+    public void writesMarkerColumnForZeroRowTableBlock() {
         // Given
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 Collections.<String>emptyList(), Collections.<List<String>>emptyList());
 
-        // When / Then
-        build(container("book", "sheet", table));
+        // When
+        Sheet sheet = build(container("book", "sheet", table)).getSheetAt(0);
+
+        // Then: 識別子行の次の行はマーカーカラム 1 つだけ
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T"));
+        assertThat(cell(sheet, 1, 0), is("[空]"));
+        assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
     }
 
     /**
-     * Given: カラム名を 1 件も持たない {@code LIST_MAP} ブロック。
+     * Given: カラム名を 1 件も持たない 0 件 {@code LIST_MAP} ブロック。
      * When : build。
-     * Then : IllegalArgumentException（番人はテーブル系・{@code LIST_MAP} の双方に効く。
-     *        {@code LIST_MAP} も {@code testdata_notation.rst:628}「1行目に {@code LIST_MAP=} に続けて
-     *        シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として
-     *        読み込む」のとおりキー行が構成上必須である）。
+     * Then : キーの行にマーカーカラム {@code [空]} を 1 つだけ書く。
+     *
+     * <p>
+     * {@code LIST_MAP} も {@code testdata_notation.rst:628}「1行目に {@code LIST_MAP=} に続けて
+     * シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として読み込む」の
+     * とおりキー行が構成上必須であり、{@code :1515} はマーカーカラムが {@code LIST_MAP} でも
+     * 使えることを明記している（{@code 30a8271} 時点）。
+     * </p>
      */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsListMapBlockWithoutColumnNames() {
+    @Test
+    public void writesMarkerColumnForZeroRowListMapBlock() {
         // Given
         ListMapBlock listMap = new ListMapBlock("", "lm",
                 Collections.<String>emptyList(), Collections.<List<String>>emptyList());
 
-        // When / Then
-        build(container("book", "sheet", listMap));
+        // When
+        Sheet sheet = build(container("book", "sheet", listMap)).getSheetAt(0);
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("LIST_MAP=lm"));
+        assertThat(cell(sheet, 1, 0), is("[空]"));
+        assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
     }
 
     /**
@@ -948,8 +970,8 @@ public class XlsFormatWriterTest {
     // ------------------------------------------------------------------ round-trip
 
     /** モデルを書き出し、実 {@link XlsFormatReader} で読み戻す。 */
-    private TestDataContainer roundTrip(String book, String sheet, TestDataBlock block) {
-        TestDataContainer container = container(book, sheet, block);
+    private TestDataContainer roundTrip(String book, String sheet, TestDataBlock... blocks) {
+        TestDataContainer container = container(book, sheet, blocks);
         new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
         return new XlsFormatReader().read(folder.getRoot().getAbsolutePath(), book + "/" + sheet);
     }
@@ -976,6 +998,73 @@ public class XlsFormatWriterTest {
         assertThat(actual.getColumnNames(), is(Arrays.asList("USER_NAME", "AGE")));
         assertThat(actual.getRows().get(0), is(Arrays.asList("${u}", "20")));
         assertThat(actual.getRows().get(1), is(Arrays.asList("alice", "")));
+    }
+
+    /**
+     * Given: 0 件テーブルの<b>直後に別のブロック</b>を置いた読み込み単位。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : ブロックは 2 件のまま。0 件テーブルは {@code columnNames} ／ {@code rows} とも 0 件に戻り、
+     *        後続ブロックは食われない。
+     *
+     * <p>
+     * XLS-27 の本題である。マーカーカラム案を採る前は、カラム名の行を書けないため後続ブロックの
+     * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。マーカーカラムは
+     * {@code testdata_notation.rst:1515}（{@code 30a8271} 時点）により読み込み対象から除外されるため、
+     * 読み戻したカラム名は 0 件に戻る。
+     * </p>
+     */
+    @Test
+    public void roundTripsZeroRowTableWithoutEatingNextBlock() {
+        // Given: 0 件テーブル → 後続テーブル
+        TableDataBlock empty = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "EMPTY_T",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+        TableDataBlock next = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "NEXT_T",
+                row("C1"), Collections.singletonList(row("v1")));
+
+        // When
+        List<TestDataBlock> blocks =
+                roundTrip("rt_zero_table", "s", empty, next).getSections().get(0).getBlocks();
+
+        // Then: 2 件のまま
+        assertThat(blocks.size(), is(2));
+        TableDataBlock first = (TableDataBlock) blocks.get(0);
+        assertThat(first.getIdentifier(), is("EMPTY_T"));
+        assertThat(first.getColumnNames().isEmpty(), is(true));
+        assertThat(first.getRows().isEmpty(), is(true));
+        TableDataBlock second = (TableDataBlock) blocks.get(1);
+        assertThat(second.getIdentifier(), is("NEXT_T"));
+        assertThat(second.getColumnNames(), is(Arrays.asList("C1")));
+        assertThat(second.getRows().get(0), is(Arrays.asList("v1")));
+    }
+
+    /**
+     * Given: 0 件 {@code LIST_MAP} の直後に別の {@code LIST_MAP} を置いた読み込み単位。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : ブロックは 2 件のまま。0 件側はカラム名・行とも 0 件に戻る。
+     */
+    @Test
+    public void roundTripsZeroRowListMapWithoutEatingNextBlock() {
+        // Given
+        ListMapBlock empty = new ListMapBlock("", "EMPTY_LM",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+        ListMapBlock next = new ListMapBlock("", "NEXT_LM",
+                row("K"), Collections.singletonList(row("v1")));
+
+        // When
+        List<TestDataBlock> blocks =
+                roundTrip("rt_zero_listmap", "s", empty, next).getSections().get(0).getBlocks();
+
+        // Then
+        assertThat(blocks.size(), is(2));
+        ListMapBlock first = (ListMapBlock) blocks.get(0);
+        assertThat(first.getIdentifier(), is("EMPTY_LM"));
+        assertThat(first.getColumnNames().isEmpty(), is(true));
+        assertThat(first.getRows().isEmpty(), is(true));
+        ListMapBlock second = (ListMapBlock) blocks.get(1);
+        assertThat(second.getIdentifier(), is("NEXT_LM"));
+        assertThat(second.getColumnNames(), is(Arrays.asList("K")));
+        assertThat(second.getRows().get(0), is(Arrays.asList("v1")));
     }
 
     /**

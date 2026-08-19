@@ -111,6 +111,12 @@ public class TableDataBlockTest {
         assertThat(sut.getColumnNames(), is(List.of("EmpName", "birth_Day")));
     }
 
+    /**
+     * カラム名 0 件かつ行 0 件は<b>正当な形</b>である。YAML の 0 件テーブル
+     * （{@code testdata_notation.rst:836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」。
+     * {@code 30a8271} 時点）はカラム名を書く場所を持たないため（{@code :819}）、
+     * 辺②が仕様適合入力からこの形を作る（{@code coverage/issues.md} <b>XLS-27</b>）。
+     */
     @Test
     public void カラムなし行なしを保持する() {
         // Given/When: 空のテーブル（カラム行・データ行とも空）
@@ -120,5 +126,43 @@ public class TableDataBlockTest {
         // Then
         assertThat(sut.getColumnNames().isEmpty(), is(true));
         assertThat(sut.getRows().isEmpty(), is(true));
+    }
+
+    /**
+     * XLS-21。<b>カラム名 0 件で「セルを持つ行」を抱えるブロックは生成できない。</b>
+     * {@code testdata_notation.rst:652}（{@code 30a8271} 時点）はテーブル系データを
+     * 「データタイプと識別子の値・カラム名・データ行という共通の構成を持つ」と定め、
+     * YAML はカラム名を {@code rows:} の先頭要素のキーで決める（{@code :819}）ため、
+     * 行があってカラム名が無い形は書けない。Excel も {@code :802} によりカラム名の行を省略できず、
+     * カラム名 0 件で行だけを書くと<b>データ行がカラム名へ昇格して値が消える</b>。
+     */
+    @Test
+    public void カラムなしでセルを持つ行を抱えるブロックは生成できない() {
+        // Given / When / Then
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                    List.of(), List.of(List.of("v1", "v2")));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(),
+                    containsString("カラム名を 1 件も持たないブロックはセルを持つデータ行を持てません"));
+        }
+    }
+
+    /**
+     * XLS-08 ／ YML-04。<b>カラム名 0 件でセルを 1 つも持たない行は拒否しない。</b>
+     * マーカーカラムだけのブロックが {@code testdata_notation.rst:1550}（{@code 30a8271} 時点）の
+     * 除外を受けるとこの形になり、辺①・辺②が仕様適合入力から実際に作る。値を持たないため
+     * 値の消失は起きない。
+     */
+    @Test
+    public void カラムなしでセルを持たない行は保持する() {
+        // Given / When
+        TableDataBlock sut = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                List.of(), List.of(List.of(), List.of()));
+
+        // Then
+        assertThat(sut.getColumnNames().isEmpty(), is(true));
+        assertThat(sut.getRows().size(), is(2));
     }
 }
