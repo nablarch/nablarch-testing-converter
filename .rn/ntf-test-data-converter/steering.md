@@ -1292,8 +1292,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-19
+- **Last completed**: #25.5 §6-B（`TestDataBlock` の生成時に `identifier` ＝ `null` を拒否。`836a2a4`）
+- **Next**: #25.5 §6-C の実装（`94b0fbe` の RED 3 件を GREEN にする）。以降 §6-D〜§6-G
+- **Notes**: §6 の一巡点検で要対応が 7 件増えた（全 52 件・要対応 23 ／ 対応不要 28 ／ 対象外 1）。件数を絞るかはユーザー未回答。残る手順は §6-C〜§6-G → XLS-27 の実測 → `inventory.md` のテスト件数の導出し直し → 実数の確定 → self-check とレビュー 3 種
