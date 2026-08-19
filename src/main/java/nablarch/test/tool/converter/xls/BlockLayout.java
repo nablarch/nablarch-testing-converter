@@ -114,7 +114,7 @@ final class BlockLayout {
      *       {@code EXPECTED_VARIABLE} / {@code EXPECTED_REQUEST_HEADER_MESSAGES} /
      *       {@code EXPECTED_REQUEST_BODY_MESSAGES} / {@code RESPONSE_HEADER_MESSAGES} /
      *       {@code RESPONSE_BODY_MESSAGES} → {@link Fill#HEADER_EXPECTED}</li>
-     *   <li>それ以外（{@code MESSAGE} / {@code LIST_MAP}（非 testShots）/ {@code DEFAULT}）
+     *   <li>それ以外（{@code MESSAGE} / {@code LIST_MAP}（非 testShots））
      *       → {@link Fill#HEADER_OTHER}</li>
      * </ul>
      *

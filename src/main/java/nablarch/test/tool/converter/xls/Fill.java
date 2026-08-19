@@ -14,7 +14,7 @@ enum Fill {
      * RESPONSE_HEADER_MESSAGES / RESPONSE_BODY_MESSAGES）。
      */
     HEADER_EXPECTED,
-    /** ヘッダ背景色（その他グループ：MESSAGE / LIST_MAP（非 testShots）/ DEFAULT）。 */
+    /** ヘッダ背景色（その他グループ：MESSAGE / LIST_MAP（非 testShots））。 */
     HEADER_OTHER,
     /** マーカーカラム背景色。 */
     MARKER

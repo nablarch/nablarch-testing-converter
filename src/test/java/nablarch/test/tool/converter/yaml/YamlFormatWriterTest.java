@@ -642,20 +642,6 @@ public class YamlFormatWriterTest {
     }
 
     @Test
-    public void serialize_unsupportedDataType_throws() {
-        // Given: セクションキーに写せない DataType.DEFAULT
-        TableDataBlock block = new TableDataBlock(DataType.DEFAULT, "", "T", list("C"), rows(row("1")));
-
-        // When / Then
-        try {
-            serialize(block);
-            fail("should throw");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("unsupported DataType"));
-        }
-    }
-
-    @Test
     public void write_ioError_throwsUncheckedIOException() throws Exception {
         // Given: 親に通常ファイルが居座る出力先（ディレクトリ作成不可）
         File file = folder.newFile("blocker");

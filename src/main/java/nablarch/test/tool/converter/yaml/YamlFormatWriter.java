@@ -537,6 +537,12 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     /**
      * {@link DataType} を YAML セクションキーへ写す（全種別）。
      *
+     * <p>
+     * {@code default:} は switch の網羅のために残しているだけで<b>到達しない</b>。写せないのは
+     * {@link DataType#DEFAULT} だけであり、{@code TestDataBlock} が生成時に拒否するようになったため
+     * ここへは届かない（{@code issues.md} <b>XLS-20</b>）。番人としては置いていない。
+     * </p>
+     *
      * @param type データ種別
      * @return セクションキー
      */

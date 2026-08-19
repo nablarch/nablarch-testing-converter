@@ -23,6 +23,16 @@ import nablarch.test.core.reader.DataType;
  * </p>
  *
  * <p>
+ * <b>{@code dataType} に {@link DataType#DEFAULT} を持たせてはならない。生成時点で拒否する。</b>
+ * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（{@code testdata_notation.rst:188-190}
+ * （{@code 30a8271} 時点）「フレームワーク内部用（通常は使用しない）」）、YAML のトップレベルキー
+ * 対応表（{@code :206-241}「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」）
+ * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は 4 辺すべてが
+ * 表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
+ * （{@code coverage/issues.md} <b>XLS-20</b>）。**根拠が「対応表に行が無い」という不在である点に注意。**
+ * </p>
+ *
+ * <p>
  * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>両リーダーは {@code null} を作らない
  * （辺①は {@code TestCoreReaderAdapter} がマーカー行でない行をブロックごと読み飛ばすため
  * {@code BlockHeader.groupId} が必ず非 null、辺②は {@code YamlFormatReader} が省略時に空文字を返す）。
@@ -44,12 +54,20 @@ public abstract sealed class TestDataBlock
     /**
      * コンストラクタ。
      *
-     * @param dataType   データ種別
+     * @param dataType   データ種別（{@link DataType#DEFAULT} 不可）
      * @param groupId    グループ ID（省略時は空文字。{@code null} 不可）
      * @param identifier ブロックの識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID）
-     * @throws IllegalArgumentException {@code groupId} が {@code null} の場合
+     * @throws IllegalArgumentException {@code groupId} が {@code null} の場合、
+     *                                  または {@code dataType} が {@link DataType#DEFAULT} の場合
      */
     protected TestDataBlock(DataType dataType, String groupId, String identifier) {
+        if (dataType == DataType.DEFAULT) {
+            throw new IllegalArgumentException(
+                    "データタイプ DEFAULT のデータブロックは作れません"
+                            + "（DEFAULT はフレームワーク内部用であり、YAML のトップレベルキー対応表に"
+                            + "対応する行が無いため YAML 形式では表現できません）。"
+                            + " グループ ID=[" + groupId + "] 識別子=[" + identifier + "]");
+        }
         if (groupId == null) {
             throw new IllegalArgumentException(
                     "グループ ID が null のデータブロックは作れません"

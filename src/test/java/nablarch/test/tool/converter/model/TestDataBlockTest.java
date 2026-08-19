@@ -79,6 +79,21 @@ public class TestDataBlockTest {
     }
 
     @Test
+    public void データタイプDEFAULTのブロックは生成できない() {
+        // Given: DEFAULT は記法のデータタイプ表に載っているが（notation:188-190「フレームワーク内部用
+        //        （通常は使用しない）」）、YAML のトップレベルキー対応表（notation:206-241）に行が無く、
+        //        YAML では表現できない。中間モデルの契約は 4 辺すべてが表現できる範囲で定める
+        // When
+        try {
+            new TableDataBlock(DataType.DEFAULT, "", "T", List.of("C1"), List.of(List.of("v1")));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("DEFAULT"));
+        }
+    }
+
+    @Test
     public void グループID省略は空文字で表しデフォルトグループとする() {
         // Given: 省略は空文字（notation:254「グループIDを省略した場合は、グループIDを持たない
         //        データブロック（デフォルトグループ）が対象になる」）

@@ -69,18 +69,15 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
  * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
- * （XLS-20〜XLS-23）として記録してある。<b>このうち XLS-22 は #25.5 の追加分で修正済み</b>であり、
- * フィールド 0 件のレコードレイアウトは辺③が書き出さずに弾くようになった。残る XLS-20／XLS-21／XLS-23 の
- * 実装（src/main）は変更していない。
+ * （XLS-20〜XLS-23）として記録してある。<b>このうち XLS-20・XLS-22 は #25.5 で修正済み</b>であり、
+ * フィールド 0 件のレコードレイアウトと {@code DataType.DEFAULT} のブロックは中間モデルが生成時に
+ * 拒否するようになった。残る XLS-21／XLS-23 の実装（src/main）は変更していない。
  * </p>
  *
  * <p>
- * <b>末尾 2 件だけは軸要素の担保ではない。</b>書き出したブックを {@link XlsFormatReader} で読み戻し、
- * {@code issues.md} の XLS-20／XLS-21 が主張する「読み戻すとどうなるか」を実検査する。
- * これらは辺③の担保としても辺①の担保としても数えない（steering Rules フェーズ2 の
- * 往復テストの扱いに従う）。置く理由は、この 3 件が無いと本体パーサの挙動が変わったときに
- * 上の担保テストは緑のまま {@code issues.md} の記述だけが誤りになるためである
- * （{@code XlsFormatWriterCellTypeTest} の末尾 2 件と同じ役割）。
+ * <b>読み戻しを実検査する末尾の 2 件は無くなった。</b>XLS-21 の 1 件は XLS-27 の番人で到達不能に
+ * なったため削除済み（{@code 57c1b0d}）、XLS-20 の 1 件は #25.5 §1-G で {@code DEFAULT} のブロックが
+ * 作れなくなったため削除した。
  * </p>
  *
  * @author kiyobot
@@ -191,42 +188,8 @@ public class XlsFormatWriterModelTest {
 
     // 1 行の取り出し（line）は XlsFixture の static メソッドを使う（本ファイル冒頭で static import）。
 
-    // ------------------------------------------------------------------ 軸A の欠け 3 件
-
-    /**
-     * Given: {@code DataType.DEFAULT} のテーブルブロック。
-     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
-     * Then : 識別セルが {@code DEFAULT=T} になり、例外にならずそのまま書き出される。
-     *        ヘッダ色はその他グループ（{@code HEADER_OTHER}）。
-     *
-     * <p>
-     * 担保する軸要素: A-01。{@code XlsFormatWriter#marker} は
-     * {@code getDataType().getName()} を連結するだけでタイプを絞らないため、辺③では
-     * {@code DEFAULT} も到達可能である。辺④（{@code YamlFormatWriter}）は同じ入力を
-     * {@code IllegalArgumentException: unsupported DataType} で弾く（{@code
-     * YamlFormatWriterTest#serialize_unsupportedDataType_throws}）。この非対称は
-     * {@code issues.md} の <b>XLS-20</b> に記録した（修正はしない）。
-     * </p>
-     */
-    @Test
-    public void writesDefaultDataTypeMarker() {
-        // Given
-        TableDataBlock table = new TableDataBlock(DataType.DEFAULT, "", "T",
-                row("C"), Collections.singletonList(row("v")));
-
-        // When
-        Sheet sheet = writeAndReopenSheet(container("defaultType", table));
-
-        // Then
-        assertThat("識別セルはデータタイプ名どおり（DEFAULT も弾かれない。issues.md XLS-20）",
-                line(sheet, 0), is(Arrays.asList("DEFAULT=T")));
-        assertThat(line(sheet, 1), is(Arrays.asList("C")));
-        assertThat(line(sheet, 2), is(Arrays.asList("v")));
-        // BlockLayout#headerFill は DEFAULT を既知グループのいずれにも入れず既定の HEADER_OTHER を返す
-        assertThat("ヘッダ色はその他グループ",
-                sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(),
-                is(ExcelFormatConfig.defaults().getOtherHeaderColorIndex()));
-    }
+    // ------------------------------------------------------------------ 軸A の欠け 2 件
+    // （3 件目の DataType.DEFAULT は #25.5 §1-G で中間モデルが生成時に拒否するようになり削除した）
 
     /**
      * Given: ディレクティブと 1 レコード（型・長さあり）を持つ {@code EXPECTED_FIXED} のファイルブロック。
@@ -564,41 +527,4 @@ public class XlsFormatWriterModelTest {
         assertThat(line(sheet, 3), is(Arrays.asList("", "5")));
         assertThat("データ行は書かれない", sheet.getRow(4), is(nullValue()));
     }
-
-    // ------------------------- issues.md の主張を腐らせないための読み戻し検査（軸要素の担保ではない）
-
-    /*
-     * 以下 2 件は軸A・軸C・軸E のどの要素の担保にも数えない（辺①の担保にも数えない）。
-     * 上の担保テストが固定しているのは「どんな版面が書かれるか」だけであり、
-     * 「その版面を読み戻すと何が起きるか」＝ issues.md の XLS-20／XLS-21 が主張している内容は
-     * 検査していない。本体パーサや PoiXlsReader の挙動が変われば、上のテストは緑のまま
-     * issues.md の記述だけが誤りになる。それを防ぐために読み戻しを実検査する。
-     */
-
-    /**
-     * Given: {@code DataType.DEFAULT} のブロックを書き出した実 {@code .xlsx}。
-     * When : {@link XlsFormatReader} で読み戻す。
-     * Then : ブロックが<b>黙って 1 件も無くなる</b>（例外も警告も無い）。
-     *
-     * <p>
-     * {@code issues.md} <b>XLS-20</b> の実検査。{@code TestCoreReaderAdapter} の
-     * {@code HeaderCollector#parse} が {@code DEFAULT} と判定した行を {@code continue} で読み飛ばすため、
-     * 辺③が書けるブロックが辺①で消える。
-     * </p>
-     */
-    @Test
-    public void dropsDefaultDataTypeBlockWhenReadBack() {
-        // Given
-        TableDataBlock table = new TableDataBlock(DataType.DEFAULT, "", "T",
-                row("C"), Collections.singletonList(row("v")));
-
-        // When
-        TestDataContainer read = writeAndReadBack(container("defaultTypeReadBack", table));
-
-        // Then
-        assertThat(read.getSections().size(), is(1));
-        assertThat("DEFAULT ブロックは読み戻すと消える（issues.md XLS-20）",
-                read.getSections().get(0).getBlocks().size(), is(0));
-    }
-
 }
