@@ -42,14 +42,24 @@ public final class ConverterFileFilter {
     /**
      * 入力ディレクトリ配下の Excel ブックファイルを列挙する。
      *
+     * <p>
+     * 変換対象になったブックごとに、同じディレクトリに拡張子違いの同名ブックが居ないことも検査する
+     * （{@link #requireNoSameNameBook(Path)}）。
+     * </p>
+     *
      * @param inputRoot 入力ルートディレクトリ
      * @param includes  取り込み glob（空なら全件）
      * @param excludes  除外 glob
      * @return 条件に合致するブックファイルのリスト（相対パス辞書順）
-     * @throws ConverterException 入力ディレクトリが存在しない場合
+     * @throws ConverterException 入力ディレクトリが存在しない場合、
+     *                            または拡張子違いの同名ブックが同居する場合
      */
     public static List<Path> findXlsFiles(Path inputRoot, List<String> includes, List<String> excludes) {
-        return find(inputRoot, includes, excludes, ConverterFileFilter::isXlsBook);
+        List<Path> books = find(inputRoot, includes, excludes, ConverterFileFilter::isXlsBook);
+        for (Path book : books) {
+            requireNoSameNameBook(book);
+        }
+        return books;
     }
 
     /**
@@ -133,6 +143,55 @@ public final class ConverterFileFilter {
             }
         }
         return false;
+    }
+
+    /**
+     * 変換対象ブックと同じディレクトリに、拡張子違いの同名ブックが居ないことを検証する。
+     *
+     * <p>
+     * 記法は「同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応し、
+     * 1 シートが読み込み単位に対応する」と定めており（{@code notation:44}。基準コミットは
+     * {@code nablarch-document} の {@code 30a8271}）、同名同居は想定されていない。
+     * </p>
+     *
+     * <p>
+     * 同居を通すと、本体 {@code PoiXlsReader#open}（{@code nablarch-testing} の
+     * {@code PoiXlsReader.java:62-65}）が {@code <名前>.xls} を先に解決するため、{@code .xlsx} を
+     * 対象にした読み取りでも中身は {@code .xls} から読まれ、{@code .xlsx} の内容は失われる。
+     * 上書き禁止（既定）でも「出力先が既に在る」としか分からず、出力先を消してやり直しても同じ結果になる。
+     * </p>
+     *
+     * <p>
+     * 判定は列挙結果どうしの突き合わせではなく、実ディスク上の隣接ファイルで行う。本体の解決は
+     * include／exclude を知らないため、片方を exclude で外しても読み違いは起きるからである。
+     * 逆に、変換対象にならなかったブックの同居は読み違いを起こさないので検査しない。
+     * </p>
+     *
+     * @param book 変換対象の Excel ブック
+     * @throws ConverterException 拡張子違いの同名ブックが同居する場合
+     */
+    private static void requireNoSameNameBook(Path book) {
+        Path dir = book.getParent();
+        if (dir == null) {
+            return;
+        }
+        String bookName = ConverterPathResolver.stripExtension(book.getFileName().toString());
+        List<Path> sameName = new ArrayList<>();
+        try (Stream<Path> entries = Files.list(dir)) {
+            entries.filter(ConverterFileFilter::isXlsBook)
+                   .filter(path -> bookName.equals(
+                           ConverterPathResolver.stripExtension(path.getFileName().toString())))
+                   .sorted()
+                   .forEach(sameName::add);
+        } catch (IOException e) {
+            // Files.list はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
+            throw new UncheckedIOException("failed to scan input directory: " + dir, e);
+        }
+        if (sameName.size() > 1) {
+            throw new ConverterException("same-name Excel books coexist: "
+                    + sameName.stream().map(Path::toString).collect(Collectors.joining(", "))
+                    + " (a test class corresponds to exactly one Excel book; remove or rename one of them)");
+        }
     }
 
     /**

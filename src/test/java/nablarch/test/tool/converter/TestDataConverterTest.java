@@ -390,6 +390,46 @@ public class TestDataConverterTest {
     }
 
     /**
+     * Given: 拡張子違いの同名ブックが同居する入力ディレクトリ・overwrite=true。
+     * When : XLS→YAML 変換。
+     * Then : ConverterException で止まり、出力を 1 本も作らない。
+     *
+     * <p>
+     * 記法は「同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応」と
+     * 定めており（{@code notation:44}）、同居は入口で止める。
+     * </p>
+     *
+     * <p>
+     * 本テストの {@code BookA.xls} は中身を持たない同居ファイルであり、修正前は
+     * {@code Your InputStream was neither an OLE2 stream, nor an OOXML stream} で落ちていた
+     * ——{@code .xlsx} を対象にした読み取りでも本体が {@code .xls} を先に開くことの直接証拠である。
+     * 両方が正しいブックのときに「戻り値 2・出力 1 本・中身は {@code .xls} 側・警告なし」となる実測は
+     * {@code issues.md} XLS-28 に記録がある。
+     * </p>
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenSameNameXlsAndXlsxCoexist() throws IOException {
+        // Given: BookA.xlsx は実ブック、BookA.xls は同居するだけの別ファイル
+        writeXls(oneTable("BookA", "data", sampleTable("USERS")), in);
+        Files.createFile(in.resolve("BookA.xls"));
+
+        // When / Then
+        try {
+            TestDataConverter.convert(new ConversionRequest.Builder()
+                    .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                    .inputPath(in).outputPath(out)
+                    .overwrite(true)
+                    .build());
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("same-name Excel books coexist:"), is(true));
+        }
+        assertThat(Files.exists(out.resolve("BookA")), is(false));
+    }
+
+    /**
      * Given: setup_files／expected_files ブロックを含む YAML コンテナ。
      * When : YAML→XLS 変換。
      * Then : Excel が生成され、読み戻すと固定長／可変長ブロックが再現される。
