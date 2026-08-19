@@ -109,6 +109,33 @@ public class TestDataBlockTest {
     }
 
     @Test
+    public void 識別子がnullのデータブロックは生成できない() {
+        // Given: 識別子は記法上の必須要素である（notation:198「データタイプ=識別子の値」）。
+        //        本体スキーマも $defs.table_data の required に table を含み、type: string としている
+        // When
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", null,
+                    List.of("id"), List.of(List.of("1")));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("識別子"));
+        }
+    }
+
+    @Test
+    public void 識別子が空文字のデータブロックは生成できる() {
+        // Given: 拒否するのは null だけである。空文字は Excel では id=[] として往復し、
+        //        YAML では table: "" となる（$defs.table_data.table に minLength は無い）
+        // When
+        TableDataBlock sut = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "",
+                List.of("id"), List.of(List.of("1")));
+
+        // Then
+        assertThat(sut.getIdentifier(), is(""));
+    }
+
+    @Test
     public void グループID省略は空文字で表しデフォルトグループとする() {
         // Given: 省略は空文字（notation:254「グループIDを省略した場合は、グループIDを持たない
         //        データブロック（デフォルトグループ）が対象になる」）

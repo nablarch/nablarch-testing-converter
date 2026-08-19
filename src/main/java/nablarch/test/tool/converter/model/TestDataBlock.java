@@ -23,6 +23,16 @@ import nablarch.test.core.reader.DataType;
  * </p>
  *
  * <p>
+ * <b>{@code identifier} は {@code null} であってはならない。生成時点で拒否する。</b>
+ * 識別子は記法上の必須要素である（{@code testdata_notation.rst:198}（{@code 30a8271} 時点）
+ * {@code データタイプ=識別子の値}）。本体スキーマ
+ * {@code nablarch/test/ntf-testdata-yaml-schema.json} も {@code $defs.table_data} の
+ * {@code required} に {@code table} を含め、{@code {"type": "string"}} としている。
+ * <b>空文字は拒否しない</b>（Excel は {@code id=[]} として往復し、YAML の {@code table: ""} は
+ * スキーマに適合する）。{@code coverage/issues.md} <b>XLS-35</b>。
+ * </p>
+ *
+ * <p>
  * <b>{@code dataType} は {@code null} であってはならない。生成時点で拒否する。</b>
  * データブロックは必ず 1 つのデータタイプを持つ。Excel 形式はマーカー
  * （{@code testdata_notation.rst:198}（{@code 30a8271} 時点）の {@code データタイプ=識別子の値}）、
@@ -65,10 +75,12 @@ public abstract sealed class TestDataBlock
      *
      * @param dataType   データ種別（{@code null} 不可。{@link DataType#DEFAULT} 不可）
      * @param groupId    グループ ID（省略時は空文字。{@code null} 不可）
-     * @param identifier ブロックの識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID）
+     * @param identifier ブロックの識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID。
+     *                   {@code null} 不可）
      * @throws IllegalArgumentException {@code dataType} が {@code null} または
      *                                  {@link DataType#DEFAULT} の場合、
-     *                                  または {@code groupId} が {@code null} の場合
+     *                                  または {@code groupId} ／ {@code identifier} が
+     *                                  {@code null} の場合
      */
     protected TestDataBlock(DataType dataType, String groupId, String identifier) {
         if (dataType == null) {
@@ -92,6 +104,13 @@ public abstract sealed class TestDataBlock
                             + "（Excel 記法・YAML 記法とも null と空文字を区別できないため、"
                             + "省略は空文字で表します）。"
                             + " データ種別=[" + dataType + "] 識別子=[" + identifier + "]");
+        }
+        if (identifier == null) {
+            throw new IllegalArgumentException(
+                    "識別子が null のデータブロックは作れません"
+                            + "（識別子は記法上の必須要素です。Excel 形式は「データタイプ=識別子の値」、"
+                            + "YAML 形式は table ／ path ／ id といった必須キーで表します）。"
+                            + " データ種別=[" + dataType + "] グループ ID=[" + groupId + "]");
         }
         this.dataType = dataType;
         this.groupId = groupId;
