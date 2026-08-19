@@ -334,11 +334,11 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * 前提崩れとして即座に失敗させる（{@link XlsFormatReader} の番人と同じ思想）。
      * </p>
      * <p>
-     * フィールド 0 件のレコードレイアウトも同じ思想で弾く。フィールドが無いと名前行がレコード種別セル
-     * 1 個だけになり、本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない
-     * （{@code coverage/issues.md} <b>XLS-22</b>）。そもそもフィールドを持たないレコードレイアウトは
-     * Excel 記法に存在しない形であり（{@code testdata_notation.rst:888}）、
-     * {@link RecordLayout} の契約としても 1 件以上を要求する。
+     * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>Excel 記法に存在しない形であり
+     * （{@code testdata_notation.rst:888}（{@code 30a8271} 時点）。フィールドが無いと名前行がレコード種別
+     * セル 1 個だけになり、本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない。
+     * {@code coverage/issues.md} <b>XLS-22</b>）、{@link RecordLayout} が<b>生成時点で拒否する</b>ため
+     * ここへは届かない（番人の移設は 2026-08-19）。
      * </p>
      * <p>
      * データ型が {@code null} のフィールド定義も同じ思想で弾く。Excel 記法はフィールド名称・データ型の
@@ -369,20 +369,14 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param fixed      固定長（長さ行を持つ）なら真
      * @param sendSync   送信系（データ行の列 0 に no を置く）なら真
      * @param identifier 識別子（診断メッセージ用）
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、または {@code fixed} が真で
-     *                                  フィールド長が {@code null} のフィールド定義が含まれる場合
+     * @throws IllegalArgumentException {@code fixed} が真でフィールド長が {@code null} の
+     *                                  フィールド定義が含まれる場合
      * @throws IllegalStateException    2 レコード目以降のレコード種別が空の場合
      */
     private void appendRecords(BlockLayout l, List<RecordLayout> records,
                                boolean fixed, boolean sendSync, String identifier) {
         for (int i = 0; i < records.size(); i++) {
             RecordLayout record = records.get(i);
-            if (record.getFields().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "フィールドを持たないレコードレイアウトは書き出せません"
-                                + "（名前行がレコード種別セル 1 個だけになり本体パーサが読み戻せません）。"
-                                + " identifier=[" + identifier + "] レコード番号=" + i);
-            }
             for (FieldDef field : record.getFields()) {
                 // 名称・データ型の null は FieldDef の生成時に拒否済みのため、ここでは検査しない
                 if (fixed && field.getLength() == null) {

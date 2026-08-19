@@ -110,6 +110,31 @@ final class ModelPreconditions {
     }
 
     /**
+     * リストが<b>1 件以上</b>であることを検査する。
+     *
+     * <p>
+     * 現在の呼び出し元は {@link RecordLayout} のフィールド定義群だけである。
+     * {@code testdata_notation.rst:888}（{@code 30a8271} 時点）はファイルデータの記述時エラーとして
+     * 「フィールド名称リストまたはデータ型リストが未指定または<b>空である</b>」を挙げ、
+     * 本体スキーマ {@code $defs.record_fragment} は {@code fields} を必須かつ {@code minItems} ＝ 1 とする。
+     * したがってフィールド 0 件のレコードレイアウトは<b>どちらの記法にも存在しない形</b>であり、
+     * 生成時点で拒否する（{@code coverage/issues.md} <b>XLS-22</b> ／ <b>YML-12</b> の 3 形目。
+     * もとは辺③④の書き出し側に置いていたが、2026-08-19 に生成時へ移した）。
+     * </p>
+     *
+     * @param label 呼び出し側が例外メッセージに出す項目名
+     * @param list  検査対象
+     * @throws IllegalArgumentException {@code list} が空の場合
+     */
+    static void requireNotEmpty(String label, List<?> list) {
+        if (list.isEmpty()) {
+            throw new IllegalArgumentException(
+                    label + "は 1 件以上必要です"
+                            + "（記法はフィールドを持たないレコードレイアウトを認めていません）。");
+        }
+    }
+
+    /**
      * データ行の要素数が<b>上限件数以下</b>であることを検査する。<b>不足は通す。</b>
      *
      * <p>

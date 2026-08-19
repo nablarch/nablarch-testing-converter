@@ -494,40 +494,6 @@ public class YamlFormatWriterTest {
                 + "        rows: []\n"));
     }
 
-    /**
-     * Given: フィールドを 1 件も持たないレコードレイアウトのファイルブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（フィールド 0 件のレコードレイアウトは YAML スキーマ
-     *        （{@code $defs.record_fragment.fields.minItems} ＝ 1）が認めない形であり、
-     *        書き出しても読み戻せないため、黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_recordWithoutFieldsInFileBlock_rejected() {
-        // Given
-        RecordLayout empty = new RecordLayout(null, new ArrayList<FieldDef>(), rows(row("v")));
-        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(empty));
-
-        // When / Then
-        serialize(block);
-    }
-
-    /**
-     * Given: フィールドを 1 件も持たないレコードレイアウトのメッセージブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_recordWithoutFieldsInMessageBlock_rejected() {
-        // Given
-        RecordLayout empty = new RecordLayout(null, new ArrayList<FieldDef>(), rows(row("v")));
-        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                directives(), directives(), Collections.singletonList(empty));
-
-        // When / Then
-        serialize(block);
-    }
-
     @Test
     public void serialize_rowShorterThanColumns_fillsMissingWithNull() {
         // Given: カラム 2 列に対し値 1 つだけの行（不足分は null 補完）

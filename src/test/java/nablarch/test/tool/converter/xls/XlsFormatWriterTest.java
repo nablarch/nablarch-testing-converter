@@ -142,6 +142,33 @@ public class XlsFormatWriterTest {
     }
 
     /**
+     * Given: カラム 2 列に対し値 1 つだけのデータ行を持つ SETUP_TABLE。
+     * When : build。
+     * Then : 足りない列は<b>空セル</b>で埋められ、行はブロック幅どおり 2 列になる。
+     *
+     * <p>
+     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）は「データ行のセル数（Excel形式）……が
+     * フィールド数より少ない場合、不足したフィールドは {@code ""} として補完される」と定めており、
+     * <b>不足側は正当な形</b>である（余りの側だけが XLS-41 の番人で落ちる）。
+     * 辺④の同じ担保は {@code YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull}。
+     * </p>
+     *
+     * <p>担保する軸要素: D（値の表現）——不足セルの補完。</p>
+     */
+    @Test
+    public void writesEmptyCellsForRowShorterThanBlockWidth() {
+        // Given: カラム 2 列・値 1 つの行
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "SHORT",
+                row("A", "B"), Collections.singletonList(row("x")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then: 不足分は空セルで埋まる（行はブロック幅どおり 2 列）
+        assertThat(line(sheet, 2), is(Arrays.asList("x", "")));
+    }
+
+    /**
      * Given: 1カラムテーブル（META行の値は1セル）。
      * When : build。
      * Then : META行（row 0）は値を持つセルのみ生成される（空の末尾セルは作られない）。
@@ -349,41 +376,6 @@ public class XlsFormatWriterTest {
 
         // When / Then
         build(container("book", "sheet", file));
-    }
-
-    /**
-     * Given: フィールドを 1 件も持たないレコードレイアウトの固定長ファイル。
-     * When : build。
-     * Then : IllegalArgumentException（フィールド 0 件のレコードレイアウトは Excel 記法として存在しない形で
-     *        あり、書き出しても本体パーサが読み戻せないため、黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsRecordWithoutFieldsInFileBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", file));
-    }
-
-    /**
-     * Given: フィールドを 1 件も持たないレコードレイアウトのメッセージブロック。
-     * When : build。
-     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsRecordWithoutFieldsInMessageBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.<FieldDef>emptyList(), Collections.singletonList(row("v")));
-        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                map(), map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", message));
     }
 
     /**

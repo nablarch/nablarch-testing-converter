@@ -68,10 +68,10 @@ import org.junit.rules.TemporaryFolder;
  * 辺④からだけ作れる。{@code issues.md} <b>YML-12</b> に記録した。
  * <b>ただし 4 形すべて #25.5 で修正済み</b>で、辺④が書き出さずに弾くようになったため
  * 本クラスには 1 つも残っていない。番人は
- * {@code YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected} ／
- * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected}（3 形目）／
- * {@code #serializeMessage_withoutRecords_rejected} ／
+ * {@code YamlFormatWriterTest#serializeMessage_withoutRecords_rejected} ／
  * {@code #serializeSendSync_withoutRecords_rejected}（2 形目 —— 電文の {@code records} 空）が担保する。
+ * <b>3 形目（{@code fields} 空）は辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * （{@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない}。{@code issues.md} <b>XLS-22</b>）。
  * <b>4 形目（{@code FieldDef.type} 省略）だけは辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
  * （{@code FieldDefTest#データ型がnullのフィールド定義は生成できない}。方針は {@code steering.md} Decisions
  * 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。

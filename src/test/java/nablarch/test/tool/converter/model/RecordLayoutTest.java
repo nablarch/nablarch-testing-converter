@@ -34,6 +34,45 @@ public class RecordLayoutTest {
         assertThat(sut.getRows(), is(sameInstance(rows)));
     }
 
+    /**
+     * XLS-22 ／ YML-12 の 3 形目。フィールドを 1 件も持たないレコードレイアウトは生成できない。
+     * {@code testdata_notation.rst:888}（{@code 30a8271} 時点）は「フィールド名称リストまたは
+     * データ型リストが未指定または空である」を記述時のエラーに挙げ、本体スキーマ
+     * {@code $defs.record_fragment} は {@code fields} を必須かつ {@code minItems} ＝ 1 とする。
+     *
+     * <p>
+     * <b>データ行も 0 件で確かめる。</b>データ行が 1 件でもあると XLS-41 の番人
+     * （行の要素数 ≦ フィールド定義の件数）が先に落とすため、フィールド 0 件そのものを
+     * 突いたことにならない。
+     * </p>
+     */
+    @Test
+    public void フィールドを1件も持たないレコードは生成できない() {
+        // Given / When / Then: フィールド 0 件・データ行 0 件
+        try {
+            new RecordLayout("data", List.of(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド定義は 1 件以上必要です"));
+        }
+    }
+
+    /**
+     * XLS-22 ／ YML-12 の 3 形目。レコード種別が {@code null}（省略）でも、
+     * フィールド 0 件なら同じく生成できない。
+     * もとの番人は辺③④の書き出し側にあり、レコード種別の有無で分岐していなかった。
+     */
+    @Test
+    public void レコード種別を省略してもフィールド0件のレコードは生成できない() {
+        // Given / When / Then
+        try {
+            new RecordLayout(null, List.of(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド定義は 1 件以上必要です"));
+        }
+    }
+
     @Test
     public void フィールド名称が重複したレコードは生成できない() {
         // Given: notation:887「同一レコード種別内でフィールド名称が重複している」は記述時のエラー（XLS-40）
@@ -152,15 +191,25 @@ public class RecordLayoutTest {
         assertThat(sut.getRows().get(0).get(1), is(nullValue()));
     }
 
+    /**
+     * レコード種別の省略は {@code null} のまま保持し、デフォルト補完しない。
+     *
+     * <p>
+     * <b>入力のフィールド定義を 0 件から 1 件へ書き直した（XLS-22・2026-08-19）。</b>
+     * フィールド 0 件のレコードレイアウトは記法に存在しない形であり生成時に拒否するようにしたため、
+     * 0 件のままでは本テストの意図（レコード種別の保持）に届く前に落ちる。
+     * 番人を緩めるのではなく入力を記法どおりの形へ直す扱いは、§1-C ／ YML-12 ／ XLS-43 と同じである。
+     * </p>
+     */
     @Test
     public void レコード種別省略をnullで保持する() {
         // Given: record_type 省略
         // When
-        RecordLayout sut = new RecordLayout(null, List.of(), List.of());
+        RecordLayout sut = new RecordLayout(null, List.of(new FieldDef("id", "数値", "5")), List.of());
 
         // Then: デフォルト補完せず null のまま
         assertThat(sut.getRecordType(), is(nullValue()));
-        assertThat(sut.getFields().isEmpty(), is(true));
+        assertThat(sut.getFields().size(), is(1));
         assertThat(sut.getRows().isEmpty(), is(true));
     }
 }

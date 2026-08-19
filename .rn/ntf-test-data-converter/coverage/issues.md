@@ -1097,7 +1097,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 
 | 入力（中間モデル） | #25.5 前に書き出されていた版面 | #25.5 前の読み戻し | 担保テスト |
 |---|---|---|---|
-| `SETUP_FIXED=f.dat`／`RecordLayout("data", fields=[], rows=[[v]])` | 識別行／名前行 `data`, 空セル／型行 空セル 2 個／長さ行 空セル 2 個／データ行 空セル, `v` | `IllegalStateException: can't get data. …` ← 原因 `IllegalStateException: directive or data names row must have two columns at least. [data]` | **#25.5 後**は書き出し自体が `IllegalArgumentException` になる: `XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock`／`#rejectsRecordWithoutFieldsInMessageBlock` |
+| `SETUP_FIXED=f.dat`／`RecordLayout("data", fields=[], rows=[[v]])` | 識別行／名前行 `data`, 空セル／型行 空セル 2 個／長さ行 空セル 2 個／データ行 空セル, `v` | `IllegalStateException: can't get data. …` ← 原因 `IllegalStateException: directive or data names row must have two columns at least. [data]` | **#25.5 後**は中間モデルの**生成自体**が `IllegalArgumentException` になる: `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない`／`#レコード種別を省略してもフィールド0件のレコードは生成できない` |
 
 **上表の版面・読み戻しは #25.5 前の実測である**（プローブ実行 2026-08-13）。修正後はこの版面自体が
 書き出されないため、当時の担保テスト（`XlsFormatWriterModelTest#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`
@@ -1130,6 +1130,8 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   `XlsFormatWriter#appendRecords` が `IllegalArgumentException` で弾くようにした。
   **辺④の同じ形は YML-12 の 3 形目**（`record_fragment.fields` 空）であり、同じコミットで
   `YamlFormatWriter#emitRecords` にも同じ番人を置いた。
+  **その後 2026-08-19 に、番人を辺③④から `RecordLayout` のコンストラクタへ移した**（下の引用ブロックの
+  【2026-08-19 追記】が言う「未実施」の作業。詳細は下の「番人の移設（2026-08-19）」）。
 
 > **`RecordLayout` のコンストラクタには番人を置かない（2026-08-18・ユーザー確定）。**
 > `fields` 空の検査を中間モデル側（コンストラクタ）で行う案を検討したうえで却下した。
@@ -1150,9 +1152,39 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 > 出口で落とすのは、持ってはいけない値を中間モデルが持てる状態をそのまま残す暫定対応である、
 > というのがユーザーの判断である。理由 2（実測）は形の妥当性ではなく当時の測り方の話であり、
 > 番人テストが空振りになるのは検査点が生成時へ移ったことの当然の帰結である。
-> **ただし `RecordLayout.fields` 空の番人を実際にコンストラクタへ移す作業は未実施**であり、
-> 2026-08-19 時点では `XlsFormatWriter#appendRecords`／`YamlFormatWriter#emitRecords` に残っている
-> （寄せる範囲がユーザー判断待ちのため。冒頭の集計欄を参照）。
+> **2026-08-19 に移設を実施した。** 下の「番人の移設（2026-08-19）」を参照。
+> 理由 2 が予測した「辺③④の番人テスト 4 件が空振りになる」は、移設前の時点で**すでに起きていた**
+> （§6-G で `RecordLayout` に XLS-41 の番人を入れたため。実測は下記）。
+
+**番人の移設（2026-08-19・実測）**
+
+`XlsFormatWriter#appendRecords` ／ `YamlFormatWriter#emitRecords` にあったフィールド 0 件の番人を外し、
+`RecordLayout` のコンストラクタ（`ModelPreconditions#requireNotEmpty`）へ移した。
+判断の型は「**明文に反する状態を中間モデルが持てるなら、生成時に拒否する**」（ユーザー確定・2026-08-19）である。
+明文は上の判定欄と同じ（Excel は `notation:888`、YAML は `$defs.record_fragment.fields.minItems` ＝ 1）。
+
+- **移設前、辺③④の番人テスト 4 件は空振りになっていた。** `XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock`
+  ／`#rejectsRecordWithoutFieldsInMessageBlock` ／ `YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected`
+  ／`#serialize_recordWithoutFieldsInMessageBlock_rejected` の 4 件はいずれも
+  `new RecordLayout("data", emptyList(), singletonList(row("v")))` を入力にしており、
+  **§6-G（XLS-41）でコンストラクタに入れた「行の要素数 ≦ フィールド定義の件数」の番人が先に落とす**。
+  4 件とも `@Test(expected = IllegalArgumentException.class)` で例外の型しか見ていないため、
+  **緑のまま辺③④の番人へ到達していなかった**。実測（`target/classes` に対する直接実行）:
+
+  ```
+  生成時に落ちた: データ行の 1 件目の要素数 1 がフィールド定義の件数 0 を超えています（記法は値の不足だけを認め、余りの値を書く場所がありません）。
+  0件フィールド＋0件行: 生成できた
+  ```
+
+  JaCoCo でも裏が取れる。移設前の未到達は `XlsFormatWriter.java:380-381` ／ `YamlFormatWriter.java:354-358`
+  （＝フィールド 0 件の番人そのもの）であった。
+- **移設後の担保テストはデータ行も 0 件で書く。** データ行が 1 件でもあると XLS-41 の番人が先に落とし、
+  フィールド 0 件そのものを突いたことにならないためである。
+- **既存テスト 1 件の入力を書き直した。** `RecordLayoutTest#レコード種別省略をnullで保持する` は
+  フィールド 0 件の `RecordLayout` を組んでいたので、フィールド 1 件へ直した（番人を緩めるのではなく
+  入力を記法どおりの形へ直す扱い。§1-C ／ YML-12 ／ XLS-43 と同じ）。
+- 削除したテスト 4 件・追加したテスト 2 件・書き直したテスト 1 件。
+  移設後の全件実行は `Tests run: 598, Failures: 0, Errors: 0, Skipped: 2`。
 
 ### XLS-23 セクション 0 件のコンテナから、シートを 1 枚も持たない `.xlsx` が黙って書き出される（影響度 低・記録のみ）
 
@@ -2194,7 +2226,7 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 |---|---|---|---|
 | `FileDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない ／ **#25.5 後**: `records: []` が出る | **#25.5 前**: `required` ／ `$.setup_files[0]` ／ **#25.5 後**: 読み戻せる（違反なし） | 記法: `writesEmptyRecordsListForFileBlockWithoutRecords`（旧名 `writesFileBlockWithoutRecordsKeyWhenRecordsAreEmpty`） ／ 読み戻し: `readsBackFileBlockWithEmptyRecords`（旧名 `failsToReadBackFileBlockWithoutRecords`） |
 | `MessageDataBlock.records` が空 | **#25.5 前**: `records:` キーごと出ない（`id:` だけになる） ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `required` ／ `$.messages[0]` | 番人: `YamlFormatWriterTest#serializeMessage_withoutRecords_rejected`／`#serializeSendSync_withoutRecords_rejected`（旧 `failsToReadBackMessageBlockWithoutRecords` と旧 `serializeMessage_emptyBody_emitsIdOnly` は削除）。辺③側は `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords`／`#rejectsSendSyncMessageBlockWithoutRecords`（旧 `XlsFormatWriterModelTest#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` は削除）。境界＝ファイルブロックの 0 件は合法であることは `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` ／ `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` が担保 |
-| `RecordLayout.fields` が空 | **#25.5 前**: `fields: []` が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `minItems` ／ `$.setup_files[0].records[0].fields` | 番人: `YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected`／`#serialize_recordWithoutFieldsInMessageBlock_rejected`（旧 `failsToReadBackRecordWithoutFields` と旧 `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` は削除） |
+| `RecordLayout.fields` が空 | **#25.5 前**: `fields: []` が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `minItems` ／ `$.setup_files[0].records[0].fields` | 番人: `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない`（**2026-08-19 に辺④の番人から中間モデルの生成時拒否へ移した**。XLS-22「番人の移設」参照。旧 `failsToReadBackRecordWithoutFields` と旧 `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` は削除） |
 | `FieldDef.type` が `null` | **#25.5 前**: `{name: "c1"}`（`type` を省略）が出る ／ **#25.5 後**: 書き出し自体が `IllegalArgumentException` になる | **#25.5 前**: `required` ／ `$.expected_files[0].records[0].fields[0]` | 番人: `YamlFormatWriterTest#serialize_fieldWithNullTypeInFileBlock_rejected`／`#serialize_fieldWithNullTypeInMessageBlock_rejected`（旧 `failsToReadBackFieldWithoutType` と旧 `serialize_fieldWithNullType_omitsType` は削除。境界＝空文字は弾かないことは `#serialize_fieldWithEmptyType_emitsEmptyType` が担保） |
 
 - 原因（**#25.5 前**）: 直列化は中間モデルの形をそのまま写していた（`emitRecords` は空なら `records:` を出さず、
@@ -2274,6 +2306,9 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   根拠は XLS-22 と同じ「中間モデルの契約の穴」である——フィールド 0 件のレコードレイアウトは
   Excel 記法にも YAML 記法にも存在しない形であり、両形式が表現できない値を中間モデルだけが
   保持できていた。`YamlFormatWriter#emitRecords` が `IllegalArgumentException` で弾くようにした。
+  **その後 2026-08-19 に、番人を辺③④から `RecordLayout` のコンストラクタへ移した**
+  （XLS-22 の「番人の移設（2026-08-19・実測）」を参照。移設前の 4 件の番人テストは
+  XLS-41 の番人に先に落とされて空振りになっていた）。
   **4 形目（`field_def.type` 省略）も要対応へ倒し、#25.5 で修正済み**（`f80c192`）。根拠は
   記法とスキーマの明文である——`notation:883`
   「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり…
@@ -2321,7 +2356,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   `emitFile` は `records: []` を出す正当な経路だからである（この番人を置いたことで `emitRecords` に
   空が入るのはファイル経路だけになり、`emitEmptyList` 引数は到達不能な分岐ごと削った）。
 
-  4 形すべての修正はいずれも本リポジトリ内で完結した（1・3 形目は `YamlFormatWriter` のみ、
+  4 形すべての修正はいずれも本リポジトリ内で完結した（1 形目は `YamlFormatWriter` のみ、
+  3 形目は当初 `YamlFormatWriter` のみ・2026-08-19 に `RecordLayout` へ移設、
   2 形目は `MessageDataBlock` の Javadoc と `XlsFormatWriter` ／ `YamlFormatWriter`、
   4 形目は `FieldDef` の Javadoc と `XlsFormatWriter` ／ `YamlFormatWriter`）。
 
@@ -3783,6 +3819,14 @@ java.lang.AssertionError: 反映されない値がある入力は読み込みが
 **#25.5 で直したのは YML-12 の 4 形すべて（1 形目＝ファイルブロックの `records` 欠落／
 2 形目＝メッセージブロックの `records` 欠落／3 形目＝`fields` 欠落／4 形目＝`FieldDef.type` 欠落）、
 および XLS-22 である。**
+
+**別の型として「空振りテスト」が 4 本あった（2026-08-19 に解消）。** 緑の嘘とは違い、固定している対象は
+仕様どおりだが、**番人へ到達する前に別の番人が落とすため、狙った番人を 1 度も通っていない**テストである。
+XLS-22 のフィールド 0 件の番人テスト 4 本がそれで、§6-G（XLS-41）でコンストラクタに
+「行の要素数 ≦ フィールド定義の件数」の番人を入れた時点から空振りになっていた
+（4 本とも `@Test(expected = IllegalArgumentException.class)` で例外の型しか見ておらず、緑のままだった）。
+**検出は JaCoCo である**——番人の行が未到達として残る。詳細と実測は XLS-22 の
+「番人の移設（2026-08-19・実測）」にある。
 
 残置が 0 本であることは、次のコマンドで確かめられる（削除した 4 本が `src/test` に存在しないことを示す）。
 

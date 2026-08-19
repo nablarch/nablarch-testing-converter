@@ -302,10 +302,10 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。
      * </p>
      * <p>
-     * フィールド 0 件のレコードレイアウトは書き出さずに弾く。{@code $defs.record_fragment} は
-     * {@code fields} を必須かつ {@code minItems} ＝ 1 とするため、どう書いても読み戻せないからである
-     * （{@code coverage/issues.md} <b>YML-12</b> の 3 形目。辺③の同じ形は <b>XLS-22</b>）。
-     * {@link RecordLayout} の契約としてもフィールドは 1 件以上である。
+     * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>{@code $defs.record_fragment} は
+     * {@code fields} を必須かつ {@code minItems} ＝ 1 とするため、どう書いても読み戻せない形だが
+     * （{@code coverage/issues.md} <b>YML-12</b> の 3 形目。辺③の同じ形は <b>XLS-22</b>）、
+     * {@link RecordLayout} が<b>生成時点で拒否する</b>ためここへは届かない（番人の移設は 2026-08-19）。
      * </p>
      * <p>
      * データ型が {@code null} のフィールド定義も同じ思想で弾く。{@code $defs.field_def} は
@@ -339,8 +339,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param parent         親エントリ
      * @param records        レコードレイアウト群
      * @param lengthRequired フィールド長が必須（固定長ファイル・電文）なら真。可変長ファイルなら偽
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、または {@code lengthRequired} が
-     *                                  真でフィールド長が {@code null} のフィールド定義が含まれる場合
+     * @throws IllegalArgumentException {@code lengthRequired} が真でフィールド長が {@code null} の
+     *                                  フィールド定義が含まれる場合
      */
     private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
                              boolean lengthRequired) {
@@ -351,12 +351,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header("records");
         int recordLevel = parent.childLevel();
         for (RecordLayout record : records) {
-            if (record.getFields().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "フィールドを持たないレコードレイアウトは書き出せません"
-                                + "（$defs.record_fragment.fields は minItems = 1 のため読み戻せません）。"
-                                + " record_type=[" + record.getRecordType() + "]");
-            }
             for (FieldDef field : record.getFields()) {
                 // 名称・データ型の null は FieldDef の生成時に拒否済みのため、ここでは検査しない
                 if (lengthRequired && field.getLength() == null) {
@@ -562,6 +556,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             case RESPONSE_HEADER_MESSAGES:         return YamlSection.KEY_RESPONSE_HEADER_MESSAGES;
             case RESPONSE_BODY_MESSAGES:           return YamlSection.KEY_RESPONSE_BODY_MESSAGES;
             default:
+                // 到達不能。DEFAULT は TestDataBlock が生成時に拒否し（issues.md XLS-20）、
+                // 残る 13 個の DataType は上ですべて分岐しているため。DataType が増えたときの安全網として残す。
                 throw new IllegalArgumentException("unsupported DataType: " + type);
         }
     }

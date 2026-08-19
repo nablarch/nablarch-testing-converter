@@ -49,9 +49,9 @@ import org.junit.rules.TemporaryFolder;
  *       C-13 {@code MessageDataBlock.directives} 値あり／C-15 {@code MessageDataBlock.records} 空／
  *       C-18 {@code RecordLayout.rows} 空。
  *       <b>C-17（{@code RecordLayout.fields} 空）は本クラスの対象から外した。</b>
- *       {@link RecordLayout} の契約が 1 件以上を要求するようになり、辺③は書き出さずに弾く
- *       （番人は {@code XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock} ／
- *       {@code #rejectsRecordWithoutFieldsInMessageBlock} が担保する。{@code issues.md} XLS-22）</li>
+ *       {@link RecordLayout} が<b>生成時点で</b>フィールド 0 件を拒否するため、辺③へ届かない
+ *       （番人は {@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない} が担保する。
+ *       {@code issues.md} XLS-22）</li>
  *   <li><b>軸E 3 件</b>: E-1(0 件)＝セクション内ブロック数 0／E-2(0 件)＝ブロック内行数 0／
  *       E-3(0 件)＝ファイル内レコードレイアウト数 0</li>
  * </ul>
