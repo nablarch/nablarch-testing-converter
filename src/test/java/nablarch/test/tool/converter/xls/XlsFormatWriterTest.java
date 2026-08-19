@@ -966,9 +966,9 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: 型・長さが空文字のフィールドと値が null のディレクティブを持つ固定長ファイル。
+     * Given: 型・長さが空文字のフィールドと、値が空文字のディレクティブを持つ固定長ファイル。
      * When : build。
-     * Then : 省略は空セルとして書かれる（{@code null} → 空文字。データ行の null とは区別）。
+     * Then : 省略は空セルとして書かれる（データ行の null とは区別）。
      *
      * <p>
      * 番人の境界も兼ねる。弾くのはデータ型・フィールド長が {@code null} の場合だけであり、
@@ -982,6 +982,13 @@ public class XlsFormatWriterTest {
      * XLS-30 の不具合そのものを緑で固定していたため、番人と両立しない
      * （型を {@code null} から空文字へ書き直した YML-12 4 形目のときと同じ扱い）。
      * </p>
+     *
+     * <p>
+     * <b>ディレクティブの値も #25.5 §6-H（2026-08-19。XLS-43）で {@code null} から空文字へ書き直した。</b>
+     * {@link FileDataBlock} がディレクティブの値の {@code null} を生成時に拒否するようになったため、
+     * この入力はもう作れない。<b>空文字は拒否しない</b>ので、空セルとして書かれることの担保は
+     * 空文字入力で続けられる。
+     * </p>
      */
     @Test
     public void writesOmittedMetaAndFieldAsEmpty() {
@@ -990,7 +997,7 @@ public class XlsFormatWriterTest {
                 Collections.singletonList(new FieldDef("f1", "", "")),
                 Collections.singletonList(row("v")));
         Map<String, String> directives = new LinkedHashMap<String, String>();
-        directives.put("text-encoding", null);
+        directives.put("text-encoding", "");
         FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
                 FileDataBlock.FileType.FIXED, directives, Collections.singletonList(record));
 
@@ -998,7 +1005,7 @@ public class XlsFormatWriterTest {
         Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
 
         // Then
-        // ディレクティブ値 null → 空セル
+        // ディレクティブ値 空文字 → 空セル
         assertThat(cell(sheet, 1, 0), is("text-encoding"));
         assertThat(cell(sheet, 1, 1), is(""));
         // 型・長さ 空文字 → 空セル

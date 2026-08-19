@@ -66,23 +66,46 @@ final class ModelPreconditions {
     }
 
     /**
-     * Map が {@code null} でないことを検査する。
+     * Map とその<b>キー・値</b>が {@code null} でないことを検査する。
      *
      * <p>
-     * <b>キー・値の {@code null} は検査しない。</b>ディレクティブ値が {@code null} のブロックは
-     * 辺③が空セルとして書き出すため {@code NullPointerException} にならず、XLS-38 の観測
-     * （{@code null} を入れると両辺が例外になる 10 箇所）に含まれていない。往復すると {@code ""}
-     * になる点は未評価であり、台帳の判定が無い形をここで独断で拒否しない。
-     * 担保テストは {@code XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty}。
+     * 呼び出し元はディレクティブの Map（{@link FileDataBlock#getDirectives()} ／
+     * {@link MessageDataBlock#getDirectives()}）と、同じ「名前・値」形式で記述する
+     * フレームワーク制御ヘッダ（{@link MessageDataBlock#getFwHeaderFields()}。
+     * {@code testdata_notation.rst:1267}）である。
+     * </p>
+     *
+     * <p>
+     * <b>キーが {@code null} でも値が {@code null} でも、記法どおりには書けない。</b>
+     * {@code testdata_notation.rst:906}（{@code 30a8271} 時点）は「ディレクティブは、ファイル・電文の
+     * フォーマットに関する属性を、<b>キー名と値の 2 要素</b>で記述するものである（最低 2 要素が必要）」と定め、
+     * {@code :892} は記述時エラーとして「ディレクティブまたはレコード種別・フィールド名称定義の
+     * <b>要素数が 2 未満である</b>」を挙げる。本体スキーマ {@code $defs.directives} も
+     * 各キーの値を {@code string} ／ {@code boolean} ／ {@code integer} と定めるだけで
+     * {@code null} を許す定義を持たず、{@code additionalProperties} が {@code false} であるため
+     * {@code null} のキーはそもそも書けない（{@code coverage/issues.md} <b>XLS-43</b>）。
+     * </p>
+     *
+     * <p>
+     * <b>空文字は拒否しない。</b>空文字を禁じる明文が無いためである（ユーザー確定・2026-08-19）。
      * </p>
      *
      * @param label 呼び出し側が例外メッセージに出す項目名
      * @param map   検査対象
      * @return {@code map} をそのまま返す
-     * @throws IllegalArgumentException {@code map} が {@code null} の場合
+     * @throws IllegalArgumentException {@code map} またはそのキー・値が {@code null} の場合
      */
     static Map<String, String> requireNoNulls(String label, Map<String, String> map) {
         requireNotNull(label, map);
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            if (entry.getKey() == null) {
+                throw new IllegalArgumentException(label + "のキーに null は指定できません。" + MAP_REASON);
+            }
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException(
+                        label + " \"" + entry.getKey() + "\" の値が null です。" + MAP_REASON);
+            }
+        }
         return map;
     }
 
@@ -150,6 +173,10 @@ final class ModelPreconditions {
             }
         }
     }
+
+    /** Map のキー・値の {@code null} を拒む理由。例外メッセージの共通部分。 */
+    private static final String MAP_REASON =
+            "（記法はキー名と値の 2 要素で記述することを定めており、null に当たる書き方がありません）。";
 
     /** {@code null} を拒む理由。例外メッセージの共通部分。 */
     private static final String REASON =

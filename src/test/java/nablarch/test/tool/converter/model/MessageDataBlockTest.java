@@ -68,6 +68,64 @@ public class MessageDataBlockTest {
         }
     }
 
+    /**
+     * XLS-43。ディレクティブのキー・値が {@code null} の電文ブロックは生成できない。
+     * 根拠は {@code testdata_notation.rst:906}・{@code :892} と本体スキーマ {@code $defs.directives}。
+     */
+    @Test
+    public void ディレクティブのキーまたは値がnullの電文ブロックは生成できない() {
+        // Given: キーが null
+        Map<String, String> nullKey = new LinkedHashMap<>();
+        nullKey.put(null, "UTF-8");
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    nullKey, new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブのキーに null は指定できません"));
+        }
+
+        // Given: 値が null
+        Map<String, String> nullValue = new LinkedHashMap<>();
+        nullValue.put("text-encoding", null);
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    nullValue, new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブ \"text-encoding\" の値が null です"));
+        }
+    }
+
+    /**
+     * XLS-43。FW 制御ヘッダも同じ「名前・値」形式で記述するため（{@code testdata_notation.rst:1267}）、
+     * キー・値の {@code null} を同様に拒否する。
+     */
+    @Test
+    public void FW制御ヘッダのキーまたは値がnullの電文ブロックは生成できない() {
+        // Given: キーが null
+        Map<String, String> nullKey = new LinkedHashMap<>();
+        nullKey.put(null, "RM11AC0101");
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    new LinkedHashMap<>(), nullKey, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("FW 制御ヘッダフィールドのキーに null は指定できません"));
+        }
+
+        // Given: 値が null
+        Map<String, String> nullValue = new LinkedHashMap<>();
+        nullValue.put("requestId", null);
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    new LinkedHashMap<>(), nullValue, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("FW 制御ヘッダフィールド \"requestId\" の値が null です"));
+        }
+    }
+
     @Test
     public void レコード群がnullの電文ブロックは生成できない() {
         try {

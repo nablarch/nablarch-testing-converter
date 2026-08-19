@@ -3629,14 +3629,14 @@ Expected: is <[id, ID]>
 
 ---
 
-### XLS-43 ディレクティブ・フレームワーク制御ヘッダの Map に `null` のキー・値を持つ中間モデルを作れてしまう（影響度 中・**要対応**・**未着手**）
+### XLS-43 ディレクティブ・フレームワーク制御ヘッダの Map に `null` のキー・値を持つ中間モデルを作れてしまう（影響度 中・**要対応**・**#25.5 で修正済み**）
 
 **XLS-38（コレクション・Map の `null`）から切り出した**（2026-08-19・ユーザー確定）。
 XLS-38 では Map 本体の `null` だけを閉じ、**キー・値の `null` は残していた。**
 
-- 現状: `ModelPreconditions#requireNoNulls(String, Map)` は **Map 本体の `null` しか検査していない**
+- 現状（修正前）: `ModelPreconditions#requireNoNulls(String, Map)` は **Map 本体の `null` しか検査していなかった**
   （実物で確認・2026-08-19）。したがって `{null: "x"}` や `{"key": null}` を持つ
-  `FileDataBlock.directives`／`MessageDataBlock.directives`／`MessageDataBlock.fwHeaderFields` を作れる。
+  `FileDataBlock.directives`／`MessageDataBlock.directives`／`MessageDataBlock.fwHeaderFields` を作れた。
 - **NTF 仕様としては表現できない形である**（明文の根拠。`nablarch-document` は `30a8271` 時点）。
 
   | 出典 | 何を定めているか |
@@ -3658,8 +3658,20 @@ XLS-38 では Map 本体の `null` だけを閉じ、**キー・値の `null` �
 - **空文字は拒否しない**（ユーザー確定・2026-08-19）。空文字を禁じる明文が無い。
   往復で `null` → `""` になる件（`XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty` が固定している
   現状）は、`null` を生成時に拒否すれば発生しなくなる。
-- 未着手（2026-08-19 時点）。**XLS-27 のマーカーカラム案の実測のあとに着手する**
-  （`steering.md` の §6-H。進行順はユーザー指示による）。
+- **修正（2026-08-19・§6-H）**: `ModelPreconditions#requireNoNulls(String, Map)` に**キー・値の `null` 検査**を足した。
+  呼び出し元は既に 3 か所とも同じメソッドを通っていたため、**書き出し側には何も足していない**
+  （`XlsFormatWriter`・`YamlFormatWriter` にディレクティブの `null` を見る番人は元から無い）。
+  - 例外メッセージ: キー `null` は「`<項目名>のキーに null は指定できません。（記法はキー名と値の 2 要素で記述することを定めており、null に当たる書き方がありません）。`」、
+    値 `null` は「`<項目名> "<キー>" の値が null です。（同上）`」。項目名は `ディレクティブ` ／ `FW 制御ヘッダフィールド`。
+  - 担保テスト: `FileDataBlockTest#ディレクティブのキーがnullのファイルブロックは生成できない`／
+    `#ディレクティブの値がnullのファイルブロックは生成できない`／
+    `#ディレクティブのキーと値が空文字のファイルブロックは生成できる`（**空文字は通ることの担保**）、
+    `MessageDataBlockTest#ディレクティブのキーまたは値がnullの電文ブロックは生成できない`／
+    `#FW制御ヘッダのキーまたは値がnullの電文ブロックは生成できない`。
+  - **既存テストの入力を 1 件書き直した。** `XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty` は
+    ディレクティブ値 `null` を入力にしていたが、**その入力はもう作れない**ため空文字へ書き直した
+    （§1-C で長さを `null` → 空文字へ書き直したのと同じ扱い）。空セルとして書かれることの担保は変わらない。
+  - 実測: `mvn clean test` で `Tests run: 599, Failures: 0, Errors: 0, Skipped: 2`。
 
 ### YML-14 辺②でフィールド定義の件数より要素数が多いデータ行の「余りの値」が黙って捨てられる（影響度 中・**検出できない**／帰属は converter の外）
 

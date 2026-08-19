@@ -70,6 +70,64 @@ public class FileDataBlockTest {
         }
     }
 
+    /**
+     * XLS-43。ディレクティブのキーが {@code null} のブロックは生成できない。
+     * 記法は「キー名と値の 2 要素」で記述することを定めており（{@code testdata_notation.rst:906}・{@code :892}）、
+     * 本体スキーマ {@code $defs.directives} は {@code additionalProperties: false} でキーを列挙しているため、
+     * {@code null} のキーはそもそも書けない。
+     */
+    @Test
+    public void ディレクティブのキーがnullのファイルブロックは生成できない() {
+        // Given: null キーを入れられる Map（Map.of は null キーを許さない）
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put(null, "MS932");
+
+        // When / Then
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブのキーに null は指定できません"));
+        }
+    }
+
+    /**
+     * XLS-43。ディレクティブの値が {@code null} のブロックは生成できない。
+     * 本体スキーマ {@code $defs.directives} の値型は string ／ boolean ／ integer だけで、
+     * {@code null} を許す定義が 1 つも無い。
+     */
+    @Test
+    public void ディレクティブの値がnullのファイルブロックは生成できない() {
+        // Given
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("text-encoding", null);
+
+        // When / Then
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブ \"text-encoding\" の値が null です"));
+        }
+    }
+
+    /**
+     * XLS-43。<b>空文字は拒否しない</b>（空文字を禁じる明文が無いため。ユーザー確定・2026-08-19）。
+     */
+    @Test
+    public void ディレクティブのキーと値が空文字のファイルブロックは生成できる() {
+        // Given
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("", "");
+
+        // When
+        FileDataBlock sut = new FileDataBlock(
+                DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+
+        // Then
+        assertThat(sut.getDirectives().get(""), is(""));
+    }
+
     @Test
     public void レコード群がnullのファイルブロックは生成できない() {
         try {
