@@ -136,6 +136,52 @@ public class TestDataBlockTest {
     }
 
     @Test
+    public void テーブル系でないデータ種別のテーブルブロックは生成できない() {
+        // Given: データタイプと、そのブロックが取りうる記述の形は 1:1 に対応する
+        //        （notation:206-241 のデータタイプ ⇔ トップレベルキー対応表。本体スキーマも
+        //        table_data ／ file_data ／ message_data を別の $defs として定義し、
+        //        いずれも additionalProperties: false としている）
+        // When
+        try {
+            new TableDataBlock(DataType.SETUP_FIXED, "", "emp",
+                    List.of("id"), List.of(List.of("1")));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("TableDataBlock"));
+        }
+    }
+
+    @Test
+    public void ファイル系でないデータ種別のファイルブロックは生成できない() {
+        // Given: 辺③は SETUP_TABLE_DATA のマーカーでファイルブロックを書けてしまい、
+        //        読み戻すと別種のブロック（テーブル）になる
+        // When
+        try {
+            new FileDataBlock(DataType.SETUP_TABLE_DATA, "", "in.dat",
+                    FileDataBlock.FileType.FIXED, Map.of(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("FileDataBlock"));
+        }
+    }
+
+    @Test
+    public void 電文系でないデータ種別の電文ブロックは生成できない() {
+        // Given: 辺④は messages: の配下に table: を書いてしまう（スキーマ違反）
+        // When
+        try {
+            new MessageDataBlock(DataType.SETUP_TABLE_DATA, "", "msg1",
+                    Map.of(), Map.of(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("MessageDataBlock"));
+        }
+    }
+
+    @Test
     public void グループID省略は空文字で表しデフォルトグループとする() {
         // Given: 省略は空文字（notation:254「グループIDを省略した場合は、グループIDを持たない
         //        データブロック（デフォルトグループ）が対象になる」）
