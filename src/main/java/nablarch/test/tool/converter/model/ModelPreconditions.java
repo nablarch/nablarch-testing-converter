@@ -98,7 +98,9 @@ final class ModelPreconditions {
      * <p>
      * <b>テーブル系のカラム名には使っていない。</b>辺②が重複したカラム名を持つブロックを実際に作る
      * ためである（<b>YML-10</b>。本体 {@code TableData} の大文字化により {@code id} と {@code ID} が
-     * {@code [ID, ID]} になる）。
+     * {@code [ID, ID]} になる）。番人を置くと仕様適合入力を変換できなくなるため、
+     * <b>カラム名側は他責として扱い、番人も WARN も置かない</b>（ユーザー確定・2026-08-19。
+     * 根拠は {@link ColumnRowDataBlock} の Javadoc）。
      * </p>
      *
      * <p>

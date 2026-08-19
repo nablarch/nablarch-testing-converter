@@ -30,6 +30,7 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import com.networknt.schema.ValidationMessage;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -1148,6 +1149,14 @@ public class YamlFormatReaderInvalidInputTest {
      * （{@code src/main} は無変更）。
      * </p>
      *
+     * <p>
+     * <b>本テストは他責の現状を固定したものである。あるべき姿は
+     * {@link #keepsOriginalColumnCaseInTable} 側（{@code @Ignore}）に書いてある。</b>
+     * 記法はテーブル系のカラム名の大小の扱いにいっさい触れておらず、明文どおりに読めば
+     * {@code id} と {@code ID} は別カラムで両方の値が残る。converter に大文字化を止める権限が無い
+     * ため現状を記録に留めている（{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
+     * </p>
+     *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-10 の根拠テスト）。</p>
      */
     @Test
@@ -1170,6 +1179,55 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("大文字化により列名が重複する", block.getColumnNames(), is(Arrays.asList("ID", "ID")));
         assertThat("後勝ちの値だけが残り、同じ値が 2 回並ぶ", block.getRows(),
                 is(Arrays.asList(Arrays.asList("2", "2"), Arrays.asList("4", "4"))));
+    }
+
+    /**
+     * Given: テーブル系の {@code rows} に、大小だけが違う 2 つのキー {@code id} と {@code ID} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>あるべき姿</b>として、カラム名は原文の大小のまま {@code [id, ID]} になり、
+     *        {@code id} に書いた値も {@code ID} に書いた値も両方が残る。
+     *
+     * <p>
+     * <b>現状は FAIL する。帰属は converter ではなく nablarch-testing の
+     * {@code nablarch/test/core/db/TableData.java} である</b>（{@code convert-testdata-excel-to-text} の
+     * {@code 65911f5} で {@code :97} {@code name.trim().toUpperCase()}／{@code :492}
+     * {@code columnNames[i].toUpperCase()}／{@code :530}
+     * {@code map.put(columnNames[i].toUpperCase(), value)}）。converter に大文字化を止める権限は無いため、
+     * {@code src/main} に番人も WARN も入れず、あるべき姿をこのテストで残して {@code @Ignore} にしてある
+     * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>XLS-40</b> のカラム名側と <b>YML-10</b>）。
+     * </p>
+     *
+     * <p>
+     * <b>あるべき姿をこう定めた根拠は明文である。</b>記法はテーブル系のカラム名の大小の扱いに
+     * いっさい触れていない —— {@code testdata_notation.rst:819}（{@code 30a8271} 時点）はカラム名を
+     * 「最初の行（{@code rows:} の先頭要素）のキーで決まる」とだけ定め、解説書に「大文字」と出るのは
+     * {@code :768}／{@code :1323}／{@code :1393} の 3 箇所だけで、いずれも値の {@code null} 表記
+     * （「大文字小文字不問」）の話である。本体スキーマが大文字変換に触れているのも
+     * {@code $defs.table_data.properties.table.description} だけで、カラム名には触れていない。
+     * 明文どおりに読めば {@code id} と {@code ID} は別カラムである。同じ記法を使う LIST_MAP は
+     * 実際にそう振る舞う（{@link #keepsOriginalColumnCaseInListMap}）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（XLS-40 のカラム名側のあるべき姿。他責先の修正待ち）。</p>
+     */
+    @Test
+    @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData（カラム名を大文字化する）")
+    public void keepsOriginalColumnCaseInTable() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"my_table\"\n"
+                + "    rows:\n"
+                + "      - id: \"1\"\n"
+                + "        ID: \"2\"\n"
+                + "      - id: \"3\"\n"
+                + "        ID: \"4\"\n");
+
+        // Then
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat("原文の大小がそのまま残る", block.getColumnNames(), is(Arrays.asList("id", "ID")));
+        assertThat("どちらの値も失われない", block.getRows(),
+                is(Arrays.asList(Arrays.asList("1", "2"), Arrays.asList("3", "4"))));
     }
 
     /**

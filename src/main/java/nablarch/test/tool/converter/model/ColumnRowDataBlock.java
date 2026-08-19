@@ -19,12 +19,21 @@ import java.util.List;
  * </p>
  *
  * <p>
- * <b>{@code columnNames} の重複は拒否していない</b>（{@code coverage/issues.md} <b>XLS-40</b>）。
+ * <b>{@code columnNames} の重複は拒否しない。番人も WARN も置かない</b>
+ * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
  * 辺②が重複したカラム名を持つブロックを実際に作るためである —— 本体 {@code TableData} が
  * テーブル系のカラム名を大文字化するので、{@code id} と {@code ID} を書いたスキーマ適合の YAML が
  * {@code columnNames} ＝ {@code [ID, ID]} になる（<b>YML-10</b>。担保テストは
  * {@code YamlFormatReaderInvalidInputTest#dropsValueWhenTableColumnNamesDifferOnlyByCase}）。
- * 生成時に拒否すると、この入力を変換できなくなる。<b>扱いはユーザー判断待ちである。</b>
+ * 生成時に拒否すると仕様適合入力を変換できなくなるため、番人は置けない。
+ * </p>
+ *
+ * <p>
+ * <b>帰属は converter の外（nablarch-testing の {@code TableData}）である。</b>
+ * あるべき姿は「値が黙って消えないこと」であり、それを主張するテストを
+ * {@code YamlFormatReaderInvalidInputTest#keepsOriginalColumnCaseInTable} に
+ * {@code @Ignore} 付きで置いてある。<b>フィールド名称側（{@link RecordLayout}）は明文があるため
+ * 拒否している</b>（{@code testdata_notation.rst:887}（{@code 30a8271} 時点））。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
