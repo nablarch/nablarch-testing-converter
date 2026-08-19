@@ -2934,6 +2934,20 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
     （`RoundTripTest#file` ／ `FileDataBlockTest#assertFileBlock`）であり、その全呼び出しも
     `FIXED` ／ `VARIABLE` を渡していた。したがって `null` を可変長として書き出す現状挙動を
     緑のアサートで固定していたテストは 1 件も無い。
+- **【追記・2026-08-19・§6-J-1（`7b0b381`）】番人を書き出し側から中間モデルへ移した。** 上の「修正」欄は
+  2026-08-18 時点の形であり、**現在は `FileDataBlock` のコンストラクタが `fileType` ＝ `null` を拒否する**
+  （Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」・2026-08-19）。
+  - 明文は `notation:883`（記法は固定長ファイルと可変長ファイルの 2 種類に尽きる）・`notation:1146`
+    （`setup_files` ／ `expected_files` の各エントリは `path` ／ `type` ／ `records` の 3 キーが必須）と、
+    本体スキーマ `$defs.file_data`（`type` は `required` かつ `enum` ＝ `["fixed", "variable"]`）。
+    **4 辺のどこにも書き出せない値であり、中間モデルが保持できること自体が契約の穴である。**
+  - 辺③ `XlsFormatWriter#layoutFile` ／ 辺④ `YamlFormatWriter#emitFile` の番人は**撤去した**。
+    残すと `new FileDataBlock(...)` の行で先に落ちて**空振りの緑**になる（§6-I と同じ形）。
+  - 上の「テスト」欄の 3 件は削除し、`FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない`
+    へ置き換えた。**`FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する` は、
+    生成できなくなって主張そのものが成り立たないため削除した。**
+  - 赤の記録: `FileDataBlockTest.ファイル種別がnullのファイルブロックは生成できない:202`
+    `java.lang.AssertionError: IllegalArgumentException が送出されるべき`
 
 ### XLS-30 固定長ファイル・電文でフィールド長 `null` のフィールド定義が、黙って長さ無しで書き出される（影響度 中・**検出できない**・**#25.5 で修正済み**）
 
