@@ -72,7 +72,8 @@ YML-05 から YML-14 として切り出したあとの値**）。
     XLS-42 として保留のまま切り出した**
 - **未完 2 件** —— XLS-27・XLS-43
   - XLS-27 は当面の対応（0 件テーブルを弾く番人）まで完了（`57c1b0d`）。本体修正待ち。
-    マーカーカラム案の実測は未実施
+    **マーカーカラム案の実測は 2026-08-19 に実施し、(1)〜(4) すべて通った**（XLS-27 の節）。
+    採否はユーザーが決めるため、番人は維持したまま辺③の改修は行っていない
   - **XLS-43**（ディレクティブ・フレームワーク制御ヘッダの Map のキー・値が `null`）は
     **未着手**。XLS-27 の実測のあとに着手する（`steering.md` の §6-H）
 
@@ -102,7 +103,7 @@ XLS-42 は 2026-08-19 に **XLS-41 から切り出した**もので、XLS-41 自
 > | `fileType` ＝ `null` | `XlsFormatWriter:275`／`YamlFormatWriter:192` | XLS-29 | できる（`FileDataBlock` の生成時） |
 > | `records` 空（電文） | `XlsFormatWriter:313`／`YamlFormatWriter:235` | YML-12 2 形目 | できる（`MessageDataBlock` の生成時） |
 > | `fields` 空 | `XlsFormatWriter:381`／`YamlFormatWriter:355` | XLS-22 | できる（`RecordLayout` の生成時。下記 XLS-22 の追記を参照） |
-> | `columnNames` 0 件 | `XlsFormatWriter:235` | XLS-27 | 未確認（XLS-27 のマーカーカラム案の実測待ち） |
+> | `columnNames` 0 件 | `XlsFormatWriter:235` | XLS-27 | **できない。** 0 件テーブル（`rows: []`）は明文上正当な入力であり（`notation:836`）、中間モデルの生成時に拒否してはならない。この番人は「本体が読めない `.xlsx` を書かない」ための中止であって不変条件ではない。マーカーカラム案の実測は (1)〜(4) すべて通った（2026-08-19。XLS-27 の節）が、**採否が未決のため番人は維持している** |
 > | `length` ＝ `null` | `XlsFormatWriter:389`／`YamlFormatWriter:363` | XLS-30 | `FieldDef` 単体ではできない（固定長か可変長かが判らない）。上位ブロックの生成時へ寄せる形になる |
 > | 2 レコード目以降の `recordType` 空 | `XlsFormatWriter:399` | XLS-06 | できない（「2 件目以降」は `RecordLayout` 単体では判らない。上位の生成時へ寄せる形になる） |
 > | シート名 31 文字超 | `XlsFormatWriter:157` | XLS-16 | **できない。Excel 固有の上限であって中間モデルの不変条件ではない**（辺④は同じ名前を書ける）。書き出し側に残す |
@@ -2539,7 +2540,8 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 - **影響範囲（制約・実測 2026-08-18）**: 1 の番人が入っている間、**0 件テーブルを含む YAML は
   Excel へ変換できない**。「空のテーブルを用意する」は NTF の日常的なテストパターンであり、
   **本体修正（2）またはマーカーカラム案が入るまで解けない、実運用上の制約である**
-  （マーカーカラム案は steering #25.5 §1 の別ステップ。**成否は現時点で未確認**）。
+  （マーカーカラム案は steering #25.5 §1 の別ステップ。**実測 (1)〜(4) は 2026-08-19 にすべて通ったが、
+  採否が未決のため辺③の改修は未着手である**）。
   無言で壊れた `.xlsx` を書くよりは中止が正しいという判断で入れているが、制約であることは変わらない。
   - **同梱サンプル自身がこの制約に当たる。** `nablarch-system-development-guide` の climan サンプルから
     取り込んだテストデータに `rows: []` が **3 ファイル・4 箇所**ある。
@@ -2572,6 +2574,77 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
     したがって `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable` の Javadoc が
     3 ファイルをまとめて「`rows: []` のテーブルを持つ」としているのは不正確である
     （**本ステップの編集範囲は本ファイルに限られるため、訂正は本項の記録に留める**）。
+- **マーカーカラム案の実測（2026-08-19・プローブ。(1)〜(4) すべて通った）**: カラム名を持たない 0 件テーブルの
+  識別子行の次の行へ**マーカーカラムを 1 つだけ**（`[空]`）書く形を、端から端まで実測した。
+  **番人（`57c1b0d`）は入れたまま、`src/main` は無変更である。プローブはリポジトリに残していない。**
+  根拠となる明文は `notation:1515`「カラム名を半角角括弧 `[ ]` で囲むと、そのカラムは「マーカーカラム」として
+  読み込み対象から除外される…**Excel 形式** の `SETUP_TABLE`・`EXPECTED_TABLE`・`LIST_MAP`、
+  **YAML 形式** の `setup_tables`・`expected_tables`・`list_maps`、いずれのデータタイプでも使える」
+  （`30a8271` 時点。`git -C ~/work/nablarch/nablarch-document show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '1515p'`）。
+
+  組み立てた `.xlsx`（`XlsFixture`。1 枚のシートに 2 ブロック。後続ブロックが食われないことも同時に見る）:
+
+  ```
+  | 'SETUP_TABLE=T1' |     ← 0 件テーブル（カラム名なし）
+  | '[空]'           |     ← マーカーカラム 1 つだけ
+  | 'SETUP_TABLE=T2' |
+  | 'KEY'            |
+  | 'k1'             |
+  ```
+
+  - **(1) 本体（`nablarch-testing`）に読ませたとき `TableData` が有効カラム 0 個・行 0 件になるか → なる。**
+    `TestCoreReaderAdapter#readTables(dir, "p/s", "", SETUP_TABLE_DATA)` の実測出力:
+
+    ```
+    本体 tables=2
+      table=T1 columns=[] rows=0
+      table=T2 columns=[KEY] rows=1
+    ```
+
+    **後続ブロック `T2` も食われていない**（`tables=2`）。
+  - **(2) `SETUP_TABLE` として実行したとき全件 DELETE だけが行われ空行が INSERT されないか → そのとおり。**
+    H2（`jdbc:h2:mem:ssd`。`nablarch-test-support` の `db-default.xml`／`datasource.xml` 経由）へ
+    `XLS27_PROBE (ID, NAME)` を作って 2 行入れ、本体の `BasicTestDataParser#getSetupTableData` で
+    上の `.xlsx` を読み、得た `TableData#replaceData()` を実行した。SQL ログの実測:
+
+    ```
+    SQL = [DELETE FROM XLS27_PROBE]        execute_time(ms) = [1] update_count = [2]
+    SQL = [INSERT INTO XLS27_PROBE(ID,NAME) VALUES (?,?)]   batch_count = [0]
+    before=2 → after=0（残存行 0）
+    ```
+
+    INSERT 文は用意されるが `batch_count = 0` で 1 行も入らない。**空行の INSERT は起きない。**
+    （`TableData#insertData` は INSERT のカラム列を `dbInfo.getColumns(tableName)` ＝ DB メタデータから
+    作り、行は `contents` のループで積むため、行 0 件なら `executeBatch()` が空振りする。）
+  - **(3) 辺①で読んだとき中間モデルが `columnNames=[]`／`rows=[]` になるか → なる。**
+    `new XlsFormatReader().read(dir, "p/s")` の実測出力:
+
+    ```
+    辺① blocks=2
+      block=T1 columnNames=[] rows=[]
+      block=T2 columnNames=[KEY] rows=[[k1]]
+    ```
+
+    XLS-08 の正規化（マーカーカラムだけのブロックを `columnNames=[]`／`rows=[]` にする）がそのまま効いている。
+  - **(4) `EXPECTED_TABLE` でも同じか → 同じ。**
+    同じ形を `EXPECTED_TABLE=` で書いた `.xlsx` について、本体
+    （`BasicTestDataParser#getExpectedTableData`。実 `dbInfo` ＝ `GenericJdbcDbInfo`）と辺①の両方で実測した:
+
+    ```
+    EXPECTED tables=1
+      table=XLS27_PROBE columns=[] rows=0
+    本体 tables=2
+      table=T1 columns=[] rows=0
+      table=T2 columns=[KEY] rows=1
+    辺① blocks=2
+      block=T1 columnNames=[] rows=[]
+      block=T2 columnNames=[KEY] rows=[[k1]]
+    ```
+
+  **(1)〜(4) はすべて通った。したがって「案は不可」ではない。** ただし**採否はユーザーが決める**ため、
+  番人（中止）は維持したままである。**辺③（`XlsFormatWriter`）をマーカーカラムを書く実装へ変える作業は
+  行っていない**（＝この案を採るなら、`layoutColumnRow` の番人を「カラム名が空ならマーカーカラム 1 つを書く」へ
+  差し替える改修が別途要る）。
 - 修正（当面の対応・1）: `57c1b0d`。`XlsFormatWriter#layoutColumnRow` の先頭で `columnNames` が空なら
   `IllegalArgumentException` で止める。テストは `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames`／
   `#rejectsListMapBlockWithoutColumnNames`。`SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`
@@ -2605,7 +2678,8 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
 - 本体（`nablarch-testing`）の `TableDataParser` が「識別子行の次の行が識別子行なら、カラム名 0 個の
   0 件テーブルとみなす」と読めるようになり、辺③を「識別子行だけを書く」実装へ切り替えたとき
   （XLS-27 の 2 段構えの 2）。**本体の起票は converter 側では行わない**（記録のみ・ユーザー確定）。
-- あるいはマーカーカラム案が成立したとき（steering #25.5 §1 の別ステップ。**成立するかは未確認**）。
+- あるいはマーカーカラム案が成立したとき（steering #25.5 §1 の別ステップ）。
+  **実測 (1)〜(4) は 2026-08-19 にすべて通った**（XLS-27 の節）。**採否は未決であり、辺③の改修は未着手である。**
 
 ### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**・**#25.5 で修正済み**）
 
