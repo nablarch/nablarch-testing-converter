@@ -1315,8 +1315,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-19
-- **Last completed**: #25.5 §6-F のフィールド名称側（`29c9d1d`。記録は `a898763`）
-- **Next**: #25.5 の残り —— まず **ユーザー判断 3 件**を受ける（① カラム名重複の扱い ＝ §6-F の残り。推奨は「辺②で大文字化後の衝突を WARN」 ／ ② Map のキー・値の `null` を課題化するか ＝ §6-E の範囲外 ／ ③ XLS-41 の「多い側」を切り出すか）。そのあと XLS-27 マーカーカラム案の実測 (1)〜(4)
-- **Notes**: §6-F のカラム名側は**実装しない判断で止めてある**。辺②が YML-10（本体 `TableData` の大文字化）の経路で重複カラム名の中間モデルを実際に作るため、番人を入れるとスキーマ適合の YAML が変換できなくなる。詳細と選択肢 3 つは `issues.md` XLS-40 と Tasks の「§6-F の残り」に記録済み。#25.5 のあとは `inventory.md` のテスト件数の導き直し（§6-D〜F でテスト 22 件増）→ 自己点検 → 有識者レビュー 3 件（`isolation: worktree`。レビュアーに `checks/{task-id}.md` を渡さない・読ませない）
+- **Status**: not suspended
+- **Date**: —
+- **Last completed**: —
+- **Next**: —
+- **Notes**: —
