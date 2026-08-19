@@ -88,6 +88,9 @@ public final class FileDataBlock extends TestDataBlock {
         this.fileType = fileType;
         this.directives = ModelPreconditions.requireNoNulls("ディレクティブ", directives);
         this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
+        if (fileType == FileType.FIXED) {
+            ModelPreconditions.requireLengths(this.records, identifier);
+        }
     }
 
     /** @return 固定長／可変長の区別（必須。{@code null} 不可） */

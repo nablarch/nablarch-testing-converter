@@ -222,4 +222,27 @@ public class MessageDataBlockTest {
             assertThat(e.getMessage(), containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
         }
     }
+
+    /**
+     * XLS-30。フィールド長が {@code null} の電文ブロックは生成できない。
+     * {@code testdata_notation.rst:1158}（{@code 30a8271} 時点）「フレームワーク制御ヘッダ以降の
+     * メッセージボディは、フィールド名称・データ型・フィールド長・データという、前述のファイルデータと
+     * 同じ構成を持つ」により、電文は固定長ファイルと同じ 3 リスト同サイズの制約に掛かる
+     * （{@code :883}・{@code :889}）。ファイルと違い<b>可変長の逃げ道が無い</b>ため常に必須である。
+     */
+    @Test
+    public void フィールド長がnullの電文ブロックは生成できない() {
+        // Given: 長さの無いフィールドを 1 件持つレコード
+        List<RecordLayout> records = List.of(
+                new RecordLayout(null, List.of(new FieldDef("body", "半角英字", null)), List.of()));
+
+        // When / Then
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "m", new LinkedHashMap<>(),
+                    new LinkedHashMap<>(), records);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド長を持たないフィールド定義は保持できません"));
+        }
+    }
 }

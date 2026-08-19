@@ -379,47 +379,6 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: フィールド長が {@code null} のフィールドを持つ固定長ファイル。
-     * When : build。
-     * Then : IllegalArgumentException（Excel 記法は固定長ファイルについて「フィールド名称・データ型・
-     *        フィールド長の3リストが同サイズで必須」と定めており（{@code testdata_notation.rst:883}。
-     *        {@code 30a8271} 時点）、長さを持たないフィールド定義は書き表せないため、
-     *        空の長さセルを黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsFieldWithoutLengthInFixedFileBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
-                Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", file));
-    }
-
-    /**
-     * Given: フィールド長が {@code null} のフィールドを持つメッセージブロック。
-     * When : build。
-     * Then : IllegalArgumentException（メッセージボディは「フィールド名称・データ型・フィールド長・データ
-     *        という、前述のファイルデータと同じ構成」を持つ（{@code testdata_notation.rst:1158}。
-     *        {@code 30a8271} 時点）ため、固定長ファイルと同じ制約に掛かる）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsFieldWithoutLengthInMessageBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
-                Collections.singletonList(row("v")));
-        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                map(), map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", message));
-    }
-
-    /**
      * Given: カラム名を 1 件も持たないテーブルブロック（行も 0 件）。
      * When : build。
      * Then : IllegalArgumentException（Excel 記法はデータ行が無くてもカラム名の行を省略できない。

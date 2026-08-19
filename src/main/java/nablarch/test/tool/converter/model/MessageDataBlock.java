@@ -110,6 +110,7 @@ public final class MessageDataBlock extends TestDataBlock {
                             + "電文には及びません）。"
                             + " 識別子=[" + identifier + "]");
         }
+        ModelPreconditions.requireLengths(this.records, identifier);
     }
 
     /** @return ディレクティブ（記述順） */

@@ -141,7 +141,7 @@ public class YamlFormatReaderTest {
 
     @Test
     public void readFile_fixed_mapsRawFieldDefsAndValues() {
-        // Given: 固定長・型/長さ記法（length 省略フィールド含む）・directives・複数レコード
+        // Given: 固定長・型/長さ記法・directives・複数レコード
         Map<String, Object> yaml = map(
                 "setup_files", list(
                         map("path", "input.dat", "type", "fixed",
@@ -151,7 +151,7 @@ public class YamlFormatReaderTest {
                                                 "fields", list(field("f1", "半角英字", "5")),
                                                 "rows", list(list("${a}"))),
                                         map("record_type", "data",
-                                                "fields", list(field("f2", "数値", null)),
+                                                "fields", list(field("f2", "数値", "3")),
                                                 "rows", list(list("12"), list("")))))));
 
         // When
@@ -172,10 +172,60 @@ public class YamlFormatReaderTest {
 
         RecordLayout data = block.getRecords().get(1);
         assertThat(data.getRecordType(), is("data"));
-        // 長さ省略は Map 原文どおり null（器の正規化値は使わない）
-        assertFieldDef(data.getFields().get(0), "f2", "数値", null);
+        assertFieldDef(data.getFields().get(0), "f2", "数値", "3");
         assertThat(data.getRows().get(0), is(Arrays.asList("12")));
         assertThat(data.getRows().get(1), is(Arrays.asList("")));
+    }
+
+    /**
+     * Given: {@code type: fixed} のファイルに {@code length} を持たないフィールド定義。
+     * When : read。
+     * Then : IllegalArgumentException（{@link FileDataBlock} が生成時点で拒否する）。
+     *
+     * <p>
+     * <b>この入力は記法に適合しない。</b>{@code testdata_notation.rst:883}（{@code 30a8271} 時点）は
+     * 「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」と定め、
+     * {@code :889} は記述時のエラーとして「フィールド名称・データ型・フィールド長リストのサイズが
+     * 一致していない」を挙げる（{@code coverage/issues.md} <b>XLS-30</b>）。
+     * </p>
+     *
+     * <p>
+     * <b>本体スキーマはこの条件を {@code required} で表現できていないが、矛盾ではない。</b>
+     * {@code $defs.field_def} の {@code required} は {@code ["name", "type"]} で {@code length} を
+     * 含まないものの、同定義の {@code description} 自身が「固定長ファイル（type=fixed）では
+     * {@code length} が実質必須（省略すると NTF パーサが record-length を計算できない）」と書いており、
+     * {@code length} の {@code description} も「固定長ファイルでは実質必須…可変長ファイルでは不要（省略可）」
+     * とする。JSON Schema の {@code required} が {@code type} の値による条件を表せないだけであり、
+     * 明文どうしは一致している。
+     * </p>
+     *
+     * <p>
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * {@link FileDataBlock} の生成時へ移したため、失敗する場所が書き出し時から読み込み時へ前倒しになった
+     * （変換が失敗すること自体は移設の前後で変わらない）。移設前は
+     * {@code readFile_fixed_mapsRawFieldDefsAndValues} が {@code f2} の長さを {@code null} のまま
+     * 読み込めることを固定していた。
+     * </p>
+     */
+    @Test
+    public void readFile_fixedWithoutLength_rejected() {
+        // Given: 固定長なのに length を持たないフィールド
+        Map<String, Object> yaml = map(
+                "setup_files", list(
+                        map("path", "input.dat", "type", "fixed",
+                                "records", list(
+                                        map("record_type", "data",
+                                                "fields", list(field("f2", "数値", null)),
+                                                "rows", list(list("12")))))));
+
+        // When / Then
+        try {
+            reader(yaml).read(DIR, RESOURCE);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(),
+                    containsString("フィールド長を持たないフィールド定義は保持できません"));
+        }
     }
 
     @Test

@@ -192,8 +192,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         entry.prop("path", block.getIdentifier());
         entry.prop("type", block.getFileType() == FileDataBlock.FileType.FIXED ? "fixed" : "variable");
         emitMap(sb, entry, "directives", block.getDirectives());
-        emitRecords(sb, entry, block.getRecords(),
-                block.getFileType() == FileDataBlock.FileType.FIXED);
+        emitRecords(sb, entry, block.getRecords());
     }
 
     /**
@@ -225,8 +224,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         entry.prop("id", block.getIdentifier());
         emitMap(sb, entry, "directives", block.getDirectives());
         emitMap(sb, entry, "fw_header", block.getFwHeaderFields());
-        // 電文のメッセージボディはファイルデータと同じ構成（notation:1158）であり、フィールド長は必須。
-        emitRecords(sb, entry, block.getRecords(), true);
+        emitRecords(sb, entry, block.getRecords());
     }
 
     // ------------------------------------------------------------------------
@@ -281,8 +279,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * （{@code testdata_notation.rst:881}／{@code :1146}。本体スキーマも
      * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
      * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
-     * {@link #emitMessage} が 0 件を送出で弾いてある（{@code $defs.message_data} の {@code records} は
-     * {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。
+     * {@link MessageDataBlock} が 0 件を<b>生成時点で拒否する</b>（{@code $defs.message_data} の
+     * {@code records} は {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため。番人の移設は 2026-08-19）。
      * </p>
      * <p>
      * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>{@code $defs.record_fragment} は
@@ -291,42 +289,30 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@link RecordLayout} が<b>生成時点で拒否する</b>ためここへは届かない（番人の移設は 2026-08-19）。
      * </p>
      * <p>
-     * データ型が {@code null} のフィールド定義も同じ思想で弾く。{@code $defs.field_def} は
-     * {@code required} ＝ {@code ["name", "type"]} であり、{@code type} を省略した形は読み戻せないからである
-     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）。{@link FieldDef} の契約としても
-     * {@code type} は必須である。弾くのは {@code null} だけで、空文字は弾かない。
+     * <b>データ型が {@code null} のフィールド定義もここでは検査しない。</b>{@code $defs.field_def} は
+     * {@code required} ＝ {@code ["name", "type"]} であり {@code type} を省略した形は読み戻せないが
+     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）、{@link FieldDef} が<b>生成時点で拒否する</b>
+     * ためここへは届かない（番人の移設は §1-D）。
      * </p>
      * <p>
-     * フィールド長が {@code null} のフィールド定義は、<b>{@code lengthRequired} が真のときに限り</b>弾く。
-     * 記法は固定長ファイルについて「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と定め
+     * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>記法は固定長ファイルについて
+     * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と定め
      * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。{@code :889} は
      * 「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
      * 電文も {@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
-     * フィールド長・データという、前述のファイルデータと同じ構成を持つ」で同じ制約に掛かる。
-     * 長さを落とした {@code fields:} は書き手の意図どおりには読み戻せない
-     * （{@code coverage/issues.md} <b>XLS-30</b>）。<b>可変長ファイルでは {@code null} が正しい</b>ため
-     * 弾かない（{@code :883}「可変長ファイルでは…フィールド長は不要である」）。
-     * 弾くのは {@code null} だけで、空文字は弾かない（{@code type} の番人と同じ境界）。
-     * </p>
-     * <p>
-     * <b>この検査だけは共通の本メソッドに置き、可否を引数で受ける。</b>レコード 0 件の検査を
-     * {@link #emitFile} ／ {@link #emitMessage} 側へ出したのは、0 件がファイル系では<b>合法な形</b>であり
-     * ブロック単位で判定できるからである。フィールド長は<b>フィールド 1 件ごと</b>の検査であり、
-     * 呼び出し側へ出すと本メソッドが既に持つレコード・フィールドの二重ループを写し取ることになる。
-     * 文脈（固定長ファイルか・電文か・可変長ファイルか）は呼び出し側しか知らないため、それを
-     * {@code lengthRequired} として渡す。辺③ {@code XlsFormatWriter#appendRecords} が同じ文脈を
-     * {@code fixed} 引数で受け取っているのと同じ形である。
+     * フィールド長・データという、前述のファイルデータと同じ構成を持つ」で同じ制約に掛かる
+     * （{@code coverage/issues.md} <b>XLS-30</b>）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
+     * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
+     * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
+     * 正しい</b>ため拒否しない（{@code :883}「可変長ファイルでは…フィールド長は不要である」）。
+     * 番人の移設は 2026-08-19。
      * </p>
      *
-     * @param sb             出力先
-     * @param parent         親エントリ
-     * @param records        レコードレイアウト群
-     * @param lengthRequired フィールド長が必須（固定長ファイル・電文）なら真。可変長ファイルなら偽
-     * @throws IllegalArgumentException {@code lengthRequired} が真でフィールド長が {@code null} の
-     *                                  フィールド定義が含まれる場合
+     * @param sb      出力先
+     * @param parent  親エントリ
+     * @param records レコードレイアウト群
      */
-    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
-                             boolean lengthRequired) {
+    private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records) {
         if (records.isEmpty()) {
             parent.line(key("records") + ": []");
             return;
@@ -334,17 +320,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header("records");
         int recordLevel = parent.childLevel();
         for (RecordLayout record : records) {
-            for (FieldDef field : record.getFields()) {
-                // 名称・データ型の null は FieldDef の生成時に拒否済みのため、ここでは検査しない
-                if (lengthRequired && field.getLength() == null) {
-                    throw new IllegalArgumentException(
-                            "固定長ファイル・電文でフィールド長を持たないフィールド定義は書き出せません"
-                                    + "（記法はフィールド名称・データ型・フィールド長の 3 リストが同サイズで"
-                                    + "あることを求めており、length を落とすと読み戻せません）。"
-                                    + " record_type=[" + record.getRecordType() + "]"
-                                    + " フィールド名=[" + field.getName() + "]");
-                }
-            }
             YamlSeq item = new YamlSeq(sb, recordLevel);
             if (record.getRecordType() != null) {
                 item.prop("record_type", record.getRecordType());

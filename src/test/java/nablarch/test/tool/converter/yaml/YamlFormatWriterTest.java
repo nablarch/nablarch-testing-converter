@@ -484,45 +484,6 @@ public class YamlFormatWriterTest {
         assertTrue(serialize(block).contains("          - {name: \"c1\", type: \"\"}\n"));
     }
 
-    /**
-     * Given: フィールド長が {@code null} のフィールドを持つ固定長ファイルブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（記法は固定長ファイルについて「フィールド名称・データ型・
-     *        フィールド長の3リストが同サイズで必須」と定めており（{@code testdata_notation.rst:883}。
-     *        {@code 30a8271} 時点）、長さを落とした {@code fields:} は書き手の意図どおりには読み戻せないため、
-     *        黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_fieldWithoutLengthInFixedFileBlock_rejected() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                list(field("c1", "半角英字", null)), rows(row("v")));
-        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "in.dat",
-                FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(record));
-
-        // When / Then
-        serialize(block);
-    }
-
-    /**
-     * Given: フィールド長が {@code null} のフィールドを持つメッセージブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（メッセージボディは「フィールド名称・データ型・フィールド長・データ
-     *        という、前述のファイルデータと同じ構成」を持つ（{@code testdata_notation.rst:1158}。
-     *        {@code 30a8271} 時点）ため、固定長ファイルと同じ制約に掛かる）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_fieldWithoutLengthInMessageBlock_rejected() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                list(field("c1", "半角英字", null)), rows(row("v")));
-        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                directives(), directives(), Collections.singletonList(record));
-
-        // When / Then
-        serialize(block);
-    }
-
     @Test
     public void serialize_keyStartingWithIndicator_isQuoted() {
         // Given: 先頭が YAML インジケータ（'-'）のキー

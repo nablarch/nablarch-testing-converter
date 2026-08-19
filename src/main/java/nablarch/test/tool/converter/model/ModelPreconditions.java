@@ -135,6 +135,52 @@ final class ModelPreconditions {
     }
 
     /**
+     * レコードレイアウト群のすべてのフィールド定義が<b>フィールド長を持つ</b>ことを検査する。
+     *
+     * <p>
+     * 呼び出し元は<b>固定長</b>の {@link FileDataBlock} と {@link MessageDataBlock} である。
+     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）は固定長ファイルについて
+     * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須である」と定め、
+     * {@code :889} は記述時エラーとして「フィールド名称・データ型・フィールド長リストのサイズが
+     * 一致していない」を挙げる。電文も {@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、
+     * フィールド名称・データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つ」により
+     * 同じ制約に掛かる（{@code coverage/issues.md} <b>XLS-30</b>。もとは辺③④の書き出し側に置いていたが、
+     * 2026-08-19 に生成時へ移した）。
+     * </p>
+     *
+     * <p>
+     * <b>可変長ファイルは呼び出さない。</b>{@code :883} は「可変長ファイルでは、フィールド名称・データ型の
+     * 2リストが同サイズで必須であり、フィールド長は不要である」と定めており、{@code null} が正しい形である。
+     * 電文にはこの逃げ道が無いため常に必須となる。
+     * </p>
+     *
+     * <p>
+     * <b>弾くのは {@code null} だけで、空文字は弾かない。</b>空文字を禁じる明文が無いためである
+     * （{@link FieldDef#getType()} の番人と同じ境界）。
+     * </p>
+     *
+     * @param records    検査対象
+     * @param identifier 識別子（診断メッセージ用）
+     * @throws IllegalArgumentException フィールド長が {@code null} のフィールド定義が含まれる場合
+     */
+    static void requireLengths(List<RecordLayout> records, String identifier) {
+        for (int i = 0; i < records.size(); i++) {
+            RecordLayout record = records.get(i);
+            for (FieldDef field : record.getFields()) {
+                if (field.getLength() == null) {
+                    throw new IllegalArgumentException(
+                            "固定長ファイル・電文でフィールド長を持たないフィールド定義は保持できません"
+                                    + "（記法はフィールド名称・データ型・フィールド長の 3 リストが"
+                                    + "同サイズであることを求めており、長さを落とすと記法どおりには"
+                                    + "書き出せません）。"
+                                    + " 識別子=[" + identifier + "] レコード番号=" + i
+                                    + " フィールド名=[" + field.getName() + "]");
+                }
+            }
+        }
+    }
+
+    /**
      * データ行の要素数が<b>上限件数以下</b>であることを検査する。<b>不足は通す。</b>
      *
      * <p>

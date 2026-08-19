@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -203,6 +204,45 @@ public class FileDataBlockTest {
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("ファイル種別が null のファイルデータブロックは作れません"));
         }
+    }
+
+    /**
+     * XLS-30。固定長ファイルでフィールド長が {@code null} のブロックは生成できない。
+     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）は固定長ファイルについて
+     * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須である」と定め、
+     * {@code :889} は記述時エラーとして「フィールド名称・データ型・フィールド長リストのサイズが
+     * 一致していない」を挙げる。長さを持たないフィールドは 4 辺のどこにも記法どおりには書き出せない。
+     */
+    @Test
+    public void 固定長ファイルでフィールド長がnullのフィールド定義は保持できない() {
+        // Given: 長さの無いフィールドを 1 件持つレコード
+        List<RecordLayout> records = List.of(
+                new RecordLayout("data", List.of(new FieldDef("id", "数値", null)), List.of()));
+
+        // When / Then
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
+                    new LinkedHashMap<>(), records);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド長を持たないフィールド定義は保持できません"));
+        }
+    }
+
+    /**
+     * XLS-30。<b>可変長ファイルではフィールド長 {@code null} が正しい</b>ため拒否しない
+     * （{@code testdata_notation.rst:883}「可変長ファイルでは、フィールド名称・データ型の2リストが
+     * 同サイズで必須であり、フィールド長は不要である」）。
+     */
+    @Test
+    public void 可変長ファイルはフィールド長がnullでも生成できる() {
+        // Given / When
+        FileDataBlock sut = new FileDataBlock(
+                DataType.SETUP_VARIABLE, "", "t.csv", FileType.VARIABLE, new LinkedHashMap<>(),
+                List.of(new RecordLayout(null, List.of(new FieldDef("id", "数値", null)), List.of())));
+
+        // Then
+        assertThat(sut.getRecords().get(0).getFields().get(0).getLength(), is(nullValue()));
     }
 
     @Test
