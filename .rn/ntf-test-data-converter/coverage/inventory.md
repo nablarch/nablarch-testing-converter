@@ -186,6 +186,22 @@
 > - **§3.1-3（辺③ の軸C 表・軸E 表）／§4.1-2（辺④ の #18 表・8 行目ほか）／§5.2（辺③ の C 行）** —
 >   C-15(空) を担保していたテストの扱いが変わったことを、各表の下に注記した。
 
+> **#25.5 追補（§1-B〜§1-G・XLS-28・§6-A〜§6-H・YML-14・XLS-22 の番人移設。2026-08-19）**
+>
+> #25.5 の残りステップをまとめて走らせた。反映先は **§0.1-2 の 1 か所に集約した**。
+>
+> - **§0.1-2** — テストメソッド件数（547 → **598**。削除 19 件・追加 70 件）・ファイル別の増減表・
+>   削除した 19 件の起点コミット・`src/main` に手を入れた 17 ファイル・JaCoCo を 2026-08-19 実測で追補した。
+>   **未到達は `YamlFormatWriter` が 行 1・分岐 1 増えた**（`sectionKey` の `default` が §1-G で到達不能になった。
+>   §0.1-2 に開示）。ほかの 5 クラスは変わっていない。
+> - **§0.1-2 の「削除した 19 件を参照している既存記述の現在地」** — §1〜§4 のスナップショット表に残る
+>   削除済みテスト名を、現在どこが担保しているかの対応表として一括で示した。
+>   **表そのものは書き換えていない。軸要素の判定も変えていない。**
+> - **§3.1-3** — `XlsFormatWriterModelTest` の件数を 15 → **11** へ導き直し、「issues 検査 3 件」が
+>   0 件になったことを追補した。
+> - **§3.1（#30 `writesOmittedMetaAndFieldAsEmpty` の追補）** — C-20 の `null` を弾く担保が
+>   `XlsFormatWriterTest` から `FieldDefTest` へ移ったことを追補した。
+>
 > **上記以外（§5.1）は #18 時点のままである**（§5.1 の未担保件数も §1.3／§2.3／§3.3／§4.3 の更新を
 > 反映していない。4 辺を同じ基準で比べるため、あえて #18 基準を保っている）。
 > **§5.2 だけは §1.2-2 の #20 実績・§2.1-2 の #24 実績・§4.1-2 の #25 実績を反映した現時点ビューである。**
@@ -530,6 +546,150 @@ Tests run: 547, Failures: 0, Errors: 0, Skipped: 0
 | `YamlFormatWriter` | `line 168/169 branch 95/98` | **`line 170/171 branch 95/98`** | 変化なし（未到達 行 1・分岐 3 のまま。番人で 2 分岐増え、`emitEmptyList` の削除で 2 分岐減った） |
 | `YamlFormatReader` | `line 192/192 branch 102/102` | 同左 | 変化なし（0 件のまま） |
 | `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
+
+**追補（2026-08-19 実測。§1-B〜§1-G・XLS-28・§6-A〜§6-H・YML-14・XLS-22 の番人移設ぶん）**
+
+前の追補（547 件）から #25.5 の残り全ステップを走らせたぶんをまとめて導き直した。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 598
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1277
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 598
+```
+
+```
+Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**待機テスト（`@Ignore`）が 0 件から 2 件になった。** どちらも他責の型（`src/main` は無変更、
+あるべき姿を主張するテストを書いて FAIL を確認し、理由＋他責先を書いた `@Ignore` を付ける）である。
+`Skipped: 2` はこの 2 件である。
+
+547 → 598 の内訳は **削除 19 件・追加 70 件**である。ファイル別の増減は次のとおり
+（導出コマンドは `git grep -c '^    @Test'` を `04873de` と `HEAD` で取って突き合わせたもの）。
+
+| テストクラス | 04873de | HEAD | 増減 |
+|---|---:|---:|---:|
+| `model/TestDataBlockTest` | 0 | 12 | **+12**（新設） |
+| `model/RecordLayoutTest` | 2 | 13 | +11 |
+| `model/FileDataBlockTest` | 5 | 12 | +7 |
+| `model/TestDataContainerTest` | 2 | 9 | +7 |
+| `model/MessageDataBlockTest` | 5 | 10 | +5 |
+| `ConverterFileFilterTest` | 8 | 12 | +4 |
+| `model/TableDataBlockTest` | 4 | 8 | +4 |
+| `model/FieldDefTest` | 5 | 8 | +3 |
+| `xls/XlsFormatWriterTest` | 46 | 48 | +2 |
+| `yaml/YamlFormatReaderInvalidInputTest` | 31 | 33 | +2 |
+| `TestDataConverterTest` | 13 | 14 | +1 |
+| `xls/XlsFormatWriterInvalidOutputTest` | 17 | 16 | −1 |
+| `yaml/YamlFormatWriterTest` | 38 | 36 | −2 |
+| `xls/XlsFormatWriterModelTest` | 15 | 11 | −4 |
+| 合計 | 547 | 598 | **+51** |
+
+**増加の中心は `model/` のテストである。** #25.5 の後半は「不正値は書き出し側でなく中間モデルの
+生成時に拒否する」方針（`steering.md` Decisions）に沿って番人を中間モデルへ集めたため、
+検査点が辺③④のテストからモデルのテストへ移った。`model/` 6 クラスだけで **+46 件**である。
+
+**削除した 19 件は、すべて「修正で入力そのものが作れなくなった」か「置き換え先ができた」かである。**
+
+| 削除したテスト | 理由 | 起点コミット |
+|---|---|---|
+| `SampleConversionTest#convertsClimanSampleYamlToXls` | 0 件テーブルの書き出しを番人で止めたためサンプル変換が止まる。`#stopsClimanSampleConversionBecauseOfZeroRowTable` へ置き換え | `57c1b0d`（XLS-27） |
+| `xls/XlsFormatReaderRealFileTest#readsEmptyColumnNamesFromMarkerOnlyTableInRealBook` ／ `#…ListMapInRealBook` | マーカーカラム除外のあとに空エントリ判定を行うようにしたため、版面の読み取り結果が変わった。`#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` ／ `#…InListMapInRealBook` へ置き換え | `a794a8e`（XLS-08） |
+| `xls/XlsFormatWriterModelTest#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` ／ `#writesEmptyHeaderRowWhenColumnNamesAreEmpty` | カラム名 0 件のブロックを辺③が書かなくなり、固定する版面が無くなった | `57c1b0d`（XLS-27） |
+| `xls/XlsFormatWriterModelTest#writesDefaultDataTypeMarker` ／ `#dropsDefaultDataTypeBlockWhenReadBack` ／ `yaml/YamlFormatWriterTest#serialize_unsupportedDataType_throws` | `DataType.DEFAULT` のデータブロックを生成時に拒否したため、入力を組めなくなった | `7c10654`（§1-G・XLS-20） |
+| `xls/XlsFormatWriterInvalidOutputTest#rejectsNullSheetName` | 読み込み単位の名前 `null` を生成時に拒否したため、辺③の番人へ到達しなくなった | `81cf234`（§1-F・XLS-33） |
+| `xls/XlsFormatWriterTest#rejectsFieldWithoutTypeInFileBlock` ／ `#…InMessageBlock` ／ `yaml/YamlFormatWriterTest#serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#…InMessageBlock_rejected` ／ `model/FieldDefTest#契約違反のnull型もモデル自身は検査せず保持する` | `FieldDef` の `name`・`type` の `null` を生成時に拒否したため、辺③④の番人へ到達しなくなった | `d0023c0`（§1-D・XLS-31） |
+| `yaml/YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndOmittedLength` | 固定長ファイルの `length` `null` を弾くようにしたため入力が組めなくなった。`#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した | `3000baf`（§1-C・XLS-30） |
+| `xls/XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `yaml/YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected` | フィールド 0 件の番人を `RecordLayout` の生成時へ移した。**この 4 件は移設前からすでに空振りだった**（`issues.md` XLS-22「番人の移設」） | `c31b534`（XLS-22） |
+
+**削除した 19 件を参照している既存記述の現在地。** 本書の §1〜§4 の表は各タスク時点のスナップショットで、
+その場では書き換えない取り決めである（各節に明記）。**削除したテスト名がそこに残っているため、
+現在どこが担保しているかをここに一括で示す。** 表の判定（✅ など）は変わっていない。
+
+| 削除したテスト | 担保の現在地（HEAD で存在を確認済み） |
+|---|---|
+| `convertsClimanSampleYamlToXls` | `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`。**サンプルは現在「変換が止まる」ことを固定している**（XLS-27 は未完） |
+| `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook` ／ `#…ListMapInRealBook`（辺① C-08） | `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` ／ `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` |
+| `writesEmptyHeaderRowWhenColumnNamesAreEmpty`（辺③ C-08） | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` |
+| `promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` | **担保先なし。** 検査していた版面（カラム名 0 件のブロック）を辺③が書かなくなったため、読み戻す対象が無い |
+| `writesDefaultDataTypeMarker` ／ `dropsDefaultDataTypeBlockWhenReadBack` ／ `serialize_unsupportedDataType_throws`（A-01 `DEFAULT`） | `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。**辺③の A-01 は「書ける」から「生成時に拒否」へ変わった**（§1-G・XLS-20）。辺③④とも `DEFAULT` を持つ入力を組めない |
+| `rejectsNullSheetName`（辺③ F3 の `null` 側） | `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（`XlsFormatWriterInvalidOutputTest.java:91` の Javadoc から参照を張ってある） |
+| `rejectsFieldWithoutTypeInFileBlock` ／ `#…InMessageBlock` ／ `serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#…InMessageBlock_rejected` ／ `契約違反のnull型もモデル自身は検査せず保持する`（C-20 `type` 省略） | `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `#データ型が空文字のフィールド定義は生成できる` |
+| `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人だけは辺③④に置いたままである**（§1-C）。担保は `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected` |
+| `rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected`（C-17 `fields` 空） | `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない` ／ `#レコード種別を省略してもフィールド0件のレコードは生成できない` |
+
+**§3.1-3 の C-15 行が挙げる `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／
+`#rejectsSendSyncMessageBlockWithoutRecords` は HEAD にも在る**（削除していない）。
+本表に載せていないのはそのためである。
+
+**`src/main` に手を入れたファイル**（上の 4 つの表への追加ぶん。`git diff --numstat 04873de..HEAD -- src/main` の 17 件）:
+
+| ファイル | 課題 | 変更の要点 |
+|---|---|---|
+| `converter/ConverterFileFilter.java` | **XLS-28** | 拡張子違いの同名 Excel ブックの同居を辺①の入口で止める |
+| `converter/DirectiveUtil.java` | （出典の貼り直しのみ） | `notation:nnn` を `30a8271` 基準へ貼り直した。振る舞いは無変更 |
+| `converter/model/ModelPreconditions.java` | **XLS-38 / XLS-40 / XLS-41 / XLS-43 / XLS-22** | 新設。`null` 要素・重複名・行の要素数上限・Map のキー値 `null`・空リストの各不変条件をまとめる |
+| `converter/model/TestDataBlock.java` | **§1-E / §1-G(XLS-20) / XLS-34 / XLS-35 / XLS-36** | `groupId`・`dataType`・識別子の `null`、`DEFAULT`、系統外のデータ種別を生成時に拒否 |
+| `converter/model/FileDataBlock.java` | **§1-B(XLS-29) / XLS-36 / XLS-38** | `fileType` 必須、系統チェック、コレクション・Map の `null` 拒否 |
+| `converter/model/MessageDataBlock.java` | **XLS-36 / XLS-38** | 同上 |
+| `converter/model/TableDataBlock.java` | **XLS-36** | 系統チェック |
+| `converter/model/ColumnRowDataBlock.java` | **XLS-38 / XLS-40** | コレクションの `null` 拒否。カラム名の重複は他責として番人を置かない旨を Javadoc に明記 |
+| `converter/model/FieldDef.java` | **§1-C(XLS-30) / §1-D(XLS-31)** | `name`・`type` の `null` を生成時に拒否。`length` の契約を明記 |
+| `converter/model/RecordLayout.java` | **XLS-38 / XLS-40 / XLS-41 / XLS-22** | 要素 `null`・フィールド名称の重複・行の要素数超過・フィールド 0 件を生成時に拒否 |
+| `converter/model/TestDataContainer.java` | **XLS-37 / XLS-38** | 名前の `null`・コレクションの `null` 拒否 |
+| `converter/model/TestDataSection.java` | **§1-F(XLS-33) / XLS-38** | 同上 |
+| `converter/xls/XlsFormatReader.java` | **XLS-08** | マーカーカラム除外のあとに空エントリ判定を行う |
+| `converter/xls/XlsFormatWriter.java` | **XLS-27 / §1-B / §1-C / §1-D / §1-F / XLS-22** | 0 件テーブルの番人を追加。`FieldDef`・`RecordLayout` へ移した番人を撤去 |
+| `converter/yaml/YamlFormatWriter.java` | **§1-B / §1-C / §1-D / §1-F / §1-G / XLS-22** | 同上 |
+| `converter/xls/BlockLayout.java` ／ `converter/xls/Fill.java` | **§1-G(XLS-20)** | `DEFAULT` の識別セルを書く経路が消えたことに伴う 1 行ずつの調整 |
+
+**JaCoCo 実測（2026-08-19。導出コマンドは下の開示に載せたものと同じで `$3` を変えるだけ）**
+
+| クラス | 追補その 4 | 追補その 5（現在） | 未到達の増減 |
+|---|---|---|---|
+| `XlsFormatWriter` | `line 167/168 branch 109/112` | **`line 169/170 branch 111/114`** | 変化なし（未到達 行 1・分岐 3 のまま） |
+| `YamlFormatWriter` | `line 170/171 branch 95/98` | **`line 170/172 branch 98/102`** | **行 1・分岐 1 増えた**（下の開示） |
+| `YamlFormatReader` | `line 192/192 branch 102/102` | 同左 | 変化なし（0 件のまま） |
+| `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
+| `ModelPreconditions`（新設） | — | **`line 32/32 branch 22/22`** | 0 件 |
+| `RecordLayout` | （未計測） | **`line 15/15 branch 2/2`** | 0 件 |
+
+**開示（`YamlFormatWriter#sectionKey` の `default` が到達不能になった —— #25.5 の副作用）**
+
+`YamlFormatWriter.java:544`（`switch (type)`）の `default` 側 1 分岐と、その中の
+`YamlFormatWriter.java:561`（`throw new IllegalArgumentException("unsupported DataType: " + type)`）1 行が
+未到達である。**§1-G（XLS-20）で `DataType.DEFAULT` のデータブロックを生成時に拒否したため**、
+この `default` へ入る値を作れなくなった（`switch` は残る 13 個の `DataType` をすべて分岐しており、
+`DEFAULT` だけが漏れていた）。到達させていたテスト `serialize_unsupportedDataType_throws` は
+入力を組めなくなったため削除した（上の削除表）。
+
+**`DataType` が増えたときの安全網として残す。** 辺③にも同じ性質の安全網が
+`XlsFormatWriter.java:202`／`:205`（`unsupported block`。`TestDataBlock` の実装クラスを
+上ですべて分岐しているため到達しない）として未到達のまま在り、扱いをそろえる。
+コードには到達不能である理由をコメントで書いてある。**軸A〜F の要素ではない。**
+
+未到達行の実測（`target/site/jacoco/jacoco.xml` を走査したもの）:
+
+```
+XlsFormatWriter.java   L107(分岐1) L202(分岐1) L205(行) L549(分岐1)         → 行 1・分岐 3
+YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L525(分岐1)
+                       L544(分岐1) L561(行)                                → 行 2・分岐 4
+```
+
+**開示（XLS-22 の番人 4 本は移設前から空振りだった —— JaCoCo で検出した）**
+
+移設前の実測では `XlsFormatWriter.java:380-381` ／ `YamlFormatWriter.java:354-358`
+（＝フィールド 0 件のレコードレイアウトを弾く番人そのもの）が未到達であった。
+番人テストは 4 本とも緑だったが、`@Test(expected = IllegalArgumentException.class)` で
+例外の型しか見ておらず、**§6-G（XLS-41）でコンストラクタに入れた別の番人が先に落としていた**。
+`mvn test` の結果では区別がつかず、**JaCoCo の未到達行だけが手がかりだった**。
+詳細は `issues.md` XLS-22 の「番人の移設（2026-08-19・実測）」と「残置している『緑の嘘』」節にある。
 
 **開示（`DirectiveUtil` に残る未到達分岐 1 件 —— #25.5 で足した箇所ではない）**
 
@@ -1787,6 +1947,9 @@ C-16 の正規化を実 `.yaml` で確かめたもので、C-16 は #18 時点�
 **番人の境界（弾くのは `null` だけで空文字は弾かない）**を担保する位置づけにした。
 `null` を弾くことの担保は `XlsFormatWriterTest#rejectsFieldWithoutTypeInFileBlock` ／
 `#rejectsFieldWithoutTypeInMessageBlock` の 2 件である。
+**追補（2026-08-19）: この 2 件は §1-D（`d0023c0`）で削除した。**
+`FieldDef` が `type` ＝ `null` を生成時に拒否するようになり、辺③の番人へ到達しなくなったためである。
+現在の担保は `FieldDefTest#データ型がnullのフィールド定義は生成できない` である（§0.1-2 の対応表）。
 
 **上表 #31 `writesSequenceNoForAllSendSyncTypes` の軸A 欄「A-11, A-12, A-13, A-14」は誤りである
 （2026-08-13・#23 レビュー指摘。本表は #18 時点のスナップショットのため書き換えない）。**
@@ -2170,6 +2333,20 @@ A-07／A-09 が同クラスに 0 件であることは
 **さらに YML-12 2形目 の修正（2026-08-18）で `#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty` 1 件が減り、現在は 15 件である**
 （`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java` → 15。
 内訳は 10 件＋3 件＋2 件。番人の担保 2 件は同じく `XlsFormatWriterTest` 側に置いた）。
+
+**追補（2026-08-19 実測）: さらに 4 件減り、現在は 11 件である。**
+`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java` → **11**。
+減った 4 件は `#writesDefaultDataTypeMarker` ／ `#dropsDefaultDataTypeBlockWhenReadBack`（§1-G・XLS-20 で
+`DataType.DEFAULT` のブロックを生成時に拒否し、入力を組めなくなった。`7c10654`）と、
+`#writesEmptyHeaderRowWhenColumnNamesAreEmpty` ／ `#promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack`
+（XLS-27 の番人でカラム名 0 件のブロックを辺③が書かなくなった。`57c1b0d`）である。
+**上段の「issues 検査 3 件」は、これで 0 件になった**（3 件とも削除済み）。
+残る 11 件はすべて軸要素の担保である
+（HEAD の 11 件は `#writesExpectedFixedFileBlockWithLengthRow` ／ `#writesExpectedVariableFileBlockWithoutLengthRow` ／
+`#writesExpectedRequestBodyMessagesMarker` ／ `#writesResponseHeaderMessagesMarker` ／ `#writesResponseBodyMessagesMarker` ／
+`#writesWorkbookWithoutSheetsWhenContainerHasNoSections` ／ `#writesEmptySheetWhenSectionHasNoBlocks` ／
+`#writesTableWithoutDataRowsWhenRowsAreEmpty` ／ `#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` ／
+`#writesDirectiveRowsBeforeFwHeaderRowsInMessage` ／ `#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`）。
 
 **JaCoCo 実測（#25.5 のレビュー 1 巡目まで反映・2026-08-14）**: `XlsFormatWriter` は
 分岐 **101 / 104**（3 未到達）・行 **157 / 158**（1 未到達）である。導出コマンド:
