@@ -6,8 +6,10 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link TableDataBlock} のテスト。
@@ -37,6 +39,51 @@ public class TableDataBlockTest {
         assertThat(sut.getRows().get(0).get(0), is((String) null));
         assertThat(sut.getRows().get(0).get(2), is("${systemTime}"));
         assertThat(sut.getRows().get(1).get(2), is(""));
+    }
+
+    @Test
+    public void カラム名リストがnullのブロックは生成できない() {
+        // Given: カラム 0 個は空リストで表す（XLS-38）
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp", null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("カラム名リスト"));
+        }
+    }
+
+    @Test
+    public void カラム名にnullを含むブロックは生成できない() {
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp",
+                    Arrays.asList("id", null), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("カラム名リスト"));
+        }
+    }
+
+    @Test
+    public void データ行リストがnullのブロックは生成できない() {
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp", List.of("id"), null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データ行のリスト"));
+        }
+    }
+
+    @Test
+    public void 行そのものがnullのブロックは生成できない() {
+        // Given: 行の「セル」の null は記法にある（notation:767-772・:829-834）が、
+        //        行そのものの null に当たる書き方は無い
+        try {
+            new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp", List.of("id"),
+                    Arrays.asList(List.of("1"), null));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データ行のリスト"));
+        }
     }
 
     @Test

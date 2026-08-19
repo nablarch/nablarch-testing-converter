@@ -3,6 +3,7 @@ package nablarch.test.tool.converter.model;
 import nablarch.test.core.reader.DataType;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -61,6 +62,52 @@ public class TestDataContainerTest {
         } catch (IllegalArgumentException e) {
             // Then
             assertThat(e.getMessage(), containsString("器の名前"));
+        }
+    }
+
+    @Test
+    public void セクション群がnullの器は生成できない() {
+        // Given: 「無い」ことは 0 件のリストで表す。記法に null に当たる書き方が無い（XLS-38）
+        try {
+            new TestDataContainer("book", null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("読み込み単位のリスト"));
+        }
+    }
+
+    @Test
+    public void セクション群にnullの要素を含む器は生成できない() {
+        // Given
+        List<TestDataSection> sections = Arrays.asList(new TestDataSection("s", List.of()), null);
+        try {
+            new TestDataContainer("book", sections);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("読み込み単位のリスト"));
+        }
+    }
+
+    @Test
+    public void ブロック群がnullの読み込み単位は生成できない() {
+        try {
+            new TestDataSection("sheet1", null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データブロックのリスト"));
+        }
+    }
+
+    @Test
+    public void ブロック群にnullの要素を含む読み込み単位は生成できない() {
+        // Given
+        List<TestDataBlock> blocks = Arrays.asList(
+                new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp", List.of("id"), List.of()), null);
+        try {
+            new TestDataSection("sheet1", blocks);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データブロックのリスト"));
         }
     }
 

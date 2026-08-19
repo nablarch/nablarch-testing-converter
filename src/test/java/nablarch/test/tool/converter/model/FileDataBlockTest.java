@@ -5,13 +5,16 @@ import nablarch.test.tool.converter.model.FileDataBlock.FileType;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link FileDataBlock} のテスト。
@@ -54,6 +57,42 @@ public class FileDataBlockTest {
         assertThat(sut.getDataType(), is(DataType.EXPECTED_VARIABLE));
         assertThat(sut.getDirectives().isEmpty(), is(true));
         assertThat(sut.getRecords().isEmpty(), is(true));
+    }
+
+    @Test
+    public void ディレクティブがnullのファイルブロックは生成できない() {
+        // Given: ディレクティブなしは空 Map で表す（XLS-38）
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブ"));
+        }
+    }
+
+    @Test
+    public void レコード群がnullのファイルブロックは生成できない() {
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
+                    new LinkedHashMap<>(), null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("レコードレイアウトのリスト"));
+        }
+    }
+
+    @Test
+    public void レコード群にnullの要素を含むファイルブロックは生成できない() {
+        // Given
+        List<RecordLayout> records = Arrays.asList(
+                new RecordLayout("data", List.of(new FieldDef("id", "数値", "5")), List.of()), null);
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
+                    new LinkedHashMap<>(), records);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("レコードレイアウトのリスト"));
+        }
     }
 
     @Test

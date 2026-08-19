@@ -2,12 +2,15 @@ package nablarch.test.tool.converter.model;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link RecordLayout} のテスト。
@@ -29,6 +32,53 @@ public class RecordLayoutTest {
         assertThat(sut.getRecordType(), is("data"));
         assertThat(sut.getFields(), is(sameInstance(fields)));
         assertThat(sut.getRows(), is(sameInstance(rows)));
+    }
+
+    @Test
+    public void フィールド定義群がnullのレコードは生成できない() {
+        // Given: 「無い」ことは 0 件のリストで表す（XLS-38）
+        try {
+            new RecordLayout("data", null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド定義のリスト"));
+        }
+    }
+
+    @Test
+    public void フィールド定義群にnullの要素を含むレコードは生成できない() {
+        // Given
+        List<FieldDef> fields = Arrays.asList(new FieldDef("id", "数値", "5"), null);
+        try {
+            new RecordLayout("data", fields, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド定義のリスト"));
+        }
+    }
+
+    @Test
+    public void データ行リストがnullのレコードは生成できない() {
+        try {
+            new RecordLayout("data", List.of(new FieldDef("id", "数値", "5")), null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データ行のリスト"));
+        }
+    }
+
+    @Test
+    public void セルがnullのデータ行は保持できる() {
+        // Given: セルの null は記法にある（notation:767-772「セルに null」・:829-834
+        //        「アンクォートの null」）。行そのものの null とは別である
+        List<List<String>> rows = List.of(Arrays.asList("1", null));
+
+        // When
+        RecordLayout sut = new RecordLayout("data",
+                List.of(new FieldDef("id", "数値", "5"), new FieldDef("name", "半角英字", "5")), rows);
+
+        // Then
+        assertThat(sut.getRows().get(0).get(1), is(nullValue()));
     }
 
     @Test

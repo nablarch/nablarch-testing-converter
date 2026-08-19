@@ -37,11 +37,13 @@ public final class RecordLayout {
      * @param recordType レコード種別（省略時は {@code null}。FW_HEADER 等もそのまま保持）
      * @param fields     フィールド定義群（記述順。1 件以上。空の検査は書き出し側が行う）
      * @param rows       データ行のリスト（{@code null}・空文字・特殊記法を未加工で保持）
+     * @throws IllegalArgumentException {@code fields} かその要素、{@code rows} かその要素（行）が
+     *                                  {@code null} の場合（セルの {@code null} は通す）
      */
     public RecordLayout(String recordType, List<FieldDef> fields, List<List<String>> rows) {
         this.recordType = recordType;
-        this.fields = fields;
-        this.rows = rows;
+        this.fields = ModelPreconditions.requireNoNulls("フィールド定義のリスト", fields);
+        this.rows = ModelPreconditions.requireNoNullRows("データ行のリスト", rows);
     }
 
     /** @return レコード種別（省略時は {@code null}） */

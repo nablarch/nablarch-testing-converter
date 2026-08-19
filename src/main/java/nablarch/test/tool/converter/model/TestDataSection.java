@@ -37,7 +37,8 @@ public final class TestDataSection {
      *
      * @param name   シート名／ファイル名（拡張子なし）。{@code null} は不可
      * @param blocks データブロックのリスト（記述順）
-     * @throws IllegalArgumentException {@code name} が {@code null} の場合
+     * @throws IllegalArgumentException {@code name} が {@code null} の場合、または
+     *                                  {@code blocks} かその要素が {@code null} の場合
      */
     public TestDataSection(String name, List<TestDataBlock> blocks) {
         if (name == null) {
@@ -47,7 +48,7 @@ public final class TestDataSection {
                             + "Excel 形式ではシート名、YAML 形式ではファイル名になります）。");
         }
         this.name = name;
-        this.blocks = blocks;
+        this.blocks = ModelPreconditions.requireNoNulls("データブロックのリスト", blocks);
     }
 
     /** @return シート名／ファイル名（拡張子なし） */

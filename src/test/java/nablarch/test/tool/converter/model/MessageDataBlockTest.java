@@ -8,8 +8,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link MessageDataBlock} のテスト。
@@ -41,6 +43,40 @@ public class MessageDataBlockTest {
         assertThat(new ArrayList<>(sut.getFwHeaderFields().keySet()), is(List.of("requestId", "userId")));
         assertThat(sut.getFwHeaderFields().get("userId"), is("${userId}"));
         assertThat(sut.getRecords(), is(records));
+    }
+
+    @Test
+    public void ディレクティブがnullの電文ブロックは生成できない() {
+        // Given: 「無い」ことは空 Map で表す（XLS-38）
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    null, new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ディレクティブ"));
+        }
+    }
+
+    @Test
+    public void FW制御ヘッダがnullの電文ブロックは生成できない() {
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    new LinkedHashMap<>(), null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("FW 制御ヘッダフィールド"));
+        }
+    }
+
+    @Test
+    public void レコード群がnullの電文ブロックは生成できない() {
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
+                    new LinkedHashMap<>(), new LinkedHashMap<>(), null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("レコードレイアウトのリスト"));
+        }
     }
 
     @Test

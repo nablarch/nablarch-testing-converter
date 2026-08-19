@@ -97,9 +97,9 @@ public final class MessageDataBlock extends TestDataBlock {
                             Map<String, String> fwHeaderFields, List<RecordLayout> records) {
         super(dataType, groupId, identifier);
         requireDataTypeOf(MessageDataBlock.class, PERMITTED_TYPES, dataType);
-        this.directives = directives;
-        this.fwHeaderFields = fwHeaderFields;
-        this.records = records;
+        this.directives = ModelPreconditions.requireNoNulls("ディレクティブ", directives);
+        this.fwHeaderFields = ModelPreconditions.requireNoNulls("FW 制御ヘッダフィールド", fwHeaderFields);
+        this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
     }
 
     /** @return ディレクティブ（記述順） */

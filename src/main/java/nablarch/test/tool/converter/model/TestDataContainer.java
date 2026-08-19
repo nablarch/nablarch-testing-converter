@@ -37,7 +37,8 @@ public final class TestDataContainer {
      *
      * @param name     ブック名／ディレクトリ名（拡張子なし）
      * @param sections 読み込み単位のリスト（記述順）
-     * @throws IllegalArgumentException {@code name} が {@code null} の場合
+     * @throws IllegalArgumentException {@code name} が {@code null} の場合、または
+     *                                  {@code sections} かその要素が {@code null} の場合
      */
     public TestDataContainer(String name, List<TestDataSection> sections) {
         if (name == null) {
@@ -47,7 +48,7 @@ public final class TestDataContainer {
                             + "Excel 形式ではブック名、YAML 形式ではディレクトリ名になります）。");
         }
         this.name = name;
-        this.sections = sections;
+        this.sections = ModelPreconditions.requireNoNulls("読み込み単位のリスト", sections);
     }
 
     /** @return ブック名／ディレクトリ名（拡張子なし） */

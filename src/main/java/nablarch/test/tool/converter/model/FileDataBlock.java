@@ -75,8 +75,8 @@ public final class FileDataBlock extends TestDataBlock {
         super(dataType, groupId, identifier);
         requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType);
         this.fileType = fileType;
-        this.directives = directives;
-        this.records = records;
+        this.directives = ModelPreconditions.requireNoNulls("ディレクティブ", directives);
+        this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
     }
 
     /** @return 固定長／可変長の区別（必須。{@code null} 不可） */
