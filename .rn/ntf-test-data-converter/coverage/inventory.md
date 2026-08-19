@@ -761,6 +761,87 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 を送出し、`defaultGroupOnlyYaml` に制御が届かなかった。
 残る 1 行の未到達（`continue`）も同じ枝の中にある。防御ガードであり軸要素ではない。
 
+**追補その 6（2026-08-19 実測。§6-J-2・§6-J-3・§6-K ぶん）**
+
+追補その 5（598 件）から、書き出し側に残っていた番人の決着 3 ステップを走らせたぶんを導き直した。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 597
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1277
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 597
+```
+
+```
+Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**598 → 597（差 −1）の内訳**（`git diff 0a14655 HEAD -- src/test` で `public void` の増減を数えた実測。
+追加 16 件・削除 17 件）:
+
+| ファイル | 増減 |
+|---|---|
+| `model/FileDataBlockTest` | **+2**（XLS-30 の固定長・可変長） |
+| `model/MessageDataBlockTest` | **+2**（XLS-30 の電文） |
+| `model/TableDataBlockTest` | **+2**（XLS-21 の 2 形） |
+| `yaml/YamlFormatReaderTest` | **+1**（XLS-30 の辺②拒否） |
+| `xls/XlsFormatWriterTest` | **−3**（番人テスト 4 件削除・マーカーカラムと往復 4 件追加。ほかに XLS-29 ぶんの削除 1 件） |
+| `yaml/YamlFormatWriterTest` | **−5**（YML-12 2 形目 2 件・XLS-30 2 件・XLS-29 1 件の番人テストを削除） |
+
+**削除した番人テストは「空振り」になるためである。** 番人が中間モデルの生成時へ移ると、
+書き出し側のテストは `build`／`serialize` へ届く前にコンストラクタで落ちる。
+`@Test(expected = ...)` は例外の型しか見ないので緑のままだが、意図した番人は 1 行も通らない。
+
+**JaCoCo 実測（2026-08-19。導出コマンドは §3.1-3 ／ §4.1-2 に載せたものと同じで `$3` を変えるだけ）**
+
+| クラス | 追補その 5 | 追補その 6（現在） | 未到達の増減 |
+|---|---|---|---|
+| `XlsFormatWriter` | `line 169/170 branch 111/114` | **`line 157/158 branch 101/104`** | **変化なし**（未到達 行 1・分岐 3 のまま。総数が減ったのは番人 3 つを外したため） |
+| `YamlFormatWriter` | `line 170/172 branch 98/102` | **`line 157/159 branch 86/90`** | **変化なし**（未到達 行 2・分岐 4 のまま） |
+| `YamlFormatReader` | `line 192/192 branch 102/102` | 同左 | 変化なし（0 件のまま） |
+| `ModelPreconditions` | `line 32/32 branch 22/22` | **`line 40/40 branch 28/28`** | 0 件（`requireLengths` を足しても未到達は出ていない） |
+| `FileDataBlock`（新規計測） | — | **`line 14/14 branch 4/4`** | 0 件 |
+| `MessageDataBlock`（新規計測） | — | **`line 13/13 branch 2/2`** | 0 件 |
+| `ColumnRowDataBlock`（新規計測） | — | **`line 11/11 branch 6/6`** | 0 件 |
+| `RecordLayout` | `line 15/15 branch 2/2` | 同左 | 0 件 |
+| `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
+
+**この 3 ステップで未到達は 1 つも増えていない。** 既知の未到達の行番号だけが番人の削除でずれた
+（`target/site/jacoco/jacoco.xml` を走査した実測）:
+
+```
+XlsFormatWriter.java   L107(分岐1) L202(分岐1) L205(行) L550(分岐1)         → 行 1・分岐 3
+YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L483(分岐1)
+                       L502(分岐1) L519(行)                                → 行 2・分岐 4
+```
+
+前回（追補その 5）の `XlsFormatWriter.java:549` は **L550**、`YamlFormatWriter.java:525`／`:544`／`:561` は
+**L483**／**L502**／**L519** へ移っただけである。開示の内容（`unsupported block` と
+`unsupported DataType` の安全網が到達不能であること）は変わらない。
+
+**軸の担保への影響（§3.1／§3.3／§4.1 のスナップショット表は書き換えない。現在地だけ示す）**
+
+| 軸要素 | 追補その 5 時点の担保 | 現在の担保 |
+|---|---|---|
+| C-08 `columnNames` 空 | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames`（辺③が `IllegalArgumentException` で落とす） | **`XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` ／ `#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock`**。**落とさずマーカーカラム 1 列 `[空]` を書く**へ変わった（`issues.md` **XLS-27** の【決着】）。あわせて**カラム名 0 件で「セルを持つ行」**は `TableDataBlockTest#カラムなしでセルを持つ行を抱えるブロックは生成できない` が拒否する（**XLS-21**） |
+| C-15 `MessageDataBlock.records` 空 ／ E-3(0 件) のメッセージ経路 | `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords`（辺③） | **`MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `#本文レコードが0件の送信系電文ブロックも生成できない`**（生成時拒否へ移設。`issues.md` **YML-12 2 形目**・§6-J-2）。**辺③④からこの版面へ到達する経路は無くなった** |
+| C-21 `FieldDef.length` ＝ `null` の固定長・電文経路 | `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock`（辺③） | **`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-30**・§6-J-3）。**可変長は `null` が正しい**ため `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる` が通す |
+| `FileDataBlock.fileType` ＝ `null` | `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` ／ `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected`（辺③④） | **`FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-29**） |
+
+**辺②（`YamlFormatReader`）の担保も動いた。** XLS-30 の移設により、スキーマ適合の YAML から
+長さ無しの固定長ファイルブロック／空ボディの電文が中間モデルへ入る経路が塞がった。
+`YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`（新規）と
+`#readMessage_emptyBody_rejected`（`#readMessage_emptyBody_isStillMapped` を反転）が固定する。
+
+**同梱サンプルの変換が通るようになった。** `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`
+（0 件テーブルがあるため変換が中止されることを固定していた）は
+`#convertsClimanSampleIncludingZeroRowTable`（出力ブック数 2 冊）へ反転した。
+
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
