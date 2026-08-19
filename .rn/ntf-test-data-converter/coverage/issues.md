@@ -1183,7 +1183,12 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 - **既存テスト 1 件の入力を書き直した。** `RecordLayoutTest#レコード種別省略をnullで保持する` は
   フィールド 0 件の `RecordLayout` を組んでいたので、フィールド 1 件へ直した（番人を緩めるのではなく
   入力を記法どおりの形へ直す扱い。§1-C ／ YML-12 ／ XLS-43 と同じ）。
-- 削除したテスト 4 件・追加したテスト 2 件・書き直したテスト 1 件。
+- **削除したテスト 4 件・追加したテスト 3 件・書き直したテスト 1 件**（`git show c31b534 -- src/test`
+  の `+/-    public void` を数えた実測。当初「追加 2 件」と書いたが 3 件であり、2026-08-19 に訂正した）。
+  追加の 3 件目は `XlsFormatWriterTest#writesEmptyCellsForRowShorterThanBlockWidth` で、
+  **削除した番人テストが置かれていた辺③の位置に、`notation:883` が正常と定める「不足側は空セルで補完される」
+  を主張するテストを置き直したもの**である（辺④の対は
+  `YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull`）。
   移設後の全件実行は `Tests run: 598, Failures: 0, Errors: 0, Skipped: 2`。
 
 ### XLS-23 セクション 0 件のコンテナから、シートを 1 枚も持たない `.xlsx` が黙って書き出される（影響度 低・記録のみ）
