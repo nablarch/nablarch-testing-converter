@@ -94,6 +94,21 @@ public class TestDataBlockTest {
     }
 
     @Test
+    public void データ種別がnullのデータブロックは生成できない() {
+        // Given: データブロックは必ず 1 つのデータタイプを持つ。Excel はマーカー（notation:198
+        //        「データタイプ=識別子の値」）、YAML はトップレベルキー（notation:206-241）が
+        //        データタイプから決まるため、データタイプの無いブロックはどちらの形式でも書けない
+        // When
+        try {
+            new TableDataBlock(null, "", "emp", List.of("id"), List.of(List.of("1")));
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("データ種別"));
+        }
+    }
+
+    @Test
     public void グループID省略は空文字で表しデフォルトグループとする() {
         // Given: 省略は空文字（notation:254「グループIDを省略した場合は、グループIDを持たない
         //        データブロック（デフォルトグループ）が対象になる」）

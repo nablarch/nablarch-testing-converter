@@ -23,6 +23,15 @@ import nablarch.test.core.reader.DataType;
  * </p>
  *
  * <p>
+ * <b>{@code dataType} は {@code null} であってはならない。生成時点で拒否する。</b>
+ * データブロックは必ず 1 つのデータタイプを持つ。Excel 形式はマーカー
+ * （{@code testdata_notation.rst:198}（{@code 30a8271} 時点）の {@code データタイプ=識別子の値}）、
+ * YAML 形式はトップレベルキー（{@code :206-241}）がデータタイプから決まるため、
+ * <b>データタイプの無いブロックはどちらの形式でも書けない</b>
+ * （{@code coverage/issues.md} <b>XLS-34</b>）。
+ * </p>
+ *
+ * <p>
  * <b>{@code dataType} に {@link DataType#DEFAULT} を持たせてはならない。生成時点で拒否する。</b>
  * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（{@code testdata_notation.rst:188-190}
  * （{@code 30a8271} 時点）「フレームワーク内部用（通常は使用しない）」）、YAML のトップレベルキー
@@ -54,13 +63,22 @@ public abstract sealed class TestDataBlock
     /**
      * コンストラクタ。
      *
-     * @param dataType   データ種別（{@link DataType#DEFAULT} 不可）
+     * @param dataType   データ種別（{@code null} 不可。{@link DataType#DEFAULT} 不可）
      * @param groupId    グループ ID（省略時は空文字。{@code null} 不可）
      * @param identifier ブロックの識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID）
-     * @throws IllegalArgumentException {@code groupId} が {@code null} の場合、
-     *                                  または {@code dataType} が {@link DataType#DEFAULT} の場合
+     * @throws IllegalArgumentException {@code dataType} が {@code null} または
+     *                                  {@link DataType#DEFAULT} の場合、
+     *                                  または {@code groupId} が {@code null} の場合
      */
     protected TestDataBlock(DataType dataType, String groupId, String identifier) {
+        if (dataType == null) {
+            throw new IllegalArgumentException(
+                    "データ種別が null のデータブロックは作れません"
+                            + "（データブロックは必ず 1 つのデータタイプを持ちます。Excel 形式は"
+                            + "マーカー、YAML 形式はトップレベルキーがデータタイプから決まるため、"
+                            + "データタイプの無いブロックはどちらの形式でも書けません）。"
+                            + " グループ ID=[" + groupId + "] 識別子=[" + identifier + "]");
+        }
         if (dataType == DataType.DEFAULT) {
             throw new IllegalArgumentException(
                     "データタイプ DEFAULT のデータブロックは作れません"
