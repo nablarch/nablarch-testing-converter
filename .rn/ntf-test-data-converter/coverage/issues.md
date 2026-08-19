@@ -47,33 +47,35 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 **本作業の対象外 1 件**（XLS-26）である。数え直した日は 2026-08-18。導出コマンドと出力は下記
 「集計は課題 ID 単位で数えること」の節にある。
 
-**要対応 15 件の内訳（修正済み 12 ／ 未完 3。2026-08-19 時点）**
+**要対応 15 件の内訳（修正済み 13 ／ 未完 2。2026-08-19 時点）**
 
-- **修正済み 12 件** —— XLS-06・XLS-08・XLS-16・XLS-22・XLS-29・XLS-30・**XLS-31**・**XLS-32** ／
+- **修正済み 13 件** —— XLS-06・XLS-08・XLS-16・XLS-22・XLS-29・XLS-30・**XLS-31**・**XLS-32**・**XLS-33** ／
   YML-02・YML-03・YML-08・YML-12（**YML-12 は 4 形すべてが修正済み**）
-- **未完 3 件** —— XLS-27・XLS-28・XLS-33。現況は次のとおり
+- **未完 2 件** —— XLS-27・XLS-28。現況は次のとおり
   - **XLS-27** — 当面の対応（0 件テーブルを弾く番人）まで完了（`57c1b0d`）。本体修正待ち。マーカーカラム案の実測は未実施
   - **XLS-28** — 未着手。課題として起こしただけ（`7200b0f`）
-  - **XLS-33**（§1-F） — 未着手。課題として起こしただけ（`7200b0f`）
 
-> **2026-08-19 に XLS-31（§1-D）・XLS-32（§1-E）を修正した。** ユーザーが示した共通方針
+> **2026-08-19 に XLS-31（§1-D）・XLS-32（§1-E）・XLS-33（§1-F）を修正した。** ユーザーが示した共通方針
 > 「不正値は書き出し側でなく中間モデルの生成時に拒否する」（`steering.md` Decisions）に沿い、
 > **書き出し側の番人ではなく中間モデルのコンストラクタで拒否する形**で閉じた
-> （XLS-31 ＝ `d0023c0`／XLS-32 ＝ `5abc773`）。
+> （XLS-31 ＝ `d0023c0`／XLS-32 ＝ `5abc773`／XLS-33 ＝ `81cf234`）。
 > **この方針は既存の修正の形にも掛かる。** `FieldDef.type` の番人（`f80c192`）は XLS-31 と同じコミットで
 > コンストラクタへ寄せ、辺③④のチェックを外した。**残る書き出し側の番人を同じ形へ寄せるかは未決**
-> （ユーザー判断待ち）。2026-08-19 時点で `src/main` に残っている番人は次の 8 つである（実物を grep して確認）。
+> （ユーザー判断待ち）。2026-08-19 時点で `src/main` に残っている番人は次の 7 つである（実物を grep して確認）。
 >
 > | 番人 | 位置 | 課題 | 中間モデルの不変条件にできるか |
 > |---|---|---|---|
-> | `fileType` ＝ `null` | `XlsFormatWriter:280`／`YamlFormatWriter:187` | XLS-29 | できる（`FileDataBlock` の生成時） |
-> | `records` 空（電文） | `XlsFormatWriter:318`／`YamlFormatWriter:230` | YML-12 2 形目 | できる（`MessageDataBlock` の生成時） |
-> | `fields` 空 | `XlsFormatWriter:386`／`YamlFormatWriter:350` | XLS-22 | できる（`RecordLayout` の生成時。下記 XLS-22 の追記を参照） |
-> | `columnNames` 0 件 | `XlsFormatWriter:240` | XLS-27 | 未確認（XLS-27 のマーカーカラム案の実測待ち） |
-> | `length` ＝ `null` | `XlsFormatWriter:394`／`YamlFormatWriter:358` | XLS-30 | `FieldDef` 単体ではできない（固定長か可変長かが判らない）。上位ブロックの生成時へ寄せる形になる |
-> | 2 レコード目以降の `recordType` 空 | `XlsFormatWriter:404` | XLS-06 | できない（「2 件目以降」は `RecordLayout` 単体では判らない。上位の生成時へ寄せる形になる） |
-> | シート名 ＝ `null` | `XlsFormatWriter:157` | XLS-16 | できる（`TestDataSection` の生成時。**§1-F ＝ XLS-33 で扱う**） |
-> | シート名 31 文字超 | `XlsFormatWriter:162` | XLS-16 | **できない。Excel 固有の上限であって中間モデルの不変条件ではない**（辺④は同じ名前を書ける）。書き出し側に残す |
+> | `fileType` ＝ `null` | `XlsFormatWriter:275`／`YamlFormatWriter:192` | XLS-29 | できる（`FileDataBlock` の生成時） |
+> | `records` 空（電文） | `XlsFormatWriter:313`／`YamlFormatWriter:235` | YML-12 2 形目 | できる（`MessageDataBlock` の生成時） |
+> | `fields` 空 | `XlsFormatWriter:381`／`YamlFormatWriter:355` | XLS-22 | できる（`RecordLayout` の生成時。下記 XLS-22 の追記を参照） |
+> | `columnNames` 0 件 | `XlsFormatWriter:235` | XLS-27 | 未確認（XLS-27 のマーカーカラム案の実測待ち） |
+> | `length` ＝ `null` | `XlsFormatWriter:389`／`YamlFormatWriter:363` | XLS-30 | `FieldDef` 単体ではできない（固定長か可変長かが判らない）。上位ブロックの生成時へ寄せる形になる |
+> | 2 レコード目以降の `recordType` 空 | `XlsFormatWriter:399` | XLS-06 | できない（「2 件目以降」は `RecordLayout` 単体では判らない。上位の生成時へ寄せる形になる） |
+> | シート名 31 文字超 | `XlsFormatWriter:157` | XLS-16 | **できない。Excel 固有の上限であって中間モデルの不変条件ではない**（辺④は同じ名前を書ける）。書き出し側に残す |
+>
+> **シート名 ＝ `null` の番人は §1-F（`81cf234`）で外した** —— `TestDataSection` の生成時拒否へ
+> 寄せたため。`81cf234` の前は `XlsFormatWriter:157` にあり、31 文字超はその直後の `:162` だった。
+> **上表の行番号はすべて `81cf234` 時点である。**
 
 **YML-03 は帰属が nablarch-testing-yaml 側だったため `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを
 置いて待っていたが、yaml 側が `0b53910` で修正されたため 2026-08-18 に両側そろって解消した**
@@ -2887,7 +2889,7 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
   （実装を読むかぎり辺③の `marker` はそのまま連結し、辺④の `rawGroup` は括弧が無ければ素通しする。
   **実行しての確認はしていない —— 未確認**）。
 
-### XLS-33 セクション名 `null` のセクションから、辺④が `null.yaml` というファイルを黙って作る（影響度 中・**検出できない**）
+### XLS-33 セクション名 `null` のセクションから、辺④が `null.yaml` というファイルを黙って作る（影響度 中・**検出できない**・**#25.5 §1-F で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: `TestDataSection.name` に `null` を入れた中間モデルを
   辺③④へ渡した結果。**辺③④で非対称である。**
@@ -2900,7 +2902,32 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
 - **どちらへ揃えるか**: **辺③（弾く側）へ揃える。** 出典は上記 `notation:590` である。
   シート名とファイル名は同じ「読み込み単位の名前」であって、片方だけ `null` を許す根拠が記法に無い。
 - 判断: 仕様として不適切。
-- NTF 仕様としての判定: **要対応**。辺④に辺③と同じ番人を置く。
+- NTF 仕様としての判定: **要対応**。**#25.5 §1-F で修正済み**（`81cf234`）。
+  中間モデルの契約を「`TestDataSection.name` は必須（`null` 不可。空文字は可）」とし、
+  **`TestDataSection` のコンストラクタが生成時点で拒否する。辺③④に番人は置かない**（下記）。
+
+**§1-F の決着 —— `TestDataSection` の生成時に拒否した（`81cf234`）**
+
+- **揃え先が変わった。** 課題を起こした時点の結論は「辺④に辺③と同じ番人を置く」だったが、
+  2026-08-19 の方針（`steering.md` Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）
+  により、**辺③の番人のほうを外して生成時拒否へ寄せた**。`notation:590` を根拠に
+  「片方だけ `null` を許す根拠が記法に無い」とした判断自体は変わっていない。
+- **辺③の `null` 分岐を外した。** `XlsFormatWriter#requireValidSheetNameLength` から
+  `sheetName == null` の分岐を削除し（到達不能になったため）、担保テスト
+  `XlsFormatWriterInvalidOutputTest#rejectsNullSheetName` を削除した。
+  **31 文字上限の検査は残している** —— **Excel 形式固有の制約であって中間モデルの不変条件ではない**
+  （XLS-16。冒頭の番人一覧を参照）。
+- **辺④は無変更。** `YamlFormatWriter#write` の `section.getName() + ".yaml"` はそのままで、
+  `null.yaml` を作る挙動は到達不能になった。Javadoc にその旨を書き足した。
+- **空文字は拒否しない。** Excel は POI が `sheetName '' is invalid` で拒むが、これも Excel 形式固有の
+  制約である（YAML 側は `.yaml` というファイル名になり、ファイルシステム上は作れる）。担保は既存の
+  `XlsFormatWriterInvalidOutputTest#rejectsEmptySheetName` がそのまま持つ。
+- テストは `TestDataContainerTest#名前がnullの読み込み単位は生成できない` 1 件
+  （同クラスが既に `TestDataSection` を担保しているため、新規クラスは作っていない）。
+- **方針 4（`null` の生成元の特定）の結果: 辺①②のどちらのリーダーも `name` ＝ `null` を作らない。**
+  辺①は `XlsFormatReader.java:703-706` の `sheetName(resourceName)`（`resourceName` から `/` 以降を
+  切り出すか、無ければ全体を返す）、辺②は `YamlFormatReader.java:94` が `resourceName` をそのまま
+  渡す。**したがってリーダー側の修正は不要であり、`null` が入るのは呼び出し側のバグである。**
 
 ---
 
