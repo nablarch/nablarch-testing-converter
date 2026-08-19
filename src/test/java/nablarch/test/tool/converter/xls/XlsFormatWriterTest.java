@@ -420,26 +420,6 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: ファイル種別（{@link FileDataBlock.FileType}）が {@code null} の固定長ファイルブロック。
-     * When : build。
-     * Then : IllegalArgumentException（Excel 記法は固定長ファイルと可変長ファイルに固有の記法制約を
-     *        置いており（{@code testdata_notation.rst:883}。{@code 30a8271} 時点）、どちらでもない
-     *        ファイルデータブロックは書き表せないため、黙って可変長へ倒さず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsFileBlockWithoutFileType() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
-                Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                null, map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", file));
-    }
-
-    /**
      * Given: カラム名を 1 件も持たないテーブルブロック（行も 0 件）。
      * When : build。
      * Then : IllegalArgumentException（Excel 記法はデータ行が無くてもカラム名の行を省略できない。

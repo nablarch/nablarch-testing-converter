@@ -12,7 +12,6 @@ import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -189,15 +188,21 @@ public class FileDataBlockTest {
         assertThat(sut.getRecords().get(1).getRecordType(), is("data"));
     }
 
+    /**
+     * XLS-29。ファイル種別が {@code null} のファイルブロックは生成できない。
+     * 記法は固定長ファイルと可変長ファイルの 2 種類に尽きており（{@code testdata_notation.rst:883}）、
+     * YAML は {@code :1146} が {@code type} を必須キーと定め、本体スキーマ {@code $defs.file_data} も
+     * {@code type} を {@code required} かつ {@code enum} ＝ {@code ["fixed", "variable"]} に限る。
+     * どちらでもないファイルデータブロックは 4 辺のどこにも書き出せない。
+     */
     @Test
-    public void 契約違反のnullファイル種別もモデル自身は検査せず保持する() {
-        // Given: fileType は必須（null 不可）だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
-        // When
-        FileDataBlock sut = new FileDataBlock(
-                DataType.SETUP_FIXED, "", "f.dat", null, new LinkedHashMap<>(), List.of());
-
-        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
-        assertThat(sut.getFileType(), is(nullValue()));
+    public void ファイル種別がnullのファイルブロックは生成できない() {
+        try {
+            new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", null, new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("ファイル種別が null のファイルデータブロックは作れません"));
+        }
     }
 
     @Test
