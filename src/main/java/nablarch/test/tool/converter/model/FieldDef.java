@@ -45,9 +45,13 @@ package nablarch.test.tool.converter.model;
  * {@code length} の説明に「固定長ファイルでは実質必須（省略すると NTF が record-length を計算できない）。
  * 可変長ファイルでは不要（省略可）」と書いており、記法の明文と食い違ってはいない。
  * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。<b>ただし固定長か可変長かは本クラス単体では
- * 判らないため、{@code length} は生成時に拒否できない。</b>本クラス自身は検査せず、書き出し側
- * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）が固定長ファイル・電文で {@code null} を
- * 受けたら送出で弾く（{@code coverage/issues.md} <b>XLS-30</b>）。
+ * 判らないため、{@code length} は本クラスの生成時には拒否できない。</b>文脈を持つ側が生成時に拒否する——
+ * {@link nablarch.test.tool.converter.model.FileDataBlock}（{@code fileType} が {@code FIXED} のとき）と
+ * {@link nablarch.test.tool.converter.model.MessageDataBlock}（常に）が
+ * {@code ModelPreconditions#requireLengths} を呼ぶ（{@code coverage/issues.md} <b>XLS-30</b>。
+ * <b>2026-08-19 の §6-J-3（{@code b762438}）で書き出し側から移設した</b>ので、
+ * {@code XlsFormatWriter} ／ {@code YamlFormatWriter} に {@code length} の番人は無い。
+ * 上の段落「書き出し側には番人を置かない」と揃っている）。
  * </p>
  *
  * @author kiyotis
@@ -64,7 +68,8 @@ public final class FieldDef {
      * @param name   フィールド名称（記述のまま。大文字化なし。必須（{@code null} 不可）。空文字は可）
      * @param type   データ型（記述のまま。必須（{@code null} 不可）。空文字は可）
      * @param length フィールド長（記述のまま。{@code "-"} 等もリテラル保持。可変長ファイルでは省略可で
-     *               {@code null}。固定長ファイル・電文では必須であり、{@code null} の検査は書き出し側が行う）
+     *               {@code null}。固定長ファイル・電文では必須であり、{@code null} の検査は
+     *               {@code FileDataBlock} ／ {@code MessageDataBlock} が生成時に行う）
      * @throws IllegalArgumentException {@code name} または {@code type} が {@code null} の場合
      */
     public FieldDef(String name, String type, String length) {

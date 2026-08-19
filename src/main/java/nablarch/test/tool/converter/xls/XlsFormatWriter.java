@@ -202,6 +202,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         } else if (block instanceof MessageDataBlock) {
             return layoutMessage((MessageDataBlock) block);
         }
+        // sealed 階層が将来変更された場合のランタイム安全網。instanceof チェーンにはコンパイル時の網羅性保証がない。
         throw new IllegalArgumentException("unsupported block: " + block.getClass().getName());
     }
 
@@ -252,7 +253,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                 : block.getColumnNames();
         l.add(RowKind.HEADER, new ArrayList<>(columns));
         for (int c = 0; c < columns.size(); c++) {
-            // カラム名が null の場合は isMarkerColumn 内で null チェックして false を返す。null カラムは非マーカーとして扱う。
+            // カラム名の null は ColumnRowDataBlock が生成時に拒否するため、ここへは届かない
+            // （ModelPreconditions#requireNoNulls）。isMarkerColumn の null 判定は防御として残してある。
             if (isMarkerColumn(columns.get(c))) {
                 l.markMarkerColumn(c);
             }
@@ -529,12 +531,6 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * マーカーカラム（{@code [...]} 形式）か判定する。
-     *
-     * @param columnName カラム名
-     * @return マーカーカラムなら真
-     */
-    /**
      * カラム名を 1 件も持たない 0 件テーブルのカラム名行へ書くマーカーカラム。
      *
      * <p>
@@ -546,6 +542,17 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     static final String EMPTY_BLOCK_MARKER_COLUMN = "[空]";
 
+    /**
+     * マーカーカラム（{@code [...]} 形式）か判定する。
+     *
+     * <p>
+     * {@code columnName} の {@code null} 判定は防御である——カラム名の {@code null} は
+     * {@code ColumnRowDataBlock} の生成時に拒否されるため、ここへは届かない。
+     * </p>
+     *
+     * @param columnName カラム名
+     * @return マーカーカラムなら真
+     */
     private static boolean isMarkerColumn(String columnName) {
         return columnName != null && columnName.startsWith("[") && columnName.endsWith("]");
     }
@@ -575,7 +582,14 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * {@code null} を空文字へ、それ以外は記法のまま返す（メタ・型・長さ等、省略を空セルで表す箇所用）。
+     * {@code null} を空文字へ写す。
+     *
+     * <p>
+     * <b>実際に {@code null} が来るのはレコード種別だけである</b>（{@code RecordLayout} が
+     * 「省略時は {@code null}」と定めているため）。データ型・フィールド長・ディレクティブ値の呼び出しは
+     * 中間モデルの生成時に {@code null} が拒否済みで到達しない（{@code FieldDef} ／
+     * {@code FileDataBlock} ／ {@code MessageDataBlock}）。防御として残してある。
+     * </p>
      *
      * @param value 値
      * @return セル文字列

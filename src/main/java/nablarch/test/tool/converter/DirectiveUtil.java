@@ -24,7 +24,12 @@ public final class DirectiveUtil {
     /**
      * 本体ディレクティブ（{@code Map<String, Object>}）を文字列ディレクティブへ写す。
      * <p>
-     * null 値は {@code null} のまま保持する（文字列 {@code "null"} へ化けさせない）。
+     * null 値はここでは変換せず {@code null} のまま通す（文字列 {@code "null"} へ化けさせない）。
+     * ただし<b>保持はされない</b>——戻り値を受け取る {@code FileDataBlock} ／ {@code MessageDataBlock} が
+     * 生成時に {@code ModelPreconditions#requireNoNulls(String, Map)} で拒否するため、
+     * 最終的には {@code IllegalArgumentException} になる（本体スキーマ {@code $defs.directives} の値型は
+     * string ／ boolean ／ integer だけで {@code null} を許す定義が無い。{@code coverage/issues.md}
+     * <b>XLS-43</b>）。
      * 非 null 値は {@code valueMapper} を介して文字列へ変換する。
      * </p>
      *

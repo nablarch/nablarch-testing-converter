@@ -374,7 +374,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
 
     /**
      * フィールド定義をフロー map 記法へ整形する（{@code length} は null なら省略。
-     * {@code type} は必須のため常に出力する。{@code null} は {@link #emitRecords} が弾いてある）。
+     * {@code type} は必須のため常に出力する。{@code null} は
+     * {@link nablarch.test.tool.converter.model.FieldDef} が生成時に拒否している）。
      *
      * @param field フィールド定義
      * @return フロー map 文字列
