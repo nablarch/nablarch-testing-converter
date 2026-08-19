@@ -1317,8 +1317,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: —
-- **Last completed**: —
-- **Next**: —
-- **Notes**: —
+- **Status**: paused
+- **Date**: 2026-08-19
+- **Last completed**: #25.5 §6-G の切り出し（XLS-41 の「多い側」）—— `166a199`（実装）・`88835b9`（台帳）・`1c16f21`（steering）
+- **Next**: #25.5 の **XLS-27（マーカーカラム案の実測）**。steering の該当タスク行の (1)〜(4) を上から順に実測する。**番人の実装は変えない。採否はユーザーが決めるので、実測結果だけを返す。**
+- **Notes**: ブランチ `ntf-test-data-converter`（push 済み・未 push のコミット無し）。作業ツリーはクリーン。未解決の untracked パス無し。次に着手するのは XLS-27 の実測で、そのあとが **§6-H（XLS-43。ディレクティブ・フレームワーク制御ヘッダの Map のキー・値の `null` を生成時に拒否する）**。XLS-43 は台帳に登録済み・実装未着手。**ユーザー判断待ち 1 件** —— 決定 1（XLS-40）で「src/main は変更しない」との指示に対し、事実と食い違ったままになる Javadoc を **挙動を変えずに** `ColumnRowDataBlock` と `ModelPreconditions` で書き換えた（`d737815`）。取り消すかは未回答。**保留のまま残した課題 2 件** —— XLS-39（グループ ID に使える文字の明文が無い）・XLS-42（少ない側について `notation:883` と本体スキーマが正反対）。どちらも申し送り済みで実装は入れない。台帳の実数は 全 54 件・要対応 24（修正済み 22／未完 2 ＝ XLS-27・XLS-43）／対応不要 27／保留 2／対象外 1
