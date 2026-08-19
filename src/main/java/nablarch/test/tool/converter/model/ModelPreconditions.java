@@ -1,7 +1,9 @@
 package nablarch.test.tool.converter.model;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 中間モデルの不変条件のうち、コレクション・Map に共通するものをまとめた内部ユーティリティ。
@@ -82,6 +84,41 @@ final class ModelPreconditions {
     static Map<String, String> requireNoNulls(String label, Map<String, String> map) {
         requireNotNull(label, map);
         return map;
+    }
+
+    /**
+     * 名前のリストに重複が無いことを検査する。判定は<b>完全一致</b>で行う。
+     *
+     * <p>
+     * 現在の呼び出し元は {@link RecordLayout} のフィールド名称だけである。
+     * {@code testdata_notation.rst:887}（{@code 30a8271} 時点）「同一レコード種別内でフィールド名称が
+     * 重複している」が記述時のエラーとして明文で禁じている（{@code coverage/issues.md} <b>XLS-40</b>）。
+     * </p>
+     *
+     * <p>
+     * <b>テーブル系のカラム名には使っていない。</b>辺②が重複したカラム名を持つブロックを実際に作る
+     * ためである（<b>YML-10</b>。本体 {@code TableData} の大文字化により {@code id} と {@code ID} が
+     * {@code [ID, ID]} になる）。
+     * </p>
+     *
+     * <p>
+     * <b>大文字小文字の違いは重複としない。</b>記法に大文字小文字を同一視する明文が無く、
+     * 中間モデルは名前を大文字化せず記法のまま保持するためである。
+     * </p>
+     *
+     * @param label 呼び出し側が例外メッセージに出す項目名
+     * @param names 検査対象
+     * @throws IllegalArgumentException {@code names} に同じ値が 2 つ以上ある場合
+     */
+    static void requireNoDuplicates(String label, List<String> names) {
+        Set<String> seen = new HashSet<>();
+        for (String name : names) {
+            if (!seen.add(name)) {
+                throw new IllegalArgumentException(
+                        label + " \"" + name + "\" が重複しています"
+                                + "（同一レコード種別内で名前は重複できません）。");
+            }
+        }
     }
 
     /** {@code null} を拒む理由。例外メッセージの共通部分。 */

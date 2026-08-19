@@ -35,6 +35,31 @@ public class RecordLayoutTest {
     }
 
     @Test
+    public void フィールド名称が重複したレコードは生成できない() {
+        // Given: notation:887「同一レコード種別内でフィールド名称が重複している」は記述時のエラー（XLS-40）
+        List<FieldDef> fields = List.of(
+                new FieldDef("f1", "数値", "5"), new FieldDef("f1", "半角英字", "3"));
+        try {
+            new RecordLayout("data", fields, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("フィールド名称"));
+            assertThat(e.getMessage(), containsString("f1"));
+        }
+    }
+
+    @Test
+    public void 大文字小文字だけが違うフィールド名称は重複ではない() {
+        // Given: 記法に大文字小文字を同一視する明文が無く、中間モデルは名前を大文字化せず保持する
+        // When
+        RecordLayout sut = new RecordLayout("data",
+                List.of(new FieldDef("f1", "数値", "5"), new FieldDef("F1", "数値", "5")), List.of());
+
+        // Then
+        assertThat(sut.getFields().size(), is(2));
+    }
+
+    @Test
     public void フィールド定義群がnullのレコードは生成できない() {
         // Given: 「無い」ことは 0 件のリストで表す（XLS-38）
         try {

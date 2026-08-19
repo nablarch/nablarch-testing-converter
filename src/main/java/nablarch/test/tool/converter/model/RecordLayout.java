@@ -1,5 +1,6 @@
 package nablarch.test.tool.converter.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,6 +22,12 @@ import java.util.List;
  * （{@code coverage/issues.md} <b>XLS-22</b> ／ <b>YML-12</b>）。
  * </p>
  *
+ * <p>
+ * <b>フィールド名称が重複したレコードレイアウトは作れない。生成時点で拒否する</b>
+ * （{@code testdata_notation.rst:887}（{@code 30a8271} 時点）「同一レコード種別内でフィールド名称が
+ * 重複している」は記述時のエラーである。{@code coverage/issues.md} <b>XLS-40</b>）。
+ * </p>
+ *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
  *
  * @author kiyotis
@@ -38,11 +45,17 @@ public final class RecordLayout {
      * @param fields     フィールド定義群（記述順。1 件以上。空の検査は書き出し側が行う）
      * @param rows       データ行のリスト（{@code null}・空文字・特殊記法を未加工で保持）
      * @throws IllegalArgumentException {@code fields} かその要素、{@code rows} かその要素（行）が
-     *                                  {@code null} の場合（セルの {@code null} は通す）
+     *                                  {@code null} の場合（セルの {@code null} は通す）、
+     *                                  または {@code fields} のフィールド名称に重複がある場合
      */
     public RecordLayout(String recordType, List<FieldDef> fields, List<List<String>> rows) {
         this.recordType = recordType;
         this.fields = ModelPreconditions.requireNoNulls("フィールド定義のリスト", fields);
+        List<String> fieldNames = new ArrayList<>(fields.size());
+        for (FieldDef field : fields) {
+            fieldNames.add(field.getName());
+        }
+        ModelPreconditions.requireNoDuplicates("フィールド名称", fieldNames);
         this.rows = ModelPreconditions.requireNoNullRows("データ行のリスト", rows);
     }
 
