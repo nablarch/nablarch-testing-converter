@@ -674,26 +674,31 @@ Rules の該当 2 行と Acceptance criteria の 2 行はこの決定に合わ�
 > なる。**steering は参照に留め、実数は `issues.md` 冒頭の導出コマンドから導く。**
 > 件数を併記する場合は「2026-08-18 時点で 15 件」のように**時点を添える**。
 
-**現況（2026-08-19 再実行・`issues.md` 冒頭の導出コマンドで確認）**: 全 55 件・**要対応 24 ／ 対応不要 28 ／
-保留 2 ／ 本作業の対象外 1**（区分外 0・二重 0）。要対応 24 件の内訳は **修正済み 23 件**（XLS-06・XLS-08・
-XLS-16・XLS-20・XLS-22・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・XLS-34・XLS-35・XLS-36・
-XLS-37・XLS-38・XLS-40・XLS-41・XLS-43 ／ YML-02・YML-03・YML-08・YML-12）と **未完 1 件**
-（**XLS-27**。当面の対応（0 件テーブルを弾く番人 `57c1b0d`）まで完了しており、**本体修正待ちで converter 側では
-閉じ切れない**）。内訳は `issues.md` 冒頭にも書いてある。
+**現況（2026-08-19 §6-K 後に再実行・`issues.md` 冒頭の導出コマンドで確認）**: 全 55 件・**要対応 25 ／
+対応不要 27 ／ 保留 2 ／ 本作業の対象外 1**（区分外 0・二重 0）。**要対応 25 件はすべて修正済み**（XLS-06・
+XLS-08・XLS-16・XLS-20・XLS-21・XLS-22・XLS-27・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・
+XLS-34・XLS-35・XLS-36・XLS-37・XLS-38・XLS-40・XLS-41・XLS-43 ／ YML-02・YML-03・YML-08・YML-12）。
+内訳は `issues.md` 冒頭にも書いてある。
+
+> **「未完 1 件（XLS-27・本体修正待ち）」は取り消した（2026-08-19）。** §6-K（`839bf64`）で
+> **マーカーカラム 1 列（`[空]`）で 0 件テーブルを書けることが明文から確定した**ため、
+> 「converter では閉じ切れない」という前提そのものが誤りだった。**あわせて XLS-21 の判定が
+> 「対応不要」から「要対応」へ移った**ので、要対応は 24 → 25 ／ 対応不要は 28 → 27 になっている。
 
 **判定に「保留」を足した（ユーザー指示・2026-08-19）。** **明文が converter 側の判断で埋まらない**課題に
 使う区分であり、「対応不要」（明文に反しないので直さない）とは区別する。**保留は実装しない。**
 現在 2 件ある。
 
-- **XLS-41**（`fields` 件数と行の要素数の不一致）—— **明文どうしが矛盾している。** `notation:883` は
+- **XLS-42**（`fields` 件数より**値が少ない**行）—— **明文どうしが矛盾している。** `notation:883` は
   「行の要素数がフィールド数より少ない場合、不足したフィールドは `""` として補完される」と定め、さらに
   「全フィールドを省略した行（YAML 形式では `rows:` に空配列 `[]`）を書けば、全フィールドが `""` の
   レコードとして保持される」と**記法として明示的に案内している**。一方、本体スキーマ
   `$defs.record_fragment.rows` は「各配列の要素数が fields の件数と一致しない場合は NTF がエラーを出す」と
   定める。**一致を強制すると `notation:883` の書き方で書かれた仕様適合データを中間モデルが持てなくなる**ため、
   converter 側で一方に寄せて実装してはならない。**§6-G は実装から記録へ切り替えた。**
-  明文が一致している「多い側」だけに限定して切り出せば `notation:891`「データ要素数が不正である」を根拠に
-  要対応にできるが、**切り出すかはユーザー判断待ち**。
+  **明文が一致している「多い側」は XLS-41 として切り出し、要対応として §6-G で修正した**
+  （`166a199`。根拠は `notation:891`「データ要素数が不正である」）。**矛盾が残る「少ない側」だけが
+  この XLS-42 であり、保留のまま実装しない。**
 - **XLS-39**（グループ ID に区切り文字 `[` `]` を含む）—— **明文が無い。** 旧判定「対応不要」の根拠は
   「記法がグループ ID に使える文字を定めていないから仕様外入力」というものだったが、これは**定めていない
   ことを禁止の根拠にしている**（Decisions「記法の根拠に実装の挙動を使わない」の「明文だけから組み立てる」に
@@ -747,7 +752,7 @@ nablarch-testing-yaml 側にあり converter だけでは直せない」であ�
 | XLS-06 | ① | レコード種別の空セルを `""` にする | `null` を入れる（辺②と同じ） | `RecordLayout.java:26`「レコード種別（省略時は `null`）」 |
 | XLS-22 | ③④ | `fields` が空の `RecordLayout` を、Excel は読み戻せない版面として・YAML は `fields: []` として書き出してしまう | 書き出し側が `IllegalArgumentException` で落とす（`RecordLayout` の Javadoc に「`fields` は 1 件以上」の契約を明記する） | `notation:888`「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに挙げる（＝**その形は Excel 記法として存在しない**）／YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment` が `fields` を必須かつ `minItems` ＝ 1 とする |
 | YML-03 | ② | `record_type: "FW_HEADER"` のレコードを、メッセージ系・送信系でだけ黙って捨てる（ファイル系では残る） | 3 経路とも捨てずに残す | YAML 本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.record_fragment.properties.record_type.description`「可読性のために任意の名前を記述してよい。**FW_HEADER のような予約値はない**」／`$defs.message_data.properties.records.description`「**旧形式の record_type: FW_HEADER は廃止**」。修正の出典は yaml 側 `0b53910`（ブランチ `feature/ntf-yaml`） |
-| YML-08 | ② | ディレクティブ値の実制御文字を素通しする | 辺①（`XlsFormatReader#normalizeDirectiveValue`）と同じ逆正規化を通す。対象は `record-separator` ／ `field-separator` | `notation:947`（`record-separator` は シンボル または任意のリテラル文字列）／`notation:1080`（`field-separator=\t`）／`notation:1116`（`record-separator CRLF`）。いずれもシンボルとエスケープ 2 文字の記法しか示していない |
+| YML-08 | ② | ディレクティブ値の実制御文字を素通しする | 辺①（`XlsFormatReader#normalizeDirectiveValue`）と同じ逆正規化を通す。対象は `record-separator` ／ `field-separator` | `notation:947-948`（`record-separator` は シンボル または任意のリテラル文字列）／`notation:1080`（`field-separator=\t`）／`notation:1116`（`record-separator CRLF`）。いずれもシンボルとエスケープ 2 文字の記法しか示していない |
 
 **XLS-16 の出典を訂正した。** 当初示された `notation:68`（「シート名をテストメソッド名と同名にする」）は
 実際には `notation:69` であり、**その直後 `notation:73` の tip が「シート名とテストメソッド名の対応は
@@ -835,7 +840,7 @@ NTF 仕様（解説書）がその形を記法として認めている根拠に�
 | D | 名称 `null` | `FieldDef.name` | `notation:888`／YAML 本体スキーマ `$defs.field_def.required` ＝ `["name","type"]`・`name.type` ＝ `"string"` | **要**（辺③④とも）。既存の `type` 番人（`f80c192`）と同型 |
 | E | グループ ID `null` | `TestDataBlock.groupId` | `notation:254`（省略かデフォルトグループかの 2 値であり `null` は無い）／YAML 本体スキーマ `group_id` は `type: string, minLength: 1` | **要**（辺③④とも。現状どちらにも番人が無いので揃える先の判断は不要） |
 | F | セクション名 `null` | `TestDataSection.name` | `notation:590`（読み込み単位の名前は Excel 形式ではシート名、YAML 形式ではファイル名） | **要**。**辺③（弾く側）へ揃える** —— 辺④は現状 `null.yaml` を作る。`notation:590` は名前がファイル名／シート名になると定めており、名前が無い状態を認める明文が無い |
-| G | データタイプ `DEFAULT` | `TestDataBlock.dataType` | `notation:206-235`（「対応は、以下のとおりである」の YAML 最上位キー対応表に **`DEFAULT` の行が無い**） | **要**。**辺④（弾く側）へ揃える** —— 辺③は現状 `DEFAULT=T` と書けるが読み戻すと消える（XLS-20）。**根拠が「対応表に行が無い」という不在である点は記録に明示する** |
+| G | データタイプ `DEFAULT` | `TestDataBlock.dataType` | `notation:206`・`notation:212-235`（「対応は、以下のとおりである」＝ `:206` と、その YAML 最上位キー対応表 `:212-235` に **`DEFAULT` の行が無い**） | **要**。**辺④（弾く側）へ揃える** —— 辺③は現状 `DEFAULT=T` と書けるが読み戻すと消える（XLS-20）。**根拠が「対応表に行が無い」という不在である点は記録に明示する** |
 
 **`DataType.DEFAULT` は記法の予約語である。** `notation:188-190` のデータタイプ表に載っている
 （「フレームワーク内部用（通常は使用しない）」）。`issues.md` **XLS-20** の
@@ -1228,7 +1233,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] **§6-I（XLS-22 の番人移設）** → `c31b534`: **フィールド 0 件のレコードレイアウトを拒否する番人を、辺③④の書き出し側から `RecordLayout` の生成時へ移した**（Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」・2026-08-19 に沿う）。**きっかけは、辺③④の番人テスト 4 件がすでに空振りになっていたことである** —— `@Test(expected = IllegalArgumentException.class)` で例外の型しか見ておらず、§6-G（XLS-41）でコンストラクタに入れた別の番人が先に落としていた。`mvn test` の結果では区別がつかず、**JaCoCo の未到達行（`XlsFormatWriter.java:380-381` ／ `YamlFormatWriter.java:354-358`）だけが手がかりだった**。根拠は `notation:888`「フィールド名称リストまたはデータ型リストが未指定または空である」（記述時エラー）と本体スキーマ `$defs.record_fragment` の `fields` 必須・`minItems` ＝ 1。`ModelPreconditions#requireNotEmpty` を追加して `RecordLayout` の生成時に呼び、辺③④の番人は撤去した。**削除 4 件・追加 3 件・書き直し 1 件**（`git show c31b534 -- src/test` の実測）。追加の 3 件目は削除した番人テストの位置へ置き直した `XlsFormatWriterTest#writesEmptyCellsForRowShorterThanBlockWidth`（`notation:883` が正常と定める「不足側は空セルで補完される」の担保）。全体は **598 件・失敗 0・スキップ 2**。`issues.md` XLS-22 に「番人の移設（2026-08-19・実測）」として、プローブ出力・JaCoCo の実測・空振りの説明を記録した
 - [x] `inventory.md` のテスト件数を、増減した箇所すべてコマンドから導き直す（Rules）。**2026-08-18 に一度済ませたが、§1-B〜G・XLS-28 でテストが増えるため無効になった。これらが済んだあとに 1 回だけやり直す** → **2026-08-19 に実施（`0a14655`）。** `inventory.md` §0.1-2 へ追補その 5 を足した。**①②③ の実測は `598` ／ `@Ignore` 2 件（YML-14 `YamlFormatReaderInvalidInputTest.java:740`・XLS-40 `:1277`）／ `8c327d0: 536, HEAD: 598`**、`mvn clean test` は `Tests run: 598, Failures: 0, Errors: 0, Skipped: 2`。**547 → 598 の内訳は削除 19 件・追加 70 件**で、ファイル別の増減表・削除 19 件の起点コミット（`git log -S` で全件裏取り）・`src/main` に手を入れた 17 ファイル・JaCoCo 6 クラスを載せた。**未到達は `YamlFormatWriter` だけ 行 1・分岐 1 増えた**（§1-G で `DataType.DEFAULT` を生成時に拒否したため `sectionKey` の `default` が到達不能になった。安全網として残し開示）。あわせて、§1〜§4 のスナップショット表に残る削除済みテスト名について**担保の現在地を対応表で一括提示**し（表そのものは取り決めどおり書き換えない）、`XlsFormatWriterModelTest` の件数を 15 → **11** へ導き直した
 - [x] **§6-J-1（XLS-29 の番人移設）** → `7b0b381`: **ファイル種別 `null` の番人を辺③④の書き出し側から `FileDataBlock` の生成時へ移した**（型 2 ＝「明文に反する状態を中間モデルが持てるなら生成時に拒否する」）。明文は `notation:883`（記法は固定長ファイルと可変長ファイルの 2 種類に尽きる）・`notation:1146`（`setup_files` ／ `expected_files` の各エントリは `path` ／ `type` ／ `records` の 3 キーが必須）と本体スキーマ `$defs.file_data`（`type` は `required` かつ `enum` ＝ `["fixed", "variable"]`）。**赤の記録**（`src/main` に触れる前の実測）: `FileDataBlockTest.ファイル種別がnullのファイルブロックは生成できない:202` `java.lang.AssertionError: IllegalArgumentException が送出されるべき`。**削除 3 件・追加 1 件** —— 削除したのは `FileDataBlockTest#契約違反のnullファイル種別もモデル自身は検査せず保持する`（生成できなくなり主張が成り立たない）と辺③④の番人テスト 2 件（`@Test(expected = ...)` で型しか見ておらず、移設後は `new FileDataBlock(...)` の行で落ちて**空振りの緑**になる。§6-I と同じ形）。全体は **596 件・失敗 0・スキップ 2**
-- [x] **§6-J-2（YML-12 2 形目の番人移設）** → `9e40644`: **電文の `records` 空の番人を辺③④から `MessageDataBlock` の生成時へ移した**（型 2）。明文は `notation:1257`（電文が存在しない場合はデータブロックごと省略する。レコード 0 件の電文を表す書き方は記法に無い）と本体スキーマの電文系 3 定義（`message_data` ／ `expected_message` ／ `send_sync`）がいずれも `records.minItems` ＝ 1 であること。**0 バイトの空ファイル特例（`notation:1158` 付近）はファイルに限られ電文には及ばない。** 移設で**辺①②が実在の入力から 0 件ブロックを作っていたことが露見した**（失敗する場所が書き出し時から読み込み時へ前倒しになる。変換が失敗すること自体は移設の前後で変わらない）。実測した RED 2 件（`XlsFormatReaderRealFileTest.readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook` ／ `YamlFormatReaderTest.readMessage_emptyBody_isStillMapped`）はあるべき姿を主張するテストへ書き換えた。**空振りを残さないため書き出し側の番人テスト 4 件は削除した。** 全体は **593 件・失敗 0・スキップ 2**（596 − 4 ＋ 1）
+- [x] **§6-J-2（YML-12 2 形目の番人移設）** → `9e40644`: **電文の `records` 空の番人を辺③④から `MessageDataBlock` の生成時へ移した**（型 2）。明文は `notation:1257`（電文が存在しない場合はデータブロックごと省略する。レコード 0 件の電文を表す書き方は記法に無い）と本体スキーマの電文系 3 定義（`message_data` ／ `expected_request_message_data` ／ `group_message_data`）がいずれも `records.minItems` ＝ 1 であること。**0 バイトの空ファイル特例（`notation:1158` 付近）はファイルに限られ電文には及ばない。** 移設で**辺①②が実在の入力から 0 件ブロックを作っていたことが露見した**（失敗する場所が書き出し時から読み込み時へ前倒しになる。変換が失敗すること自体は移設の前後で変わらない）。実測した RED 2 件（`XlsFormatReaderRealFileTest.readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook` ／ `YamlFormatReaderTest.readMessage_emptyBody_isStillMapped`）はあるべき姿を主張するテストへ書き換えた。**空振りを残さないため書き出し側の番人テスト 4 件は削除した。** 全体は **593 件・失敗 0・スキップ 2**（596 − 4 ＋ 1）
 - [x] **§6-J-3（XLS-30 の番人移設）** → `b762438`: **固定長ファイル・電文で `length` ＝ `null` の番人を辺③④から `FileDataBlock`（`FileType.FIXED` のとき）・`MessageDataBlock`（常に）の生成時へ移した**（型 2）。共通部は `ModelPreconditions#requireLengths`。明文は `notation:883`（固定長は 3 リスト同サイズ必須／可変長はフィールド長 不要）・`:889`（記述時エラー「フィールド名称・データ型・フィールド長リストのサイズが一致していない」）・`:1158`（電文ボディはファイルデータと同じ構成）。**本体スキーマ `$defs.field_def` の `required` は `["name","type"]` で `length` を含まないが、`properties.length.description` が「フィールド長（バイト数）。固定長ファイルでは実質必須（省略すると NTF が record-length を計算できない）。可変長ファイルでは不要（省略可）」と書いている**（実物を読んだ逐語）。**可変長は `null` が正しいため拒否しない。** 移設で**辺②が仕様不適合の入力から `length` なしの固定長ブロックを作っていたことが露見**（RED 1 件 `YamlFormatReaderTest.readFile_fixed_mapsRawFieldDefsAndValues:158`）。**番人テスト 4 件を削除**し、可変長で `null` を通す担保 2 件は残した。番人が外れて不要になった `YamlFormatWriter#emitRecords` の `lengthRequired` 引数も削除した。全体は **593 件・失敗 0・スキップ 2**
 - [x] **§6-K（XLS-27 の番人撤去と XLS-21 の生成時拒否）** → `839bf64`: **0 件テーブルをマーカーカラム 1 列（`[空]`）で書き出す形へ切り替え、変換を中止する番人（`57c1b0d`）を撤去した**（XLS-27。型 1 ＝「明文だけで判断する」）。明文は 5 か所 —— `notation:836`（0 件テーブルにはカラム名を書く場所が無い）／`:802`（Excel ではカラム名行を省略できない）／`:819`（カラム名は最初の行のキーで決まる）／`:1515`（マーカーカラムを書ける）／`:1550`（マーカーカラムは読み込み対象から除外される）。**3 つを同時に満たす書き方はマーカーカラムだけである**ため、「converter は 0 件テーブルを Excel へ書けない」という前提そのものが誤りだった。あわせて **XLS-21 の判定を「対応不要」から「要対応」へ変え**、`ColumnRowDataBlock` の生成時に「カラム名 0 件で**セルを持つ**行」を拒否した（型 2。旧判定の根拠が「到達経路が無い」＝実装の到達可能性で、型 1 が根拠に禁じているものだった。明文は `:652` ／ `:819` ／ `:802`）。**セルを持たない行は拒否しない**ので、辺①②が正しく作る XLS-08 ／ YML-04 の形は通る。**2 つを 1 コミットにした理由**: 先に XLS-27 の番人だけ外すと、セルを持つカラム名なしブロックが黙って誤って書かれる窓が開き、また旧番人テストが構築するブロックは新しいモデル側の番人が先に落とすため、分けると必ずどちらかが壊れる。**削除 2 件**（`XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames`。空振りになるため）、`SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable` は判定が覆ったので**反転**した（CliMan サンプルは 2 冊のブックへ変換できる）。全体は **597 件・失敗 0・スキップ 2**
 - [x] **XLS-06・XLS-16 の決着（書き出し側に残す）** → `999f41d`: **どちらも中間モデルへ寄せず辺③に残す**（型 1。`src/main` の振る舞いは無変更で Javadoc のみ）。**XLS-06**（2 レコード目以降の `recordType` 空）—— `notation:1082`「新たなレコード種別とフィールド名称を書いた時点で、新しいレコードレイアウトとして扱われる」より Excel 記法では書き表せないが、`notation:1143`「先頭を空にするという Excel 形式の制約はない」と本体スキーマ `$defs.record_fragment` の `required` ＝ `["fields", "rows"]`（`record_type` を**含まない**）より**辺④では正しく書ける**。よって中間モデルの不変条件にできない。**XLS-16**（シート名 31 文字超）—— **記法 全 1554 行（`30a8271`）にシート名の長さを定める記述は 1 つも無い**（`grep` 済み）。31 文字は Excel の格納形式そのものの上限であり、辺④は同じ名前を書けるため不変条件にできない。**Javadoc に残っていた「ユーザー判断待ち」の記述は事実に反するので明文の根拠へ差し替えた**（決定 1・2026-08-19）。あわせて `XlsFormatWriterTest` のクラス Javadoc の件数を実測へ直した（40 件・build 28／write 10／2 → **45 件・31／12／2**）。**これで書き出し側に残っていた番人 7 つはすべて決着した**（`issues.md` 冒頭の決着表）
@@ -1243,7 +1248,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 修正した課題それぞれについて、仕様どおりの期待値のテストが存在し、**修正前に赤になったこと（失敗メッセージ）が記録されている**（YML-03 の待機テスト 2 件は #25.5 で赤を記録済み。`checks/task-25.5.md` の実行出力）
 - 修正した課題それぞれについて、現状挙動を固定していた既存テストが削除されている（同じ挙動を主張するテストが 2 本残っていない）
 - 1 件 ＝ 1 コミットになっている（`@Ignore` 付与のコミットを含め、混ぜていない）
-- ~~YML-03 の `@Ignore` テストが存在し、理由が `@Ignore` の引数に書かれている~~ → ~~**2026-08-18 に YML-03 を修正したため、`@Ignore` は 0 件であること**（`grep -rn '^    @Ignore' src/test --include=*.java` がヒット 0 件）に置き換えた~~ → **2026-08-19 の他責の型（ユーザー確定）により `@Ignore` は 2 件であること**（XLS-40 のカラム名側 `XlsFormatReaderRealFileTest` 系 ／ YML-14。どちらも**あるべき姿を主張するテスト**で、理由と他責先を `@Ignore` の引数に書く）。実測は `grep -rn '@Ignore' src/test --include=*.java` が `YamlFormatReaderInvalidInputTest.java:740`（YML-14）と `:1277`（XLS-40）の 2 件
+- ~~YML-03 の `@Ignore` テストが存在し、理由が `@Ignore` の引数に書かれている~~ → ~~**2026-08-18 に YML-03 を修正したため、`@Ignore` は 0 件であること**（`grep -rn '^    @Ignore' src/test --include=*.java` がヒット 0 件）に置き換えた~~ → **2026-08-19 の他責の型（ユーザー確定）により `@Ignore` は 2 件であること**（YML-14 ／ XLS-40 のカラム名側。どちらも**あるべき姿を主張するテスト**で、**どちらも `YamlFormatReaderInvalidInputTest` にある**。理由と他責先を `@Ignore` の引数に書く）。実測は `grep -rn '^    @Ignore' src/test --include=*.java` が `YamlFormatReaderInvalidInputTest.java:740`（YML-14）と `:1277`（XLS-40）の 2 件（**インデントを含めて数える**。素の `@Ignore` は `import` 行と Javadoc の `{@code @Ignore}` まで拾い 6 件返る）
 - XLS-01 のテストが削除されておらず、アサートが「仕様外入力のため値は保証しない」旨へ書き直されている
 - ~~`issues.md` の全 44 件に「NTF 仕様としての判定」欄があり、**要対応 15 件／対応不要 28 件／本作業の対象外 1 件**が出典つきで書かれている（2026-08-18 時点。導出コマンドと出力は `issues.md` 冒頭）~~ → **`issues.md` の全 55 件に判定欄があり、要対応 25 件／対応不要 27 件／保留 2 件／本作業の対象外 1 件が出典つきで書かれている**（2026-08-19 実測。区分外 0・二重 0。**「保留」は 2026-08-19 に足した区分で、明文が converter 側の判断で埋まらない課題に使う**）。既存の「判断」欄が残っており、両者の違いが説明されている
 - YML-08 の「未確認」が実行結果で埋まっている
@@ -1251,7 +1256,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - `src/main` の変更が要対応と判定した課題の修正に必要な範囲に限られており、変更したファイル名・課題ID・変更理由が記録されている
 - ~~`FieldDef.type` ／ `MessageDataBlock.records` の契約が Javadoc に明記され、辺③（`XlsFormatWriter`）と辺④（`YamlFormatWriter`）の双方が `IllegalArgumentException` で弾く~~ → **契約が Javadoc に明記され、`FieldDef` ／ `MessageDataBlock` の生成時が `IllegalArgumentException` で弾く**（Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」・2026-08-19。`FieldDef.type` は §1-D `d0023c0`、`MessageDataBlock.records` は §6-J-2 `9e40644` でモデルへ寄せ、**辺③④のチェックは撤去した**。残すと空振りの緑になるため）。現状挙動を固定していたテストは置き換えられている（2 本残っていない）
 - `issues.md` の `notation:nnn` が全件 `30a8271` 基準であり、基準コミットが本文に書かれている
-- ~~`RecordLayout` コンストラクタに番人を置かない判断と、却下理由・実測が `issues.md` に残っている~~ → **この判断は 2026-08-19 の Decisions（生成時に拒否する）で覆った。** `RecordLayout` の生成時には現在 3 つの番人がある（フィールド名称の重複 ＝ §6-F `29c9d1d`、行の要素数 ≦ `fields` 件数 ＝ §6-G の切り出し `166a199`、`fields` 空 ＝ §6-I `c31b534`）。**旧判断と却下理由は `issues.md` に記録として残す**（消さない）
+- ~~`RecordLayout` コンストラクタに番人を置かない判断と、却下理由・実測が `issues.md` に残っている~~ → **この判断は 2026-08-19 の Decisions（生成時に拒否する）で覆った。** `RecordLayout` の生成時には現在 **5 つ**の番人がある（`grep -c 'ModelPreconditions\.' src/main/java/nablarch/test/tool/converter/model/RecordLayout.java` ＝ 5）—— フィールド定義リストの要素 `null`、`fields` 空 ＝ §6-I `c31b534`、フィールド名称の重複 ＝ §6-F `29c9d1d`、データ行リストの要素 `null`、行の要素数 ≦ `fields` 件数 ＝ §6-G の切り出し `166a199`。**旧判断と却下理由は `issues.md` に記録として残す**（消さない）
 - 本体パーサがレコード 0 件を受け付ける事実が新規 ID で記録され、判定が「本作業の対象外・記録のみ」である
 - 中間モデルの全クラス・全フィールドの点検結果が記録されている（該当が無ければ「無し」と明記）
 - 課題 ID 単位の要対応／対応不要の実数が、そのまま実行できる導出コマンド付きで確定している

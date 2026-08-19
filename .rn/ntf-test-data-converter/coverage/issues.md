@@ -120,7 +120,9 @@ XLS-42 は 2026-08-19 に **XLS-41 から切り出した**もので、XLS-41 自
 > **シート名 ＝ `null` の番人は §1-F（`81cf234`）で外した** —— `TestDataSection` の生成時拒否へ
 > 寄せたため。**上表は 2026-08-19 時点（`999f41d`）の決着であり、行番号は載せない**
 > （移設のたびに動くため）。番人の現在位置は
-> `grep -n 'IllegalArgumentException\|IllegalStateException' src/main/java/nablarch/test/tool/converter/{xls,yaml}/*Writer.java`
+> `grep -n 'throw new \(IllegalArgumentException\|IllegalStateException\)' src/main/java/nablarch/test/tool/converter/{xls,yaml}/*Writer.java`
+> （**`@throws` の Javadoc 行を拾わない形にした**。素の `IllegalArgumentException\|IllegalStateException` だと
+> `XlsFormatWriter` が 5 行返り、下の件数を再現しない）
 > で確かめられる。2026-08-19 時点の実測では `XlsFormatWriter` に 3 件（シート名 31 文字超＝XLS-16・
 > `unsupported block` の取りこぼし・2 レコード目以降の `recordType` 空＝XLS-06）、
 > `YamlFormatWriter` に 2 件（`unsupported block`・`unsupported DataType` の取りこぼし）である。
@@ -144,7 +146,8 @@ XLS-42 は 2026-08-19 に **XLS-41 から切り出した**もので、XLS-41 自
 > **その後 同日に XLS-41 を「多い側」に限定して要対応へ戻したうえで、少ない側を XLS-42（保留）、
 > ディレクティブ Map の `null` を XLS-43（要対応）、辺②で余りの値が黙って捨てられる件を
 > YML-05 から YML-14（対応不要・他責）として切り出したため、
-> 現在は 全 55 件・要対応 24 ／ 対応不要 28 ／ 保留 2 ／ 本作業の対象外 1 である**（冒頭の内訳を参照）。
+> **さらに §6-K で XLS-21 を「対応不要」から「要対応」へ変えた**（`839bf64`）。
+> 現在の実数は**冒頭の内訳**を正とする（同じ数字をここに書かない）。
 
 **集計は課題 ID 単位で数えること。判定欄の行だけを数えること。** 判定文字列（`**要対応**` など）は
 判定欄以外にも現れる —— 【判定の訂正】の本文（XLS-20・XLS-39・XLS-41）や凡例の解説がそれである。
@@ -223,15 +226,16 @@ $ git -C ~/work/nablarch/nablarch-document show \
 
 ```
 $ grep -c '^- 判断: ' .rn/ntf-test-data-converter/coverage/issues.md
-52
+55
 $ grep -c '^- NTF 仕様としての判定' .rn/ntf-test-data-converter/coverage/issues.md
-52
+55
 ```
 
-> **出力を 37 から 52 へ直した（2026-08-19）。** 37 は課題が 37 件だった 2026-08-18 時点の値であり、
-> その後 XLS-27〜XLS-33 と XLS-34〜XLS-41 が加わっても取り残されていた。**書式がそろっていること
-> （両方の値が `###` 見出しの数 52 と一致すること）が主張の中身であり、37 のままではその主張が
-> 機械で確かめられない。**
+> **出力を 37 → 52 → 55 と直してきた（2026-08-19）。** 37 は課題が 37 件だった 2026-08-18 時点の値、
+> 52 は XLS-42・XLS-43・YML-14 を切り出す前の値である。**書式がそろっていること
+> （両方の値が `###` 見出しの数 ＝ 上の導出ブロック 1 本目 `grep -c '^### \(XLS\|YML\)-' ` と一致すること）が主張の中身であり、古い値のままではその主張が
+> 機械で確かめられない。** 見出しの数は上の導出ブロックで数えている（**同じ数字を 2 箇所に書かない**ため、
+> ここでは「一致すること」だけを主張する）。
 
 ### 並び順の原則（2026-08-12・ユーザー指摘による訂正）
 
@@ -1127,7 +1131,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 >    「フレームワーク内部用（通常は使用しない）」と説明されている。`notation:126`
 >    （「データタイプは、データブロックの用途を示す予約語であり、解析の起点になる」）は
 >    予約語の一覧ではなく、データタイプという概念の説明であって、この主張を支えない。
-> 2. **正しい根拠は別にある。** `notation:206-241`「データタイプごとに専用のトップレベルキーを使う
+> 2. **正しい根拠は別にある。** `notation:206・:212-235`「データタイプごとに専用のトップレベルキーを使う
 >    （完全一致のため前方一致は発生しない）。対応は、以下のとおりである」の対応表に
 >    **`DEFAULT` の行が無い**（表は 11 行・13 データタイプぶんのみ）。したがって
 >    **`DEFAULT` のデータブロックは YAML 形式では表現できない**。中間モデルの契約は
@@ -3399,10 +3403,10 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
 - 観測（実測 2026-08-19・プローブ）: `TestDataBlock.dataType` に `null` を入れた中間モデルを渡した結果。
   - 辺③: `NullPointerException`（`XlsFormatWriter#marker` が `block.getDataType().getName()` を呼ぶ）
   - 辺④: `NullPointerException`（`DataType` で分岐する `switch` が `type.ordinal()` を呼ぶ）
-- 機構: `XlsFormatWriter.java:544-545`
+- 機構: `XlsFormatWriter#marker`
   （`block.getDataType().getName() + block.getGroupId() + "=" + block.getIdentifier()`）。
   辺④は `YamlFormatWriter` の `DataType` → トップレベルキー写像（`sectionKey`）である。
-- 記法の明文: `notation:206-241`「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりで
+- 記法の明文: `notation:206・:212-235`「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりで
   ある」。**データブロックは必ず 1 つのデータタイプを持つ**という前提の上に、両形式の表現が定義されている。
   データタイプの無いデータブロックは Excel のマーカー（`データタイプ=識別子`。`notation:198`）も
   YAML のトップレベルキーも書けない。
@@ -3426,7 +3430,7 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
     （本体が識別子を trim・大文字化するため）。
   - 辺④: `table: null` を黙って書く。本体スキーマ `$defs.table_data.table` は `{"type": "string"}` であり
     **`null` は適合しない**。また `$defs.table_data.required` に `table` が含まれる。
-- 機構: `XlsFormatWriter.java:544-545`（`"=" + block.getIdentifier()` の文字列連結が `null` を `"null"` に
+- 機構: `XlsFormatWriter#marker`（`"=" + block.getIdentifier()` の文字列連結が `null` を `"null"` に
   する）。辺④は識別子をそのまま YAML の値として書く。
 - 記法の明文: `notation:198`「データタイプ=識別子の値」。**識別子は記法上の必須要素である**
   （`notation:590` の「読み込み単位の名前と ID を指定して…取得できる」も、ID が引き当てキーであることを
@@ -3450,7 +3454,7 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
     （`$defs.message_data.additionalProperties` は `false`。スキーマ違反）。
   - `TableDataBlock` ＋ `SETUP_FIXED`: 辺④が `setup_files:` の配下に `id:` を書く（同上）。
   - `FileDataBlock` ＋ `MESSAGE`: 辺④が `messages:` の配下に `path:` ／ `type:` を書く（同上）。
-- 機構: 辺③はマーカー（`XlsFormatWriter.java:544-545`）を `dataType` から、本体の表形式を**クラス**から
+- 機構: 辺③はマーカー（`XlsFormatWriter#marker`）を `dataType` から、本体の表形式を**クラス**から
   決めるため、両者が食い違っても書けてしまう。辺④はトップレベルキーを `dataType` から、キーの中身を
   **クラス**から決めるため、同じ食い違いがスキーマ違反として現れる。
 - 記法の明文: `notation:206`「データタイプごとに専用のトップレベルキーを使う（完全一致のため前方一致は
@@ -3463,7 +3467,7 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
   `response_*` → `$defs.expected_request_message_data` ／ `$defs.group_message_data`）、
   **6 定義すべてが `additionalProperties: false`** である（2026-08-19 実測）。
 
-  > **`notation:206-241` と書いていたのを `notation:206` ／ `:212-235` へ直した（2026-08-19）。**
+  > **`notation:206・:212-235` と書いていたのを `notation:206` ／ `:212-235` へ直した（2026-08-19）。**
   > 対応表の実体は `:212-235`（`:208-211` は `list-table` のディレクティブ）であり、`:237-242` は
   > 対応表ではなく `setup_tables:` の記述例のコードブロックである。範囲に例が混ざっていた。
 - **どちらへ揃えるか**: **どちらでもない。生成時点で拒否する**（各具象クラスのコンストラクタが、
