@@ -47,16 +47,33 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 **本作業の対象外 1 件**（XLS-26）である。数え直した日は 2026-08-18。導出コマンドと出力は下記
 「集計は課題 ID 単位で数えること」の節にある。
 
-**要対応 15 件の内訳（修正済み 10 ／ 未完 5）**
+**要対応 15 件の内訳（修正済み 12 ／ 未完 3。2026-08-19 時点）**
 
-- **修正済み 10 件** —— XLS-06・XLS-08・XLS-16・XLS-22・XLS-29・XLS-30 ／ YML-02・YML-03・YML-08・YML-12
-  （**YML-12 は 4 形すべてが修正済み**）
-- **未完 5 件** —— XLS-27・XLS-28・XLS-31・XLS-32・XLS-33。現況は次のとおり
+- **修正済み 12 件** —— XLS-06・XLS-08・XLS-16・XLS-22・XLS-29・XLS-30・**XLS-31**・**XLS-32** ／
+  YML-02・YML-03・YML-08・YML-12（**YML-12 は 4 形すべてが修正済み**）
+- **未完 3 件** —— XLS-27・XLS-28・XLS-33。現況は次のとおり
   - **XLS-27** — 当面の対応（0 件テーブルを弾く番人）まで完了（`57c1b0d`）。本体修正待ち。マーカーカラム案の実測は未実施
   - **XLS-28** — 未着手。課題として起こしただけ（`7200b0f`）
-  - **XLS-31**（§1-D） — 明文確認まで完了し、**番人は置かずに保留**（`7e4525a`）。ユーザー判断待ち
-  - **XLS-32**（§1-E） — 明文確認まで完了し、**番人は置かずに保留**（`11643e7`）。ユーザー判断待ち
   - **XLS-33**（§1-F） — 未着手。課題として起こしただけ（`7200b0f`）
+
+> **2026-08-19 に XLS-31（§1-D）・XLS-32（§1-E）を修正した。** ユーザーが示した共通方針
+> 「不正値は書き出し側でなく中間モデルの生成時に拒否する」（`steering.md` Decisions）に沿い、
+> **書き出し側の番人ではなく中間モデルのコンストラクタで拒否する形**で閉じた
+> （XLS-31 ＝ `d0023c0`／XLS-32 ＝ `5abc773`）。
+> **この方針は既存の修正の形にも掛かる。** `FieldDef.type` の番人（`f80c192`）は XLS-31 と同じコミットで
+> コンストラクタへ寄せ、辺③④のチェックを外した。**残る書き出し側の番人を同じ形へ寄せるかは未決**
+> （ユーザー判断待ち）。2026-08-19 時点で `src/main` に残っている番人は次の 8 つである（実物を grep して確認）。
+>
+> | 番人 | 位置 | 課題 | 中間モデルの不変条件にできるか |
+> |---|---|---|---|
+> | `fileType` ＝ `null` | `XlsFormatWriter:280`／`YamlFormatWriter:187` | XLS-29 | できる（`FileDataBlock` の生成時） |
+> | `records` 空（電文） | `XlsFormatWriter:318`／`YamlFormatWriter:230` | YML-12 2 形目 | できる（`MessageDataBlock` の生成時） |
+> | `fields` 空 | `XlsFormatWriter:386`／`YamlFormatWriter:350` | XLS-22 | できる（`RecordLayout` の生成時。下記 XLS-22 の追記を参照） |
+> | `columnNames` 0 件 | `XlsFormatWriter:240` | XLS-27 | 未確認（XLS-27 のマーカーカラム案の実測待ち） |
+> | `length` ＝ `null` | `XlsFormatWriter:394`／`YamlFormatWriter:358` | XLS-30 | `FieldDef` 単体ではできない（固定長か可変長かが判らない）。上位ブロックの生成時へ寄せる形になる |
+> | 2 レコード目以降の `recordType` 空 | `XlsFormatWriter:404` | XLS-06 | できない（「2 件目以降」は `RecordLayout` 単体では判らない。上位の生成時へ寄せる形になる） |
+> | シート名 ＝ `null` | `XlsFormatWriter:157` | XLS-16 | できる（`TestDataSection` の生成時。**§1-F ＝ XLS-33 で扱う**） |
+> | シート名 31 文字超 | `XlsFormatWriter:162` | XLS-16 | **できない。Excel 固有の上限であって中間モデルの不変条件ではない**（辺④は同じ名前を書ける）。書き出し側に残す |
 
 **YML-03 は帰属が nablarch-testing-yaml 側だったため `@Ignore("YML-03: yaml側の修正待ち")` の待機テストを
 置いて待っていたが、yaml 側が `0b53910` で修正されたため 2026-08-18 に両側そろって解消した**
@@ -1019,6 +1036,15 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
 >   **この 541 件は #25.5 の途中時点（`f80c192` の前）の総数である**（現在の総数は 547 件）。
 >   当時の実測値としてそのまま残し、書き換えない。
 > - `RecordLayoutTest#レコード種別省略をnullで保持する` は現状のまま（`List.of()` を渡す）でよい。
+>
+> **【2026-08-19 追記】この判断はユーザーによって反転された。** 「不正値は書き出し側でなく中間モデルの
+> 生成時に拒否する」（`steering.md` Decisions・2026-08-19）が**理由 1 を否定した** ——
+> 出口で落とすのは、持ってはいけない値を中間モデルが持てる状態をそのまま残す暫定対応である、
+> というのがユーザーの判断である。理由 2（実測）は形の妥当性ではなく当時の測り方の話であり、
+> 番人テストが空振りになるのは検査点が生成時へ移ったことの当然の帰結である。
+> **ただし `RecordLayout.fields` 空の番人を実際にコンストラクタへ移す作業は未実施**であり、
+> 2026-08-19 時点では `XlsFormatWriter#appendRecords`／`YamlFormatWriter#emitRecords` に残っている
+> （寄せる範囲がユーザー判断待ちのため。冒頭の集計欄を参照）。
 
 ### XLS-23 セクション 0 件のコンテナから、シートを 1 枚も持たない `.xlsx` が黙って書き出される（影響度 低・記録のみ）
 
@@ -2607,7 +2633,7 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
     を参照する行・`roundTrip_fixedFile_isPreservedThroughRealReader` の行・
     `writesOmittedMetaAndFieldAsEmpty` の行が古くなっている。
 
-### XLS-31 フィールド名称 `null` のフィールド定義が、辺④では黙って書かれ、辺③では手掛かりの無い `NullPointerException` になる（影響度 中・**辺④は検出できない**・**#25.5 §1-D は明文確認の結果、番人を置かず保留**）
+### XLS-31 フィールド名称 `null` のフィールド定義が、辺④では黙って書かれ、辺③では手掛かりの無い `NullPointerException` になる（影響度 中・**辺④は検出できない**・**#25.5 §1-D で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: `FieldDef.name` に `null` を入れた中間モデルを辺③④へ渡した結果。
   - 辺③: `NullPointerException: Cannot invoke "String.length()" because "value" is null`
@@ -2620,8 +2646,10 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
     （`null` は `string` ではないためスキーマ違反）
 - 判断: 仕様として不適切。**既存の `FieldDef.type` の番人（`f80c192`）と同型の穴**であり、
   同じ扱いにすべきである。
-- NTF 仕様としての判定: **要対応**。中間モデルの契約を「`FieldDef.name` は必須（`null` 不可）」とし、
-  辺③④で弾く。**ただし §1-D で明文を確かめた結果、番人の実装は保留した（下記）。**
+- NTF 仕様としての判定: **要対応**。**#25.5 §1-D で修正済み**（`d0023c0`）。
+  中間モデルの契約を「`FieldDef.name` は必須（`null` 不可。空文字は可）」とし、
+  **`FieldDef` のコンストラクタが生成時点で拒否する。辺③④に番人は置かない**
+  （下記「§1-D の決着」）。
 
 #### §1-D（#25.5・`7e4525a`）の明文確認 —— 解説書の明文は個別要素の `null` まで届いていない（2026-08-18）
 
@@ -2670,7 +2698,35 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
   `NullPointerException: Cannot invoke "String.length()" because "value" is null`、辺④は
   `- {name: null, type: "半角英字", length: "10"}` を黙って書く。上の「観測」の記述と一致した。
 
-### XLS-32 グループ ID `null` のデータブロックが、辺③では `SETUP_TABLEnull=T` として黙って書かれ、辺④では手掛かりの無い `NullPointerException` になる（影響度 中・**辺③は検出できない**・**#25.5 §1-E は明文確認の結果、番人を置かず保留**）
+> **【決着】2026-08-19・ユーザー確定。**（方針の本文は `steering.md` Decisions
+> 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）
+> **上の未決は「番人を置くか」を問う立て方そのものが誤りだった** —— ユーザーの判断は
+> 「**書き出し側の番人は置かない。既にあるものは外す。持ってはいけない値は中間モデルの生成時に拒否する**」
+> である。出口で落とすのは、その値を中間モデルが持てる状態をそのまま残す暫定対応にあたる。
+> この拒否は**入力の検証ではなく不変条件の保証**であり、NTF 仕様に合わない Excel／YAML が
+> 記法側の検証で落ちることとは別の話である。
+
+**§1-D の決着 —— `FieldDef` の生成時に拒否した（`d0023c0`）**
+
+- **`FieldDef` のコンストラクタが `name` ＝ `null` と `type` ＝ `null` を `IllegalArgumentException` で拒否する。**
+  **空文字はどちらも通す**（`$defs.field_def.name` に `minLength` が無いため。`type` の `minLength: 1` は
+  記法側の検証に委ね、中間モデルの契約は `null` 不可までとする）。
+- **辺③④の番人は外した。** 先に承認済みだった `type` の番人（`f80c192`。`XlsFormatWriter#appendRecords`
+  ／`YamlFormatWriter#emitRecords`）を削除し、同じ形へ寄せた。両クラスの `@throws` Javadoc も直した。
+  対応して辺③④のテスト 4 件（`XlsFormatWriterTest#rejectsFieldWithoutTypeInFileBlock`
+  ／`#rejectsFieldWithoutTypeInMessageBlock`、`YamlFormatWriterTest#serialize_fieldWithNullTypeInFileBlock_rejected`
+  ／`#serialize_fieldWithNullTypeInMessageBlock_rejected`）を削除し、`FieldDefTest` の生成時拒否テスト
+  4 件へ置き換えた。`YamlFormatWriterTest#serialize_fieldWithEmptyType_emitsEmptyType`（空文字は通る）は残した。
+- **`FieldDef.length` はこの形にできない。** 固定長ファイル・電文では必須だが可変長ファイルでは不要
+  （`notation:883`。**XLS-30**）で、どちらの文脈かは `FieldDef` 単体では判らない。**`length` の番人
+  （`3000baf`）は辺③④に残している**（上位ブロックの生成時へ寄せるかは未決）。
+- **方針 4（`null` の生成元の特定）の結果: 辺①②のどちらのリーダーも `name` ＝ `null` を作らない。**
+  辺②の `YamlSection.toStr(null)` は `null` を返しうるが（`YamlSection.java:112-114`）、それは
+  `$defs.field_def.required = ["name","type"]` に違反する YAML＝**仕様不適合入力**の場合だけである。
+  辺①は名称行に 2 列以上を要求する。**したがってリーダー側の修正は不要であり、`null` が入るのは
+  呼び出し側のバグである**（＝生成時に露見させるのが正しい）。
+
+### XLS-32 グループ ID `null` のデータブロックが、辺③では `SETUP_TABLEnull=T` として黙って書かれ、辺④では手掛かりの無い `NullPointerException` になる（影響度 中・**辺③は検出できない**・**#25.5 §1-E で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: `TestDataBlock.groupId` に `null` を入れた中間モデルを
   辺③④へ渡した結果。
@@ -2685,15 +2741,12 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
 - 判断: 仕様として不適切。**辺③が書く `SETUP_TABLEnull=T` は、本体が
   `notation:269` の「`データタイプ + グループID + '='` による前方一致」で
   グループ ID `null`（文字列）として拾う版面であり、記法のどこにも無い形である。**
-- NTF 仕様としての判定: **要対応**。中間モデルの契約を「`TestDataBlock.groupId` は `null` 不可
-  （省略は空文字で表す）」とし、辺③④で弾く。**辺③④のどちらも現状は番人になっていない**
-  （辺④の `NullPointerException` は番人ではなく、たまたま落ちているだけである）。
-  **ただし §1-E で明文を確かめた結果、番人の実装は保留した（下記）。**
+- NTF 仕様としての判定: **要対応**。**#25.5 §1-E で修正済み**（`5abc773`）。
+  中間モデルの契約を「`TestDataBlock.groupId` は `null` 不可（省略は空文字で表す）」とし、
+  **`TestDataBlock` のコンストラクタが生成時点で拒否する。辺③④に番人は置かない**
+  （下記「§1-E の決着」）。
 
 #### §1-E（#25.5・`11643e7`）の明文確認 —— 明文は「書かれる文字列」までしか届かず、`null` という値には届いていない（2026-08-18）
-
-> **本節を追加したコミット自身の SHA は、その時点では確定しないため書けない。** XLS-29 の `44469b2`・
-> XLS-30 の `3000baf`・XLS-31 §1-D の `7e4525a` と同じく、あとから 1 行の `docs` コミットで埋める。
 
 番人を置く前に「その形が記法の外であることを明文で確かめる」手順（steering Decisions
 「中間モデル一巡点検で出た 7 件を全件 #25.5 に含める」の条件 1）に掛けた。引用はすべて
@@ -2798,6 +2851,34 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
   - **推奨は (a)。** 理由は 2 つ —— 中間モデルの契約が既に「省略時は空文字」と 1 表現に定めていること、
     §1-B・§1-C・`f80c192` と揃えて「契約違反は書き出し辺で loud に止める」形が 4 辺の担保として一貫すること。
     ただし**根拠が明文でない以上、判断はユーザーに委ねる**。
+
+> **【決着】2026-08-19・ユーザー確定。**（方針の本文は `steering.md` Decisions
+> 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）
+> **(a) も (b) も採らない。** ユーザーの判断は「**書き出し側の番人は置かない。既にあるものは外す。
+> 持ってはいけない値は中間モデルの生成時に拒否する**」である。(b) の正規化を採らない理由も示された ——
+> **`null` を黙って空文字へ置き換えると、呼び出し側のバグが正当な省略と見分けられなくなる。**
+> この拒否は入力の検証ではなく**不変条件の保証**である。
+
+**§1-E の決着 —— `TestDataBlock` の生成時に拒否した（`5abc773`）**
+
+- **`TestDataBlock` のコンストラクタが `groupId` ＝ `null` を `IllegalArgumentException` で拒否する。**
+  `TestDataBlock` は sealed 階層の根なので、この 1 箇所で
+  `TableDataBlock`／`ListMapBlock`／`FileDataBlock`／`MessageDataBlock` の 4 種別すべてを覆う。
+  **空文字は通し、デフォルトグループを表す**（`:254`）。
+- **辺③④に番人は追加していない。** 辺③の `SETUP_TABLEnull=T`（`XlsFormatWriter#marker`。現 `:557`）と
+  辺④の `NullPointerException`（`YamlFormatWriter#rawGroup`。現 `:529`）は、`null` のブロックを
+  作れなくなったことで**到達不能になった**。両メソッドは無変更である。
+- テストは `TestDataBlockTest`（新規）に 5 件 —— 4 種別それぞれの `null` 拒否と、空文字が
+  デフォルトグループとして通ることの確認。既存の空文字テスト
+  （`XlsFormatWriterTest#writesTableBlock`／`YamlFormatWriterTest#serializeTable_setupNoGroup_…`）は無変更。
+- **方針 4（`null` の生成元の特定）の結果: 辺①②のどちらのリーダーも `groupId` ＝ `null` を作らない。**
+  辺①は `TestCoreReaderAdapter.java:365-369` で `markerGroupId` が `null` を返した行を `continue` で
+  読み飛ばすため `BlockHeader.groupId` は常に非 `null`、辺②は `YamlFormatReader.java:486-487` が
+  キー省略時に `""` を返す。**したがってリーダー側の修正は不要であり、`null` が入るのは
+  呼び出し側のバグである。**
+- **上の「括弧の無い非空文字列（例 `"g1"`）を保持できてしまう穴」は §1-E でも直していない。** 未確認のまま
+  据え置きであり、**§6（中間モデル一巡点検）で改めて実物にあたる。**
+
 - **`groupId` は整形済みの版面片である。** 中間モデルは `""`（省略）か `[g1]`（括弧込み）を保持する
   （`XlsFormatWriter#marker` の Javadoc「グループ ID は中間モデルが整形済み（`[g1]` もしくは空文字）で保持する」／
   `YamlFormatWriter#rawGroup` の Javadoc「整形済みグループ ID（`[xxx]`）を生値へ戻す」／
