@@ -284,25 +284,31 @@ done
 
 ```
 XlsFormatReaderTest.java       33 @Test
-YamlFormatReaderTest.java      20 @Test
-XlsFormatWriterTest.java       40 @Test
-YamlFormatWriterTest.java      33 @Test
+YamlFormatReaderTest.java      21 @Test
+XlsFormatWriterTest.java       45 @Test
+YamlFormatWriterTest.java      31 @Test
 RoundTripTest.java             30 @Test
 ```
 
-**上のブロックは現在（2026-08-13）の実測であり、上のコマンドをそのまま実行すれば再現する。**
-`@Test` の数は 5 クラスとも #18 から変わっていない。
+**上のブロックは 2026-08-19 の実測であり、上のコマンドをそのまま実行すれば再現する。**
 
-`RoundTripTest`（30 件）は 4 辺いずれの担当クラスのテストでもないため上の 126 件には含まれないが、
+> **出力を導き直した（2026-08-19）。** 従来ここには `33 / 20 / 40 / 33 / 30`（合計 126）と、
+> 「`@Test` の数は 5 クラスとも #18 から変わっていない」が書いてあった。**#25.5 の §1・§6 で
+> 4 クラスが増減したため、いまはコマンドを実行しても再現しない。** `8c327d0`（#25.5 開始時点）で
+> 同じコマンドを実行すると `33 / 20 / 40 / 33 / 30` が返り、旧出力はその時点の値だったことが確かめられる
+> （`git grep -c '@Test' 8c327d0 -- <上の 5 ファイル>`）。**「steering 想定」の列は #18 当時の想定であり、
+> 突き合わせの記録として動かさない。** 全体の件数は §0.1-2 の追補その 6 が正である。
+
+`RoundTripTest`（30 件）は 4 辺いずれの担当クラスのテストでもないため下の 130 件には含まれないが、
 4 辺すべてを実ファイル経由で駆動するため §0.8-8 で扱う。
 
-| 辺 | クラス | steering 想定 | 実測 | 差異 |
+| 辺 | クラス | steering 想定（#18 当時） | 実測（2026-08-19） | 差異 |
 |---|---|---|---|---|
 | 辺① Excel→中間モデル | `XlsFormatReaderTest` | 33 | **33** | なし |
-| 辺② YAML→中間モデル | `YamlFormatReaderTest` | 20 | **20** | なし |
-| 辺③ 中間モデル→Excel | `XlsFormatWriterTest` | 40 | **40** | なし |
-| 辺④ 中間モデル→YAML | `YamlFormatWriterTest` | 33 | **33** | なし |
-| 合計 | | 126 | **126** | なし |
+| 辺② YAML→中間モデル | `YamlFormatReaderTest` | 20 | **21** | **+1**（#25.5） |
+| 辺③ 中間モデル→Excel | `XlsFormatWriterTest` | 40 | **45** | **+5**（#25.5） |
+| 辺④ 中間モデル→YAML | `YamlFormatWriterTest` | 33 | **31** | **−2**（#25.5） |
+| 合計 | | 126 | **130** | **+4** |
 
 <a id="s0-1-2"></a>
 
@@ -828,7 +834,7 @@ YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L483(分岐1)
 | 軸要素 | 追補その 5 時点の担保 | 現在の担保 |
 |---|---|---|
 | C-08 `columnNames` 空 | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames`（辺③が `IllegalArgumentException` で落とす） | **`XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` ／ `#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock`**。**落とさずマーカーカラム 1 列 `[空]` を書く**へ変わった（`issues.md` **XLS-27** の【決着】）。あわせて**カラム名 0 件で「セルを持つ行」**は `TableDataBlockTest#カラムなしでセルを持つ行を抱えるブロックは生成できない` が拒否する（**XLS-21**） |
-| C-15 `MessageDataBlock.records` 空 ／ E-3(0 件) のメッセージ経路 | `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords`（辺③） | **`MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `#本文レコードが0件の送信系電文ブロックも生成できない`**（生成時拒否へ移設。`issues.md` **YML-12 2 形目**・§6-J-2）。**辺③④からこの版面へ到達する経路は無くなった** |
+| C-15 `MessageDataBlock.records` 空 ／ E-3(0 件) のメッセージ経路 | `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords`（辺③） | **`MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない`**（送信系の版は追補その 7 で削除した。生成時拒否へ移設。`issues.md` **YML-12 2 形目**・§6-J-2）。**辺③④からこの版面へ到達する経路は無くなった** |
 | C-21 `FieldDef.length` ＝ `null` の固定長・電文経路 | `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock`（辺③） | **`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-30**・§6-J-3）。**可変長は `null` が正しい**ため `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる` が通す |
 | `FileDataBlock.fileType` ＝ `null` | `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` ／ `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected`（辺③④） | **`FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-29**） |
 
@@ -841,6 +847,37 @@ YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L483(分岐1)
 （0 件テーブルがあるため変換が中止されることを固定していた）は
 `#convertsClimanSampleIncludingZeroRowTable`（出力ブック数 2 冊）へ反転した。
 
+
+**追補その 7（2026-08-19 実測。#25.5 レビュー 2 巡目ぶん）**
+
+追補その 6（597 件）から、**QA レビューの指摘で見つかった二重主張のテスト 2 件を削除した**ぶんを導き直した。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 595
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1280
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 595
+```
+
+```
+Tests run: 595, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**597 → 595（差 −2）の内訳** —— 削除したのは次の 2 件で、**どちらも番人が分岐しない軸で
+同じ番人・同じメッセージを主張していた**。番人を壊したとき 2 本とも同じ壊れ方をするため、
+2 本目は回帰検知の力を増やしていない。
+
+| 削除したテスト | 同じ番人を主張していた残る 1 本 | 分岐しないことの根拠 |
+|---|---|---|
+| `model/RecordLayoutTest#レコード種別を省略してもフィールド0件のレコードは生成できない` | `#フィールドを1件も持たないレコードは生成できない` | `RecordLayout` のコンストラクタは `recordType` を代入するだけで分岐せず、`requireNotEmpty("フィールド定義", …)` は `recordType` の値に依らず同じ経路を通る。**レコード種別 `null` の保持そのものは `#レコード種別省略をnullで保持する` が担保する** |
+| `model/MessageDataBlockTest#本文レコードが0件の送信系電文ブロックも生成できない` | `#本文レコードが0件の電文ブロックは生成できない` | `MessageDataBlock` の `records.isEmpty()` 検査は `dataType` で分岐しない。**電文系 5 種すべてを受理することは `#メッセージ系の全データ種別を保持する` が担保する**（`MESSAGE` ／ `EXPECTED_REQUEST_HEADER_MESSAGES` ／ `EXPECTED_REQUEST_BODY_MESSAGES` ／ `RESPONSE_HEADER_MESSAGES` ／ `RESPONSE_BODY_MESSAGES` をループで通す） |
+
+**削除した 2 件が主張していた不変条件そのものは残っている**（上表の「残る 1 本」）。
+**残した側の Javadoc に「この軸では分岐しないため版を増やさない」ことと、移した担保先を書いた。**
 
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
@@ -1136,7 +1173,7 @@ YAML は本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$d
 ### 0.8-8 `RoundTripTest`（30 件）の扱い
 
 `RoundTripTest`（30 `@Test`）は 4 辺いずれの
-担当クラスのテストでもないため §0.1 の 126 件には含まれないが、`new XlsFormatWriter().write(...)` で実
+担当クラスのテストでもないため §0.1 の 130 件（2026-08-19 実測）には含まれないが、`new XlsFormatWriter().write(...)` で実
 `.xlsx` を書き `new XlsFormatReader().read(...)`（本番配線）で読み戻す XLS 経路 13 件と、
 `new YamlFormatWriter().write(...)` → `new YamlFormatReader().read(...)` の YAML 経路 14 件、
 両経路を 1 メソッドで通す 3 件からなり、**4 辺すべてを実ファイル経由で駆動している**
@@ -2082,11 +2119,18 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 | テストクラス | 追加タスク | 件数 | 検証対象 |
 |---|---|---|---|
 | `XlsFormatWriterCellTypeTest` | #22 | 18 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる（16 件）。加えて ZIP エントリ `xl/sharedStrings.xml` の**生バイト**を検査する（2 件） |
-| `XlsFormatWriterInvalidOutputTest` | #22 | 17 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
+| `XlsFormatWriterInvalidOutputTest` | #22 | 16 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
 
 件数は `grep -c "^    @Test" src/test/java/nablarch/test/tool/converter/xls/<クラス>.java` の実測。
 `XlsFormatWriterInvalidOutputTest` は #22 時点で 16 件、#25.5 のレビュー対応で
-`rejectsNullSheetName` 1 件を足して **17** 件になった（2026-08-14 実測）。
+`rejectsNullSheetName` 1 件を足して 17 件になり、**§1-F（`81cf234`）でその 1 件を削除して
+16 件に戻った**（2026-08-19 実測）。
+
+> **17 → 16 へ導き直した（2026-08-19）。** `rejectsNullSheetName` は §1-F で
+> **読み込み単位の名前 `null` を `TestDataSection` ／ `TestDataContainer` の生成時に拒否するようにしたため
+> 辺③の番人へ到達しなくなり、削除した**（削除の記録は本書 §0.1-2 の削除一覧と `issues.md` XLS-33）。
+> 移った先は `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（本書 §0.1-2 の対応表）。
+> `grep -rn "rejectsNullSheetName" src/test` は **0 件**を返す。
 
 **1 ケース 1 `@Test` で展開している。** 制御文字 6 文字（D3-08）とシート名の禁止文字 7 文字（F3-04）は
 ループで束ねず文字ごとに 1 メソッドへ分けた。姉妹クラス `XlsFormatReaderCellTypeTest`（1 ケース 1 `@Test`）に
@@ -2158,12 +2202,14 @@ POI 3.8 の `XSSFWorkbook#createSheet(String)` は `substring(0, 31)` による�
 重複判定（同名 2 枚／大文字小文字だけが違う名前）である。
 **シート名のアポストロフィ（先頭／末尾）は #22 のスコープ外であり未担保**（タスク #22 の Steps が
 F3-04 の範囲を「31 文字超・禁止文字」と定めているため）。
-**`null` は #25.5 のレビュー対応（B-2）で閉じた** —— `requireValidSheetNameLength` が `sheetName == null` を
-文字数検査の**前に**、専用のメッセージ（`シート名（セクション名）が null です。…`）で落とす。担保は
-`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName`（`container(book, (String) null)` を渡す）。
-これは #25.5 の XLS-16 修正が `sheetName.length()` を先に呼ぶ形だったため `null` が
-`NullPointerException` になっていた（＝到達不能ではなく**未到達分岐**だった）のを、
-同じ番人の下へ寄せて閉じたものである。
+**`null` は辺③の担保では無くなった（2026-08-19 に導き直した）。** いったんは #25.5 のレビュー対応（B-2）で
+`requireValidSheetNameLength` に `sheetName == null` の分岐を足し、
+`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName` で担保していた。**その後 §1-F（`81cf234`・XLS-33）で
+名前 `null` を `TestDataSection` ／ `TestDataContainer` の生成時に拒否するようにしたため、辺③の分岐は
+到達しなくなり、分岐も担保テストも削除した。** 現在の `requireValidSheetNameLength`（`XlsFormatWriter`）に
+`null` 分岐は無く、その Javadoc が「`null` は検査しない。`TestDataSection` が生成時に拒否するため、
+ここへは届かない」と書いている。**担保の現在地は
+`TestDataContainerTest#名前がnullの読み込み単位は生成できない`**（本書 §0.1-2 の対応表）。
 
 <a id="s3-1-2-parent-null"></a>
 
@@ -2179,17 +2225,18 @@ null チェックが必須」と明記している分岐であるため、担保
   `Paths.get(".output/SampleConversionTest", "Book.xlsx").getParent()` → `.output/SampleConversionTest` ／
   `Paths.get("/tmp/junit123", "Book.xlsx").getParent()` → `/tmp/junit123`）。
 - **到達経路の全数**: `XlsFormatWriter#write` が呼ばれるのは src/test では次の 2 経路しかない。
-  1. 直接呼び出し **21 か所**（`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → 21。
-     内訳は `grep -rc` で `XlsFormatWriterInvalidOutputTest:11`／`XlsFormatWriterTest:3`／
+  1. 直接呼び出し **20 か所**（`grep -rn "new XlsFormatWriter(.*)\.write(" src/test --include=*.java | wc -l` → 20。
+     内訳は `grep -rc` で `XlsFormatWriterInvalidOutputTest:10`／`XlsFormatWriterTest:3`／
      `XlsFormatWriterCellTypeTest:2`／`TestDataConverterTest:2`／`XlsFormatWriterModelTest:1`／
-     `RoundTripTest:1`／`ConverterMojoTest:1`）。
-     21 か所の `basePath` 実引数はすべて `folder.getRoot().getAbsolutePath()` ／ `<File>.getAbsolutePath()` ／
+     `RoundTripTest:1`／`ConverterMojoTest:1`。**2026-08-19 実測**）。
+     20 か所の `basePath` 実引数はすべて `folder.getRoot().getAbsolutePath()` ／ `<File>.getAbsolutePath()` ／
      `<Path>.toString()` であり、空文字にならない。
      **#22 時点は 19 か所だった**（内訳に `XlsFormatWriterModelTest` が無かった）。#23 が
      `XlsFormatWriterModelTest` を追加したことで 20 になり、この記述は陳腐化していた
      （2026-08-13・#23 レビュー対応で訂正。増えた 1 か所も `basePath` は絶対パスであり結論は変わらない）。
-     **#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を足して 21 になった**（2026-08-14 実測。
-     この 1 か所も `folder.getRoot().getAbsolutePath()` であり結論は変わらない）。
+     **#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を足して 21 になり、§1-F（`81cf234`）で
+     その 1 件を削除して 20 に戻った**（2026-08-19 実測。増減したどちらの 1 か所も
+     `folder.getRoot().getAbsolutePath()` であり**結論は変わらない**）。
   2. 本番配線 `TestDataConverter#convert`（`writer.write(container, outputBase.toString())`）。
      `outputBase` は `XlsFormatHandler#resolveOutputBase` が `request.getOutputPath()` から組む。
      テストが渡す出力先は `TemporaryFolder` 由来の絶対パス（`TestDataConverterTest` の `out = folder.newFolder("out").toPath()`／
@@ -2484,7 +2531,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 | C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — 順に `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`／`#writesEmptySheetWhenSectionHasNoBlocks`／`#writesEmptyHeaderRowWhenColumnNamesAreEmpty`（**#25.5 追補で削除。C-08 の担保は `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` へ移った** —— `issues.md` **XLS-27** の当面の対応で、カラム名 0 件のテーブル系ブロックは書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesTableWithoutDataRowsWhenRowsAreEmpty`／`#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`／`#writesDirectiveRowsBeforeFwHeaderRowsInMessage`／`#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`（**#25.5 追補で削除。C-15 の担保は `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords` へ移った** —— `issues.md` **YML-12 2形目** を修正し、本文レコード 0 件の電文は書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`（**#25.5 追補で削除。C-17 の担保は `XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock` ／ `#rejectsRecordWithoutFieldsInMessageBlock` へ移った** —— `issues.md` **XLS-22** を修正し、空 `fields` は書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（§3.1-3）。記録した課題は `issues.md` **XLS-21〜XLS-23**（**XLS-22 は #25.5 で修正済み**） | 9 |
 | D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 18 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 18）。内訳は **8 ケース**＋改行の異表記 **2 件**・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋2＋1＋3＋2＋2 ＝ **18**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 担保済み（変更なし） | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — E-1(0) は C-04、E-2(0) は C-09／C-18、E-3(0) は C-12／C-15 と同じ入力（上の C 行のテストメソッド。§3.1-3 の軸E 表） | 3 |
-| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 17 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 17。#22 時点は 16 件で、#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を 1 件足した）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の拒否 **1 件**＋切り詰めと禁止文字検査の境界 **2 件**＋同名 2 枚の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＋ `null` **1 件**（`rejectsNullSheetName`。#25.5 の B-2）＝ 1＋1＋14＋1 ＝ **17**。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16**（**#25.5 で修正済み**。31 文字超は黙って切り詰めるのをやめて拒否するようになり、上記 4 件を改名・書き直した。この改名で件数は増えていない） | 担保済み（変更なし） | 3 |
+| F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16。**2026-08-19 実測**。#22 時点は 16 件、#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を 1 件足して 17 件になり、§1-F（`81cf234`）でその 1 件を削除して 16 件に戻った。`null` の担保は `TestDataContainerTest#名前がnullの読み込み単位は生成できない` へ移っている）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の拒否 **1 件**＋切り詰めと禁止文字検査の境界 **2 件**＋同名 2 枚の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＝ 1＋1＋14 ＝ **16**（**`null` 1 件は §1-F で削除**）。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16**（**#25.5 で修正済み**。31 文字超は黙って切り詰めるのをやめて拒否するようになり、上記 4 件を改名・書き直した。この改名で件数は増えていない） | 担保済み（変更なし） | 3 |
 | F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite` で完結する。上に挙げた既存テストが通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 対象外（変更なし。#23 でも辺③に書かない） | 1 |
 | **合計** | | **要追加 26（実際は 29）／ 到達不能 0 ／ 対象外 1** | **要追加 15（実際は 18）／ 担保済み 11 ／ 到達不能 0 ／ 対象外 1** | **要追加 0 ／ 担保済み 29 ／ 到達不能 0 ／ 対象外 1** | **30（うち対象外 1）** |
 

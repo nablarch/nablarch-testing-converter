@@ -196,26 +196,16 @@ public class MessageDataBlockTest {
      * 本体スキーマの電文系 3 定義（{@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）も
      * {@code records} を必須かつ {@code minItems} ＝ 1 とする。
+     *
+     * <p>
+     * <b>データ種別では分岐しない</b>ため送信系の版は置かない（電文系 5 種すべてを受理することは
+     * {@code #メッセージ系の全データ種別を保持する} が担保する）。
+     * </p>
      */
     @Test
     public void 本文レコードが0件の電文ブロックは生成できない() {
         try {
             new MessageDataBlock(DataType.MESSAGE, "", "RM11",
-                    new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
-            fail("IllegalArgumentException が送出されるべき");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage(), containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
-        }
-    }
-
-    /**
-     * YML-12 の 2 形目。送信系 4 種でも同じ。{@code $defs.expected_request_message_data} ／
-     * {@code $defs.group_message_data} も {@code records.minItems} ＝ 1 である。
-     */
-    @Test
-    public void 本文レコードが0件の送信系電文ブロックも生成できない() {
-        try {
-            new MessageDataBlock(DataType.RESPONSE_BODY_MESSAGES, "[g]", "RM11",
                     new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {

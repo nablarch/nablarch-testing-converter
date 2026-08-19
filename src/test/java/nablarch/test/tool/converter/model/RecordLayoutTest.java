@@ -45,28 +45,17 @@ public class RecordLayoutTest {
      * （行の要素数 ≦ フィールド定義の件数）が先に落とすため、フィールド 0 件そのものを
      * 突いたことにならない。
      * </p>
+     *
+     * <p>
+     * <b>レコード種別の有無では分岐しない</b>ためレコード種別 {@code null} 版のテストは置かない
+     * （{@code null} をそのまま保持することは {@code #レコード種別省略をnullで保持する} が担保する）。
+     * </p>
      */
     @Test
     public void フィールドを1件も持たないレコードは生成できない() {
         // Given / When / Then: フィールド 0 件・データ行 0 件
         try {
             new RecordLayout("data", List.of(), List.of());
-            fail("IllegalArgumentException が送出されるべき");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage(), containsString("フィールド定義は 1 件以上必要です"));
-        }
-    }
-
-    /**
-     * XLS-22 ／ YML-12 の 3 形目。レコード種別が {@code null}（省略）でも、
-     * フィールド 0 件なら同じく生成できない。
-     * もとの番人は辺③④の書き出し側にあり、レコード種別の有無で分岐していなかった。
-     */
-    @Test
-    public void レコード種別を省略してもフィールド0件のレコードは生成できない() {
-        // Given / When / Then
-        try {
-            new RecordLayout(null, List.of(), List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("フィールド定義は 1 件以上必要です"));

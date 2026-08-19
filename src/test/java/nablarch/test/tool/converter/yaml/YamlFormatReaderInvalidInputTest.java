@@ -1051,16 +1051,19 @@ public class YamlFormatReaderInvalidInputTest {
     }
 
     /**
-     * Given: {@code field-separator} をスキーマ description のとおり {@code "\t"} と書いた YAML
+     * Given: {@code field-separator} を {@code "\t"} と書いた YAML
      *        （ダブルクォート文字列のためタブ文字 1 個に解決される）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : {@code IllegalArgumentException} で止まる。{@code trim()} でタブが失われ、
      *        「1 文字でなければならない」という検査に引っ掛かるためである。
      *
      * <p>
-     * description は「YAML では {@code "\t"} と記述するとタブ文字（U+0009）に変換される」と書いているが、
      * 実際にタブへ変換されるのは<b>バックスラッシュと {@code t} の 2 文字</b>を渡した場合
-     * （YAML では {@code '\t'} などシングルクォート記法）である。
+     * （YAML では {@code '\t'} などシングルクォート記法）である。本体スキーマ
+     * {@code $defs.directives.properties.field-separator.description} も
+     * 「タブは {@code field-separator: "\\t"} と記述する」と書いており、**この挙動と一致している**
+     * （2026-08-19 実測。以前この Javadoc が引いていた「{@code "\t"} と記述するとタブ文字に変換される」は
+     * 現行スキーマに存在しない）。
      * {@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
      * </p>
      */

@@ -1252,7 +1252,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - XLS-01 のテストが削除されておらず、アサートが「仕様外入力のため値は保証しない」旨へ書き直されている
 - ~~`issues.md` の全 44 件に「NTF 仕様としての判定」欄があり、**要対応 15 件／対応不要 28 件／本作業の対象外 1 件**が出典つきで書かれている（2026-08-18 時点。導出コマンドと出力は `issues.md` 冒頭）~~ → **`issues.md` の全 55 件に判定欄があり、要対応 25 件／対応不要 27 件／保留 2 件／本作業の対象外 1 件が出典つきで書かれている**（2026-08-19 実測。区分外 0・二重 0。**「保留」は 2026-08-19 に足した区分で、明文が converter 側の判断で埋まらない課題に使う**）。既存の「判断」欄が残っており、両者の違いが説明されている
 - YML-08 の「未確認」が実行結果で埋まっている
-- `mvn clean test -Djacoco.skip=true` が全テスト PASS する（~~`@Ignore` は Skipped として現れてよい~~ → ~~YML-03 修正後は `Skipped: 0` であること~~ → **他責の型で置いた `@Ignore` 2 件の分だけ `Skipped: 2` であること**。2026-08-19 実測は `Tests run: 597, Failures: 0, Errors: 0, Skipped: 2`）
+- `mvn clean test -Djacoco.skip=true` が全テスト PASS する（~~`@Ignore` は Skipped として現れてよい~~ → ~~YML-03 修正後は `Skipped: 0` であること~~ → **他責の型で置いた `@Ignore` 2 件の分だけ `Skipped: 2` であること**。2026-08-19 実測は `Tests run: 595, Failures: 0, Errors: 0, Skipped: 2`（レビュー 2 巡目で二重主張のテスト 2 件を削除したため 597 → 595。`inventory.md` 追補その 7））
 - `src/main` の変更が要対応と判定した課題の修正に必要な範囲に限られており、変更したファイル名・課題ID・変更理由が記録されている
 - ~~`FieldDef.type` ／ `MessageDataBlock.records` の契約が Javadoc に明記され、辺③（`XlsFormatWriter`）と辺④（`YamlFormatWriter`）の双方が `IllegalArgumentException` で弾く~~ → **契約が Javadoc に明記され、`FieldDef` ／ `MessageDataBlock` の生成時が `IllegalArgumentException` で弾く**（Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」・2026-08-19。`FieldDef.type` は §1-D `d0023c0`、`MessageDataBlock.records` は §6-J-2 `9e40644` でモデルへ寄せ、**辺③④のチェックは撤去した**。残すと空振りの緑になるため）。現状挙動を固定していたテストは置き換えられている（2 本残っていない）
 - `issues.md` の `notation:nnn` が全件 `30a8271` 基準であり、基準コミットが本文に書かれている
