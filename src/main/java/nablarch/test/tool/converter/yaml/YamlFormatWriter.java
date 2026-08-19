@@ -334,9 +334,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * @param parent         親エントリ
      * @param records        レコードレイアウト群
      * @param lengthRequired フィールド長が必須（固定長ファイル・電文）なら真。可変長ファイルなら偽
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、データ型が {@code null} の
-     *                                  フィールド定義、または {@code lengthRequired} が真で
-     *                                  フィールド長が {@code null} のフィールド定義が含まれる場合
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、または {@code lengthRequired} が
+     *                                  真でフィールド長が {@code null} のフィールド定義が含まれる場合
      */
     private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records,
                              boolean lengthRequired) {
@@ -354,13 +353,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
                                 + " record_type=[" + record.getRecordType() + "]");
             }
             for (FieldDef field : record.getFields()) {
-                if (field.getType() == null) {
-                    throw new IllegalArgumentException(
-                            "データ型を持たないフィールド定義は書き出せません"
-                                    + "（$defs.field_def の required は type を含むため読み戻せません）。"
-                                    + " record_type=[" + record.getRecordType() + "]"
-                                    + " フィールド名=[" + field.getName() + "]");
-                }
+                // 名称・データ型の null は FieldDef の生成時に拒否済みのため、ここでは検査しない
                 if (lengthRequired && field.getLength() == null) {
                     throw new IllegalArgumentException(
                             "固定長ファイル・電文でフィールド長を持たないフィールド定義は書き出せません"

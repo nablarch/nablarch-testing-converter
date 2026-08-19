@@ -544,42 +544,6 @@ public class YamlFormatWriterTest {
     }
 
     /**
-     * Given: データ型が {@code null} のフィールドを持つファイルブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（YAML スキーマ
-     *        （{@code $defs.field_def.required} ＝ {@code ["name", "type"]}）は
-     *        {@code type} を必須としており、省略した形は読み戻せないため、黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_fieldWithNullTypeInFileBlock_rejected() {
-        // Given
-        RecordLayout record = new RecordLayout(null,
-                list(field("c1", null, null)), rows(row("v")));
-        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, directives(), Collections.singletonList(record));
-
-        // When / Then
-        serialize(block);
-    }
-
-    /**
-     * Given: データ型が {@code null} のフィールドを持つメッセージブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serialize_fieldWithNullTypeInMessageBlock_rejected() {
-        // Given
-        RecordLayout record = new RecordLayout(null,
-                list(field("c1", null, null)), rows(row("v")));
-        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                directives(), directives(), Collections.singletonList(record));
-
-        // When / Then
-        serialize(block);
-    }
-
-    /**
      * Given: データ型が空文字のフィールド。
      * When : serialize。
      * Then : {@code type: ""} として書かれる（番人が弾くのは {@code null} だけであり、

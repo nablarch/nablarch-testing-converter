@@ -387,44 +387,6 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: データ型が {@code null} のフィールドを持つ固定長ファイル。
-     * When : build。
-     * Then : IllegalArgumentException（Excel 記法はフィールド名称・データ型のリストを必須としており
-     *        （{@code testdata_notation.rst:883}／{@code :888}。{@code 30a8271} 時点）、
-     *        データ型を持たないフィールド定義は書き表せないため、黙って書かず早期に失敗する）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsFieldWithoutTypeInFileBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", null, "5")),
-                Collections.singletonList(row("v")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", file));
-    }
-
-    /**
-     * Given: データ型が {@code null} のフィールドを持つメッセージブロック。
-     * When : build。
-     * Then : IllegalArgumentException（番人はファイル系・メッセージ系の双方に効く）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsFieldWithoutTypeInMessageBlock() {
-        // Given
-        RecordLayout record = new RecordLayout("data",
-                Collections.singletonList(new FieldDef("f1", null, "5")),
-                Collections.singletonList(row("v")));
-        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                map(), map(), Collections.singletonList(record));
-
-        // When / Then
-        build(container("book", "sheet", message));
-    }
-
-    /**
      * Given: フィールド長が {@code null} のフィールドを持つ固定長ファイル。
      * When : build。
      * Then : IllegalArgumentException（Excel 記法は固定長ファイルについて「フィールド名称・データ型・

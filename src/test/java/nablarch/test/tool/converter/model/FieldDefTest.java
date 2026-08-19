@@ -2,9 +2,11 @@ package nablarch.test.tool.converter.model;
 
 import org.junit.Test;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link FieldDef} のテスト。
@@ -57,12 +59,52 @@ public class FieldDefTest {
     }
 
     @Test
-    public void 契約違反のnull型もモデル自身は検査せず保持する() {
-        // Given: type は必須（null 不可）だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
+    public void 名称がnullのフィールド定義は生成できない() {
+        // Given: name は必須（null 不可）。生成時点で拒否する（不変条件の保証であって入力の検証ではない）
         // When
-        FieldDef sut = new FieldDef("dataKbn", null, null);
+        try {
+            new FieldDef(null, "半角英字", "10");
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("フィールド名称"));
+        }
+    }
 
-        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
-        assertThat(sut.getType(), is(nullValue()));
+    @Test
+    public void 名称が空文字のフィールド定義は生成できる() {
+        // Given: 本体スキーマ $defs.field_def.name には minLength が無いため name: "" は適合する。
+        //        拒否するのは null だけであり、空文字は通す
+        // When
+        FieldDef sut = new FieldDef("", "半角英字", "10");
+
+        // Then
+        assertThat(sut.getName(), is(""));
+    }
+
+    @Test
+    public void データ型がnullのフィールド定義は生成できない() {
+        // Given: type も name と同じく $defs.field_def.required に含まれる必須項目である
+        // When
+        try {
+            new FieldDef("dataKbn", null, null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("データ型"));
+        }
+    }
+
+    @Test
+    public void データ型が空文字のフィールド定義は生成できる() {
+        // Given: $defs.field_def.type は minLength ＝ 1 だが、中間モデルの契約は null 不可までとする
+        //        （空文字の扱いは記法側の検証に委ねる。既存の辺④テスト
+        //        YamlFormatWriterTest#serialize_fieldWithEmptyType_emitsEmptyType が type: "" の
+        //        書き出しを担保している）
+        // When
+        FieldDef sut = new FieldDef("dataKbn", "", null);
+
+        // Then
+        assertThat(sut.getType(), is(""));
     }
 }

@@ -70,10 +70,11 @@ import org.junit.rules.TemporaryFolder;
  * 本クラスには 1 つも残っていない。番人は
  * {@code YamlFormatWriterTest#serialize_recordWithoutFieldsInFileBlock_rejected} ／
  * {@code #serialize_recordWithoutFieldsInMessageBlock_rejected}（3 形目）／
- * {@code #serialize_fieldWithNullTypeInFileBlock_rejected} ／
- * {@code #serialize_fieldWithNullTypeInMessageBlock_rejected}（4 形目）／
  * {@code #serializeMessage_withoutRecords_rejected} ／
  * {@code #serializeSendSync_withoutRecords_rejected}（2 形目 —— 電文の {@code records} 空）が担保する。
+ * <b>4 形目（{@code FieldDef.type} 省略）だけは辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * （{@code FieldDefTest#データ型がnullのフィールド定義は生成できない}。方針は {@code steering.md} Decisions
+ * 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
  * 1 形目（ファイルブロックの {@code records} 空）だけは記法・スキーマとも<b>合法な形が存在する</b>ため
  * 弾くのではなく {@code records: []} を書くように直してあり、本クラスの
  * {@link #writesEmptyRecordsListForFileBlockWithoutRecords()}（記法）と

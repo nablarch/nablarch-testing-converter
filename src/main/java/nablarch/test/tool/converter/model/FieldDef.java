@@ -10,16 +10,24 @@ package nablarch.test.tool.converter.model;
  * </p>
  *
  * <p>
- * <b>{@code type} は必須であり {@code null} であってはならない。</b>Excel 記法・YAML 記法のいずれも
- * データ型を持たないフィールド定義を認めていないためである（Excel は
- * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）が固定長ファイルで「フィールド名称・データ型・
- * フィールド長の3リストが同サイズで必須」・可変長ファイルで「フィールド名称・データ型の2リストが同サイズで
- * 必須」と定め、{@code :888} が「フィールド名称リストまたはデータ型リストが未指定または空である」を
+ * <b>{@code name} と {@code type} は必須であり {@code null} であってはならない。生成時点で拒否する。</b>
+ * Excel 記法・YAML 記法のいずれも、名称またはデータ型を持たないフィールド定義を認めていないためである
+ * （Excel は {@code testdata_notation.rst:883}（{@code 30a8271} 時点）が固定長ファイルで「フィールド名称・
+ * データ型・フィールド長の3リストが同サイズで必須」・可変長ファイルで「フィールド名称・データ型の2リストが
+ * 同サイズで必須」と定め、{@code :888} が「フィールド名称リストまたはデータ型リストが未指定または空である」を
  * 記述時のエラーに挙げる。YAML は本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
  * {@code $defs.field_def} が {@code required} ＝ {@code ["name", "type"]} とする）。
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。本クラス自身は検査しないが、書き出し側
- * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）が {@code null} を受けたら送出で弾く
- * （{@code coverage/issues.md} <b>YML-12</b>）。
+ * <b>空文字は拒否しない</b>——{@code $defs.field_def.name} に {@code minLength} が無いため
+ * {@code name: ""} はスキーマに適合する。
+ * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。
+ * </p>
+ *
+ * <p>
+ * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>NTF 仕様に合わない Excel ／ YAML が
+ * 読み取りで落ちるのは従来どおり正しい。それとは別に、中間モデルへ {@code null} が入ることは呼び出し側の
+ * バグであり、生成時点で露見させる。したがって書き出し側（{@code XlsFormatWriter} ／
+ * {@code YamlFormatWriter}）には番人を置かない（{@code coverage/issues.md} <b>XLS-31</b> ／ <b>YML-12</b>。
+ * 方針は {@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
  * </p>
  *
  * <p>
@@ -36,7 +44,8 @@ package nablarch.test.tool.converter.model;
  * 共用されるため、必須か否かを {@code required} では表せないからである。ただし同スキーマ自身が
  * {@code length} の説明に「固定長ファイルでは実質必須（省略すると NTF が record-length を計算できない）。
  * 可変長ファイルでは不要（省略可）」と書いており、記法の明文と食い違ってはいない。
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。本クラス自身は検査しないが、書き出し側
+ * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。<b>ただし固定長か可変長かは本クラス単体では
+ * 判らないため、{@code length} は生成時に拒否できない。</b>本クラス自身は検査せず、書き出し側
  * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）が固定長ファイル・電文で {@code null} を
  * 受けたら送出で弾く（{@code coverage/issues.md} <b>XLS-30</b>）。
  * </p>
@@ -52,23 +61,38 @@ public final class FieldDef {
     /**
      * コンストラクタ。
      *
-     * @param name   フィールド名称（記述のまま。大文字化なし）
-     * @param type   データ型（記述のまま。必須（{@code null} 不可）。{@code null} の検査は書き出し側が行う）
+     * @param name   フィールド名称（記述のまま。大文字化なし。必須（{@code null} 不可）。空文字は可）
+     * @param type   データ型（記述のまま。必須（{@code null} 不可）。空文字は可）
      * @param length フィールド長（記述のまま。{@code "-"} 等もリテラル保持。可変長ファイルでは省略可で
      *               {@code null}。固定長ファイル・電文では必須であり、{@code null} の検査は書き出し側が行う）
+     * @throws IllegalArgumentException {@code name} または {@code type} が {@code null} の場合
      */
     public FieldDef(String name, String type, String length) {
+        if (name == null) {
+            throw new IllegalArgumentException(
+                    "フィールド名称を持たないフィールド定義は作れません"
+                            + "（Excel 記法はフィールド名称・データ型のリストを必須としており、"
+                            + "YAML 本体スキーマ $defs.field_def の required は name を含みます）。"
+                            + " データ型=[" + type + "] フィールド長=[" + length + "]");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException(
+                    "データ型を持たないフィールド定義は作れません"
+                            + "（Excel 記法はフィールド名称・データ型のリストを必須としており、"
+                            + "YAML 本体スキーマ $defs.field_def の required は type を含みます）。"
+                            + " フィールド名=[" + name + "] フィールド長=[" + length + "]");
+        }
         this.name = name;
         this.type = type;
         this.length = length;
     }
 
-    /** @return フィールド名称 */
+    /** @return フィールド名称（非 {@code null}） */
     public String getName() {
         return name;
     }
 
-    /** @return データ型（必須。{@code null} 不可） */
+    /** @return データ型（非 {@code null}） */
     public String getType() {
         return type;
     }

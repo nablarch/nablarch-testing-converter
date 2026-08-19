@@ -374,9 +374,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param fixed      固定長（長さ行を持つ）なら真
      * @param sendSync   送信系（データ行の列 0 に no を置く）なら真
      * @param identifier 識別子（診断メッセージ用）
-     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、データ型が {@code null} の
-     *                                  フィールド定義、または {@code fixed} が真でフィールド長が
-     *                                  {@code null} のフィールド定義が含まれる場合
+     * @throws IllegalArgumentException フィールド 0 件のレコードレイアウト、または {@code fixed} が真で
+     *                                  フィールド長が {@code null} のフィールド定義が含まれる場合
      * @throws IllegalStateException    2 レコード目以降のレコード種別が空の場合
      */
     private void appendRecords(BlockLayout l, List<RecordLayout> records,
@@ -390,13 +389,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                                 + " identifier=[" + identifier + "] レコード番号=" + i);
             }
             for (FieldDef field : record.getFields()) {
-                if (field.getType() == null) {
-                    throw new IllegalArgumentException(
-                            "データ型を持たないフィールド定義は書き出せません"
-                                    + "（Excel 記法はフィールド名称・データ型のリストを必須としています）。"
-                                    + " identifier=[" + identifier + "] レコード番号=" + i
-                                    + " フィールド名=[" + field.getName() + "]");
-                }
+                // 名称・データ型の null は FieldDef の生成時に拒否済みのため、ここでは検査しない
                 if (fixed && field.getLength() == null) {
                     throw new IllegalArgumentException(
                             "固定長ファイル・電文でフィールド長を持たないフィールド定義は書き出せません"
