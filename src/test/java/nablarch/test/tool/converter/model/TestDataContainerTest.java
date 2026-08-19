@@ -49,6 +49,33 @@ public class TestDataContainerTest {
     }
 
     @Test
+    public void 名前がnullの器は生成できない() {
+        // Given: 器の名前はテストクラスと 1 対 1 に対応する引き当てキーであり
+        //        （notation:44「同名の1つのExcelファイル（.xls または .xlsx）がテストクラスに対応し、
+        //        1シートが読み込み単位に対応する」）、辺③はこれをそのままブック名にする。
+        //        null では null.xlsx というファイルが黙って作られる（XLS-37）
+        // When
+        try {
+            new TestDataContainer(null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("器の名前"));
+        }
+    }
+
+    @Test
+    public void 名前が空文字の器は生成できる() {
+        // Given: 空文字は拒否しない。ブック名の書式は Excel 形式固有の制約であり
+        //        中間モデルの不変条件ではない（TestDataSection と同じ扱い）
+        // When
+        TestDataContainer sut = new TestDataContainer("", List.of());
+
+        // Then
+        assertThat(sut.getName(), is(""));
+    }
+
+    @Test
     public void 名前がnullの読み込み単位は生成できない() {
         // Given: 読み込み単位の名前は呼び出し側がデータを引き当てるキーであり
         //        （notation:590「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と
