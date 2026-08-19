@@ -39,18 +39,18 @@ import org.junit.rules.TemporaryFolder;
  * {@link XlsFormatWriter} のテストクラス。
  *
  * <p>
- * 40 件の内訳は <b>{@code build}（メモリ上のブック）を見る 28 件</b>・
- * <b>{@code write} で実 {@code .xlsx} を書く 10 件</b>・
- * <b>SUT のブックを作らない 2 件</b>である（28 ＋ 10 ＋ 2 ＝ 40）。
+ * 45 件の内訳は <b>{@code build}（メモリ上のブック）を見る 31 件</b>・
+ * <b>{@code write} で実 {@code .xlsx} を書く 12 件</b>・
+ * <b>SUT のブックを作らない 2 件</b>である（31 ＋ 12 ＋ 2 ＝ 45）。
  * </p>
  * <ul>
- *   <li><b>{@code build} 28 件</b> — メモリ上のブックからセル値・背景色・罫線・列幅を直接アサートする。</li>
- *   <li><b>{@code write} 10 件</b> — 往復テスト 8 件（{@code roundTrips*}。{@link #roundTrip} 経由で
+ *   <li><b>{@code build} 31 件</b> — メモリ上のブックからセル値・背景色・罫線・列幅を直接アサートする。</li>
+ *   <li><b>{@code write} 12 件</b> — 往復テスト 10 件（{@code roundTrips*}。{@link #roundTrip} 経由で
  *       書き出し、実 {@link XlsFormatReader} でモデル → Excel → モデルの同値を検証する）と、
  *       {@link #writesWorkbookFileWithSheetPerSection}（ファイルとシートの生成を確かめる）・
  *       {@link #wrapsIoFailure}（書き出し失敗の例外）。
  *       {@code grep -n "new XlsFormatWriter()\.write(" <本ファイル>} は 3 か所を返し、うち 1 か所が
- *       {@link #roundTrip} ヘルパで 8 件が共有する。</li>
+ *       {@link #roundTrip} ヘルパで 10 件が共有する。</li>
  *   <li><b>どちらも呼ばない 2 件</b> — {@link #eachGroupHasDistinctDefaultColor} と
  *       {@link #rejectsNegativeBlankRows}。{@link ExcelFormatConfig} だけを叩くため
  *       {@link XlsFormatWriter} のブックを作らない。</li>
@@ -359,8 +359,13 @@ public class XlsFormatWriterTest {
     /**
      * Given: 2 レコード目のレコード種別が null の固定長ファイル。
      * When : build。
-     * Then : IllegalStateException（列 0 が空の名前行は本体パーサが直前レコードのデータ行と誤読し、
-     *        読み戻せない版面になるため、黙って書かず早期に失敗する）。
+     * Then : IllegalStateException。XLS-06。記法は「データの後ろに新たなレコード種別とフィールド名称を
+     *        書いた時点で、新しいレコードレイアウトとして扱われる」と定めており
+     *        （{@code testdata_notation.rst:1082}（{@code 30a8271} 時点））、レコード種別を書かない
+     *        2 件目以降のレコードレイアウトは Excel 記法では書き表せない。読み戻せない版面を黙って
+     *        書かず早期に失敗する。<b>辺④（YAML）はこの形を書けるため、番人はモデルへ寄せず
+     *        書き出し側に残す</b>（{@code :1143}、本体スキーマ {@code $defs.record_fragment} の
+     *        {@code required} は {@code record_type} を含まない）。
      */
     @Test(expected = IllegalStateException.class)
     public void rejectsNullRecordTypeOnSecondRecord() {
@@ -441,7 +446,8 @@ public class XlsFormatWriterTest {
     /**
      * Given: 2 レコード目のレコード種別が空文字の固定長ファイル。
      * When : build。
-     * Then : IllegalStateException（空文字も列 0 が空になるため null と同様に弾く）。
+     * Then : IllegalStateException。XLS-06。空文字もレコード種別を書いたことにならないため
+     *        {@code null} と同様に弾く。
      */
     @Test(expected = IllegalStateException.class)
     public void rejectsEmptyRecordTypeOnSecondRecord() {
