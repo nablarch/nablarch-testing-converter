@@ -85,8 +85,11 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * <b>F3-04 で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
  * 31 文字ちょうど（正常側の境界）・重複判定（同名／大文字小文字だけが違う名前）である。
- * シート名のアポストロフィ（先頭／末尾）と {@code null} は
- * タスク #22 のスコープ外であり、<b>未担保</b>である。
+ * シート名のアポストロフィ（先頭／末尾）はタスク #22 のスコープ外であり、<b>未担保</b>である。
+ * {@code null} は<b>本クラスの担保対象ではない</b> —— {@link nablarch.test.tool.converter.model.TestDataSection}
+ * が生成時に拒否するため辺③へ届かず、担保は
+ * {@code TestDataContainerTest#名前がnullの読み込み単位は生成できない} にある
+ * （{@code issues.md} <b>XLS-33</b>）。
  * </p>
  *
  * <p>
@@ -527,44 +530,6 @@ public class XlsFormatWriterInvalidOutputTest {
                 containsString("シート名が Excel の上限 31 文字を超えています"));
         assertThat(thrown.getMessage(), containsString("sheetName='" + tooLong + "'"));
         assertThat(thrown.getMessage(), containsString("length=32"));
-        assertFalse("ブックは作られない", writtenBook(book).exists());
-    }
-
-    /**
-     * Given: セクション名が {@code null} のコンテナ。
-     * When : {@code write}。
-     * Then : {@code IllegalArgumentException} で失敗する。メッセージは null であることを示す。
-     *        <b>ブックは作られない。</b>
-     *
-     * <p>
-     * {@code TestDataSection} はセクション名の null を拒まないため、中間モデルとしては組める。
-     * 一方シート名は呼び出し側が渡す引き当てキーであり（{@code testdata_notation.rst:590}）、
-     * null では引けない。文字数超過と同じ番人で落とす（{@code issues.md} <b>XLS-16</b>）。
-     * </p>
-     *
-     * <p>
-     * 文字数のメッセージ（「上限 31 文字を超えています」＋{@code length=}）は null には当てはまらず、
-     * {@code sheetName.length()} が {@code NullPointerException} になるため、null 用のメッセージを
-     * 分けてある。本テストはその出し分けを担保する。
-     * </p>
-     *
-     * <p>担保する軸要素: F3-04（シート名の異常）。</p>
-     */
-    @Test
-    public void rejectsNullSheetName() {
-        // Given
-        String book = "NullSheetName";
-
-        // When
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> new XlsFormatWriter().write(container(book, (String) null),
-                        folder.getRoot().getAbsolutePath()));
-
-        // Then
-        assertThat(thrown.getMessage(),
-                containsString("シート名（セクション名）が null です"));
-        assertFalse("文字数超過のメッセージは出さない",
-                thrown.getMessage().contains("上限 31 文字を超えています"));
         assertFalse("ブックは作られない", writtenBook(book).exists());
     }
 

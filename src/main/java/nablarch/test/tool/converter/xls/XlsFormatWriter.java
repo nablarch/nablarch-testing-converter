@@ -144,20 +144,15 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * どちらも {@code createSheet} の前に文字数を検査すれば閉じる（{@code issues.md} XLS-16）。
      * </p>
      * <p>
-     * null も同じ番人で落とす。{@link TestDataSection} はセクション名の null を拒まないため中間モデル
-     * としては作れてしまうが、シート名が引き当てキーである以上 null では引けず、POI へ渡しても
-     * 意味のある名前にはならない。
+     * null は検査しない。{@link TestDataSection} が生成時に拒否するため、ここへは届かない
+     * （{@code issues.md} XLS-33）。<b>31 文字上限は Excel 形式固有の制約であり中間モデルの
+     * 不変条件ではないため、この番人は書き出し側に残す。</b>
      * </p>
      *
      * @param sheetName シート名（＝セクション名）
-     * @throws IllegalArgumentException null の場合、または 31 文字を超える場合
+     * @throws IllegalArgumentException 31 文字を超える場合
      */
     private static void requireValidSheetNameLength(String sheetName) {
-        if (sheetName == null) {
-            throw new IllegalArgumentException(
-                    "シート名（セクション名）が null です。"
-                            + "シート名は読み込み単位を引き当てるためのキーであり省略できないため、変換を中止しました。");
-        }
         if (sheetName.length() > MAX_SHEET_NAME_LENGTH) {
             throw new IllegalArgumentException(
                     "シート名が Excel の上限 " + MAX_SHEET_NAME_LENGTH + " 文字を超えています。"

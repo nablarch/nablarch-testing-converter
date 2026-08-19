@@ -5,9 +5,11 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 
 /**
  * {@link TestDataContainer} と {@link TestDataSection} のテスト。
@@ -44,5 +46,20 @@ public class TestDataContainerTest {
         assertThat(sut.getName(), is("sheet1"));
         assertThat(sut.getBlocks(), is(sameInstance(blocks)));
         assertThat(sut.getBlocks().get(0), is(sameInstance(table)));
+    }
+
+    @Test
+    public void 名前がnullの読み込み単位は生成できない() {
+        // Given: 読み込み単位の名前は呼び出し側がデータを引き当てるキーであり
+        //        （notation:590「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と
+        //        ID を指定して…取得できる」）、null では引けない。生成時点で拒否する
+        // When
+        try {
+            new TestDataSection(null, List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            // Then
+            assertThat(e.getMessage(), containsString("読み込み単位の名前"));
+        }
     }
 }

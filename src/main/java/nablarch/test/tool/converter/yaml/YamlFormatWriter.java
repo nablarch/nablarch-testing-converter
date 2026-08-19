@@ -68,6 +68,11 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * コンテナの各セクションを {@code <basePath>/<セクション名>.yaml}（UTF-8）へ書き出す。
      * </p>
+     * <p>
+     * セクション名の {@code null} は検査しない。かつては {@code null.yaml} というファイルを黙って
+     * 作っていたが（{@code issues.md} <b>XLS-33</b>）、{@link TestDataSection} が生成時に
+     * {@code null} を拒否するようになったためここへは届かない。番人は置かない。
+     * </p>
      */
     @Override
     public void write(TestDataContainer container, String basePath) {
