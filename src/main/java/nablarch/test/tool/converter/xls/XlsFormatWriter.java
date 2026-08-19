@@ -281,32 +281,22 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * メッセージ（MESSAGE／送信系）の版面を組み立てる
      * （識別行 → ディレクティブ → FW 制御ヘッダ → 本文レコード群）。
      * <p>
-     * 本文レコード 0 件の電文は書き出さずに弾く。Excel 記法・YAML 記法のいずれも本文レコード 0 件の電文を
-     * 認めていないためである（電文が存在しない場合は {@code testdata_notation.rst:1257}
+     * <b>本文レコード 0 件はここでは検査しない。</b>Excel 記法・YAML 記法のいずれも本文レコード 0 件の電文を
+     * 認めていない（電文が存在しない場合は {@code testdata_notation.rst:1257}
      * （{@code 30a8271} 時点）のとおり<b>データブロックごと省略する</b>のが記法であり、レコード 0 件の
      * 電文を表す書き方は明文が無い。本体スキーマも {@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} が
-     * {@code records.minItems} ＝ 1 とする）。{@link MessageDataBlock} の契約としても
-     * 本文レコードは 1 件以上である（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
-     * </p>
-     * <p>
-     * <b>この検査は共通の {@link #appendRecords} には置かない。</b>ファイルデータブロックのレコード 0 件は
-     * 0 バイトの空ファイルを表す<b>合法な形</b>だからである（{@code testdata_notation.rst:881}
-     * 「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」／{@code :1109}／
-     * {@code :1146}。スキーマも {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
+     * {@code records.minItems} ＝ 1 とする）が、{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
+     * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
+     * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり
+     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。スキーマも
+     * {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）、こちらは拒否しない。
      * </p>
      *
      * @param block メッセージブロック
      * @return 版面
-     * @throws IllegalArgumentException 本文レコードが 0 件の場合
      */
     private BlockLayout layoutMessage(MessageDataBlock block) {
-        if (block.getRecords().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "本文レコードを 1 件も持たない電文は書き出せません"
-                            + "（レコード 0 件の電文は記法に存在せず、電文が無い場合はデータブロックごと省略します）。"
-                            + " identifier=[" + block.getIdentifier() + "]");
-        }
         BlockLayout l = new BlockLayout(block.getDataType(), block.getIdentifier());
         l.add(RowKind.META, Arrays.asList(marker(block)));
         appendKeyValueRows(l, block.getDirectives());

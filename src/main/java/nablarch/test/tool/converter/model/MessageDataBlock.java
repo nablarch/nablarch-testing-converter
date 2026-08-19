@@ -26,7 +26,7 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * <b>{@code records}（本文レコード）は 1 件以上でなければならない（0 件不可）。</b>
+ * <b>{@code records}（本文レコード）は 1 件以上でなければならない（0 件不可）。生成時点で拒否する。</b>
  * Excel 記法・YAML 記法のいずれも本文レコード 0 件の電文を認めていないためである。
  * YAML は本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
  * {@code $defs.message_data} ／ {@code $defs.expected_request_message_data} ／
@@ -51,9 +51,10 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。本クラス自身は検査しないが、書き出し側
- * （{@code XlsFormatWriter#layoutMessage} ／ {@code YamlFormatWriter#emitMessage}）が 0 件を受けたら
- * 送出で弾く（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+ * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める（{@code coverage/issues.md} <b>YML-12</b> の
+ * 2 形目）。<b>番人はもとは辺③④の書き出し側（{@code XlsFormatWriter#layoutMessage} ／
+ * {@code YamlFormatWriter#emitMessage}）にあったが、2026-08-19 に生成時へ移した</b>
+ * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
@@ -85,12 +86,12 @@ public final class MessageDataBlock extends TestDataBlock {
      * @param identifier     メッセージ ID
      * @param directives     ディレクティブ（記述順を保つため挿入順を維持する Map を渡すこと）
      * @param fwHeaderFields FW 制御ヘッダフィールド（記述順。FW ヘッダを読まない経路では空 Map）
-     * @param records        本文レコードレイアウト群（記述順。1 件以上。0 件の検査は書き出し側が行う）
+     * @param records        本文レコードレイアウト群（記述順。1 件以上。0 件不可）
      * @throws IllegalArgumentException {@code dataType} が MESSAGE ／
      *                                  EXPECTED_REQUEST_HEADER_MESSAGES ／
      *                                  EXPECTED_REQUEST_BODY_MESSAGES ／
      *                                  RESPONSE_HEADER_MESSAGES ／ RESPONSE_BODY_MESSAGES の
-     *                                  いずれでもない場合
+     *                                  いずれでもない場合、または {@code records} が 0 件の場合
      */
     public MessageDataBlock(DataType dataType, String groupId, String identifier,
                             Map<String, String> directives,
@@ -100,6 +101,15 @@ public final class MessageDataBlock extends TestDataBlock {
         this.directives = ModelPreconditions.requireNoNulls("ディレクティブ", directives);
         this.fwHeaderFields = ModelPreconditions.requireNoNulls("FW 制御ヘッダフィールド", fwHeaderFields);
         this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
+        if (this.records.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "本文レコードを 1 件も持たない電文ブロックは作れません"
+                            + "（レコード 0 件の電文を表す書き方が記法に無く、電文が存在しない場合は"
+                            + "データブロックごと省略します。YAML スキーマの電文系 3 定義は"
+                            + " records.minItems = 1 です。0 バイトの空ファイル特例はファイルに限られ、"
+                            + "電文には及びません）。"
+                            + " 識別子=[" + identifier + "]");
+        }
     }
 
     /** @return ディレクティブ（記述順） */

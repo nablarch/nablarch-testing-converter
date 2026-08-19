@@ -2,12 +2,14 @@ package nablarch.test.tool.converter.xls;
 
 import static nablarch.test.tool.converter.xls.XlsFixture.blank;
 import static nablarch.test.tool.converter.xls.XlsFixture.text;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -959,36 +961,45 @@ public class XlsFormatReaderRealFileTest {
      * Given: FW 制御ヘッダ行だけを持ち、本文（名前行以降）を持たない {@code MESSAGE} ブロックの
      *        実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : ブロックは生成され、FW 制御ヘッダは入るがレコードレイアウトは 0 件になる。
-     *
-     * <p>担保する軸要素: C-15（空）／E-3（ファイル内レコードレイアウト数 0 件。{@link MessageDataBlock} 経路）。</p>
+     * Then : IllegalArgumentException（本文レコード 0 件の電文は記法に存在しない形であり、
+     *        {@link MessageDataBlock} が生成時点で拒否する）。
      *
      * <p>
-     * {@link XlsFormatReader#read} は本体パーサが同 ID のデータを見つけられない場合に {@code MESSAGE}
-     * ブロックを丸ごと落とす（{@code readMessageBlock} が {@code null} を返す）が、本入力では
-     * <b>ブロックは生成されたうえでレコードが 0 件になる</b>ことを実測した。YAML 経路
-     * （{@code YamlFormatReaderTest#readMessage_emptyBody_isStillMapped}）と同じ扱いである。
+     * <b>本入力は記法どおりではない。</b>{@code testdata_notation.rst:1158}（{@code 30a8271} 時点）は
+     * 「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・フィールド長・
+     * データという、前述のファイルデータと同じ構成を持つ」とメッセージボディの存在を前提に書いており、
+     * 本文レコード 0 件の電文を表す書き方は記法に無い。電文が存在しない場合は {@code :1257}
+     * 「応答不要メッセージ受信では…{@code expectedMessages} のデータブロックを記述する必要はない」の
+     * とおり<b>データブロックごと省略する</b>。本体スキーマの電文系 3 定義も {@code records} を必須かつ
+     * {@code minItems} ＝ 1 とする（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * </p>
+     *
+     * <p>
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
+     * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
+     * {@code readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook} で、レコード 0 件のブロックが
+     * 生成されることを固定していた。<b>これにより軸要素 C-15（空）／E-3（0 件）の
+     * {@link MessageDataBlock} 経路は到達不能になった</b>（{@link FileDataBlock} 経路は
+     * {@link #readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook()} が担保しており、
+     * そちらは記法上も合法である）。
      * </p>
      */
     @Test
-    public void readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook() {
+    public void rejectsMessageWithFwHeaderOnlyInRealBook() {
         // Given
         book().row(text("MESSAGE=m"))
                 .row(text("requestId"), text("R1"))
                 .writeTo(dir());
 
-        // When
-        MessageDataBlock message = onlyBlock(MessageDataBlock.class);
-
-        // Then
-        assertThat(message.getDataType(), is(DataType.MESSAGE));
-        assertThat(message.getIdentifier(), is("m"));
-        assertThat(message.getFwHeaderFields().get("requestId"), is("R1"));
-        assertThat("FW 制御ヘッダの件数", message.getFwHeaderFields().size(), is(1));
-        assertThat(message.getDirectives().get("file-type"), is("Fixed"));
-        assertDirectiveCount(message.getDirectives(), 1);
-        assertThat("本文を持たないメッセージブロックのレコード",
-                message.getRecords(), is(Collections.<RecordLayout>emptyList()));
+        // When / Then
+        try {
+            read();
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(),
+                    containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
+        }
     }
 
     /**

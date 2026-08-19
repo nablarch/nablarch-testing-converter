@@ -242,49 +242,6 @@ public class YamlFormatWriterTest {
                 + "          - [\"abc\"]\n"));
     }
 
-    /**
-     * Given: 本文レコードを 1 件も持たないメッセージブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（YAML スキーマの {@code $defs.message_data} は
-     *        {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
-     *        {@code records: []} と書いても読み戻せない。黙って書かず早期に失敗する）。
-     *
-     * <p>
-     * 0 バイトの空ファイル特例（{@code records: []}）は記法上あくまで<b>ファイル</b>に限った話であり
-     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。{@code 30a8271} 時点）、
-     * 電文についてレコード 0 件の記法は明文が無い。電文が存在しない場合は {@code :1257} のとおり
-     * <b>データブロックごと省略する</b>のが記法である（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
-     * ファイルブロックの 0 件は {@code $defs.file_data} の {@code records.minItems} ＝ 0 のとおり合法で、
-     * {@code YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords} が担保する。
-     * </p>
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serializeMessage_withoutRecords_rejected() {
-        // Given
-        MessageDataBlock block = new MessageDataBlock(DataType.MESSAGE, "", "EMPTY",
-                directives(), fwHeader(), Collections.<RecordLayout>emptyList());
-
-        // When / Then
-        serialize(block);
-    }
-
-    /**
-     * Given: 本文レコードを 1 件も持たない送信系メッセージブロック。
-     * When : serialize。
-     * Then : IllegalArgumentException（番人は {@code messages} 経路・送信系 4 種の双方に効く。
-     *        {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} も
-     *        {@code records.minItems} ＝ 1 である）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void serializeSendSync_withoutRecords_rejected() {
-        // Given
-        MessageDataBlock block = new MessageDataBlock(DataType.RESPONSE_BODY_MESSAGES, "[g]", "EMPTY",
-                directives(), fwHeader(), Collections.<RecordLayout>emptyList());
-
-        // When / Then
-        serialize(block);
-    }
-
     // ------------------------------------------------------------------------
     // 送信同期メッセージ（送信系 4 種）
     // ------------------------------------------------------------------------

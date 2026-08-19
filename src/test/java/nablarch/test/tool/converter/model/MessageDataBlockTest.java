@@ -152,18 +152,6 @@ public class MessageDataBlockTest {
     }
 
     @Test
-    public void 契約違反のレコード0件もモデル自身は検査せず保持する() {
-        // Given: records は 1 件以上が契約だが、番人は書き出し側（XlsFormatWriter／YamlFormatWriter）に置く
-        // When
-        MessageDataBlock sut = new MessageDataBlock(
-                DataType.MESSAGE, "", "RM11AC0101",
-                new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
-
-        // Then: 中間モデルは受けた値をそのまま保持する（送出はしない）
-        assertThat(sut.getRecords().isEmpty(), is(true));
-    }
-
-    @Test
     public void メッセージ系の全データ種別を保持する() {
         // Given: 電文が取りうる 5 種別すべて
         for (DataType dt : List.of(
@@ -174,7 +162,9 @@ public class MessageDataBlockTest {
                 DataType.RESPONSE_BODY_MESSAGES)) {
             // When
             MessageDataBlock sut = new MessageDataBlock(
-                    dt, "", "RM11", new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
+                    dt, "", "RM11", new LinkedHashMap<>(), new LinkedHashMap<>(),
+                    List.of(new RecordLayout(null,
+                            List.of(new FieldDef("f", "半角英字", "1")), List.of(List.of("v")))));
             // Then
             assertThat(sut.getDataType(), is(dt));
         }
@@ -197,5 +187,39 @@ public class MessageDataBlockTest {
         assertThat(sut.getRecords().size(), is(2));
         assertThat(sut.getRecords().get(0).getRecordType(), is("FW_HEADER"));
         assertThat(sut.getRecords().get(1).getRecordType(), is("data"));
+    }
+
+    /**
+     * YML-12 の 2 形目。本文レコードを 1 件も持たない電文ブロックは生成できない。
+     * 記法に電文のレコード 0 件を表す書き方が無く、電文が存在しない場合は
+     * {@code testdata_notation.rst:1257} のとおり<b>データブロックごと省略する</b>。
+     * 本体スキーマの電文系 3 定義（{@code $defs.message_data} ／
+     * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）も
+     * {@code records} を必須かつ {@code minItems} ＝ 1 とする。
+     */
+    @Test
+    public void 本文レコードが0件の電文ブロックは生成できない() {
+        try {
+            new MessageDataBlock(DataType.MESSAGE, "", "RM11",
+                    new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
+        }
+    }
+
+    /**
+     * YML-12 の 2 形目。送信系 4 種でも同じ。{@code $defs.expected_request_message_data} ／
+     * {@code $defs.group_message_data} も {@code records.minItems} ＝ 1 である。
+     */
+    @Test
+    public void 本文レコードが0件の送信系電文ブロックも生成できない() {
+        try {
+            new MessageDataBlock(DataType.RESPONSE_BODY_MESSAGES, "[g]", "RM11",
+                    new LinkedHashMap<>(), new LinkedHashMap<>(), List.of());
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
+        }
     }
 }

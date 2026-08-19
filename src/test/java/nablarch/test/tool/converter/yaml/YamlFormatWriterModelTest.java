@@ -66,10 +66,10 @@ import org.junit.rules.TemporaryFolder;
  * 該当する 4 つの形（{@code records} 空 2 種／{@code fields} 空／{@code FieldDef.type} 省略）は
  * いずれも辺②では<b>到達不能</b>と判定済みであり（{@code inventory.md} §2.3）、
  * 辺④からだけ作れる。{@code issues.md} <b>YML-12</b> に記録した。
- * <b>ただし 4 形すべて #25.5 で修正済み</b>で、辺④が書き出さずに弾くようになったため
- * 本クラスには 1 つも残っていない。番人は
- * {@code YamlFormatWriterTest#serializeMessage_withoutRecords_rejected} ／
- * {@code #serializeSendSync_withoutRecords_rejected}（2 形目 —— 電文の {@code records} 空）が担保する。
+ * <b>ただし 4 形すべて #25.5 で修正済み</b>であり、本クラスには 1 つも残っていない。
+ * <b>2 形目（電文の {@code records} 空）は辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * （{@code MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない} ／
+ * {@code #本文レコードが0件の送信系電文ブロックも生成できない}。移設は 2026-08-19）。
  * <b>3 形目（{@code fields} 空）は辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
  * （{@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない}。{@code issues.md} <b>XLS-22</b>）。
  * <b>4 形目（{@code FieldDef.type} 省略）だけは辺④の番人ではなく中間モデルの生成時拒否へ移した</b>

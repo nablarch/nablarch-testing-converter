@@ -203,32 +203,23 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * 出力する。いずれもブロックの内容に応じて自然に切り替わる。
      * </p>
      * <p>
-     * 本文レコード 0 件の電文は書き出さずに弾く。{@code $defs.message_data} ／
+     * <b>本文レコード 0 件はここでは検査しない。</b>{@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} はいずれも
      * {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
-     * {@code records: []} と書いても読み戻せないからである。記法にも電文のレコード 0 件を表す書き方の
+     * {@code records: []} と書いても読み戻せない。記法にも電文のレコード 0 件を表す書き方の
      * 明文が無く、電文が存在しない場合は {@code testdata_notation.rst:1257}（{@code 30a8271} 時点）の
-     * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} の契約としても本文レコードは
-     * 1 件以上である（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
-     * </p>
-     * <p>
-     * <b>この検査は共通の {@link #emitRecords} には置かない。</b>ファイルデータブロックのレコード 0 件は
-     * 0 バイトの空ファイルを表す<b>合法な形</b>であり、{@link #emitFile} 経由で {@code records: []} を
-     * 出す正当な経路だからである（{@code testdata_notation.rst:881}／{@code :1109}／
-     * {@code :1146}。スキーマも {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
+     * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
+     * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
+     * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり、
+     * {@link #emitFile} 経由で {@code records: []} を出す正当な経路である
+     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。スキーマも
+     * {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
      * </p>
      *
      * @param sb    出力先
      * @param block メッセージブロック
-     * @throws IllegalArgumentException 本文レコードが 0 件の場合
      */
     private void emitMessage(StringBuilder sb, MessageDataBlock block) {
-        if (block.getRecords().isEmpty()) {
-            throw new IllegalArgumentException(
-                    "本文レコードを 1 件も持たない電文は書き出せません"
-                            + "（電文の records は minItems = 1 のため records: [] と書いても読み戻せません）。"
-                            + " identifier=[" + block.getIdentifier() + "]");
-        }
         YamlSeq entry = new YamlSeq(sb, 1);
         emitGroupId(entry, block.getGroupId());
         entry.prop("id", block.getIdentifier());

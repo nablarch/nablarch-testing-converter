@@ -1,5 +1,6 @@
 package nablarch.test.tool.converter.yaml;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
@@ -317,20 +318,42 @@ public class YamlFormatReaderTest {
         assertThat(block.getRecords().get(1).getRows().get(0), is(Arrays.asList("abc")));
     }
 
+    /**
+     * Given: {@code id} はあるが {@code records} を持たない {@code messages} エントリ。
+     * When : read。
+     * Then : IllegalArgumentException（{@link MessageDataBlock} が生成時点で拒否する）。
+     *
+     * <p>
+     * <b>この入力は本体スキーマに適合しない。</b>{@code $defs.message_data} は
+     * {@code required} ＝ {@code ["id", "records"]} かつ {@code records.minItems} ＝ 1 であり、
+     * {@code records:} を省いても {@code records: []} と書いても通らない。記法にも電文の
+     * レコード 0 件を表す書き方が無く、電文が存在しない場合は {@code testdata_notation.rst:1257}
+     * （{@code 30a8271} 時点）のとおり<b>データブロックごと省略する</b>
+     * （{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * </p>
+     *
+     * <p>
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
+     * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
+     * {@code readMessage_emptyBody_isStillMapped} で、レコード 0 件のブロックが生成されることを
+     * 固定していた。
+     * </p>
+     */
     @Test
-    public void readMessage_emptyBody_isStillMapped() {
+    public void readMessage_emptyBody_rejected() {
         // Given: id はあるが本文レコードが無いエントリ
         Map<String, Object> yaml = map(
                 "messages", list(map("id", "EMPTY")));
 
-        // When
-        TestDataContainer container = reader(yaml).read(DIR, RESOURCE);
-
-        // Then: 本文レコード 0 件・FW ヘッダ空のブロックが 1 つ
-        MessageDataBlock block = (MessageDataBlock) onlyBlock(container);
-        assertThat(block.getIdentifier(), is("EMPTY"));
-        assertThat(block.getRecords().size(), is(0));
-        assertTrue(block.getFwHeaderFields().isEmpty());
+        // When / Then
+        try {
+            reader(yaml).read(DIR, RESOURCE);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(),
+                    containsString("本文レコードを 1 件も持たない電文ブロックは作れません"));
+        }
     }
 
     @Test

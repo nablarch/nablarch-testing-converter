@@ -458,49 +458,6 @@ public class XlsFormatWriterTest {
     }
 
     /**
-     * Given: 本文レコードを 1 件も持たないメッセージブロック。
-     * When : build。
-     * Then : IllegalArgumentException（レコード 0 件の電文は Excel 記法にも YAML 記法にも存在しない形で
-     *        あるため、黙って書かず早期に失敗する）。
-     *
-     * <p>
-     * 0 バイトの空ファイル特例は記法上あくまで<b>ファイル</b>に限った話であり
-     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。{@code 30a8271} 時点）、
-     * 電文についてレコード 0 件の記法は明文が無い。電文が存在しない場合は
-     * {@code :1257} のとおり<b>データブロックごと省略する</b>のが記法である
-     * （{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
-     * ファイルブロックの 0 件は合法なので番人はここには置かない
-     * （{@code XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty}）。
-     * </p>
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsMessageBlockWithoutRecords() {
-        // Given
-        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
-                map(), map(), Collections.<RecordLayout>emptyList());
-
-        // When / Then
-        build(container("book", "sheet", message));
-    }
-
-    /**
-     * Given: 本文レコードを 1 件も持たない送信系メッセージブロック。
-     * When : build。
-     * Then : IllegalArgumentException（番人は {@code MESSAGE} 経路・送信系 4 種の双方に効く。
-     *        送信系のスキーマ定義 {@code $defs.expected_request_message_data} ／
-     *        {@code $defs.group_message_data} も {@code records.minItems} ＝ 1 である）。
-     */
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsSendSyncMessageBlockWithoutRecords() {
-        // Given
-        MessageDataBlock message = new MessageDataBlock(DataType.RESPONSE_BODY_MESSAGES, "[g]", "msg1",
-                map(), map(), Collections.<RecordLayout>emptyList());
-
-        // When / Then
-        build(container("book", "sheet", message));
-    }
-
-    /**
      * Given: 2 レコード目のレコード種別が空文字の固定長ファイル。
      * When : build。
      * Then : IllegalStateException（空文字も列 0 が空になるため null と同様に弾く）。
