@@ -657,7 +657,7 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
     }
 
-    // ------------------------------------------------------------------ YML-05 行の要素数とフィールド数の食い違い
+    // ------------------------------------------------------------------ YML-14 フィールド数より値が多い行（余りが黙って消える）
 
     /**
      * Given: フィールド 1 件に対して値を 3 個書いたレコード断片
@@ -666,10 +666,23 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : <b>例外にならず</b>、フィールド数を超える値が黙って捨てられる。
      *
      * <p>
-     * スキーマ {@code $defs.record_fragment.properties.rows} の description は
-     * 「各配列の要素数が fields の件数と一致しない場合は NTF がエラーを出す」と書いているが、
-     * 変換時にはエラーにならない。{@code coverage/issues.md} <b>YML-05</b> の根拠テスト。
+     * <b>本テストは他責の現状を記録したものであり、あるべき姿ではない。あるべき姿は
+     * {@link #failsToReadRecordFragmentRowWithMoreValuesThanFields} 側（{@code @Ignore}）に書いてある。</b>
+     * 記法は {@code testdata_notation.rst:891}（{@code 30a8271} 時点）の記述時エラー一覧に
+     * 「データ要素数が不正である」を挙げており、<b>明文は「エラーにする」しか定めていない</b>。
+     * 黙って捨てる現状はその明文に反する。
      * </p>
+     *
+     * <p>
+     * <b>帰属は converter の外（本体パーサ）である。</b>nablarch-testing の
+     * {@code nablarch/test/core/file/DataFileFragment.java} の {@code addValue} が
+     * {@code String value = i < line.size() ? line.get(i) : "";} としてフィールド名の件数ぶんだけ値を取り出すため、
+     * <b>余った要素は converter に届く前に器が捨てている</b>。{@code YamlFormatReader#toRecordLayouts} は
+     * 器が持つ値 Map を並べ直すだけで原文の要素数を見ない。したがって converter 側に番人も WARN も置かない
+     * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>YML-14</b>）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-14 の根拠テスト）。</p>
      */
     @Test
     public void dropsRecordFragmentValuesBeyondFieldCount() {
@@ -691,6 +704,56 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList(Arrays.asList("a"))));
         assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
+
+    /**
+     * Given: フィールド 1 件に対して値を 3 個書いたレコード断片（{@code rows: - ["a", "b", "c"]}）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>あるべき姿</b>として、反映されない値がある入力は読み込みが<b>エラーになる</b>。
+     *
+     * <p>
+     * <b>現状は FAIL する</b>（例外にならず {@code rows=[[a]]} が返り、{@code "b"}・{@code "c"} は
+     * 警告も例外もなく消える。{@link #dropsRecordFragmentValuesBeyondFieldCount} が現状を記録している）。
+     * </p>
+     *
+     * <p>
+     * <b>あるべき姿をこう定めた根拠は明文である。</b>{@code testdata_notation.rst:891}
+     * （{@code 30a8271} 時点）はファイルデータの<b>記述時エラー</b>一覧に「データ要素数が不正である」を挙げる。
+     * 明文が定めているのは「エラーにする」ことだけであり、黙って捨てることは定めていない。
+     * 読むコマンドは次のとおり。
+     * </p>
+     *
+     * <pre>
+     * git -C ~/work/nablarch/nablarch-document show \
+     *     30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '891p'
+     * </pre>
+     *
+     * <p>
+     * <b>他責先は本体パーサ（nablarch-testing の {@code DataFileFragment#addValue}）である。</b>
+     * 余った要素は converter に届く前に器が捨てるため、converter 側では検知できない。
+     * {@code src/main} は無変更とし、番人も WARN も置かない（ユーザー確定・2026-08-19）。
+     * 明文化の依頼は {@code coverage/issues.md} <b>XLS-42</b> の申し送りに含めてある。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（YML-14 のあるべき姿。他責先の修正待ち）。</p>
+     */
+    @Test
+    @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。"
+            + "他責先は本体パーサ nablarch-testing の DataFileFragment#addValue（余りを捨てる）")
+    public void failsToReadRecordFragmentRowWithMoreValuesThanFields() {
+        // Given / When / Then
+        assertThrows("反映されない値がある入力は読み込みがエラーになる", RuntimeException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_files:\n"
+                        + "  - path: \"f.dat\"\n"
+                        + "    type: \"fixed\"\n"
+                        + "    records:\n"
+                        + "      - fields:\n"
+                        + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                        + "        rows:\n"
+                        + "          - [\"a\", \"b\", \"c\"]\n"));
+    }
+
+    // ------------------------------------------------------------------ YML-05 フィールド数より値が少ない行（不足が空文字で埋まる）
 
     /**
      * Given: フィールド 3 件に対して値が足りない行（1 個だけの行と、2 個目に明示 {@code null} を書いた行）。
