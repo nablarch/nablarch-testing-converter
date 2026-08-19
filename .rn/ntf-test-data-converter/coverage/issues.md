@@ -49,13 +49,12 @@ YML-09・YML-10）では、判定欄の中でその旨を明示した。**「判
 **本作業の対象外 1 件**（XLS-26）である。数え直した日は 2026-08-19。導出コマンドと出力は下記
 「集計は課題 ID 単位で数えること」の節にある。
 
-**要対応 16 件の内訳（修正済み 14 ／ 未完 2。2026-08-19 時点）**
+**要対応 16 件の内訳（修正済み 15 ／ 未完 1。2026-08-19 時点）**
 
-- **修正済み 14 件** —— XLS-06・XLS-08・XLS-16・**XLS-20**・XLS-22・XLS-29・XLS-30・**XLS-31**・**XLS-32**・**XLS-33** ／
+- **修正済み 15 件** —— XLS-06・XLS-08・XLS-16・**XLS-20**・XLS-22・**XLS-28**・XLS-29・XLS-30・**XLS-31**・**XLS-32**・**XLS-33** ／
   YML-02・YML-03・YML-08・YML-12（**YML-12 は 4 形すべてが修正済み**）
-- **未完 2 件** —— XLS-27・XLS-28。現況は次のとおり
-  - **XLS-27** — 当面の対応（0 件テーブルを弾く番人）まで完了（`57c1b0d`）。本体修正待ち。マーカーカラム案の実測は未実施
-  - **XLS-28** — 未着手。課題として起こしただけ（`7200b0f`）
+- **未完 1 件** —— XLS-27。当面の対応（0 件テーブルを弾く番人）まで完了（`57c1b0d`）。本体修正待ち。
+  マーカーカラム案の実測は未実施
 
 > **2026-08-19 に XLS-31（§1-D）・XLS-32（§1-E）・XLS-33（§1-F）・XLS-20（§1-G）を修正した。** ユーザーが示した共通方針
 > 「不正値は書き出し側でなく中間モデルの生成時に拒否する」（`steering.md` Decisions）に沿い、
@@ -2544,7 +2543,7 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
   （XLS-27 の 2 段構えの 2）。**本体の起票は converter 側では行わない**（記録のみ・ユーザー確定）。
 - あるいはマーカーカラム案が成立したとき（steering #25.5 §1 の別ステップ。**成立するかは未確認**）。
 
-### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**）
+### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**・**#25.5 で修正済み**）
 
 - 観測（実測 2026-08-18・プローブ）: 入力ディレクトリに `Foo.xls` と `Foo.xlsx` を置き、
   それぞれ別の内容（識別子 `FROM_XLS` ／ `FROM_XLSX`）を入れて XLS→YAML 変換した結果。
@@ -2575,7 +2574,29 @@ XLS-27 の当面の対応（`57c1b0d` の番人）は**変換ツールの利用�
   対応し、1 シートが読み込み単位に対応する」。**「同名の 1 つ」であり、NTF は同名同居を想定していない。**
 - 判断: 仕様として不適切。同名同居を検出してエラーで止めるべきである。
 - NTF 仕様としての判定: **要対応**（`notation:44` の明文に反する入力を、
-  検出せずに変換しているため）。
+  検出せずに変換しているため）。**#25.5 で修正済み**（`5ab13d8`）。
+  `ConverterFileFilter#findXlsFiles` が、変換対象になったブックごとに同じディレクトリの同名ブックを
+  検査し、2 つ以上あれば `ConverterException`
+  （`same-name Excel books coexist: <両方のパス> (a test class corresponds to exactly one Excel book;
+  remove or rename one of them)`）で止める。
+
+  **判定は列挙結果どうしの突き合わせではなく、実ディスク上の隣接ファイルで行う。**
+  本体 `PoiXlsReader#open` の解決は include／exclude を知らないため、片方を exclude で列挙から
+  外しても読み違いは起きるからである。逆に、変換対象にならなかったブックの同居は読み違いを
+  起こさないので検査しない（例: `legacy/` 配下の同居ペアは、`current/**` だけを変換する限り止めない）。
+
+  担保テストは 5 件 ——
+  `ConverterFileFilterTest#findXlsFilesRejectsSameNameBooks` ／
+  `#findXlsFilesRejectsSameNameBooksEvenWhenOneIsExcluded` ／
+  `#findXlsFilesAllowsSameNameBooksInDifferentDirectories` ／
+  `#findXlsFilesAllowsSameNameBooksOutsideTargets` ／
+  `TestDataConverterTest#failsWhenSameNameXlsAndXlsxCoexist`。
+
+  **修正前の赤**（2026-08-19 実行）—— 検出 2 件は `AssertionError: should throw`、
+  変換入口の 1 件は `Your InputStream was neither an OLE2 stream, nor an OOXML stream`。
+  後者は中身を持たない `BookA.xls` を `BookA.xlsx` の隣に置いた場合の結果であり、
+  **`.xlsx` を対象にした読み取りでも本体が先に `.xls` を開く**ことの直接証拠になっている
+  （上の「機構」の欄は 2026-08-18 のプローブによる実測）。
 
 ### XLS-29 ファイル種別 `null` のファイルデータブロックが、黙って可変長として書き出される（影響度 中・**検出できない**・**#25.5 で修正済み**）
 

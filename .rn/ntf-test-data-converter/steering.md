@@ -45,7 +45,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 （フェーズ2）
 
 - **未知の挙動を調べる段階では期待値を先に決めない。** まず現状の挙動を実行して記録し、それが仕様として妥当かを判断してから固定する。**不具合と判定済みのものは、仕様どおりの期待値を先に書く（TDD）**（ユーザー確定・2026-08-14）
-- **本作業で見つかった不具合は、`issues.md` の「NTF 仕様としての判定」が要対応であるものに限り修正する。それ以外は従来どおり記録のみ**（**2026-08-18 時点で 15 件** ＝ XLS-06・XLS-08・XLS-16・XLS-22・XLS-27・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33 ／ YML-02・YML-03・YML-08・YML-12。当初 5 件・ユーザー確定 2026-08-14 → **XLS-22 を追加して 6 件**・ユーザー確定 2026-08-18 → **YML-03 を追加して 7 件**・ユーザー指示 2026-08-18（帰属先の nablarch-testing-yaml が `0b53910` で直ったため）→ **`7200b0f` で XLS-27〜33 の 7 件が加わり XLS-08 が要対応へ移って 15 件**）。記録先は `.rn/ntf-test-data-converter/coverage/issues.md`。修正対象の判定根拠と手順は Decisions「不具合修正の対象と手順（#25.5）」
+- **本作業で見つかった不具合は、`issues.md` の「NTF 仕様としての判定」が要対応であるものに限り修正する。それ以外は従来どおり記録のみ**（**2026-08-18 時点で 15 件** ＝ XLS-06・XLS-08・XLS-16・XLS-22・XLS-27・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33 ／ YML-02・YML-03・YML-08・YML-12。当初 5 件・ユーザー確定 2026-08-14 → **XLS-22 を追加して 6 件**・ユーザー確定 2026-08-18 → **YML-03 を追加して 7 件**・ユーザー指示 2026-08-18（帰属先の nablarch-testing-yaml が `0b53910` で直ったため）→ **`7200b0f` で XLS-27〜33 の 7 件が加わり XLS-08 が要対応へ移って 15 件** → **XLS-20 を追加して 16 件**・
+2026-08-19（`73297e2`。旧判定の根拠が事実誤りだったため。`issues.md` XLS-20 の【判定の訂正】））。記録先は `.rn/ntf-test-data-converter/coverage/issues.md`。修正対象の判定根拠と手順は Decisions「不具合修正の対象と手順（#25.5）」
 - 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない。ただし**既存**の往復テスト（`RoundTripTest` 30件、`XlsFormatWriterTest#roundTrips*` 8件、`YamlFormatWriterTest#roundTrip_*` 6件）が実ファイル経由で通している軸要素は、棚卸しに「🔺弱い担保」として必ず計上する（重複テストを書かないため）。正式担保としては数えず、直接テストの追加対象からは外さない
 - 既存テストを軸で棚卸ししてから新規テストを足す。棚卸しなしの新規追加はしない
 - 対応表・カバレッジを示さずに「網羅した」と報告しない
@@ -673,10 +674,12 @@ Rules の該当 2 行と Acceptance criteria の 2 行はこの決定に合わ�
 > なる。**steering は参照に留め、実数は `issues.md` 冒頭の導出コマンドから導く。**
 > 件数を併記する場合は「2026-08-18 時点で 15 件」のように**時点を添える**。
 
-**現況（2026-08-18・`issues.md` 冒頭の導出コマンドで確認）**: 全 44 件・**要対応 15 ／ 対応不要 28 ／
-本作業の対象外 1**。要対応 15 件の内訳は **修正済み 10 件**（XLS-06・XLS-08・XLS-16・XLS-22・XLS-29・
-XLS-30 ／ YML-02・YML-03・YML-08・YML-12）と **未完 5 件**（XLS-27・XLS-28・XLS-31・XLS-32・XLS-33）。
-未完 5 件それぞれの現況は `issues.md` 冒頭に 1 行ずつ書いてある。
+**現況（2026-08-19・`issues.md` 冒頭の導出コマンドで確認）**: 全 44 件・**要対応 16 ／ 対応不要 27 ／
+本作業の対象外 1**。要対応 16 件の内訳は **修正済み 15 件**（XLS-06・XLS-08・XLS-16・XLS-20・XLS-22・
+XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33 ／ YML-02・YML-03・YML-08・YML-12）と
+**未完 1 件**（XLS-27。当面の対応まで完了・本体修正待ち）。内訳は `issues.md` 冒頭にも書いてある。
+**2026-08-18 の 15 ／ 28 から動いたのは XLS-20 の判定を「対応不要」から「要対応」へ変えたためである**
+（`73297e2`）。
 
 **以下のこの節の記述は、当時（全 37 件・要対応 7 件）の決定の経緯として残してある。**
 
@@ -1174,7 +1177,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] **§1-E（中間モデル）**: `TestDataBlock` の生成時に `groupId` ＝ `null` を拒否する（空文字はデフォルトグループとして通す）。sealed 階層の根 1 箇所でブロック 4 種別すべてを覆う。辺③の `SETUP_TABLEnull=T`（`XlsFormatWriter#marker`）と辺④の `NullPointerException`（`YamlFormatWriter#rawGroup`）は到達不能になり、番人は追加していない → `5abc773`（`issues.md` の反映は `f39f7b1`）。**方針 4: 辺①は `TestCoreReaderAdapter.java:365-369` が `markerGroupId` ＝ `null` の行を読み飛ばし、辺②は `YamlFormatReader.java:486-487` が空文字を返すため、リーダー側の修正は不要**
 - [x] **§1-F（中間モデル）**: `TestDataSection` の生成時に `name` ＝ `null` を拒否する（空文字は通す。POI の `sheetName '' is invalid` は Excel 形式固有の制約）。**辺③の `null` 分岐（`XlsFormatWriter#requireValidSheetNameLength`）と担保テスト `rejectsNullSheetName` を外し、31 文字上限の検査だけ残した**（Excel 固有の上限は中間モデルの不変条件ではないため）。辺④は無変更で `null.yaml` が到達不能になった → `81cf234`。**方針 4: 辺①の `XlsFormatReader#sheetName`・辺②の `resourceName` 直渡しとも `null` を作らない**
 - [x] **§1-G（中間モデル）**: `TestDataBlock` の生成時に `dataType` ＝ `DataType.DEFAULT` を拒否する。**辺③（`XlsFormatWriter#marker`）・辺④（`YamlFormatWriter#sectionKey` の `default:`）とも無変更で到達不能になった** → `7c10654`。`issues.md` XLS-20 の事実誤り（「`DEFAULT` は記法の予約語に無く」）も訂正し、**判定を「対応不要」から「要対応」へ変えた**（要対応 15→16・対応不要 28→27）。明文は `notation:188-190`（データタイプ表に `DEFAULT` の行があり「フレームワーク内部用（通常は使用しない）」）と`notation:206-241`（YAML トップレベルキー対応表に `DEFAULT` の行が**無い**）。**方針 4: 辺①は `HeaderCollector#parse` が `DEFAULT` 行を読み飛ばし、辺②は既知セクションキーのみを分岐に持つ**。**`dataType` ＝ `null` は §1-G では扱っていない（§6 で扱う）**
-- [ ] **XLS-28（辺①の入口）**: 同名で拡張子違いの Excel ブック（`Foo.xls` と `Foo.xlsx`）の同居を検出してエラーで止める（新規課題・ユーザー確定 2026-08-18。`notation:44`）
+- [x] **XLS-28（辺①の入口）**: 同名で拡張子違いの Excel ブック（`Foo.xls` と `Foo.xlsx`）の同居を検出してエラーで止める（新規課題・ユーザー確定 2026-08-18。`notation:44`）→ `5ab13d8`。`ConverterFileFilter#findXlsFiles` が、変換対象になったブックごとに同じディレクトリの同名ブックを検査し 2 つ以上あれば `ConverterException` で止める。**判定は列挙結果どうしではなく実ディスク上の隣接ファイルで行う**（本体 `PoiXlsReader#open`（`nablarch-testing` の `PoiXlsReader.java:62-65`）は `.xls` を先に解決し、include／exclude を知らないため、片方を exclude で外しても読み違いは起きる）。変換対象にならなかったブックの同居は検査しない。テスト 5 件（`ConverterFileFilterTest` 4 件・`TestDataConverterTest` 1 件）
 - [ ] 中間モデルの全クラス・全フィールドを一巡し、「両形式が表現できない値を中間モデルが保持できる」箇所が他に無いかを点検して結果を記録する（無ければ「無し」と明記する）。**観点をもう 1 つ足す**（§6・ユーザー確定 2026-08-18）——**辺①が本体（`nablarch-testing`）経由で記法に無い形を中間モデルへ持ち込む経路が無いか**。XLS-08（マーカーカラムだけのブロックが「カラム 0 個・行 2 件」で入る）がその 1 例目である
 - [ ] **最後に 1 回だけ**、課題 ID 単位で要対応／対応不要の実数を確定する（①②の反映と中間モデル点検の後）。**2026-08-18 に中間の最新化を 1 回入れた（`3f38cca`。全 44 件・要対応 15 ／ 対応不要 28 ／ 本作業の対象外 1）**——集計記述が `7200b0f` を反映しておらず、`steering.md:40` が XLS-08・XLS-27〜33 を範囲外に読ませていたため。**この確定ステップ自体は未了**（未完 5 件の実装と中間モデル点検が残っているため）
 - [x] `mvn clean install` を手順として Decisions に定着させる（`steering.md` の Decisions「ビルド・テストの実行方法」に記載）
