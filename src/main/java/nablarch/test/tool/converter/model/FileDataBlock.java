@@ -2,8 +2,10 @@ package nablarch.test.tool.converter.model;
 
 import nablarch.test.core.reader.DataType;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 固定長／可変長ファイルのデータブロック。
@@ -13,6 +15,9 @@ import java.util.Map;
  * {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE} のいずれか。
  * 識別子はファイルパスを保持する。固定長か可変長かは SETUP／EXPECTED を問わず {@link FileType} で区別する。
  * ディレクティブとレコードレイアウト群（FW_HEADER レコードもスキップせず保持）を記述順で持つ。
+ * <b>この 4 種以外のデータ種別では生成できない。生成時点で拒否する</b>
+ * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
+ * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
  * </p>
  *
  * <p>
@@ -40,6 +45,15 @@ public final class FileDataBlock extends TestDataBlock {
     /** ファイルデータブロックの種別。SETUP／EXPECTED を問わず固定長か可変長かを区別する。 */
     public enum FileType { FIXED, VARIABLE }
 
+    /**
+     * 取りうるデータ種別。YAML のトップレベルキー {@code setup_files} ／ {@code expected_files}
+     * （いずれも {@code $defs.file_data}）に対応する 4 種
+     * （{@code testdata_notation.rst:222-225}（{@code 30a8271} 時点））。
+     */
+    private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
+            DataType.SETUP_FIXED, DataType.EXPECTED_FIXED,
+            DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE);
+
     private final FileType fileType;
     private final Map<String, String> directives;
     private final List<RecordLayout> records;
@@ -53,10 +67,13 @@ public final class FileDataBlock extends TestDataBlock {
      * @param fileType   固定長／可変長の区別（必須（{@code null} 不可）。{@code null} の検査は書き出し側が行う）
      * @param directives ディレクティブ（キー → 値。記述順を保つため挿入順を維持する Map を渡すこと）
      * @param records    レコードレイアウト群（記述順。FW_HEADER もスキップせず保持）
+     * @throws IllegalArgumentException {@code dataType} が SETUP_FIXED ／ EXPECTED_FIXED ／
+     *                                  SETUP_VARIABLE ／ EXPECTED_VARIABLE のいずれでもない場合
      */
     public FileDataBlock(DataType dataType, String groupId, String identifier,
                          FileType fileType, Map<String, String> directives, List<RecordLayout> records) {
         super(dataType, groupId, identifier);
+        requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType);
         this.fileType = fileType;
         this.directives = directives;
         this.records = records;

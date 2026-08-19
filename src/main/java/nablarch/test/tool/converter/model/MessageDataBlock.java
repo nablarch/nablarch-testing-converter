@@ -2,8 +2,10 @@ package nablarch.test.tool.converter.model;
 
 import nablarch.test.core.reader.DataType;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * メッセージ（電文）のデータブロック。
@@ -13,6 +15,9 @@ import java.util.Map;
  * {@link DataType#EXPECTED_REQUEST_BODY_MESSAGES}／{@link DataType#RESPONSE_HEADER_MESSAGES}／
  * {@link DataType#RESPONSE_BODY_MESSAGES} のいずれか。識別子はメッセージ ID を保持する。
  * ディレクティブ・FW 制御ヘッダフィールド・本文レコードレイアウト群を記述順で持つ。
+ * <b>この 5 種以外のデータ種別では生成できない。生成時点で拒否する</b>
+ * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
+ * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
  * </p>
  *
  * <p>
@@ -57,6 +62,17 @@ import java.util.Map;
  */
 public final class MessageDataBlock extends TestDataBlock {
 
+    /**
+     * 取りうるデータ種別。YAML のトップレベルキー {@code messages} ／
+     * {@code expected_request_header_messages} ／ {@code expected_request_body_messages} ／
+     * {@code response_header_messages} ／ {@code response_body_messages} に対応する 5 種
+     * （{@code testdata_notation.rst:226-235}（{@code 30a8271} 時点））。
+     */
+    private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
+            DataType.MESSAGE,
+            DataType.EXPECTED_REQUEST_HEADER_MESSAGES, DataType.EXPECTED_REQUEST_BODY_MESSAGES,
+            DataType.RESPONSE_HEADER_MESSAGES, DataType.RESPONSE_BODY_MESSAGES);
+
     private final Map<String, String> directives;
     private final Map<String, String> fwHeaderFields;
     private final List<RecordLayout> records;
@@ -70,11 +86,17 @@ public final class MessageDataBlock extends TestDataBlock {
      * @param directives     ディレクティブ（記述順を保つため挿入順を維持する Map を渡すこと）
      * @param fwHeaderFields FW 制御ヘッダフィールド（記述順。FW ヘッダを読まない経路では空 Map）
      * @param records        本文レコードレイアウト群（記述順。1 件以上。0 件の検査は書き出し側が行う）
+     * @throws IllegalArgumentException {@code dataType} が MESSAGE ／
+     *                                  EXPECTED_REQUEST_HEADER_MESSAGES ／
+     *                                  EXPECTED_REQUEST_BODY_MESSAGES ／
+     *                                  RESPONSE_HEADER_MESSAGES ／ RESPONSE_BODY_MESSAGES の
+     *                                  いずれでもない場合
      */
     public MessageDataBlock(DataType dataType, String groupId, String identifier,
                             Map<String, String> directives,
                             Map<String, String> fwHeaderFields, List<RecordLayout> records) {
         super(dataType, groupId, identifier);
+        requireDataTypeOf(MessageDataBlock.class, PERMITTED_TYPES, dataType);
         this.directives = directives;
         this.fwHeaderFields = fwHeaderFields;
         this.records = records;

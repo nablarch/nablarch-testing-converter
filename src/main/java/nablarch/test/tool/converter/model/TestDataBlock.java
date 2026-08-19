@@ -2,6 +2,8 @@ package nablarch.test.tool.converter.model;
 
 import nablarch.test.core.reader.DataType;
 
+import java.util.Set;
+
 /**
  * NTF の 1 データブロックを表す中間モデルの抽象基底。
  *
@@ -49,6 +51,24 @@ import nablarch.test.core.reader.DataType;
  * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は 4 辺すべてが
  * 表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
  * （{@code coverage/issues.md} <b>XLS-20</b>）。**根拠が「対応表に行が無い」という不在である点に注意。**
+ * </p>
+ *
+ * <p>
+ * <b>データ種別は、そのブロックのクラスの系統に属していなければならない。生成時点で拒否する。</b>
+ * データタイプとブロックの形は 1:1 に対応するためである。YAML 形式は
+ * <b>データタイプごとに専用のトップレベルキー</b>を使い（{@code testdata_notation.rst:206}
+ * （{@code 30a8271} 時点）「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」と
+ * {@code :212-235} の対応表）、本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} は
+ * キーごとに別の {@code $defs} を割り当てている（{@code setup_tables} ／ {@code expected_tables} ／
+ * {@code expected_complete_tables} → {@code $defs.table_data}（{@code required} ＝
+ * {@code ["table","rows"]}）、{@code list_maps} → {@code $defs.list_map_data}（{@code ["id","rows"]}）、
+ * {@code setup_files} ／ {@code expected_files} → {@code $defs.file_data}（{@code ["path","type","records"]}）、
+ * {@code messages} → {@code $defs.message_data}、{@code expected_request_*} ／ {@code response_*} →
+ * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）。
+ * <b>いずれも {@code additionalProperties} ＝ {@code false}</b> であり、系統の違うデータ種別を持つ
+ * ブロックはスキーマ違反の YAML にしかならない。Excel 形式も同じで、系統の違う組は書けてしまうが
+ * 読み戻すと別種のブロックになる（{@code coverage/issues.md} <b>XLS-36</b>）。
+ * {@link ListMapBlock} は {@link DataType#LIST_MAP} をコンストラクタで固定するため検査の対象外である。
  * </p>
  *
  * <p>
@@ -130,5 +150,35 @@ public abstract sealed class TestDataBlock
     /** @return ブロックの識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID） */
     public String getIdentifier() {
         return identifier;
+    }
+
+    /**
+     * データ種別が、そのブロックのクラスの系統に属することを確かめる。
+     *
+     * <p>
+     * 具体ブロックのコンストラクタが {@code super(...)} の直後に呼ぶ。{@code dataType} が {@code null}
+     * ／ {@link DataType#DEFAULT} の場合は<b>ここへ届かない</b> —— どちらも
+     * {@link #TestDataBlock(DataType, String, String)} が先に拒否するため、その専用のメッセージが
+     * そのまま残る（{@code coverage/issues.md} <b>XLS-34</b>／<b>XLS-20</b>）。
+     * </p>
+     *
+     * @param blockClass 具体ブロックのクラス
+     * @param permitted  そのクラスが取りうるデータ種別
+     * @param dataType   検査するデータ種別
+     * @throws IllegalArgumentException {@code dataType} が {@code permitted} に含まれない場合
+     */
+    static void requireDataTypeOf(Class<? extends TestDataBlock> blockClass,
+                                  Set<DataType> permitted, DataType dataType) {
+        if (!permitted.contains(dataType)) {
+            throw new IllegalArgumentException(
+                    "データ種別 " + dataType.getName() + " のデータブロックを "
+                            + blockClass.getSimpleName() + " として作ることはできません"
+                            + "（データタイプとブロックの形は 1:1 に対応します。YAML 形式は"
+                            + "データタイプごとに専用のトップレベルキーを使い、キーごとにブロックの形が"
+                            + "スキーマで決まっているため、系統の違う組はスキーマ違反の YAML にしか"
+                            + "なりません。Excel 形式では書けてしまいますが、読み戻すと別種の"
+                            + "ブロックになります）。"
+                            + " " + blockClass.getSimpleName() + " が取りうるデータ種別=" + permitted);
+        }
     }
 }
