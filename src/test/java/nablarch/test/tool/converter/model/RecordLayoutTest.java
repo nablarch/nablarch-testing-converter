@@ -60,6 +60,52 @@ public class RecordLayoutTest {
     }
 
     @Test
+    public void フィールド定義の件数より要素数が多いデータ行を持つレコードは生成できない() {
+        // Given: notation:891「データ要素数が不正である」はファイルデータの記述時エラー（XLS-41 の「多い側」）
+        List<FieldDef> fields = List.of(
+                new FieldDef("f1", "数値", "5"), new FieldDef("f2", "半角英字", "3"));
+        List<List<String>> rows = List.of(Arrays.asList("1", "a", "余り"));
+        try {
+            new RecordLayout("data", fields, rows);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("データ行"));
+            assertThat(e.getMessage(), containsString("1 件目"));
+            assertThat(e.getMessage(), containsString("3"));
+            assertThat(e.getMessage(), containsString("2"));
+        }
+    }
+
+    @Test
+    public void フィールド定義の件数より要素数が少ないデータ行は保持できる() {
+        // Given: notation:883 は「少ない側」を正常と定め、不足したフィールドは "" として補完されると書く。
+        //        全フィールドを省略した行（YAML では rows: に空配列）も記法として明示的に案内している。
+        //        したがって不変条件は「行の要素数 ≦ fields の件数」であり、一致の強制ではない（XLS-42）。
+        List<FieldDef> fields = List.of(
+                new FieldDef("f1", "数値", "5"), new FieldDef("f2", "半角英字", "3"));
+        List<List<String>> rows = List.of(Arrays.asList("1"), Arrays.<String>asList());
+
+        // When
+        RecordLayout sut = new RecordLayout("data", fields, rows);
+
+        // Then
+        assertThat(sut.getRows(), is(rows));
+    }
+
+    @Test
+    public void 何件目のデータ行が多すぎるかを例外メッセージに出す() {
+        // Given: 2 件目だけが多い（先頭行だけ見て通す実装を落とす）
+        List<FieldDef> fields = List.of(new FieldDef("f1", "数値", "5"));
+        List<List<String>> rows = List.of(Arrays.asList("1"), Arrays.asList("2", "余り"));
+        try {
+            new RecordLayout("data", fields, rows);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("2 件目"));
+        }
+    }
+
+    @Test
     public void フィールド定義群がnullのレコードは生成できない() {
         // Given: 「無い」ことは 0 件のリストで表す（XLS-38）
         try {

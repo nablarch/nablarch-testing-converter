@@ -87,6 +87,34 @@ final class ModelPreconditions {
     }
 
     /**
+     * データ行の要素数が<b>上限件数以下</b>であることを検査する。<b>不足は通す。</b>
+     *
+     * <p>
+     * {@code testdata_notation.rst:891}（{@code 30a8271} 時点）はファイルデータの記述時エラーとして
+     * 「データ要素数が不正である」を挙げる。一方 {@code :883} は<b>不足側だけを正常と定め</b>、
+     * 「フィールドの数だけ値を記述しなかった場合、記述しなかったフィールドの値は空文字となる」と書く。
+     * したがって不変条件は<b>「行の要素数 ≦ フィールド定義の件数」</b>であって、
+     * <b>一致の強制ではない</b>（{@code coverage/issues.md} <b>XLS-41</b>）。
+     * </p>
+     *
+     * @param label 呼び出し側が例外メッセージに出す項目名
+     * @param rows  検査対象
+     * @param limit 1 行あたりの要素数の上限（フィールド定義の件数）
+     * @throws IllegalArgumentException いずれかの行の要素数が {@code limit} を超える場合
+     */
+    static void requireRowsNotLongerThan(String label, List<List<String>> rows, int limit) {
+        for (int i = 0; i < rows.size(); i++) {
+            int size = rows.get(i).size();
+            if (size > limit) {
+                throw new IllegalArgumentException(
+                        label + "の " + (i + 1) + " 件目の要素数 " + size
+                                + " がフィールド定義の件数 " + limit + " を超えています"
+                                + "（記法は値の不足だけを認め、余りの値を書く場所がありません）。");
+            }
+        }
+    }
+
+    /**
      * 名前のリストに重複が無いことを検査する。判定は<b>完全一致</b>で行う。
      *
      * <p>

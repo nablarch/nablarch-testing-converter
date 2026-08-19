@@ -57,6 +57,7 @@ public final class RecordLayout {
         }
         ModelPreconditions.requireNoDuplicates("フィールド名称", fieldNames);
         this.rows = ModelPreconditions.requireNoNullRows("データ行のリスト", rows);
+        ModelPreconditions.requireRowsNotLongerThan("データ行", this.rows, fields.size());
     }
 
     /** @return レコード種別（省略時は {@code null}） */
