@@ -1224,8 +1224,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-18
-- **Last completed**: #25.5 の集計記述の最新化（`3f38cca`。全 44 件・要対応 15 ／ 対応不要 28 ／ 本作業の対象外 1。`steering.md:40` を件数から `issues.md` の判定欄を正とする参照形へ改めた。`src` の変更は 0 件）。実装としての最後の完了は §1-C（`3000baf`）
-- **Next**: **ユーザー判断 3 件を先に受け取る** —— (1) §1-D（XLS-31）: 本体スキーマだけを根拠に番人を置いてよいか (2) §1-D: 置くなら辺④だけか辺③にもか (3) §1-E（XLS-32）: `null` を弾くか省略（空文字）へ正規化するか。私の推奨はいずれも「置く／両辺／弾く」。判断を受けたら §1-D・§1-E を実装し、その後 §1-F（XLS-33。**未着手**）→ §1-G（XLS-20 の事実誤り訂正を含む）→ XLS-28 → §6（中間モデル一巡点検）→ §5（XLS-27 マーカーカラム案の実測）の順に進める
-- **Notes**: ブランチ `ntf-test-data-converter`（push 済み・untracked 残なし）。判断待ち 3 件の根拠は `coverage/issues.md` の XLS-31「§1-D の明文確認」節と XLS-32「§1-E の明文確認」節。**前回の State の 2 点は実物と食い違っていたので繰り返さないこと** —— (a) §1-F は「着手直後に中断」ではなく**未着手**（`7200b0f` で課題を起こしただけ。`f521694` は XLS-32 の SHA 追記であって §1-F とは無関係）(b) `7200b0f` で加わった課題は XLS-25〜33 の 9 件ではなく **XLS-27〜33 の 7 件**（15 になるのは これ＋XLS-08 の判定変更）。要対応の実数は必ず `issues.md` 冒頭の導出コマンドから導くこと
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
