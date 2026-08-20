@@ -668,29 +668,32 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 
 **開示（`YamlFormatWriter#sectionKey` の `default` が到達不能になった —— #25.5 の副作用）**
 
-`YamlFormatWriter.java:544`（`switch (type)`）の `default` 側 1 分岐と、その中の
-`YamlFormatWriter.java:561`（`throw new IllegalArgumentException("unsupported DataType: " + type)`）1 行が
+`YamlFormatWriter#sectionKey` の `switch (type)` の `default` 側 1 分岐と、その中の
+`throw new IllegalArgumentException("unsupported DataType: " + type)` 1 行が
 未到達である。**§1-G（XLS-20）で `DataType.DEFAULT` のデータブロックを生成時に拒否したため**、
 この `default` へ入る値を作れなくなった（`switch` は残る 13 個の `DataType` をすべて分岐しており、
 `DEFAULT` だけが漏れていた）。到達させていたテスト `serialize_unsupportedDataType_throws` は
 入力を組めなくなったため削除した（上の削除表）。
 
 **`DataType` が増えたときの安全網として残す。** 辺③にも同じ性質の安全網が
-`XlsFormatWriter.java:202`／`:205`（`unsupported block`。`TestDataBlock` の実装クラスを
+`XlsFormatWriter#layout`（`unsupported block`。`TestDataBlock` の実装クラスを
 上ですべて分岐しているため到達しない）として未到達のまま在り、扱いをそろえる。
 コードには到達不能である理由をコメントで書いてある。**軸A〜F の要素ではない。**
 
-未到達行の実測（`target/site/jacoco/jacoco.xml` を走査したもの）:
+未到達の実測（`target/site/jacoco/jacoco.xml` を走査したもの）。**識別はクラス名・メソッド名で行う**
+（`steering.md` Rules「台帳に他ファイルの行番号を書かない」。行番号つきの一覧は
+`coverage-report.md` §3 にある）:
 
 ```
-XlsFormatWriter.java   L107(分岐1) L202(分岐1) L205(行) L549(分岐1)         → 行 1・分岐 3
-YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L525(分岐1)
-                       L544(分岐1) L561(行)                                → 行 2・分岐 4
+XlsFormatWriter#write（parent null 分岐）・#layout（unsupported block の分岐と throw 行）
+                 ・#isMarkerColumn（columnName null 分岐）                  → 行 1・分岐 3
+YamlFormatWriter#write（parent null 分岐）・#emitBlock（unsupported block の分岐と throw 行）
+                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐）    → 行 2・分岐 4
 ```
 
 **開示（XLS-22 の番人 4 本は移設前から空振りだった —— JaCoCo で検出した）**
 
-移設前の実測では `XlsFormatWriter.java:380-381` ／ `YamlFormatWriter.java:354-358`
+移設前の実測では `XlsFormatWriter#appendRecords` ／ `YamlFormatWriter#emitRecords`
 （＝フィールド 0 件のレコードレイアウトを弾く番人そのもの）が未到達であった。
 番人テストは 4 本とも緑だったが、`@Test(expected = IllegalArgumentException.class)` で
 例外の型しか見ておらず、**§6-G（XLS-41）でコンストラクタに入れた別の番人が先に落としていた**。
@@ -816,18 +819,19 @@ Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
 | `RecordLayout` | `line 15/15 branch 2/2` | 同左 | 0 件 |
 | `DirectiveUtil` | `line 20/20 branch 17/18` | 同左 | 変化なし |
 
-**この 3 ステップで未到達は 1 つも増えていない。** 既知の未到達の行番号だけが番人の削除でずれた
-（`target/site/jacoco/jacoco.xml` を走査した実測）:
+**この 3 ステップで未到達は 1 つも増えていない。** 既知の未到達の位置だけが番人の削除でずれた
+（`target/site/jacoco/jacoco.xml` を走査した実測。**識別はクラス名・メソッド名で行う**）:
 
 ```
-XlsFormatWriter.java   L107(分岐1) L202(分岐1) L205(行) L550(分岐1)         → 行 1・分岐 3
-YamlFormatWriter.java  L84(分岐1) L139(分岐1) L143(行) L483(分岐1)
-                       L502(分岐1) L519(行)                                → 行 2・分岐 4
+XlsFormatWriter#write（parent null 分岐）・#layout（unsupported block の分岐と throw 行）
+                 ・#isMarkerColumn（columnName null 分岐）                  → 行 1・分岐 3
+YamlFormatWriter#write（parent null 分岐）・#emitBlock（unsupported block の分岐と throw 行）
+                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐）    → 行 2・分岐 4
 ```
 
-前回（追補その 5）の `XlsFormatWriter.java:549` は **L550**、`YamlFormatWriter.java:525`／`:544`／`:561` は
-**L483**／**L502**／**L519** へ移っただけである。開示の内容（`unsupported block` と
-`unsupported DataType` の安全網が到達不能であること）は変わらない。
+**未到達のメソッドの顔ぶれは追補その 5 から変わっておらず、行番号だけが動いた**（そのため本節では
+行番号を書かない）。開示の内容（`unsupported block` と `unsupported DataType` の安全網が
+到達不能であること）も変わらない。**行番号つきの一覧は `coverage-report.md` §3 にある**（#26 の実測）。
 
 **軸の担保への影響（§3.1／§3.3／§4.1 のスナップショット表は書き換えない。現在地だけ示す）**
 
@@ -2502,9 +2506,12 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 
 | 箇所 | 未到達の内容 | 扱い |
 |---|---|---|
-| `write` の `if (parent != null)`（L107） | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
-| `layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw`（L207・L210） | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
-| `isMarkerColumn` の `columnName != null`（L446） | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
+| `XlsFormatWriter#write` の `if (parent != null)` | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
+| `XlsFormatWriter#layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw` | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
+| `XlsFormatWriter#isMarkerColumn` の `columnName != null` | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
+
+> **行番号を書かないのは `steering.md` Rules（台帳に他ファイルの行番号を書かない）に従うためである。**
+> 行番号つきの一覧は `coverage-report.md` §3 にある（#26 の実測）。
 
 <a id="s3-3"></a>
 
