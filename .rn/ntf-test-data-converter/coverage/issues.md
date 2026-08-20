@@ -4026,3 +4026,167 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
 （`grep -rn 'failsToReadBack' src/test --include=*.java | grep 'public void'` で確かめられる）。
 `YamlFormatWriterScalarTest#failsToReadBackFoldedKey` は **YML-13**（判定は対応不要）の実挙動の記録、
 `YamlFormatWriterModelTest#failsToReadBackLiteralTabFieldSeparator` は **YML-08** の実挙動の記録である。
+
+---
+
+## §7 #26 で洗い出した「テストを足すべき」未到達分岐（2026-08-20）
+
+**この節は §1〜§6 とは別種の記録である。** §1〜§6 の `XLS-nn` ／ `YML-nn` は
+**現状挙動の課題**（実行して記録した挙動のうち仕様として妥当でないもの）であるのに対し、
+ここに載せる `COV-nn` は**担保の穴**——挙動が仕様どおりかどうかを確かめていない未到達分岐——である。
+挙動が不正だと言っているのではなく、**確かめていない**と言っている。
+
+そのため **`COV-nn` には「影響度」欄も「NTF 仕様としての判定」欄も置かない**。
+上部の凡例と件数の導出コマンド（`grep -c '^### \(XLS\|YML\)-'` → 55 など）は
+`XLS-` ／ `YML-` 前置のみを数えるため、この節を足しても値は変わらない。
+
+**出典。** タスク #26 のカバレッジ計測（HEAD `da6642578c366b73b3a001980142d9f741f82f7e`、
+`Tests run: 595, Failures: 0, Errors: 0, Skipped: 2`）。計測条件・全 34 件の一覧・分類の根拠は
+`coverage/coverage-report.md` にある。行番号はすべて同 SHA 時点。
+`notation:nnn` は `nablarch-document` の `testdata_notation.rst` の `30a8271` 時点の行番号。
+
+**件数。**
+
+```
+$ F=.rn/ntf-test-data-converter/coverage/issues.md
+$ grep -c '^### COV-' $F
+11
+$ grep -c '^- 未到達箇所' $F
+11
+```
+
+**11 件で未到達分岐 15 件をカバーする。** 内訳は下表（`coverage-report.md` §6 の対応表と同じ）。
+
+| ID | `coverage-report.md` §4 の # | 分岐数 |
+|---|---|---|
+| COV-01 | 1, 2 | 2 |
+| COV-02 | 3, 4 | 2 |
+| COV-03 | 15 | 1 |
+| COV-04 | 16 | 1 |
+| COV-05 | 17, 18, 19 | 3 |
+| COV-06 | 20 | 1 |
+| COV-07 | 23 | 1 |
+| COV-08 | 26 | 1 |
+| COV-09 | 29 | 1 |
+| COV-10 | 33 | 1 |
+| COV-11 | 34 | 1 |
+| **計** | — | **15** |
+
+**テストは足していない。** #26 の目的は計測と列挙であり、テストの追加は後続タスクの範囲である。
+軸マトリクス（#27）ができる前に軸へ紐づかないテストを増やすと突き合わせ対象が動くため、
+記録に留めた（#26 の完了条件が「追加されたか `issues.md` へ残課題として記録されたかのいずれか」と
+明示的に認めている）。
+
+### COV-01 同一シートに同じ識別子の `LIST_MAP` ／ `MESSAGE` マーカーが 2 つある場合の先着一致が未担保
+
+- 未到達箇所: `XlsFormatReader#read` `:116`（`processed.add(singleKey(LIST_MAP, id))` の false 側）／
+  `:120`（同 `MESSAGE`）。分岐 2 件
+- 到達する入力: 1 シートに `LIST_MAP=X` を 2 回、または `MESSAGE=X` を 2 回書く
+- 記法の根拠: `notation:622`「``LIST_MAP`` のID は完全一致で検索される。**同一の読み込み単位内に
+  同じ ID のデータブロックが複数ある場合は先着一致となり、2件目以降は無視される**」。
+  一方 `notation:628` は Excel 形式の `LIST_MAP` について「シート内で一意になる ID を記載する」とも書いており、
+  一意性を求めつつ重複時の挙動も定めている。実装は先着一致（`processed` セット）を採る
+- MESSAGE 側は根拠が弱い: **MESSAGE の識別子重複について定めた明文は見つけられなかった（未確認）。**
+  実装が `LIST_MAP` と同じ形のガードを置いていることだけを根拠にしている
+- テーブル系・ファイル系の同型ガード（`:108`／`:112`）は両側とも到達済みである
+- 処理: テスト未追加。残課題として記録
+
+### COV-02 `MESSAGE=` マーカーはあるが本体が空のブロック（`readMessage` が `null`）が未担保
+
+- 未到達箇所: `XlsFormatReader#read` `:122`（`if (block != null)` の false 側）／
+  `#readMessageBlock` `:230`（`if (message == null)` の true 側）。分岐 2 件・未到達行 `:233`
+- 到達する入力: `MESSAGE=X` マーカー行だけがあり、本体パーサが空結果を返す形
+- 根拠: `src/main` のコメント自身が「ヘッダスキャンで `MESSAGE=` マーカーを検出したが、本体パーサが
+  同 ID のデータを見つけられない場合。本体の `MessageParser` が空結果を返したとき
+  `adapter.readMessage` は `null` を返す（**正常系**）」と書いている（`XlsFormatReader.java:230-232`）。
+  正常系と明記しながら一度も通っていない
+- 処理: テスト未追加。残課題として記録
+
+### COV-03 2 文字以下のディレクティブ値が `isQuotationWrapped` を素通しすることが未担保
+
+- 未到達箇所: `XlsFormatReader#isQuotationWrapped` `:507`（`value.length() <= 2` の true 側）。分岐 1 件。
+  未到達行 `:508`
+- 到達する入力: ディレクティブ値が 2 文字以下（例: 可変長の `quoting-delimiter` 既定値 `"` 1 文字）
+- 根拠: `src/main` のコメント自身が「デフォルトディレクティブとして本体器に注入される `"` 1 文字
+  （可変長の `quoting-delimiter` 既定値）等は記法ではなく生値であり、本体 Excel 経路でも
+  QuotationTrimmer を通らないため、ここでも素通しする（1 文字を剥がそうとする QuotationTrimmer の
+  例外も同時に回避）」と、**通ることを前提にした挙動**を書いている（`XlsFormatReader.java:491-495`）
+- 処理: テスト未追加。残課題として記録
+
+### COV-04 前後が揃っていないダブルクォート（`"abc` など）を剥がさないことが未担保
+
+- 未到達箇所: `XlsFormatReader#isQuotationWrapped` `:510`（`value.endsWith("\"")` の false 側）。分岐 1 件
+- 到達する入力: 半角 `"` で始まるが `"` で終わらないディレクティブ値（例 `"abc`）
+- 記法の根拠: `notation:1325`「半角または全角ダブルクォートで**前後が囲まれた場合のみ**、外側1層を除去する」。
+  「のみ」を守っていることを示す分岐
+- 処理: テスト未追加。残課題として記録
+
+### COV-05 全角ダブルクォート `”` の QuotationTrimmer 記法が 1 度も通っていない
+
+- 未到達箇所: `XlsFormatReader#isQuotationWrapped` `:511`。`value.startsWith("”")` の true 側、
+  `value.endsWith("”")` の両側。分岐 3 件（`mb=3 cb=1`。到達済みは `startsWith("”")` の false 側だけ）
+- 到達する入力: 全角 `”` で囲んだディレクティブ値（`”abc”`）と、`”` で始まり `”` で終わらない値
+- 記法の根拠: `notation:1325`「**半角または全角**ダブルクォートで前後が囲まれた場合のみ」／
+  `notation:1397`「前後のダブルクォート（**全角・半角問わない**）を除いた文字列として扱う」。
+  **明文が正面から認めている記法が、辺①で 1 度も通っていない**
+- 処理: テスト未追加。残課題として記録
+
+### COV-06 全セルが空の生行（`tail` が空リストを受ける）が未担保
+
+- 未到達箇所: `XlsFormatReader#tail` `:522`（`list.isEmpty()` の true 側）。分岐 1 件
+- 到達する入力: ファイル系・メッセージ系ブロックの本体に、全セルが空の行が混ざっている形
+- 到達可能である根拠: `TestCoreReaderAdapter.BodyLineCollector#parse` `:464` が
+  `NablarchTestUtils.trimTailCopy(line)` を通すため、**全セルが空の行は空リストになる**
+  （`nablarch-testing` `c5f3340` `NablarchTestUtils.java:251-263` の `trimTail` が末尾の空要素を全部落とす）
+- 記法の根拠: `notation:883`「全フィールドを省略した行（Excel形式では先頭セルが空の行、YAML形式では
+  `rows:` に空配列 `[]` を記載した行）を書けば、全フィールドが `""` のレコードとして保持される」。
+  この形は記法外ではない
+- 処理: テスト未追加。残課題として記録
+
+### COV-07 同じカラム名が 3 回以上現れたときに WARN を重複出力しないことが未担保
+
+- 未到達箇所: `XlsFormatReader#deduplicateColumnNames` `:617`（`warned.add(name)` の false 側）。分岐 1 件
+- 到達する入力: 1 ブロックのヘッダ行に同じカラム名を 3 つ以上書く
+- 現状: カラム名の重複そのもの（2 回）は既存テストで到達済み（`cb=1`）。3 回以上にするだけで到達する
+- カラム名の重複自体の扱いは **XLS-40**（後勝ち）に記録済みであり、本項はその WARN の重複抑止だけを指す
+- 処理: テスト未追加。残課題として記録
+
+### COV-08 辺③で出力先が親ディレクトリを持たない相対パスになる場合が未担保
+
+- 未到達箇所: `XlsFormatWriter#write` `:107`（`if (parent != null)` の false 側）。分岐 1 件
+- 到達する入力: `write(container, "")` のように `basePath` を空文字列にし、`foo.xlsx` のような
+  親を持たない相対パスを作らせる
+- 根拠: `src/main` のコメント自身が「`basePath` が空文字列の場合など、親ディレクトリを持たない
+  相対パス（例: `foo.xlsx`）が生成されると `getParent()` は `null` を返すため、**null チェックが必須**」と
+  書いている（`XlsFormatWriter.java:106`）のに一度も通っていない
+- 既出: `inventory.md` §3.1-2 が「軸要素の外にある開示すべき担保の穴」として既に開示している。
+  **#26 の実測で穴が残っていることを確認した**
+- 処理: テスト未追加。残課題として記録
+
+### COV-09 辺④で出力先が親ディレクトリを持たない相対パスになる場合が未担保
+
+- 未到達箇所: `YamlFormatWriter#write` `:84`（`if (parent != null)` の false 側）。分岐 1 件
+- COV-08 と同型（`YamlFormatWriter.java:83` に同じコメントがある）。
+  **辺④側は `inventory.md` でも開示されていなかった**
+- 処理: テスト未追加。残課題として記録
+
+### COV-10 ボディ収集でデータタイプ名から始まるが `=` を含まない行を読み飛ばす経路が未担保
+
+- 未到達箇所: `TestCoreReaderAdapter.BodyLineCollector#parse` `:454`
+  （`if (groupId != null)` の false 側）。分岐 1 件
+- 到達する入力: 収集対象ブロックの本体に、先頭セルがデータタイプ名で始まるのに `=` を含まない行がある形
+  （`markerGroupId` は `=` が無ければ `null` を返す。`TestCoreReaderAdapter.java:282-286`）
+- 到達可能である根拠: **同型のガードは `HeaderCollector#parse`（`:366-369`）では両側とも到達済み**であり、
+  記法として書けない形ではない。`BodyLineCollector` 側の固定だけが抜けている
+- 処理: テスト未追加。残課題として記録
+
+### COV-11 同一シートに同じデータタイプで異なるグループ ID のブロックがある場合が未担保
+
+- 未到達箇所: `TestCoreReaderAdapter.BodyLineCollector#parse` `:458`
+  （`groupId.equals(targetGroupId)` の false 側）。分岐 1 件
+- 到達する入力: 1 シートに `SETUP_TABLE[g1]=T` と `SETUP_TABLE[g2]=T` を並べ、`g1` を対象に収集する
+- 記法の根拠: `notation:252`「同じ読み込み単位の中に、同じデータタイプのデータブロックを複数記述したい
+  場合は、グループIDでそれらを区別する」／`notation:254`「デフォルトグループと個別グループのデータは
+  併用でき、両方が混在した場合は両方のデータが有効になる」／`notation:306`（同じグループ ID の
+  ブロックはまとめて記述する）。**記法として正当な入力である**
+- 処理: テスト未追加。残課題として記録
