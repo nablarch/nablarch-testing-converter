@@ -341,9 +341,17 @@ done
    HEAD: 540
 ```
 
-`@Ignore` の 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml`（L639）と
-`keepsFwHeaderNamedRecordInMessageFromRealYaml`（L1002）で、いずれも **YML-03**（本体側 yaml の修正待ち）の
+`@Ignore` の 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml` と
+`keepsFwHeaderNamedRecordInMessageFromRealYaml` で、いずれも **YML-03**（本体側 yaml の修正待ち）の
 **待機テスト**である。仕様どおりの期待値を書いてあるので、本体側が直った日に `@Ignore` を外せば通る。
+
+> **上の ② の中に見える `…java:638` ／ `…java:1001` は `grep -rn` の出力そのもの**（記録した日の実測）
+> **であって、台帳が主張している行番号ではない。** 以降の追補（その 4〜その 7）の ② も同じ性質である。
+> **書き直すと「そのまま実行すれば同じ結果が出る」という記録の性質が壊れる**ため、出力は当日のまま凍結し、
+> 本文側の識別はクラス名・メソッド名で行う（`steering.md` Rules「台帳に他ファイルの行番号を書かない」）。
+> **台帳の本文に他ファイルの行番号は 1 つも無い**（確認コマンドは §0.1-2 系の追補すべてを含む全文に対して
+> `grep -nE '\.java:[0-9]+' .rn/ntf-test-data-converter/coverage/inventory.md` を実行し、
+> ヒットが `grep -rn '^    @Ignore' src/test --include=*.java` の出力ブロック内だけであることを見る）。
 
 ビルド全体の実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true`）:
 
@@ -625,7 +633,7 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 | `writesEmptyHeaderRowWhenColumnNamesAreEmpty`（辺③ C-08） | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` |
 | `promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` | **担保先なし。** 検査していた版面（カラム名 0 件のブロック）を辺③が書かなくなったため、読み戻す対象が無い |
 | `writesDefaultDataTypeMarker` ／ `dropsDefaultDataTypeBlockWhenReadBack` ／ `serialize_unsupportedDataType_throws`（A-01 `DEFAULT`） | `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。**辺③の A-01 は「書ける」から「生成時に拒否」へ変わった**（§1-G・XLS-20）。辺③④とも `DEFAULT` を持つ入力を組めない |
-| `rejectsNullSheetName`（辺③ F3 の `null` 側） | `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（`XlsFormatWriterInvalidOutputTest.java:91` の Javadoc から参照を張ってある） |
+| `rejectsNullSheetName`（辺③ F3 の `null` 側） | `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（`XlsFormatWriterInvalidOutputTest` のクラス Javadoc から参照を張ってある） |
 | `rejectsFieldWithoutTypeInFileBlock` ／ `#…InMessageBlock` ／ `serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#…InMessageBlock_rejected` ／ `契約違反のnull型もモデル自身は検査せず保持する`（C-20 `type` 省略） | `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `#データ型が空文字のフィールド定義は生成できる` |
 | `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人だけは辺③④に置いたままである**（§1-C）。担保は `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected` |
 | `rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected`（C-17 `fields` 空） | `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない` ／ `#レコード種別を省略してもフィールド0件のレコードは生成できない` |
@@ -712,8 +720,10 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
        target/site/jacoco/jacoco.csv
 ```
 
-出力は `line 20/20 branch 17/18`。未到達は `DirectiveUtil.java:45` の
-`value == null ? null : valueMapper.map(...)` の **`null` 側 1 分岐**である。
+出力は `line 20/20 branch 17/18`。未到達は `DirectiveUtil#toStringDirectives` の
+`value == null ? null : valueMapper.map(...)` の **`null` 側 1 分岐**である
+（**行は 20/20 で未到達行は 0 件**。この行は部分実行であって未到達行ではない。
+行番号つきの一覧は `coverage-report.md` §3 にある —— #26 の実測）。
 
 **この分岐は既存メソッド `toStringDirectives` の中にあり、#25.5 で足した `normalizeSeparator` では
 ない。** `DirectiveUtil` は `8c327d0` の時点で存在し（`git cat-file -e
@@ -721,7 +731,8 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 `git diff --diff-filter=A --name-only 8c327d0..HEAD` は 1 件も返さない）、#25.5 が足したのは
 `normalizeSeparator` 1 メソッドだけである（`git diff --numstat 8c327d0..HEAD --
 src/main/java/nablarch/test/tool/converter/DirectiveUtil.java` → `42  0`）。
-`normalizeSeparator` の分岐は全数到達済みである（下記 `jacoco.xml` の走査で未到達行は L45 のみ）
+`normalizeSeparator` の分岐は全数到達済みである（下記 `jacoco.xml` の走査で `mb > 0` の行は
+`toStringDirectives` の三項演算子の 1 行だけ）
 （`target/site/jacoco/nablarch.test.tool.converter/DirectiveUtil.java.html` の当該行が
 `title="1 of 2 branches missed."`、`jacoco.xml` の `toStringDirectives` が
 `INSTRUCTION missed="2"`。この 2 命令は
@@ -729,12 +740,13 @@ src/main/java/nablarch/test/tool/converter/DirectiveUtil.java` → `42  0`）。
 `65: aconst_null` / `66: goto 90` ——すなわち `null` 側だけを通る 2 命令である）。
 **これは軸A〜F の要素ではない。** 値が `null` のディレクティブは、実ファイル経路のどちらからも作れない:
 
-- 辺①（Excel）の `directives` は `DataFile#directives`
-  （`nablarch-testing/src/main/java/nablarch/test/core/file/DataFile.java:56`）をそのまま写したものである
-  （`TestCoreFileAdapter.java:51` の `new LinkedHashMap<>(file.directives)`）。
-  この `Map` へ書き込む箇所は本体全体で `DataFile#setDirective` の 1 行だけで
-  （`grep -rn "directives\.put\|directives\.remove" nablarch-testing/src/main/java` の結果が `DataFile.java:305` のみ）、
-  そこは `stringValue.trim()`（同 L304）を通るため `null` を渡すと NPE になる。
+- 辺①（Excel）の `directives` は `nablarch-testing` の `DataFile#directives` フィールドを
+  そのまま写したものである（`TestCoreFileAdapter#read` の `new LinkedHashMap<>(file.directives)`）。
+  この `Map` へ書き込む箇所は本体全体で `DataFile#setDirective` の 1 行だけであり
+  （`git -C ~/work/nablarch/nablarch-testing grep -n 'directives\.put\|directives\.remove' c5f3340 -- 'src/main/java'`
+  が `DataFile#setDirective` の `directives.put(directiveName, value);` 1 行だけを返す）、
+  そこは直前で `convertDirectiveValue(directive, stringValue.trim())` を通るため
+  `null` を渡すと NPE になる。
 - 辺②（YAML）のスキーマ `$defs.directives` は `additionalProperties: false` の閉じた定義で、
   17 個のプロパティはすべて `type` が `string` ／ `integer` ／ `boolean` のいずれか単独であり、
   `null` を許すものは無い（`nablarch/test/ntf-testdata-yaml-schema.json`）。
@@ -2508,7 +2520,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 |---|---|---|
 | `XlsFormatWriter#write` の `if (parent != null)` | `null` 側の分岐（1 / 2） | 既知の担保の穴。到達経路の全数調査は [§3.1-2 の該当項](#s3-1-2-parent-null) |
 | `XlsFormatWriter#layout` の `else if (block instanceof MessageDataBlock)` の false 側と直後の `throw` | 未知のブロック実装（1 / 2 分岐・1 行） | sealed 階層が permit する 3 種すべてを本節と §3.1 が通しているため到達不能。Java イディオムとしての安全網（steering #6 の判断と同じ思想） |
-| `XlsFormatWriter#isMarkerColumn` の `columnName != null` | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名が `null` の場合は…非マーカーとして扱う」と明記している |
+| `XlsFormatWriter#isMarkerColumn` の `columnName != null` | `null` 側の分岐（1 / 6） | steering #9 でコメント済みの防御ガード。`layoutColumnRow` のコメントが「カラム名の null は ColumnRowDataBlock が生成時に拒否するため、ここへは届かない（ModelPreconditions#requireNoNulls）。isMarkerColumn の null 判定は防御として残してある。」と明記している（＝不到達は中間モデルの不変条件によるものである） |
 
 > **行番号を書かないのは `steering.md` Rules（台帳に他ファイルの行番号を書かない）に従うためである。**
 > 行番号つきの一覧は `coverage-report.md` §3 にある（#26 の実測）。

@@ -1,9 +1,11 @@
 # カバレッジ計測と未到達分岐の一覧（タスク #26）
 
-**4 辺の担当クラスの未到達分岐は 34 件・未到達行は 16 件で、分類は「テストを足すべき」18 件・「テスト不要」16 件である。**
+**4 辺の担当クラスの未到達分岐は 34 件で、分類は「テストを足すべき」18 件・「テスト不要」16 件である。**
+未到達行はこれとは別に 16 件ある（§4）。
 「テストを足すべき」18 件は `issues.md` §7 へ `COV-01`〜`COV-13` として記録した（テストは足していない）。
-辺②（`YamlFormatReader`）と中間モデル 11 クラスは行・分岐とも 100% だが、**100% は担保を意味しない**（§1 の注記）。
-担保の穴は §6 に 4 件開示した。
+辺②（`YamlFormatReader`）と中間モデルの 12 クラスは行・分岐とも 100% だが、**100% は担保を意味しない**（§1 の注記）。
+**§6 に 6 項目を開示した。うち「担保の穴」は §6-1・§6-2・§6-5・§6-6 の 4 件で、
+§6-3 は処置済みの台帳訂正、§6-4 は確かめきれなかったことである**（性質が違うものを 1 つの件数にまとめない）。
 
 ## 0. 計測条件
 
@@ -31,7 +33,14 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
 ```
 
-**この手順は同じ条件で 2 回実行し、本書の全数値が一致することを確かめた。**
+**本書の全数値は、上の 1 回の実行が作った `target/site/jacoco/` の
+`jacoco.csv` ／ `jacoco.xml`（同一実行のペア）だけから導いている。**
+別の実行と突き合わせるときは、上の 2 コマンドを流し直して次の md5 を比べる。
+
+```sh
+md5sum target/site/jacoco/jacoco.csv
+# → d28e374e9027ade63d7919f7a7b5826e  target/site/jacoco/jacoco.csv
+```
 
 **`Tests run` の実測行**（surefire 集計行。`BUILD SUCCESS`）。
 
@@ -48,10 +57,12 @@ grep -l 'Skipped: [1-9]' target/surefire-reports/*.txt
 grep -rn '@Ignore' src/test/java --include=*.java | grep -v '{@code'
 ```
 
-| 課題 ID | テストメソッド | 位置 | 他責先 |
+| 課題 ID | テストクラス | テストメソッド | 他責先 |
 |---|---|---|---|
-| YML-14 | `failsToReadRecordFragmentRowWithMoreValuesThanFields` | `YamlFormatReaderInvalidInputTest.java:740` | 本体 `DataFileFragment#addValue`（余りの値を捨てる） |
-| XLS-40 | `keepsOriginalColumnCaseInTable` | 同 `:1280` | `nablarch-testing` の `TableData`（カラム名を大文字化する） |
+| YML-14 | `YamlFormatReaderInvalidInputTest` | `failsToReadRecordFragmentRowWithMoreValuesThanFields` | 本体 `DataFileFragment#addValue`（余りの値を捨てる） |
+| XLS-40 | 同上 | `keepsOriginalColumnCaseInTable` | `nablarch-testing` の `TableData`（カラム名を大文字化する） |
+
+**この 2 件は「あるべき姿を書いたまま無効化されているテスト」であり、担保の穴である**（§6-6 に開示）。
 
 > **`-o`（オフライン）を付けているのは依存解決をリポジトリキャッシュに閉じるためであり、
 > 計測結果には影響しない。** `-o` を外しても同じ数値になることは未確認（§6-4）。
@@ -67,42 +78,45 @@ awk -F, 'NR>1 && ($3 ~ /^(XlsFormatReader|XlsFormatWriter|YamlFormatReader|YamlF
   target/site/jacoco/jacoco.csv
 ```
 
+**区分①〜④が 4 辺そのもので、⑤⑥は 4 辺が共有する土台である**（⑤は辺①が本体リーダを叩くアダプタ、
+⑥は 4 辺が受け渡す中間モデル）。以降この 6 つを「対象 6 区分」と呼び、辺番号は再掲しない。
+
 **下表の行の並びは区分順に組み替えてある**（コマンドの出力は `jacoco.csv` の記録順で、並びだけが異なる）。
 値は 1 行ずつ出力と一致する。
 
 | 区分 | クラス（JaCoCo の CLASS 名） | 行（到達/全体） | 分岐（到達/全体） |
 |---|---|---|---|
-| ① 辺① Excel→中間モデル | `XlsFormatReader` | 190/195 | 115/140 |
-| ① 〃 | `XlsFormatReader.new DirectiveUtil.ValueMapper() {...}` | 2/2 | 0/0 |
-| ② 辺② YAML→中間モデル | `YamlFormatReader` | 192/192 | 102/102 |
-| ② 〃 | `YamlFormatReader.new DirectiveUtil.ValueMapper() {...}` | 2/2 | 0/0 |
-| ③ 辺③ 中間モデル→Excel | `XlsFormatWriter` | 157/158 | 101/104 |
-| ④ 辺④ 中間モデル→YAML | `YamlFormatWriter` | 157/159 | 86/90 |
+| ① Excel→中間モデル | `XlsFormatReader` | 190/195 | 115/140 |
+| ① 同上 | `XlsFormatReader.new DirectiveUtil.ValueMapper() {...}` | 2/2 | 0/0 |
+| ② YAML→中間モデル | `YamlFormatReader` | 192/192 | 102/102 |
+| ② 同上 | `YamlFormatReader.new DirectiveUtil.ValueMapper() {...}` | 2/2 | 0/0 |
+| ③ 中間モデル→Excel | `XlsFormatWriter` | 157/158 | 101/104 |
+| ④ 中間モデル→YAML | `YamlFormatWriter` | 157/159 | 86/90 |
 | ⑤ 本体アダプタ | `TestCoreReaderAdapter` | 46/46 | 11/11 |
-| ⑤ 〃 | `TestCoreReaderAdapter.HeaderCollector` | 16/20 | 6/6 |
-| ⑤ 〃 | `TestCoreReaderAdapter.BodyLineCollector` | 23/27 | 12/14 |
-| ⑤ 〃 | `TestCoreReaderAdapter.SendSyncBodyCollector` | 8/8 | 0/0 |
+| ⑤ 同上 | `TestCoreReaderAdapter.HeaderCollector` | 16/20 | 6/6 |
+| ⑤ 同上 | `TestCoreReaderAdapter.BodyLineCollector` | 23/27 | 12/14 |
+| ⑤ 同上 | `TestCoreReaderAdapter.SendSyncBodyCollector` | 8/8 | 0/0 |
 | ⑥ 中間モデル | `TestDataContainer` | 8/8 | 2/2 |
-| ⑥ 〃 | `TestDataSection` | 8/8 | 2/2 |
-| ⑥ 〃 | `TestDataBlock` | 22/22 | 10/10 |
-| ⑥ 〃 | `TableDataBlock` | 4/4 | 0/0 |
-| ⑥ 〃 | `ColumnRowDataBlock` | 11/11 | 6/6 |
-| ⑥ 〃 | `ListMapBlock` | 2/2 | 0/0 |
-| ⑥ 〃 | `FileDataBlock` | 14/14 | 4/4 |
-| ⑥ 〃 | `FileDataBlock.FileType` | 1/1 | 0/0 |
-| ⑥ 〃 | `MessageDataBlock` | 13/13 | 2/2 |
-| ⑥ 〃 | `RecordLayout` | 15/15 | 2/2 |
-| ⑥ 〃 | `FieldDef` | 12/12 | 4/4 |
-| ⑥ 〃 | `ModelPreconditions` | 40/40 | 28/28 |
+| ⑥ 同上 | `TestDataSection` | 8/8 | 2/2 |
+| ⑥ 同上 | `TestDataBlock` | 22/22 | 10/10 |
+| ⑥ 同上 | `TableDataBlock` | 4/4 | 0/0 |
+| ⑥ 同上 | `ColumnRowDataBlock` | 11/11 | 6/6 |
+| ⑥ 同上 | `ListMapBlock` | 2/2 | 0/0 |
+| ⑥ 同上 | `FileDataBlock` | 14/14 | 4/4 |
+| ⑥ 同上 | `FileDataBlock.FileType` | 1/1 | 0/0 |
+| ⑥ 同上 | `MessageDataBlock` | 13/13 | 2/2 |
+| ⑥ 同上 | `RecordLayout` | 15/15 | 2/2 |
+| ⑥ 同上 | `FieldDef` | 12/12 | 4/4 |
+| ⑥ 同上 | `ModelPreconditions` | 40/40 | 28/28 |
 
 **区分ごとの合計。** 手で足さずに次のコマンドで導く（下表はその出力そのものである）。
 
 ```sh
 awk -F, 'NR>1 {
-  if ($3 ~ /^XlsFormatReader/)            k="① 辺① XlsFormatReader";
-  else if ($3 ~ /^YamlFormatReader/)      k="② 辺② YamlFormatReader";
-  else if ($3 ~ /^XlsFormatWriter/)       k="③ 辺③ XlsFormatWriter";
-  else if ($3 ~ /^YamlFormatWriter/)      k="④ 辺④ YamlFormatWriter";
+  if ($3 ~ /^XlsFormatReader/)            k="① XlsFormatReader";
+  else if ($3 ~ /^YamlFormatReader/)      k="② YamlFormatReader";
+  else if ($3 ~ /^XlsFormatWriter/)       k="③ XlsFormatWriter";
+  else if ($3 ~ /^YamlFormatWriter/)      k="④ YamlFormatWriter";
   else if ($3 ~ /^TestCoreReaderAdapter/) k="⑤ TestCoreReaderAdapter";
   else if ($2 ~ /converter\.model$/)      k="⑥ 中間モデル";
   else next;
@@ -110,7 +124,7 @@ awk -F, 'NR>1 {
   tml+=$8; tlc+=$9; tmb+=$6; tbc+=$7; tn++;
 }
 END {
-  m=split("① 辺① XlsFormatReader,② 辺② YamlFormatReader,③ 辺③ XlsFormatWriter,④ 辺④ YamlFormatWriter,⑤ TestCoreReaderAdapter,⑥ 中間モデル", a, ",");
+  m=split("① XlsFormatReader,② YamlFormatReader,③ XlsFormatWriter,④ YamlFormatWriter,⑤ TestCoreReaderAdapter,⑥ 中間モデル", a, ",");
   for (i=1;i<=m;i++) { k=a[i];
     printf "%-26s classes %2d  line %3d/%-3d  branch %3d/%-3d  missed line %d branch %d\n", k, n[k], lc[k], ml[k]+lc[k], bc[k], mb[k]+bc[k], ml[k], mb[k] }
   printf "%-26s classes %2d  line %3d/%-3d  branch %3d/%-3d  missed line %d branch %d\n", "合計", tn, tlc, tml+tlc, tbc, tmb+tbc, tml, tmb;
@@ -118,19 +132,24 @@ END {
 ```
 
 ```
-① 辺① XlsFormatReader       classes  2  line 192/197  branch 115/140  missed line 5 branch 25
-② 辺② YamlFormatReader      classes  2  line 194/194  branch 102/102  missed line 0 branch 0
-③ 辺③ XlsFormatWriter       classes  1  line 157/158  branch 101/104  missed line 1 branch 3
-④ 辺④ YamlFormatWriter      classes  1  line 157/159  branch  86/90   missed line 2 branch 4
+① XlsFormatReader          classes  2  line 192/197  branch 115/140  missed line 5 branch 25
+② YamlFormatReader         classes  2  line 194/194  branch 102/102  missed line 0 branch 0
+③ XlsFormatWriter          classes  1  line 157/158  branch 101/104  missed line 1 branch 3
+④ YamlFormatWriter         classes  1  line 157/159  branch  86/90   missed line 2 branch 4
 ⑤ TestCoreReaderAdapter    classes  4  line  93/101  branch  29/31   missed line 8 branch 2
 ⑥ 中間モデル                    classes 12  line 150/150  branch  60/60   missed line 0 branch 0
 合計                         classes 22  line 943/959  branch 493/527  missed line 16 branch 34
 ```
 
-**辺②（`YamlFormatReader`）と中間モデル 11 クラス（+ `FileDataBlock.FileType`）は行・分岐とも 100% である。**
+**辺②（区分②）と中間モデル（区分⑥）の 12 クラスは行・分岐とも 100% である。**
+区分⑥が 12 クラスであることの導出（JaCoCo の CLASS 単位。`FileDataBlock.FileType` を含む）。
+
+```sh
+awk -F, 'NR>1 && $2 ~ /converter\.model$/ { print $3 }' target/site/jacoco/jacoco.csv | wc -l   # → 12
+```
 
 > **100% は担保を意味しない。カバレッジ数値だけを担保の根拠にしないこと。**
-> `inventory.md` §2.2 が #26 宛にこの点を指示している —— 辺② は行 100%・分岐 100% の状態でも
+> `inventory.md` §2.1-2 の末尾が #26 宛にこの点を指示している —— 辺② は行 100%・分岐 100% の状態でも
 > 変異が 3 件生存し、閉じた次のラウンドでもさらに 3 件が生存した（原因はいずれも入力の作り方の偏りで、
 > カバレッジでは検出できない）。**本書の §0 が示すとおり、その辺②のテストクラスには
 > あるべき姿を書いた `@Ignore` が 2 件残っている**（YML-14・XLS-40）。
@@ -172,7 +191,8 @@ print(tot)   # {file: (未到達分岐数, 未到達行数)}
 EOF
 ```
 
-実行結果の末尾行。
+実行結果の末尾行。**`print(tot)` は dict を 1 行で出力する。下は読みやすさのために
+3 行へ折り返したものであり、折り返し以外は出力そのままである。**
 
 ```
 {'XlsFormatReader.java': (25, 5), 'XlsFormatWriter.java': (3, 1),
@@ -190,17 +210,23 @@ EOF
    到達済みが確定した側を引く）
 3. 到達済みであることを示す `src/test` の実在テスト（該当箇所に明記した）
 
-**実験で確かめた 1 件。** `XlsFormatReader.java:585`（`value != null && !value.isEmpty()`）は
-2 つの条件のうちどちらの側が未到達か上の 3 つでは決まらなかった。
-`isEmptyEntry` へ行を渡すのは `dropEmptyEntries` の 2 箇所（`:162` テーブル系／`:193` LIST_MAP）だけで、
-**そのどちらの経路にも「先頭側の要素が空文字で、後ろに非空の要素がある行」を作る既存テストを特定できなかった**ため、
-`!value.isEmpty()` の false 側が到達済みかどうかを消去法で確定できなかった。
-そこで `XlsFormatReaderTest` に「`SETUP_TABLE` ブロックで先頭セルが空文字のデータ行（`["", "x"]`）」を作る
-使い捨てのテストを 1 件足して再計測した（`Tests run: 596`）。**L585 の `mb=1 cb=3` は変わらなかった**ため、
-`!value.isEmpty()` の false 側は元から到達済みであり、未到達なのは `value != null` の false 側と確定した。
-**この使い捨てテストは取り消してあり、本タスクの成果物には含まれない**（`git checkout -- src/test` で戻した。
-§0 の計測はこの取り消し後のクリーンなツリーで行っている）。
-**どの既存テストが `!value.isEmpty()` の false 側を到達させているかは未特定である。**
+**`isEmptyEntry` の 4 分岐（#22）は実在テストで側を確定した。**
+`XlsFormatReader.java:585`（`if (value != null && !value.isEmpty())`）は `mb=1 cb=3` で、
+4 分岐のうち 1 本だけが未到達である。**`!value.isEmpty()` の false 側（＝空文字の要素）は
+次の 2 件が到達させている。**
+
+| 到達させているテスト | 入力 | アサート | 通る呼び出し元 |
+|---|---|---|---|
+| `XlsFormatReaderTest#readTableNormalizesExcelQuotationNotation` | `XlsFormatReaderTest.java:171` `lines.add(row("\"\"", "\"abc\"", "${expr}"));` | 同 `:179` `assertThat(row.get(0), is(""));` | `dropEmptyEntries(rows)`（`XlsFormatReader.java:162`。テーブル系） |
+| `XlsFormatReaderTest#readListMapNormalizesExcelQuotationNotation` | 同 `:196` `lines.add(row("\"\"", "\"val\""));` | 同 `:204` `assertThat(row.get(0), is(""));` | `dropEmptyEntries(rows)`（同 `:193`。LIST_MAP） |
+
+**先頭セルは Excel の引用符記法 `""` であり、`stripQuotes`（`XlsFormatReader.java:539-544`）が
+`dropEmptyEntries` に渡る前に空文字へ畳む**（アサートが `is("")` でそれを固定している）。
+そのため `isEmptyEntry`（`:583-590`）のループは、
+1 要素目で `value != null` が true・`!value.isEmpty()` が **false** になって次の要素へ進み、
+2 要素目（`abc` ／ `val`）で `!value.isEmpty()` が **true** になって `return false` する。
+**`value != null` の true 側と `!value.isEmpty()` の両側の計 3 本が到達済みであるから、
+残る 1 本すなわち `value != null` の false 側が未到達である。**
 
 ## 3. 未到達分岐 34 件の一覧と分類
 
@@ -221,6 +247,9 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（' $F                  # → 16
 （行頭を `| 数字 |` に限っているのは、この節の説明文とコマンド行自身が同じ語を含み、
 限らないとそれらまで数えて主張を反証するためである。
 素朴な `grep -c 'テスト不要（' $F` は 23 を返す。）
+
+**「テスト不要」側の 5 値の意味と件数は次の §3.0 の凡例にある。**
+§3.1〜§3.4 の各表の「分類」欄はこの 5 語だけを使う。
 
 ### 3.0 「テスト不要」の理由の凡例
 
@@ -252,11 +281,11 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（NTF 仕様外）' $F                 
 
 | # | メソッド | 行（`da66425` 時点） | 未到達の側 | 分類 | 根拠 |
 |---|---|---|---|---|---|
-| 1 | `read` | **116** | `processed.add(singleKey(LIST_MAP, id))` の **false 側** | **テストを足すべき** | `notation:622`「同一の読み込み単位内に同じ ID のデータブロックが複数ある場合は**先着一致**となり、2件目以降は無視される」。この分岐は明文化された先着一致そのものであり、到達不能ではない |
-| 2 | `read` | **120** | `processed.add(singleKey(MESSAGE, id))` の **false 側** | **テストを足すべき** | 同じ先着一致が `MESSAGE` にも明文で及ぶ。`notation:262-270` の収集方式テーブルが「**単一**」方式を「ID が完全一致する最初の1件を取得」と定め、該当データタイプに `` `LIST_MAP` ``・`` `MESSAGE` `` を明示している（`notation:266-267`） |
+| 1 | `read` | **116** | `processed.add(singleKey(type, header.getIdentifier()))` の **false 側**（`:115` の `else if (type == DataType.LIST_MAP)` の中） | **テストを足すべき** | `notation:622`「同一の読み込み単位内に同じ ID のデータブロックが複数ある場合は**先着一致**となり、2件目以降は無視される」。この分岐は明文化された先着一致そのものであり、到達不能ではない |
+| 2 | `read` | **120** | `processed.add(singleKey(type, header.getIdentifier()))` の **false 側**（`:119` の `else if (type == DataType.MESSAGE)` の中） | **テストを足すべき** | 同じ先着一致が `MESSAGE` にも明文で及ぶ。`notation:256`「データブロックの収集方法は、データタイプによってあらかじめ決まっている」に続く表（`notation:258-270`）が「**単一**」方式の選び方を `notation:266`「データタイプが合致する（Excel 形式ではデータタイプ名の前方一致）データブロックのうち、ID が完全一致する最初の1件を取得」と定め、その「該当データタイプ」欄（`notation:267`）に `` `LIST_MAP` ``・`` `MESSAGE` `` を挙げている。**この欄は「など」で閉じており列挙は網羅ではないが、`MESSAGE` が「単一」方式であることはこの明示で足りる。** |
 | 3 | `read` | **122** | `if (block != null)` の **false 側** | **テストを足すべき** | `readMessageBlock` が `null` を返す経路（#4 と同じ 1 本のシナリオ）。ソースの注記が「本体の `MessageParser` が空結果を返したとき `adapter.readMessage` は `null` を返す（**正常系**）」と明記している（`XlsFormatReader.java:230-232`） |
 | 4 | `readMessageBlock` | **230** | `if (message == null)` の **true 側** | **テストを足すべき** | 同上。未到達行 `L233 (return null)` と整合（`mi=2 ci=0`） |
-| 5 | `read` | **126** | `else if (XlsDataTypeUtil.isSendSyncType(type))` の **false 側** | テスト不要（型の全数分岐） | `DataType` は 14 値（`nablarch-testing` `c5f3340` `DataType.java` の定数 14 個）。`DEFAULT` は `TestCoreReaderAdapter.HeaderCollector.parse` が `if (type == DataType.DEFAULT) continue;`（`TestCoreReaderAdapter.java:362-364`）で `BlockHeader` にしない。残る 13 値を `isTableType`（3）・`isFileType`（4）・`LIST_MAP`（1）・`MESSAGE`（1）・`isSendSyncType`（4）が**重複なく全数**分岐する（`3+4+1+1+4 = 13`）ため、この `else if` が false になる `type` は存在しない |
+| 5 | `read` | **126** | `else if (XlsDataTypeUtil.isSendSyncType(type))` の **false 側** | テスト不要（型の全数分岐） | `DataType` は 14 値（`nablarch-testing` `c5f3340` `DataType.java` の定数 14 個）。`DEFAULT` は `TestCoreReaderAdapter.HeaderCollector.parse` が `if (type == DataType.DEFAULT) {` / `    continue;` / `}`（`TestCoreReaderAdapter.java:362-364`。実物は 3 行）で `BlockHeader` にしない。残る 13 値を `isTableType`（3）・`isFileType`（4）・`LIST_MAP`（1）・`MESSAGE`（1）・`isSendSyncType`（4）が**重複なく全数**分岐する（`3+4+1+1+4 = 13`）ため、この `else if` が false になる `type` は存在しない |
 | 6 | `readListMapBlock` | **188** | `value == null ? null : stripQuotes(value)` の **null 側（true 側）** | テスト不要（実 `.xlsx` 経路では生じない） | `value` は `mapRow.get(column)`。(a) セル値そのものが `null` になり得ない——`PoiXlsReader.java:123`（`nablarch-testing` `c5f3340`）が `String cellValue = cell == null ? "" : cell.toString();` で必ず非 `null` を入れる。(b) キーが欠けることもない——`HeaderLine.getMapExcludingMarkerColumns`（同 `HeaderLine.java:59-67`）が `effectiveColumnNames` の全要素をキーに `put` し、値は `excludeMarkerColumns`（同 `:75-85`）が `(i >= line.size()) ? "" : line.get(i)` で必ず埋める。`column` は `readListMapColumnNames`（`TestCoreReaderAdapter.java:121-130`）が返す `effectiveColumnNames` の部分列 |
 | 7 | `emptyToNull` | **328** | `recordType == null` の **true 側**（`recordType.isEmpty()` の両側は到達済み） | テスト不要（実 `.xlsx` 経路では生じない） | 同じく `PoiXlsReader.java:123`。レコード種別セルは生行の先頭要素であり、空セルは `""` であって `null` にならない。`isEmpty()` 側は `XlsFormatReaderRealFileTest#readsOmittedRecordTypeAsNullFromRealBook` が実 `.xlsx` で担保している |
 | 8 | `skipToFirstNameRow` | **340** | `idx < bodyLines.size()` の **false 側** | テスト不要（内部整合性ガード） | 名前行が生行に見つからないまま走査が尽きる状態。直後に `verifyNameRow` が必ず `IllegalStateException` を投げるため（#9）、到達＝二経路読み込みの実装バグ。ソースが「内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ」と明記（`XlsFormatReader.java:360`） |
@@ -267,23 +296,23 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（NTF 仕様外）' $F                 
 | 13 | `readFieldDefs` | **397** | `i < originalLengths.size()` の **false 側**（`originalLengths != null` の両側は到達済み） | テスト不要（NTF 仕様外） | 同上（固定長でフィールド長行だけが短い状態）。`notation:883` ／ `notation:889` |
 | 14 | `isQuotationWrapped` | **507** | `value == null` の **true 側** | テスト不要（実 `.xlsx` 経路では生じない） | 唯一の呼び出し元は `normalizeDirectiveValue`（`XlsFormatReader.java:493`）であり、`value` はディレクティブ行のセル値。`PoiXlsReader.java:123` により `null` にならない |
 | 15 | `isQuotationWrapped` | **507** | `value.length() <= 2` の **true 側** | **テストを足すべき** | 2 文字以下のディレクティブ値。ソース自身が「デフォルトディレクティブとして本体器に注入される `"` 1 文字（可変長の `quoting-delimiter` 既定値）等は記法ではなく生値であり…ここでも素通しする」（`XlsFormatReader.java:490-492`）と、**通ることを前提にした挙動**を書いているのに一度も通っていない。未到達行 `L508 (return false)` と整合 |
-| 16 | `isQuotationWrapped` | **510** | `value.endsWith("\"")` の **false 側** | **テストを足すべき** | 半角 `"` で始まるが `"` で終わらない値（例 `"abc`）。`notation:1325`「半角または全角ダブルクォートで**前後が囲まれた場合のみ**、外側1層を除去する」の「のみ」を守っていることを示す分岐。消去法：`L494 (return stripQuotes(value))` が到達済み＝`startsWith` true・`endsWith` true は到達済み、`L511` が評価されている＝`startsWith` false も到達済み |
+| 16 | `isQuotationWrapped` | **510** | `value.endsWith("\"")` の **false 側** | **テストを足すべき** | 半角 `"` で始まるが `"` で終わらない値（例 `"abc`）。`notation:1325`「半角または全角ダブルクォートで**前後が囲まれた場合のみ**、外側1層を除去する」の「のみ」を守っていることを示す分岐。`L510` は `mb=1 cb=3` で、到達済み 3 本の内訳は次のとおり。**(a)(b)** `L494 (return stripQuotes(value))` が到達済み（`mi=0 ci=3`）＝`startsWith("\"")` true 側と `endsWith("\"")` true 側。ここを通れるのは `L510` だけである（`L511` は `mb=3 cb=1` で全角側が一度も true にならない。#17〜#19）。**(c)** `startsWith("\"")` の **false 側**は `XlsFormatReaderTest#readMapsExpectedRequestHeaderMessageBlock` が通している —— 入力 `XlsFormatReaderTest.java:567` `lines.add(row("text-encoding", "ms932"));`、アサート 同 `:584` `assertThat(message.getDirectives().get("text-encoding"), is("ms932"));`。`ms932` は 5 文字なので `L507` を抜け、`record-separator` ／ `field-separator` でもないので `L493` の `isQuotationWrapped` へ入る（経路は `XlsFormatReader.java:246` → `toStringDirectives`（`:467-476`）→ `normalizeDirectiveValue`（`:472` から `:482`）→ `:493`）。**残る 1 本が `endsWith("\"")` の false 側である。** |
 | 17 | `isQuotationWrapped` | **511** | `value.startsWith("”")` の **true 側** | **テストを足すべき** | 全角 `”` の記法。`notation:1325`「**半角または全角**ダブルクォートで前後が囲まれた場合のみ」／`notation:1397`「前後のダブルクォート（**全角・半角問わない**）を除いた文字列として扱う」。`mb=3 cb=1` で到達済みは `startsWith("”")` の false 側だけ |
 | 18 | `isQuotationWrapped` | **511** | `value.endsWith("”")` の **true 側** | **テストを足すべき** | 同上 |
 | 19 | `isQuotationWrapped` | **511** | `value.endsWith("”")` の **false 側** | **テストを足すべき** | 同上（`”` で始まり `”` で終わらない値） |
 | 20 | `tail` | **522** | `list.isEmpty()` の **true 側** | **テストを足すべき** | 生行が空リストになる場合。`TestCoreReaderAdapter.BodyLineCollector.parse`（`:464`）が `NablarchTestUtils.trimTailCopy(line)` を通すため、**全セルが空の行は空リストになる**（`nablarch-testing` `c5f3340` `NablarchTestUtils.java:251-263` の `trimTail` が末尾の空要素を全部落とす）。`notation:883` は「全フィールドを省略した行（Excel形式では先頭セルが空の行…）」を有効なレコードとして認めており、この形は仕様外ではない |
 | 21 | `stripQuotes` | **541** | `if (value == null)` の **true 側** | テスト不要（実 `.xlsx` 経路では生じない） | 呼び出し元は 4 箇所（`grep -n 'stripQuotes(' src/main/java/nablarch/test/tool/converter/xls/XlsFormatReader.java` → `:157` `:188` `:425` `:494`。`:539` は定義行）。`:157` と `:188` は三項演算子で `null` を除外済み、`:425` は `i < valueCells.size() ? valueCells.get(i) : ""` の結果で、生行の要素は実 `.xlsx` では `PoiXlsReader.java:123` により非 `null`、`:494` は直前の `isQuotationWrapped` が `null` に対して `false` を返す（`:507`）ため、いずれも `null` を渡さない。**ソースの `:540` のコメントが「`null` を返すためこのガードは必須」と読める書き方をしているが、実測はガードが一度も通らないことを示す**（既知課題 `issues.md` XLS-09）。未到達行 `L542` と整合 |
-| 22 | `isEmptyEntry` | **585** | `value != null` の **false 側**（`!value.isEmpty()` の両側は到達済み） | テスト不要（実 `.xlsx` 経路では生じない） | 呼び出し元は `dropEmptyEntries`（`:566-574`）の 2 箇所（`:162` テーブル系／`:193` LIST_MAP）。要素はテーブル系が `table.getValue(r, column)`（`:156-157`）、LIST_MAP が `mapRow.get(column)`（`:187-188`）。実 `.xlsx` では `PoiXlsReader.java:123` によりセル値が非 `null` のため、どちらの経路でも `null` は生じない。**ただし Fake リーダ経由では現に生じており、`:157` の `value == null` は両側到達済み（`mb=0 cb=2`）である**（§6-1 に開示）。どちらの側が未到達かは §2 の実験で確定した |
+| 22 | `isEmptyEntry` | **585** | `value != null` の **false 側**（`!value.isEmpty()` の両側は到達済み） | テスト不要（実 `.xlsx` 経路では生じない） | 呼び出し元は `dropEmptyEntries`（`:566-574`）の 2 箇所（`:162` テーブル系／`:193` LIST_MAP）。要素はテーブル系が `table.getValue(r, column)`（`:156-157`）、LIST_MAP が `mapRow.get(column)`（`:187-188`）。実 `.xlsx` では `PoiXlsReader.java:123` によりセル値が非 `null` のため、どちらの経路でも `null` は生じない。**ただし Fake リーダ経由では現に生じており、`:157` の `value == null` は両側到達済み（`mb=0 cb=2`）である**（§6-1 に開示）。どちらの側が未到達かは §2 の実在テスト 2 件で確定した |
 | 23 | `deduplicateColumnNames` | **617** | `warned.add(name)` の **false 側** | **テストを足すべき** | 同一のカラム名が **3 回以上**現れたとき（2 回目の重複検出で WARN を重複出力しない）。カラム名の重複そのものは既存テストで到達済み（`cb=1`）であり、3 回以上にするだけで到達する |
-| 24 | `bookName` | **694** | `slash < 0` の **true 側** | **テストを足すべき** | `read` は `public`（宣言は `XlsFormatReader.java:101`）であり、`'/'` を含まない `resourceName` を渡せば到達する。**Javadoc（`XlsFormatReader.java:690`）が `@return ブック名（`'/'` が無ければリソース名全体）` と振る舞いを明記しており、明文化済みで一度も通っていない。** 本番の唯一の呼び出し元 `XlsFormatHandler.java:46` が `bookName + "/" + sheetName` を渡すことは、到達不能の根拠にはならない（`issues.md` XLS-21 の【判定の訂正】が「到達経路が無い」を根拠にした判定を退けている） |
-| 25 | `sheetName` | **705** | `slash < 0` の **true 側** | **テストを足すべき** | 同上（Javadoc は `XlsFormatReader.java:701`） |
+| 24 | `bookName` | **694** | `slash < 0` の **true 側** | **テストを足すべき** | `read` は `public`（宣言は `XlsFormatReader.java:101`）であり、`'/'` を含まない `resourceName` を渡せば到達する。**Javadoc（`XlsFormatReader.java:690`）が `@return ブック名（{@code '/'} が無ければリソース名全体）` と振る舞いを明記しており、明文化済みで一度も通っていない。** 本番の唯一の呼び出し元 `XlsFormatHandler.java:46` が `bookName + "/" + sheetName` を渡すことは、到達不能の根拠にはならない（`issues.md` XLS-20 の【判定の訂正】が「到達経路が無い」を根拠にした判定を退けている） |
+| 25 | `sheetName` | **705** | `slash < 0` の **true 側** | **テストを足すべき** | 同上（Javadoc は `XlsFormatReader.java:701` の `@return シート名（{@code '/'} が無ければリソース名全体）`） |
 
 ### 3.2 辺③ `XlsFormatWriter`（3 件）
 
 | # | メソッド | 行（`da66425` 時点） | 未到達の側 | 分類 | 根拠 |
 |---|---|---|---|---|---|
 | 26 | `write` | **107** | `if (parent != null)` の **false 側** | **テストを足すべき** | `basePath` が空文字列などで親ディレクトリを持たない相対パス（例 `foo.xlsx`）が生成される場合。**ソースのコメント自身が「…`getParent()` は `null` を返すため、null チェックが必須」と書いている**（`XlsFormatWriter.java:106`）のに一度も通っていない。`write` は `public` であり `basePath` に空文字列を渡せば到達する。`inventory.md` §3.1-2 が既に「担保の穴」として開示している |
-| 27 | `layout` | **202** | `else if (block instanceof MessageDataBlock)` の **false 側** | テスト不要（型の全数分岐） | false 側は直後の `throw new IllegalArgumentException("unsupported block: " …)`（未到達行 `L206`）に落ちる。`TestDataBlock` は `sealed` で（`TestDataBlock.java:86-87`：`public abstract sealed class TestDataBlock permits ColumnRowDataBlock, FileDataBlock, MessageDataBlock`）、`ColumnRowDataBlock` も `sealed`（`ColumnRowDataBlock.java:67-68`：`permits TableDataBlock, ListMapBlock`）、末端の 4 クラスはいずれも `final` である。**具象サブクラスは `TableDataBlock` ／ `ListMapBlock` ／ `FileDataBlock` ／ `MessageDataBlock` の 4 つに閉じており**（`ColumnRowDataBlock` は `abstract`）、`instanceof` の連鎖がこれを全数分岐する。**`permits` を書き換えない限り、コンパイル単位の外からサブクラスを足すことはできない。** |
+| 27 | `layout` | **202** | `else if (block instanceof MessageDataBlock)` の **false 側** | テスト不要（型の全数分岐） | false 側は直後の `throw new IllegalArgumentException("unsupported block: " …)`（未到達行 `L206`）に落ちる。`TestDataBlock` は `sealed` で（`TestDataBlock.java:86-87`：`public abstract sealed class TestDataBlock permits ColumnRowDataBlock, FileDataBlock, MessageDataBlock`）、`ColumnRowDataBlock` も `sealed`（`ColumnRowDataBlock.java:67-68`：`public abstract sealed class ColumnRowDataBlock extends TestDataBlock permits TableDataBlock, ListMapBlock`）、末端の 4 クラスはいずれも `final` である。**具象サブクラスは `TableDataBlock` ／ `ListMapBlock` ／ `FileDataBlock` ／ `MessageDataBlock` の 4 つに閉じており**（`ColumnRowDataBlock` は `abstract`）、`instanceof` の連鎖がこれを全数分岐する。**`permits` を書き換えない限り、コンパイル単位の外からサブクラスを足すことはできない。** |
 | 28 | `isMarkerColumn` | **557** | `columnName != null` の **false 側**（`startsWith("[")` ／ `endsWith("]")` の両側は到達済み） | テスト不要（中間モデルの不変条件） | カラム名 `null` は `ColumnRowDataBlock` の生成時に `ModelPreconditions` が拒否する（方針は `steering.md` Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」・`issues.md` XLS-38）。**書き出し側に番人を置かない方針の裏返しとしてこの `null` ガードだけが残っている。** `endsWith("]")` の false 側が到達済みであることは `XlsFormatWriterTest.java:874`（カラム名 `"[half"`）で確認した |
 
 ### 3.3 辺④ `YamlFormatWriter`（4 件）
@@ -300,7 +329,7 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（NTF 仕様外）' $F                 
 | # | メソッド | 行（`da66425` 時点） | 未到達の側 | 分類 | 根拠 |
 |---|---|---|---|---|---|
 | 33 | `parse` | **454** | `if (groupId != null)` の **false 側** | **テストを足すべき** | 先頭セルがデータタイプ名で始まるのに `=` を含まない行（`markerGroupId` が `null` を返す。`TestCoreReaderAdapter.java:282-286`）。**同型のガードは `HeaderCollector.parse`（`:366-369`）では両側とも到達済み**であり、記法として書けない形ではない。`BodyLineCollector` 側の固定が抜けている |
-| 34 | `parse` | **458** | `groupId.equals(targetGroupId)` の **false 側** | **テストを足すべき** | 同一シートに同じデータタイプで**異なるグループ ID** のブロックがある場合。`notation:250-254`／`notation:306` が同一読み込み単位に複数グループを併記することを正面から扱っている（「デフォルトグループと個別グループのデータは併用でき、両方が混在した場合は両方のデータが有効になる」）ため、記法として正当な入力である |
+| 34 | `parse` | **458** | `groupId.equals(targetGroupId)` の **false 側** | **テストを足すべき** | 同一シートに同じデータタイプで**異なるグループ ID** のブロックがある場合。`notation:252`「同じ読み込み単位の中に、同じデータタイプのデータブロックを複数記述したい場合は、グループIDでそれらを区別する」・`notation:254`「デフォルトグループと個別グループのデータは併用でき、両方が混在した場合は両方のデータが有効になる」により、**記法として正当な入力である**。**ただし Excel 形式には制約が付く** —— `notation:306`（`notation:276`「Excel形式の場合」節の `notation:280` `.. important::` の中）は「グループIDについても同様に、同じグループIDのブロックが複数ある場合はまとめて記述する」と求め、`case_002` を挟んで交互に書くと「`case_001` の収集は `EMPLOYEE` の1件で終了し、`DEPT` が読み込まれないまま該当データが空扱いになる」と定めている。**テストを足すときはこの制約に従い、グループごとにまとめた版面を作る必要がある。** |
 
 ## 4. 未到達行 16 件の一覧
 
@@ -351,6 +380,17 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（NTF 仕様外）' $F                 
 
 ## 6. 開示：担保の穴と、確かめきれなかったこと
 
+**6 項目ある。性質は同じではない。**
+
+| # | 内容 | 性質 |
+|---|---|---|
+| §6-1 | 「実 `.xlsx` 経路では生じない」5 件は Fake リーダ経由で到達可能 | **担保の穴** |
+| §6-2 | 対象 6 区分の外に未分類の未到達が分岐 16 件・行 63 件 | **担保の穴** |
+| §6-3 | `inventory.md` から他ファイルの行番号を落とした | 処置済みの台帳訂正（穴ではない） |
+| §6-4 | `-o` なしでの再現は未確認 | 確かめきれなかったこと |
+| §6-5 | 「内部整合性ガード」4 件の根拠は `src/main` 自身のコメントだけ（外部の契約が無い） | **担保の穴** |
+| §6-6 | `@Ignore` 2 件（YML-14・XLS-40）があるべき姿を書いたまま無効化されている | **担保の穴** |
+
 1. **「実 `.xlsx` 経路では生じない」と分類した 5 件（#6・#7・#14・#21・#22）は、
    converter のテスト用シームからは通常の呼び出しで到達できる。**
    根拠の根はいずれも `nablarch-testing` の `PoiXlsReader.java:123`
@@ -379,22 +419,106 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（NTF 仕様外）' $F                 
    # → classes=29 line 638/701 branch 237/253 missed_line=63 missed_branch=16
    ```
 
-   このうち辺③④の変換ルールを実際に持つのは `ExcelFormatConfig`（行 5）・`Styles`（行 1・分岐 1）・
-   `YamlTestDataValidator`（行 5・分岐 1）・`DirectiveUtil`（分岐 1）・`XlsFormatHandler`（分岐 1）である。
-   **#26 は対象 6 区分だけを分類対象としたため、この分は「テストを足すべき／テスト不要」の
+   **内訳は 14 クラスで、分岐 16 件・行 63 件がすべてここに収まる**（除外条件は付けていない。
+   未到達を 1 つでも持つクラスを全件出す）。
+
+   ```sh
+   awk -F, 'NR>1 && !($3 ~ /^(XlsFormatReader|XlsFormatWriter|YamlFormatReader|YamlFormatWriter|TestCoreReaderAdapter)/ \
+     || $2 ~ /converter\.model$/) && ($6 > 0 || $8 > 0) \
+     { printf "%-22s missed_line=%-3d missed_branch=%d\n", $3, $8, $6; ml+=$8; mb+=$6; n++ } \
+     END { printf "%-22s missed_line=%-3d missed_branch=%d\n", "計 " n " クラス", ml, mb }' \
+     target/site/jacoco/jacoco.csv
+   ```
+
+   ```
+   FragmentView           missed_line=0   missed_branch=1
+   ExcelFormatConfig      missed_line=5   missed_branch=0
+   Styles                 missed_line=1   missed_branch=1
+   YamlTestDataValidator  missed_line=5   missed_branch=1
+   DirectiveUtil          missed_line=0   missed_branch=1
+   YamlFormatHandler      missed_line=2   missed_branch=0
+   ConverterPathResolver  missed_line=2   missed_branch=0
+   XlsFormatHandler       missed_line=0   missed_branch=1
+   XlsOutputConfig        missed_line=25  missed_branch=8
+   ConverterFileFilter    missed_line=9   missed_branch=1
+   TestDataConverter      missed_line=2   missed_branch=0
+   DataFormat             missed_line=1   missed_branch=1
+   YamlTestCoreAdapter    missed_line=1   missed_branch=1
+   StubDbInfo             missed_line=10  missed_branch=0
+   計 14 クラス               missed_line=63  missed_branch=16
+   ```
+
+   **最大の穴は `XlsOutputConfig` で、16 分岐のうち 8 件・63 行のうち 25 行を 1 クラスで占める。**
+   未到達分岐 8 件はすべて `toExcelFormatConfig()` の
+   `if (xxxColor != null) { config = config.withXxx(resolveColor(xxxColor)); }` の **true 側**であり
+   （`jacoco.xml` の `XlsOutputConfig.java` で `mb>0` の行は `L134`・`L140`・`L143`・`L146`・`L149`・
+   `L155`・`L158`・`L161` の 8 行。いずれも `mb=1 cb=1`）、
+   **Excel 出力の書式オプション（各種の背景色・列幅自動調整など）が既定値以外で一度も指定されていない**
+   ことを意味する。`ExcelFormatConfig` の未到達行 5 件（`L143`・`L169`・`L182`・`L221`・`L260`。
+   いずれも `mi=25 ci=0`）はその裏返しで、対応する `withXxx` が一度も呼ばれていない。
+   `XlsOutputConfig` は Maven プラグインのパラメータ受け口であって辺③の変換ルールそのものではないが、
+   **辺③の出力書式を決める設定であり、「対象 6 区分の外だから」で落としてよいものではない。**
+
+   **#26 は対象 6 区分だけを分類対象としたため、この 16 分岐・63 行は「テストを足すべき／テスト不要」の
    どちらにも入っていない。#27 の軸マトリクスもクラス単位ではなく軸要素単位で作るため、
-   ここを拾うことは保証されていない。** 拾うかどうかは #27 で決める必要がある。
+   ここを拾うことは保証されていない。** 拾うかどうかは #27 で決める必要がある
+   （**少なくとも `XlsOutputConfig` の書式オプションは明示的に扱いを決めること**）。
 
 3. **`inventory.md` から他ファイルの行番号を落とした。**
    同文書の辺③④の JaCoCo 実測（`XlsFormatWriter` `line 157/158 branch 101/104`、
    `YamlFormatWriter` `line 157/159 branch 86/90`）は**本計測と一致している**が、併記されていた未到達の
    行番号はコミット `54d2057`（Javadoc・コメントのみの変更）による行ずれで古くなっていた。
+   **さらに `DirectiveUtil` の未到達を「`DirectiveUtil.java:45` の未到達行」と書いていたのは事実誤りで**、
+   実測は `toStringDirectives` の三項演算子 1 行が**部分実行**（`mb=1 cb=1`・`ci=9`。行としては到達済み）
+   であり、`DirectiveUtil` の未到達行は 0 件である（`line 20/20`）。
    `steering.md` Rules「台帳（`coverage/inventory.md`）に『他ファイルの行番号』…を書かない。
-   行番号は他ファイルを編集するたびに移動し、台帳を直すと台帳の別箇所が自己無効化する。
+   **行番号とファイル行数は**他ファイルを編集するたびに移動し、台帳を直すと台帳の別箇所が自己無効化する。
    識別はクラス名・メソッド名で行う」に従い、**行番号を書き直すのではなく落とし、
-   識別をクラス名・メソッド名に変えて、行番号つきの一覧は本書 §3 を指すポインタにした**（`inventory.md` の 6 箇所）。
+   識別をクラス名・メソッド名に変えて、行番号つきの一覧は本書 §3 を指すポインタにした。**
+
+   **処置後の状態は次のコマンドで確かめられる**（件数を手で書かない）。
+
+   ```sh
+   F=.rn/ntf-test-data-converter/coverage/inventory.md
+   grep -cE '\.java:[0-9]+' $F                                   # → 8
+   grep -E '\.java:[0-9]+' $F | grep -cE '^(② |   )src/test/java/'  # → 8
+   ```
+
+   **2 つが一致するので、残る 8 件はすべて `grep -rn '^    @Ignore' src/test --include=*.java` の
+   出力を記録日のまま凍結したブロックの中にあり、台帳自身が主張している行番号は 0 件である。**
+   凍結出力を書き直さない理由（書き直すと「そのまま実行すれば同じ結果が出る」という記録の
+   性質が壊れる）は `inventory.md` §0.1-2 に明記した。
 
 4. **`-o`（オフライン）なしでの再現は未確認**（§0 の注記のとおり）。
+
+5. **「内部整合性ガード」と分類した 4 件（#8・#9・#10・#11）の根拠は `src/main` 自身のコメントだけであり、
+   §6-1 と同じ Fake リーダのシームから到達できる。**
+   他の 4 区分（型の全数分岐／中間モデルの不変条件／実 `.xlsx` 経路では生じない／NTF 仕様外）は
+   sealed 宣言・`ModelPreconditions`・`PoiXlsReader` の実装・記法の明文という**外部の根拠**を持つのに対し、
+   この 4 件が持つのは `XlsFormatReader.java:360` ／ 同 `:445` の
+   「内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ」という
+   **自分自身のコメントだけ**である。しかもそのコメントが言う「二経路読み込み」は、
+   **同じシートを「器（`FileView` の断片構造）」と「生行」の 2 回に分けて読むこと**を指しており、
+   `toRecordLayouts(view, bodyLines, ...)` を呼ぶ 3 箇所すべてがこの形である ——
+   `readFileBlocks`（`XlsFormatReader.java:210` の `TestCoreFileAdapter.read(file)` と
+   同 `:212` の `adapter.readBlockBodyLines(...)`）／`readMessageBlock`（同 `:236` と `:239-241`）／
+   `readSendSyncBlocks`（同 `:272` と `:273-274`）。
+   `readBlockBodyLines` の実体は `TestCoreReaderAdapter.java:264` で、
+   いずれも `reader`（`TestDataReader`）を通してシートを読み直す。
+   この読み直しは §6-1 が開示したのと同じ `FakeTestDataReader`（`XlsFormatReaderTest.java:54`）の
+   シームを通る（`XlsFormatReaderTest.java:121-124` の `readerOf(...)` が
+   `new XlsFormatReader(new TestCoreReaderAdapter(fake))` で差し込んでいる）。
+   **ただし「器側と生行側を食い違わせる canned 入力を実際に組めるか」は #26 では確かめていない**
+   ——どちらの読み取りも同じ canned 行から出発するためである。
+   **したがって言えるのは、この 4 件の「到達不能」が外部の契約（sealed 宣言・`ModelPreconditions`・
+   `PoiXlsReader` の実装・記法の明文）ではなく `src/main` 自身のコメント 1 つだけに
+   支えられているということであり、他の 4 区分と根拠の強さが同じではない。**
+   **分類は「テスト不要」のままにした**（到達＝実装のバグという位置づけは変わらないため）が、
+   **根拠が自己申告である以上これは担保の穴である。**
+
+6. **§0 の `@Ignore` 2 件（YML-14・XLS-40）は、あるべき姿を書いたまま無効化されている担保の穴である。**
+   いずれも他責先（本体 `DataFileFragment#addValue` ／ `nablarch-testing` の `TableData`）の修正待ちで、
+   #26 では動かせない。**「行・分岐 100%」の辺②に載っている点は §1 の注記のとおりである。**
 
 ## 7. 参考：6 区分の外のクラス（本タスクの対象外）
 
