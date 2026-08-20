@@ -3665,7 +3665,7 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
 - **決着すると何が決まるか**:
   - 「区切り文字は使えない」と定まる場合 → converter は中間モデルの生成時に拒否できる（XLS-39 は要対応。
     修正先は中間モデル）。**あわせてスキーマ側に `pattern` を足すことが要る。**
-  - 「使える」と定まる場合 → 辺④の `YamlFormatWriter.java:526-535` の `rawGroup` が外側 1 組を外す挙動が
+  - 「使える」と定まる場合 → 辺④の `YamlFormatWriter.java:479-488` の `rawGroup` が外側 1 組を外す挙動が
     不具合になる（XLS-39 は要対応。修正先は辺④）。
 - **converter 側の現状**: 番人は置いていない。判定は **保留**のままにしてある。
 - **解除条件**: 上記いずれかが明文になること。明文になった時点で XLS-39 の判定を保留から要対応へ倒す。
@@ -4207,7 +4207,8 @@ $ awk -F'|' '/^\| COV-[0-9]+ \|/ { s += $4 } END { print s }' $F
 - 未到達箇所: `YamlFormatWriter#write` `:84`（`if (parent != null)` の false 側）。分岐 1 件
 - 到達する入力: `write(container, "")` のように `basePath` を空文字列にし、`foo.yaml` のような
   親を持たない相対パスを作らせる
-- 根拠: COV-08 と同型で、`YamlFormatWriter.java:83` に同じコメントがある
+- 根拠: COV-08 と同型で、`YamlFormatWriter.java:83` に**同型の**コメントがある
+  （例示ファイル名だけが違い、`XlsFormatWriter.java:106` は `"foo.xlsx"`、こちらは `"foo.yaml"`）
 - 備考: **辺④側も `inventory.md` が既に開示している** —— §4.1-2 の「開示（テストを足していない担保の穴）」が
   「未到達は **3 箇所**で、**いずれも軸A〜F の要素ではない**: `write` の「親ディレクトリを持たない相対パス」
   ガード（`getParent()` が `null` になる枝）／`emitBlock` の `instanceof` チェーンの `else`
