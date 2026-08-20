@@ -1340,8 +1340,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-19
-- **Last completed**: #25.5 不具合修正（TDD）— レビュー 3 巡ぶんの採否まで記録して完了（`9cc42b2`）
-- **Next**: #26 カバレッジ計測と未到達分岐の列挙（未着手。ステップ 8 件すべて未チェック）
-- **Notes**: ブランチ `ntf-test-data-converter`（PR 無し）。次の具体行動は Decisions §「JaCoCo カバレッジ取得手順（設定変更不要）」（`steering.md:528`）のコマンドで計測し、`coverage/coverage-report.md` を新規に作ること。**ブロッカー無し。** 未決は台帳の**保留 2 件**のみで、どちらも他者宛の申し送り待ちであり #26 を止めない —— XLS-42（`notation:883` と本体スキーマ `$defs.record_fragment.rows` が正面から矛盾）・XLS-39（グループ ID に使える文字の明文が無い）。#26 の比較対象となる直近の実測は `inventory.md` **追補その 7**（テスト 595 件・`@Ignore` 2 件）と、`steering.md` の §6-J・§6-K ステップに載せた JaCoCo 9 クラスの行・分岐。user-deferred paths 無し（`git status --porcelain` が空）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
