@@ -319,7 +319,9 @@ RoundTripTest.java             30 @Test
 総数が 536 から 540 へ増えた 4 件は、レビュー指摘を受けて**後から足した担保**であり、
 不具合修正の副産物ではない（`XlsFormatWriterInvalidOutputTest#rejectsNullSheetName` 1 件と
 `YamlTestCoreAdapterTest` のデフォルトグループ直接テスト 3 件）。
-下の 3 つのコマンドはそのまま実行すれば同じ結果が出る。
+下の 3 つのコマンドの出力は **記録日（2026-08-14）時点の実測**であり、
+**現在の実行結果とは一致しない**（その後もテストが増減しているため。
+現在の値は §0.1-2 の最新の追補にある）。
 
 ```sh
 cd /home/tie303177/work/nablarch/nablarch-testing-converter
@@ -341,17 +343,24 @@ done
    HEAD: 540
 ```
 
-`@Ignore` の 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml` と
+**記録日（2026-08-14）時点**の `@Ignore` 2 件は `keepsFwHeaderNamedRecordInSendSyncFromRealYaml` と
 `keepsFwHeaderNamedRecordInMessageFromRealYaml` で、いずれも **YML-03**（本体側 yaml の修正待ち）の
-**待機テスト**である。仕様どおりの期待値を書いてあるので、本体側が直った日に `@Ignore` を外せば通る。
+**待機テスト**だった。仕様どおりの期待値を書いてあるので、本体側が直った日に `@Ignore` を外せば通る。
+**この 2 件は YML-03 の解消（§0.1-2 の追補その 2）で無くなっており、現在の `@Ignore` 2 件は
+別のもの（YML-14・XLS-40）である。現在の内訳は `coverage/coverage-report.md` §0 が正である。**
 
-> **上の ② の中に見える `…java:638` ／ `…java:1001` は `grep -rn` の出力そのもの**（記録した日の実測）
-> **であって、台帳が主張している行番号ではない。** 以降の追補（その 4〜その 7）の ② も同じ性質である。
-> **書き直すと「そのまま実行すれば同じ結果が出る」という記録の性質が壊れる**ため、出力は当日のまま凍結し、
+> **上の ② の中に見える `…java:638` ／ `…java:1001` は `grep -rn` の出力であって、
+> 台帳が主張している行番号ではない。** この文書の ② はすべて `grep -rn` の出力である
+> （**長い行は折り返し・省略してある**）。**行番号が見えるのは本節と追補その 5・その 6・その 7 の
+> 4 か所**で、いずれも記録した日の実測である（追補その 2〜その 4 の ② は「（ヒット 0 件）」であり
+> 行番号を 1 つも持たない）。
+> **書き直すと「記録した日にそのまま実行して得た出力である」という記録の性質が壊れる**ため、
+> 出力は当日のまま凍結し、
 > 本文側の識別はクラス名・メソッド名で行う（`steering.md` Rules「台帳に他ファイルの行番号を書かない」）。
 > **台帳の本文に他ファイルの行番号は 1 つも無い**（確認コマンドは §0.1-2 系の追補すべてを含む全文に対して
-> `grep -nE '\.java:[0-9]+' .rn/ntf-test-data-converter/coverage/inventory.md` を実行し、
-> ヒットが `grep -rn '^    @Ignore' src/test --include=*.java` の出力ブロック内だけであることを見る）。
+> `grep -nE '\.java:[0-9]+|\bL[0-9]{2,4}\b' .rn/ntf-test-data-converter/coverage/inventory.md` を実行し、
+> ヒットが `grep -rn '^    @Ignore' src/test --include=*.java` の出力ブロック内だけであることを見る。
+> **`L` に続けて行番号を書く形式**の 1 件は 3 巡目レビューで見つかって落とした。`coverage-report.md` §6-3）。
 
 ビルド全体の実測（`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean test -Djacoco.skip=true`）:
 
@@ -696,7 +705,7 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 XlsFormatWriter#write（parent null 分岐）・#layout（unsupported block の分岐と throw 行）
                  ・#isMarkerColumn（columnName null 分岐）                  → 行 1・分岐 3
 YamlFormatWriter#write（parent null 分岐）・#emitBlock（unsupported block の分岐と throw 行）
-                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐）    → 行 2・分岐 4
+                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐と throw 行） → 行 2・分岐 4
 ```
 
 **開示（XLS-22 の番人 4 本は移設前から空振りだった —— JaCoCo で検出した）**
@@ -722,8 +731,9 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 
 出力は `line 20/20 branch 17/18`。未到達は `DirectiveUtil#toStringDirectives` の
 `value == null ? null : valueMapper.map(...)` の **`null` 側 1 分岐**である
-（**行は 20/20 で未到達行は 0 件**。この行は部分実行であって未到達行ではない。
-行番号つきの一覧は `coverage-report.md` §3 にある —— #26 の実測）。
+（**行としては到達済み**——`mb=1 cb=1`・`ci=9` の部分実行であって未到達行ではない。
+**行は 20/20 で未到達行は 0 件**である。#26 の実測。`DirectiveUtil` は対象 6 区分の外なので
+`coverage-report.md` §3 の表には載っておらず、扱いは同 §6-2・§6-3 にある）。
 
 **この分岐は既存メソッド `toStringDirectives` の中にあり、#25.5 で足した `normalizeSeparator` では
 ない。** `DirectiveUtil` は `8c327d0` の時点で存在し（`git cat-file -e
@@ -838,7 +848,7 @@ Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
 XlsFormatWriter#write（parent null 分岐）・#layout（unsupported block の分岐と throw 行）
                  ・#isMarkerColumn（columnName null 分岐）                  → 行 1・分岐 3
 YamlFormatWriter#write（parent null 分岐）・#emitBlock（unsupported block の分岐と throw 行）
-                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐）    → 行 2・分岐 4
+                 ・#rawGroup（`]` 側の分岐）・#sectionKey（default 分岐と throw 行） → 行 2・分岐 4
 ```
 
 **未到達のメソッドの顔ぶれは追補その 5 から変わっておらず、行番号だけが動いた**（そのため本節では
@@ -1741,7 +1751,10 @@ A-01 `DEFAULT` は到達不能のまま（§0.8-7）。
   修正ラウンド 2 で `YamlFormatReaderRealFileTest#normalizesLowercaseDefaultRecordTypeToNull` を足して閉じた
   （`"Default"` 側は `YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull` が通す）。
   **修正ラウンド 3（2026-08-14）で JaCoCo を取り直した結果、`YamlFormatReader` は
-  行 200/200（100%）・分岐 106/106（100%）である。** 修正ラウンド 2 の時点で記していた
+  行 200/200（100%）・分岐 106/106（100%）だった**（**2026-08-14 時点の実測**。その後
+  `recordsWithoutFwHeader` の廃止で総数が減り、#26 の計測〈`da66425`・2026-08-20〉では
+  `line 192/192 branch 102/102` である。§0.1-2 の追補その 2 の注記を参照。
+  **どちらも未到達 0 件＝100% であり、以下の論旨は変わらない**）。 修正ラウンド 2 の時点で記していた
   「分岐 107/108（99.07%）・唯一の未到達分岐は `"default"` 側」は、**その分岐を閉じたあとの数値ではなく
   再実行しても再現しない**ため、実測値へ差し替えた（3 巡目レビュー指摘）。導出コマンド
   （**オフラインで実行できる形に直した**。JaCoCo 手順は steering Decisions のとおり）:
@@ -1907,7 +1920,9 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
   残る 23 件は characterization である。**軸D の ✅ を converter の実装の担保として読まないこと。**
   辺②で軸D を測る目的は「YAML 記法 → 中間モデルの値」を記録・固定することであり、
   この性質はタスクの狙いどおりである。
-- **行・分岐 100% は変異に耐えることを意味しない。** `YamlFormatReader` は行 201/201・分岐 108/108 だが、
+- **行・分岐 100% は変異に耐えることを意味しない。** `YamlFormatReader` は
+  行 201/201・分岐 108/108（**2026-08-14 時点の実測。#26 の計測〈`da66425`・2026-08-20〉では
+  `line 192/192 branch 102/102`**）だが、
   その状態でも 3 つの変異（LIST_MAP のカラム順をソートする／セクションを記述順でなく定義順に走査する／
   ファイル系でも `FW_HEADER` レコードを落とす）が生存していた（2026-08-14・Verification レビューで判明）。
   いずれも**入力の作り方が偏っていた**ことが原因で、テストを 3 件足して閉じた
@@ -2207,7 +2222,7 @@ POI 3.8 の `XSSFWorkbook#createSheet(String)` は `substring(0, 31)` による�
 となり、**メッセージのシート名が切り詰め後の 31 文字である**ことが検査順序の裏づけになっていた。
 
 **#25.5 で `XlsFormatWriter` が `createSheet` を呼ぶ前に文字数を検査するようにした**ため
-（`XlsFormatWriter#requireValidSheetNameLength`。L155）、32 文字以上の名前は切り詰めに到達せず
+（`XlsFormatWriter#requireValidSheetNameLength`）、32 文字以上の名前は切り詰めに到達せず
 `IllegalArgumentException: シート名が Excel の上限 31 文字を超えています。… sheetName='…', length=32` で落ちる。
 上の 2 ケースは、切り詰めの抜けが閉じたことを固定する形へ書き直した
 （`rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation` は 32 文字なので**文字数**で落ち、
