@@ -630,7 +630,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-08(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | `rows: []` で到達する。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-08(空) と同じ入力 |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ❌ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED 側のみ） | — | **VARIABLE 側を実ファイル経路でアサートしているテストが無い。** 従来 VARIABLE 側の根拠に挙げていた `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` は `getDirectives().get("file-type")` が `Variable` であることを見ており、これは C-11(非空) の担保であって `fileType` ではない。VARIABLE 側を `getFileType()` で押さえているのは `YamlFormatReaderTest` の in-memory 経路（`loadRawMap` 差し替え）だけで、§0.2 によりこれは ✅ に数えない。Acceptance criteria の「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」に触れる。スキーマ `$defs.file_data.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。導出は下のコマンド |
+| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#stringifiesNonStringDirectiveValuesFromRealYaml` | — | integer ／ boolean の記法も文字列になることまで固定する |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile`（件数 1 をアサート） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
@@ -666,16 +666,18 @@ unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
 `<version>` に合わせる。
 
 
-C-10 の ❌ の根拠（辺②のテストで `getFileType()` を呼ぶ箇所を全部数える）:
+C-10 の担保の所在（辺②のテストで `getFileType()` を呼ぶ箇所を全部数え、経路で振り分ける）:
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
-grep -rn 'getFileType()' src/test/java/nablarch/test/tool/converter/yaml --include=*.java
+grep -rn 'getFileType()' src/test/java/nablarch/test/tool/converter/yaml --include=*.java \
+  | sed 's/:[0-9]*:/: /'
 ```
 
-出力は 8 行で、実ファイル経路のクラス `YamlFormatReaderRealFileTest` は 1 行だけ、しかも
-`FileType.FIXED` である。`FileType.VARIABLE` を見る 3 行のうち `YamlFormatReaderTest` の 2 行は
-in-memory 経路、`YamlFormatWriterModelTest` の 1 行は辺④の読み戻しであって辺②の担保ではない。
+出力は 9 行で、実ファイル経路のクラス `YamlFormatReaderRealFileTest` の 2 行が
+`FileType.FIXED` と `FileType.VARIABLE` を 1 行ずつ見ている（上表の 2 メソッド）。残る 7 行は辺②の担保に数えない
+—— `YamlFormatReaderTest` の 3 行は in-memory 経路（§0.2）、`YamlFormatWriterModelTest` の 3 行と
+`YamlFormatWriterTest` の 1 行は辺④の書き出しを読み戻したものだからである。
 
 ### 2.4 軸D 値の表現（YAML スカラー 12 ケース）
 
@@ -1196,18 +1198,20 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 71 | 73 | 71 | 67 | 282 |
+| ✅ 担保あり | 71 | 74 | 71 | 67 | 283 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
-| ❌ 未担保 | 0 | 1 | 1 | 4 | 6 |
+| ❌ 未担保 | 0 | 0 | 1 | 4 | 5 |
 | — 空欄 | 8 | 8 | 5 | 6 | 27 |
 | **合計** | **79** | **82** | **77** | **77** | **315** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
 
-**❌ の 6 件は水平展開で出た（#27）。** 軸E の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)）が
-✅ から ❌ へ動いたが、そちらは #27 の中でテストを 2 本足して埋めてある（`783810b` ／ `6d12021`）。
-残る 6 件は水平展開——「表が主張する内容を、テスト本文が実際には主張していない」を全セルへ広げた
-点検——で出たもので、軸A〜D は空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
+**❌ の 5 件は水平展開で出た（#27）。** 水平展開——「表が主張する内容を、テスト本文が実際には
+主張していない」を全セルへ広げた点検——では 6 件が ✅ から ❌ へ動いたが、そのうち辺② C-10 は
+#27 の中で `getFileType()` のアサートを 1 行足して ✅ へ戻してある（§2.3。`steering.md` #27 の
+ユーザー確定・2026-08-21）。軸E の総点検でいったん ❌ へ動いた 2 件（辺③ E-1(1件)・辺④ E-4(1件)）も
+テストを 2 本足して埋めてある（`783810b` ／ `6d12021`）。残る 5 件は軸A〜D であり、
+空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
 
 「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある
 （導出は §0.6 の ③）。§0.1 の「🔺 も 2 役を持つ」を参照。
@@ -1418,7 +1422,10 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 軸D 37 件・軸A 52 件・軸C 125 件である。結果は 3 通りに分かれた。
 
 1. **状態が動いたもの 6 件** —— 辺② C-10 ／ 辺③ C-21(省略) ／ 辺④ A-06 ／ A-07 ／ A-08 ／ A-09。
-   いずれも ✅ から ❌ へ動いた。理由は各行の理由欄と §4.1 末尾にある
+   いずれも ✅ から ❌ へ動いた。理由は各行の理由欄と §4.1 末尾にある。
+   このうち辺② C-10 は、そのあと
+   `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` へ
+   `getFileType()` のアサートを 1 行足して ✅ へ戻した（§2.3）。現在 ❌ は 5 件である（§5.2）
 2. **状態は動かないが出典を直したもの 4 件** —— 辺② C-15(空)（スキーマ側の出典をテストから
    本体スキーマへ）／ §5.3 の分類（辺② C-11(空)・C-13(空) を閉じている機構）／
    辺① C-17(空)（本体側の番人が 2 つある。§6.2 の 8）／ 辺② の軸C 3 行
@@ -1428,6 +1435,8 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 軸E で先に見つかった 2 件（辺③ E-1(1件)・辺④ E-4(1件)）は #27 の中でテストを足して埋めてある
 （`783810b` ／ `6d12021`）。軸E・軸F は Acceptance criteria が無条件に「埋まっている」ことを
 求めているため埋め、軸A〜D は ❌ を立てて理由を書く取り決めである（`steering.md` #27）。
+辺② C-10（軸C）だけはこの取り決めの例外で、既存フィクスチャに 1 行足すだけで閉じるため
+埋める判断が済んでいる（`steering.md` #27 のユーザー確定・2026-08-21）。
 
 ---
 
