@@ -1369,8 +1369,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-21
-- **Last completed**: #26 カバレッジ計測と未到達分岐の列挙（`58bae09`。追加 1 巡で A 群 4 件・B 群 5 件を処置し check-off 済み・push 済み）
-- **Next**: #26.5 マーカーカラムのセル値を `[空]` から `[EMPTY]` へ改める
-- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし）。次の一手は #26.5 の Steps 1「着手時に最新を採り直す」——申し送りの基準コミットは `c8ead78` だが現在の HEAD は `58bae09` なので、別セッションの並行変更を含めて採り直すこと。**#27 への持ち越し 8 件**（`checks/task-26.md`「追加 1 巡」節が正）: QA-2・C3-3〜C3-7・C3-9・C3-10。いずれも用語・体裁で、#27 の対応表を書くときにまとめて整える（ユーザー確定・2026-08-21）。**JaCoCo の再計測は禁止**（`da66425` 固定、`jacoco.csv` md5 `d28e374e9027ade63d7919f7a7b5826e`）。未解決のブロッカー・未追跡パスは無い。
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
