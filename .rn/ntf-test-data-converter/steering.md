@@ -1461,8 +1461,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: —
-- **Last completed**: —
-- **Next**: —
-- **Notes**: —
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #27（`becd7b3`）。**#28 は進行中** —— 1 巡目の提示（`ae30342`）は差し戻され、指摘 5 件を `372f862` で反映して**2 巡目の提示済み・判定は未受領**
+- **Next**: #28 の Evaluation gate。`/rn:ty`（承認）／`/rn:gm`（差し戻し）を受ける。**承認されたら #29（`issues.md` XLS-44 の実施。`FileDataBlock` の `fileType` を `DataType` から導出して重複を消す）の Steps を起こす** —— #29 はマージ前に片付ける（ユーザー確定・2026-08-21）
+- **Notes**: branch `ntf-test-data-converter`（`372f862` push 済み・ローカル差分なし・未追跡パス無し）。**AC 13 項目の検証結果と差し戻し 5 件への対応は #28 の Steps に全文がある**（充足 12／条件つき充足 1／検証不能 0）。ゲート再実行は `372f862` で `Tests run: 597, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**未決の報告が 1 件** —— 完了済みタスク #2・#3・#5 の記述に残る「本体現ブランチ」13 箇所（`steering.md:98`・`104`・`115`・`121`・`127`・`138`・`221`・`227`・`228`・`230`・`243`・`257`・`265`）を基準 SHA へ揃えるかはユーザー未指示（当時の作業記録のため無変更のまま報告済み）
