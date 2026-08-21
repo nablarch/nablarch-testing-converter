@@ -1029,11 +1029,20 @@ fileType=VARIABLE SETUP_FIXED    vs SETUP_VARIABLE    identical? true
 fileType=VARIABLE EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
 ```
 
-**この 4 件はテストを足しても埋まらない。** 埋めるには辺④の外を動かす必要がある —— 中間モデル側に
-「`DataType` の FIXED ／ VARIABLE の別と `fileType` が一致すること」の不変条件を置いて `type:` を
-`DataType` の関数にするか、この 4 行の主張を 2 対 1 の写像（SETUP 系 → `setup_files` ／
-EXPECTED 系 → `expected_files`）へ書き改めるかである。どちらも #27 の範囲を超えるため、
-ここでは ❌ として開示するにとどめる。
+**この 4 件はテストを足しても埋まらない。** 出力が入力の `DataType` に依存しない以上、
+埋めるには辺④の外を動かすしかない —— `FileDataBlock` から `fileType` を無くし、`DataType` から
+導出して重複そのものを無くすことである（`issues.md` XLS-44。判定は要対応）。導出できるのは
+`DataType` → `FileType` の向きが本体スキーマ `$defs.file_data.properties.type` の description から
+一意に定まるためで、逆向きは SETUP ／ EXPECTED の情報が要るため一意でない（4 対 2 の写像であって
+全単射ではない）。これが済めば辺④の `type:` が `DataType` から出るため A-06〜A-09 は ✅ になり、
+軸C から C-10（`FileDataBlock.fileType`）という行自体が消える。#27 の中では直さない ——
+完了条件が `src/main` 無改変を求めるためで、実施は #28 の後に独立したタスクとして立てる
+（`steering.md` #27。ユーザー確定・2026-08-21）。
+
+**この 4 行の主張を 2 対 1 の写像（SETUP 系 → `setup_files` ／ EXPECTED 系 → `expected_files`）へ
+書き改める道は採らない。** 表の主張を実装の出力に合わせて書き換えることになり、実装から判断することに
+なるためである（`steering.md` #27。ユーザー確定・2026-08-21）。したがって 4 行は XLS-44 が済むまで
+❌ のまま据え置く。
 
 `inventory.md` §4.1-2 が挙げる変異実測（`sectionKey` の分岐を入れ替えるとこれらのテストが落ちる）は
 事実だが、それは写像そのものの変異であって入力 `DataType` の差し替えではない。§0.2 の軸A の判定基準
