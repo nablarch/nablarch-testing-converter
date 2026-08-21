@@ -634,7 +634,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-14(非空) | `MessageDataBlock.fwHeaderFields` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsFwHeaderFieldsFromRealYaml` | — | 記述順で入ることまで固定する |
 | C-14(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `fw_header:` を書かない入力で空 Map になる |
 | C-15(非空) | `MessageDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `record_type: FW_HEADER` のレコードも落とさない（`issues.md` YML-03 の解消後） |
-| C-15(空) | 同 空 | — | — | — | 到達不能。スキーマ `$defs.message_data.records.minItems` ＝ 1 で書けず、仮に届いても `MessageDataBlock` が拒否する（`issues.md` YML-12 2形目）。根拠テスト `YamlFormatReaderTest#readMessage_emptyBody_rejected` ／ `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` |
+| C-15(空) | 同 空 | — | — | — | 到達不能。仮にスキーマを通っても `MessageDataBlock` が生成時に拒否する（`issues.md` YML-12 2形目）。根拠テスト `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `YamlFormatReaderTest#readMessage_emptyBody_rejected`。後者は `loadRawMap` を固定 Map に差し替える経路で走るためスキーマ検証を通っておらず、アサートしているのはモデル側の拒否である。スキーマ `$defs.message_data.records.minItems` ＝ 1 が先に閉じることの出典は本体スキーマ本体（下のコマンド）であって、これをアサートするテストは `src/test` に無い |
 | C-16(値あり) | `RecordLayout.recordType` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | `head` ／ `data` をアサートする |
 | C-16(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` ／ `#normalizesLowercaseDefaultRecordTypeToNull` | — | 後者は `"default"`（小文字）も `null` へ正規化されることを固定する |
 | C-17(非空) | `RecordLayout.fields` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 辞書順ではなく原文の記述順であることまで固定する |
@@ -646,6 +646,19 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。スキーマ `$defs.field_def.required` が `type` を必須とし、仮に届いても `FieldDef` が拒否する。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` ／ `FieldDefTest#データ型がnullのフィールド定義は生成できない` |
 | C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する |
 | C-21(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` | — | 到達できるのは可変長ファイルだけ。固定長ファイルで `length` を書かない YAML はスキーマを通るが中間モデルの生成時に拒否される（`issues.md` XLS-30。`YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`） |
+C-15(空) の理由欄が引くスキーマ側の出典（テストではなく本体スキーマそのものを読む）:
+
+```sh
+unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
+  -name 'nablarch-testing-yaml-1.0.0-SNAPSHOT.jar')" \
+  nablarch/test/ntf-testdata-yaml-schema.json |
+  python3 -c 'import json,sys; d=json.load(sys.stdin)["$defs"]; [print(k, d[k]["required"], d[k]["properties"]["records"]["minItems"]) for k in ("message_data","expected_request_message_data","group_message_data")]'
+```
+
+出力は 3 行で、`message_data` ／ `expected_request_message_data` ／ `group_message_data` の
+いずれも `['id', 'records'] 1` である。バージョンは `pom.xml` の `nablarch-testing-yaml` の
+`<version>` に合わせる。
+
 
 ### 2.4 軸D 値の表現（YAML スカラー 12 ケース）
 
