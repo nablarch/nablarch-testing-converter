@@ -279,6 +279,10 @@ grep -oP 'void \Kround\w+' src/test/java/nablarch/test/tool/converter/yaml/YamlF
 `| <軸要素 ID> | <内容> | <状態> | <担保テストメソッド> | <🔺> | <理由・注記> |` の 6 列で、
 軸要素 ID は `A`〜`F` で始まり、状態欄には `✅` `🔺` `❌` `—` のいずれか 1 つだけを置く。
 
+**`src/test` ／ `inventory.md` を触ったら、本書の `sh` ブロックを 1 本残らず流し直して併記の宣言値と
+突き合わせる。** テストを 1 件足す・台帳を 1 行足すだけで、離れた節の宣言値が動くためである
+（#27 では §3 柱書・§3.6 末尾・§6.1 末尾の 3 か所が実際にずれた）。
+
 **コマンドは必ずリポジトリルートから始める。** 個人のチェックアウトパスを埋め込むと、
 別のチェックアウトやレビュー用 worktree から実行したときに、本書が対象としている commit ではなく
 そのチェックアウトの HEAD を測ってしまう。測った commit は次の 1 行で分かる。
@@ -759,9 +763,9 @@ grep -cE '^[[:space:]]*@Test$' "$M"       # テストメソッド数
 grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 ＋ 呼び出し
 ```
 
-出力は 11 ／ 14。14 の内訳は `writeAndReopen` ／ `writeAndReopenSheet` の定義 2 行、
-`writeAndReopenSheet` が `writeAndReopen` を呼ぶ 1 行、テストメソッドからの呼び出し 11 行であり、
-テストメソッド 11 件と呼び出し 11 件が 1 対 1 で対応する。
+出力は 12 ／ 15。15 の内訳は `writeAndReopen` ／ `writeAndReopenSheet` の定義 2 行、
+`writeAndReopenSheet` が `writeAndReopen` を呼ぶ 1 行、テストメソッドからの呼び出し 12 行であり、
+テストメソッド 12 件と呼び出し 12 件が 1 対 1 で対応する。
 
 **辺③では軸B が軸A から独立していない。** `XlsFormatWriter#layout` は `ColumnRowDataBlock` ／
 `FileDataBlock` ／ `MessageDataBlock` の 3 分岐しか持たず、`TableDataBlock` と `ListMapBlock` は
@@ -947,7 +951,7 @@ grep -rn "getNumberOfSheets()" src/test --include=*.java | sed 's/:[0-9]*:/: /'
 **軸F の外に残る空欄**: `XlsFormatWriter#write` の `parent == null` 分岐は、`basePath` が空文字のときだけ通る
 （`Paths.get(basePath, name)` が親を持たない相対パスになるのはこの場合だけ。`src/main` にその旨のコメントがある）。
 `src/test` にこの分岐を通す呼び出しは無い —— 辺③④のライタの `write(container, basePath)` を呼ぶ箇所は
-`src/test` に 32 か所あり、`basePath` に渡している式は 9 種類で、いずれも `TemporaryFolder` 由来のパスである。
+`src/test` に 33 か所あり、`basePath` に渡している式は 9 種類で、いずれも `TemporaryFolder` 由来のパスである。
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
@@ -962,9 +966,10 @@ perl -0777 -ne 'while (/(?:FormatWriter\(\)|writer)\.write\(/g) {
   | sort | uniq -c | sort -rn
 ```
 
-出力は 9 行・合計 32 件で、内訳は `folder.getRoot().getAbsolutePath()` 17 ／ `baseDir.toString()` 3 ／
+出力は 9 行・合計 33 件で、内訳は `folder.getRoot().getAbsolutePath()` 17 ／
+`out.getAbsolutePath()` 3 ／ `baseDir.toString()` 3 ／
 `base` 3（`base` は `folder.getRoot().getAbsolutePath()` を受けたローカル変数）／
-`readOnly.getAbsolutePath()` 2 ／ `out.getAbsolutePath()` 2 ／ `missing.getAbsolutePath()` 2 ／
+`readOnly.getAbsolutePath()` 2 ／ `missing.getAbsolutePath()` 2 ／
 `in.toString()` 1 ／ `file.getAbsolutePath()` 1 ／ `blocker.getAbsolutePath()` 1 である。
 **空文字リテラルは 1 件も無い。**
 
@@ -1404,7 +1409,7 @@ REFS | while IFS='#' read -r cls mth; do
 perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   # 略記のまま書かれた参照
 ```
 
-出力は 105 ／ 34 ／ 103 である。34 件には少なくとも次の 4 種が混ざっており、
+出力は 106 ／ 34 ／ 104 である。34 件には少なくとも次の 4 種が混ざっており、
 **本タスクで種別を読み分けたのは上表の 3 点と §6.1 冒頭の 8 件だけである**（残りは未確認）。
 
 - 総称・接頭辞として書かれた名前（`RoundTripTest#xxx` ／ `XlsFormatWriterTest#roundTrips` ／ `YamlFormatWriterTest#roundTrip_` など）
@@ -1412,7 +1417,7 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 - 「削除済みで HEAD に無い」と本文が明示している名前
 - 現在の担保として挙げているが HEAD に無い名前（上表の 3 点がこれに当たる）
 
-略記のまま書かれた 103 件は、クラスが機械的に決まらないため上の照合の対象外である。
+略記のまま書かれた 104 件は、クラスが機械的に決まらないため上の照合の対象外である。
 
 `inventory.md` §1.2-2 ／ 同 §1.3 ／ 同 §2.1 ／ 同 §4.1 はスナップショットであり書き換えない取り決めのため、
 `inventory.md` 側はいずれも本タスクで書き換えていない（`steering.md` Rules に従い、本書が逆引きの正である）。
@@ -1425,7 +1430,7 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 | 2 | 辺② 軸D の 10 ケースの経路差（§2.4）。`setup_tables` 以外の 2 経路で同じ結果になることは確かめていない | 軸D 辺② の ✅ は `setup_tables` 経路での担保である |
 | 3 | 辺④ 軸D の 7 ケースの経路差（§4.4）。レコード断片経路はプローブでの確認にとどまりテストが無い | 同上 |
 | 4 | 辺④が書き出す YAML のスキーマ適合（§4.6）。「`issues.md` YML-12 の 4 形以外にスキーマ違反を書き得る形が無い」ことは確かめていない | — |
-| 5 | `inventory.md` のスナップショット節の内容照合。§6.1 で内容まで確かめたのは `inventory.md` §0.1-2 の「担保の現在地」表（8 件）と、スナップショット節で見つけた 3 点だけである。名前のレベルでは同文書全体を機械照合したが（§6.1 の 105 ／ 34 ／ 103）、HEAD に無い 34 件の種別も、HEAD に在る 71 件の軸要素対応も読み分けていない。本書は `inventory.md` ／ `issues.md` ／ `coverage-report.md` を書き換えていない | 本書の判定はテストソースを正としているため影響しない |
+| 5 | `inventory.md` のスナップショット節の内容照合。§6.1 で内容まで確かめたのは `inventory.md` §0.1-2 の「担保の現在地」表（8 件）と、スナップショット節で見つけた 3 点だけである。名前のレベルでは同文書全体を機械照合したが（§6.1 の 106 ／ 34 ／ 104）、HEAD に無い 34 件の種別も、HEAD に在る 72 件の軸要素対応も読み分けていない。本書は `inventory.md` ／ `issues.md` ／ `coverage-report.md` を書き換えていない | 本書の判定はテストソースを正としているため影響しない |
 | 6 | 辺① C-13(空) の到達不能根拠が送信同期経路の 1 本だけである（§1.3）。受信 `MESSAGE` 経路でディレクティブ行 0 行を通す根拠テストが `src/test` に無い | 辺② の同じ行は 2 経路それぞれの根拠を挙げており、辺で厚みが割れている。到達不能という判定そのものは `DataFile` の注入機構（`issues.md` XLS-07）に依るため変わらない |
 | 7 | `model/` の不変条件の全数（§0.4）。上表 9 行＋下表 5 行の 14 行が全数かは数えていない | 本書が閉じているのは空欄の側だけである（§0.4 の末尾） |
 | 8 | 辺① C-17(空) の本体側の番人が 2 つある（§1.3）。根拠テスト 2 件が通すのは `DataFileParser#processDirectives` の 2 列ガードで、2 断片目以降の名前行を閉じる `DataFileFragment#setNames` の `assertNotNullOrEmpty` を通す根拠テストは `src/test` に無い | 到達不能という判定は変わらない（2 経路とも本体側で閉じることは実装を読んで確かめた）。理由欄が挙げていた機構名が実際より狭かった |
