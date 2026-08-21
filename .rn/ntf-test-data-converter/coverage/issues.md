@@ -13,6 +13,10 @@
 修正した**（2026-08-19 時点。steering Decisions「不具合修正の対象と手順（#25.5）」）。修正済みの課題は各項の
 「NTF 仕様としての判定」欄にコミットを添えてある。それ以外は従来どおり記録のみである。
 
+**#27 で新たに要対応を 1 件（XLS-44）立てた。これは未実施である。** #27 の完了条件が `src/main` 無変更を
+求めるため、起票だけを行った（実施は #28 の後に独立タスクとして立てる）。
+**「#25.5 の時点の要対応（修正済み）」と「#27 で新たに立てた要対応（未実施）」は下の内訳で読み分けること。**
+
 > **2026-08-19 に「要対応 24 件のうち 23 件・未完 1 件（XLS-27）」から書き換えた。** XLS-27 は
 > §6-K（`839bf64`）でマーカーカラム案を採り、番人を撤去して閉じた（本体修正待ちではなくなった）。
 > 同じコミットで XLS-21 の判定が **対応不要 → 要対応**へ変わり閉じたため、要対応は 24 → 25、
@@ -27,7 +31,7 @@
 | 影響度 低 | 記録のみ。仕様として受容できると判断した |
 | 影響度 別枠 | 変換結果は入力と一致するが、**作成者の意図と NTF 実行時の解釈が食い違う**もの。上の 3 段は「変換結果が入力と一致するか」で定義されるため当てはまらない |
 | 未確認 | 挙動を確認・固定できなかったもの |
-| `XLS-nn` ／ `YML-nn` | **現状挙動の課題**。実行して記録した挙動のうち、仕様として妥当でないと判断したもの。影響度欄と 2 つの判定欄を持つ。**§7 より前に並ぶ各項がこれである**（全 55 件。`grep -c '^### \(XLS\|YML\)-'`） |
+| `XLS-nn` ／ `YML-nn` | **現状挙動の課題**。実行して記録した挙動のうち、仕様として妥当でないと判断したもの。影響度欄と 2 つの判定欄を持つ。**§7 より前に並ぶ各項がこれである**（全 56 件。`grep -c '^### \(XLS\|YML\)-'`） |
 | `COV-nn` | **担保の穴**（#26 で追加。§7）。挙動が仕様どおりか**確かめていない**未到達分岐。挙動が不正だと言っているのではないため、**影響度欄も「NTF 仕様としての判定」欄も持たない**。件数の導出コマンドも別（`XLS-` ／ `YML-` 前置だけを数えるため、`COV-nn` を足しても既存の件数は動かない） |
 
 **「影響度 別枠」を足した（2026-08-14・#24 のレビュー指摘による訂正）。** 高／中／低はいずれも
@@ -64,16 +68,18 @@ YML-09・YML-10・YML-14）では、判定欄の中でその旨を明示した�
 （**XLS-20 は 2026-08-19 に判定を「対応不要」から「要対応」へ変えたため、この一覧から外した。**
 旧判定の根拠が事実誤りだったためである。XLS-20 の節の【判定の訂正】を参照）
 
-課題は全部で **55 件**（課題 ID 単位）。内訳は **要対応 25 件**／**対応不要 27 件**／**保留 2 件**／
-**本作業の対象外 1 件**（XLS-26）である。数え直した日は 2026-08-19（**XLS-41 を「多い側」に限定して
-要対応へ戻し、少ない側を XLS-42、ディレクティブ Map の `null` を XLS-43、辺②で余りの値が黙って捨てられる件を
-YML-05 から YML-14 として切り出し、さらに §6-K で XLS-21 を対応不要から要対応へ変えたあとの値**）。
+課題は全部で **56 件**（課題 ID 単位）。内訳は **要対応 26 件**／**対応不要 27 件**／**保留 2 件**／
+**本作業の対象外 1 件**（XLS-26）である。数え直した日は 2026-08-21
+（**2026-08-19 の 55 件に、#27 で起票した XLS-44 が 1 件加わったあとの値**）。
 導出コマンドと出力は下記「集計は課題 ID 単位で数えること」の節にあり、
-`25 + 27 + 2 + 1 = 55` が機械で確かめられる。
+`26 + 27 + 2 + 1 = 56` が機械で確かめられる。
 
-**要対応 25 件の内訳（すべて修正済み。2026-08-19 時点）**
+**要対応 26 件の内訳（2026-08-21 時点）。「#25.5 で修正済み」と「#27 で起票・未実施」を分けて書く。**
 
-- **修正済み 25 件** —— XLS-06・XLS-08・XLS-16・XLS-20・**XLS-21**・XLS-22・**XLS-27**・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・XLS-34・XLS-35・XLS-36・XLS-37・XLS-38・XLS-40・XLS-41・XLS-43 ／
+**以下の列挙は時点の記録であって範囲の定義ではない。** 正は各課題の「NTF 仕様としての判定」欄であり
+（`steering.md` Rules）、件数は下の導出コマンドで数える。
+
+- **#25.5 で修正済み 25 件** —— XLS-06・XLS-08・XLS-16・XLS-20・**XLS-21**・XLS-22・**XLS-27**・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33・XLS-34・XLS-35・XLS-36・XLS-37・XLS-38・XLS-40・XLS-41・XLS-43 ／
   YML-02・YML-03・YML-08・YML-12（**YML-12 は 4 形すべてが修正済み**）
   - **XLS-40 はフィールド名称側だけを converter で閉じた。カラム名側は他責**（帰属は
     `nablarch-testing` の `TableData` の大文字化）**であり、番人も WARN も入れない**
@@ -91,6 +97,10 @@ YML-05 から YML-14 として切り出し、さらに §6-K で XLS-21 を対�
   - **XLS-43**（ディレクティブ・フレームワーク制御ヘッダの Map のキー・値が `null`）は
     **2026-08-19 に修正済み**（`ModelPreconditions#requireNoNulls(String, Map)` にキー・値の検査を追加。
     `steering.md` の §6-H）
+- **#27 で起票し、まだ実施していない 1 件** —— **XLS-44**（中間モデルがファイル種別を `DataType` と
+  `fileType` の 2 つで持ち、食い違う組み合わせを検査しない）。**#27 の完了条件が `src/main` 無変更を
+  求めるため、#27 では起票だけを行った。実施は #28 の後に独立タスクとして立てる。**
+  したがって**「要対応はすべて修正済み」は 2026-08-19 時点の記述であり、現在は成り立たない。**
 
 **対応不要 27 件について、2026-08-19 に 2 つの動きがあった** —— **YML-14 が 1 件増え**（辺②でフィールド定義の
 件数より要素数が多いデータ行の余りの値が黙って捨てられる。**YML-05 から「多い側」を切り出したもの**で、
@@ -165,11 +175,11 @@ XLS-42 は 2026-08-19 に **XLS-41 から切り出した**もので、XLS-41 自
 $ cd ~/work/nablarch/nablarch-testing-converter
 $ F=.rn/ntf-test-data-converter/coverage/issues.md
 $ grep -c '^### \(XLS\|YML\)-' $F
-55
+56
 $ grep -c '^- NTF 仕様としての判定' $F
-55
+56
 $ grep -c '^- NTF 仕様としての判定.*\*\*要対応\*\*' $F
-25
+26
 $ grep -c '^- NTF 仕様としての判定.*\*\*対応不要\*\*' $F
 27
 $ grep -c '^- NTF 仕様としての判定.*\*\*保留\*\*' $F
@@ -177,16 +187,15 @@ $ grep -c '^- NTF 仕様としての判定.*\*\*保留\*\*' $F
 $ grep -c '^- NTF 仕様としての判定.*\*\*本作業の対象外\*\*' $F
 1
 $ grep -c '^### XLS-' $F
-41
+42
 $ grep -c '^### YML-' $F
 14
 ```
 
-上の出力は 2026-08-19 に実行して得たものである（**XLS-42・XLS-43・YML-14 を切り出し、
-§6-K で XLS-21 を対応不要から要対応へ変えたあとの値**）。
-`25 + 27 + 2 + 1 = 55` で、1 つ目（`###` 見出しの数）とも 2 つ目（判定欄の行数）とも一致する。
-**ID の前置による内訳は `XLS-` 41 件 ／ `YML-` 14 件で、`41 + 14 = 55`**（最後の 2 コマンド。
-2026-08-20 に実行した。#26 の `COV-nn` は前置が違うためどちらにも入らない）。
+上の出力は 2026-08-21 に実行して得たものである（**#27 で XLS-44 を起票したあとの値**）。
+`26 + 27 + 2 + 1 = 56` で、1 つ目（`###` 見出しの数）とも 2 つ目（判定欄の行数）とも一致する。
+**ID の前置による内訳は `XLS-` 42 件 ／ `YML-` 14 件で、`42 + 14 = 56`**（最後の 2 コマンド。
+#26 の `COV-nn` は前置が違うためどちらにも入らない）。
 
 > **XLS-21 の旧判定（対応不要）は節の中に引用ブロックとして残してある。導出コマンドが二重に
 > 数えないよう、その引用ブロック内では判定行を行頭に置いていない。** 上の「二重 0」を確かめる
@@ -239,13 +248,14 @@ $ git -C ~/work/nablarch/nablarch-document show \
 
 ```
 $ grep -c '^- 判断: ' .rn/ntf-test-data-converter/coverage/issues.md
-55
+56
 $ grep -c '^- NTF 仕様としての判定' .rn/ntf-test-data-converter/coverage/issues.md
-55
+56
 ```
 
-> **出力を 37 → 52 → 55 と直してきた（2026-08-19）。** 37 は課題が 37 件だった 2026-08-18 時点の値、
-> 52 は XLS-42・XLS-43・YML-14 を切り出す前の値である。**書式がそろっていること
+> **出力を 37 → 52 → 55 → 56 と直してきた（最新は 2026-08-21）。** 37 は課題が 37 件だった
+> 2026-08-18 時点の値、52 は XLS-42・XLS-43・YML-14 を切り出す前の値、55 は #27 で XLS-44 を
+> 起票する前の値である。**書式がそろっていること
 > （両方の値が `###` 見出しの数 ＝ 上の導出ブロック 1 本目 `grep -c '^### \(XLS\|YML\)-' ` と一致すること）が主張の中身であり、古い値のままではその主張が
 > 機械で確かめられない。** 見出しの数は上の導出ブロックで数えている（**同じ数字を 2 箇所に書かない**ため、
 > ここでは「一致すること」だけを主張する）。
@@ -4093,6 +4103,113 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
 （`grep -rn 'failsToReadBack' src/test --include=*.java | grep 'public void'` で確かめられる）。
 `YamlFormatWriterScalarTest#failsToReadBackFoldedKey` は **YML-13**（判定は対応不要）の実挙動の記録、
 `YamlFormatWriterModelTest#failsToReadBackLiteralTabFieldSeparator` は **YML-08** の実挙動の記録である。
+
+---
+
+## #27 軸×要素対応表の点検で記録した課題（2026-08-21）
+
+**#27（4 辺の軸×要素対応表の完成）で、対応表の ❌ の原因をたどって見つけた課題を記録する。**
+**どちらも #27 の中では直さない** —— #27 の完了条件が「`git diff` 上 `src/main` への変更が
+#25.5 で修正した課題に限られていること」を求めているためである。**XLS-44 は判定が要対応だが未実施であり、
+実施は #28 の後に独立タスクとして立てる**（＝ 冒頭の内訳で「#25.5 で修正済みの 25 件」とは別枠に置いた 1 件）。
+
+### XLS-44 中間モデルがファイル種別を `DataType` と `fileType` の 2 つで持ち、食い違う組み合わせを検査しないため、辺③と辺④が同じモデルから別のファイル種別を書く（影響度 中・**辺④は検出できない**・**#27 で起票。修正は未実施**）
+
+- **NTF 仕様はファイル種別をひとつの概念としてしか持たない。** 本体スキーマ
+  `nablarch/test/ntf-testdata-yaml-schema.json` の `$defs.file_data` は `required` ＝
+  `["path", "type", "records"]`、`properties.type` は `enum` ＝ `["fixed", "variable"]` で、
+  description が「ファイル種別。fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
+  （SETUP_VARIABLE / EXPECTED_VARIABLE）。NTF はこの値に応じてパーサ・フォーマッタを切り替える」と、
+  **4 種のデータタイプと 2 値の `type` を 1 対 1 に対応づけている**。解説書も同じで、`notation:206`
+  「データタイプごとに専用のトップレベルキーを使う（完全一致のため前方一致は発生しない）。対応は、
+  以下のとおりである。」に続く対応表 `notation:212-235` が `SETUP_FIXED`・`SETUP_VARIABLE` →
+  `setup_files` ／ `EXPECTED_FIXED`・`EXPECTED_VARIABLE` → `expected_files` と定める。
+  **したがって `DataType` が決まればファイル種別は決まる。**
+- **中間モデルはこれを 2 つのフィールドで持っている。** `FileDataBlock` は `DataType`
+  （`TestDataBlock` から継承）と `FileType`（`FIXED` ／ `VARIABLE`）を別々に保持し、コンストラクタが
+  課すのは 2 つだけである —— `requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType)`
+  （`DataType` がファイル系 4 種のいずれか。**XLS-36**）と `fileType != null`（**XLS-29**）。
+  **両者が食い違う組み合わせは検査していない。**
+- 観測（実測 2026-08-21・使い捨てプローブ。scratchpad で実行し測定後に削除した。`src/main` ／ `src/test`
+  はいずれも無変更）: `new FileDataBlock(DataType.SETUP_FIXED, "", "IN.DAT", FileType.VARIABLE, …)` は
+  例外なく生成でき、**逆向き**（`SETUP_VARIABLE` ＋ `FileType.FIXED`）も生成できた。この 1 つの中間モデルを
+  辺③④へ渡した出力が次である。
+
+  ```
+  --- 辺③ Excel の全セル ---
+  S1 r0 [SETUP_FIXED=IN.DAT]
+  S1 r1 [][F1][F2]
+  S1 r2 [][X][X]
+  S1 r3 [][v1][v2]
+  --- 辺④ YAML ---
+  setup_files:
+    - path: "IN.DAT"
+      type: "variable"
+      records:
+        - fields:
+            - {name: "F1", type: "X", length: "10"}
+            - {name: "F2", type: "X", length: "20"}
+          rows:
+            - ["v1", "v2"]
+  ```
+
+  | 辺 | 何が起きているか |
+  |---|---|
+  | 辺③ | マーカーは `DataType` から（`XlsFormatWriter#marker`）、長さ行の有無は `fileType` から決まる（`#layoutFile` の `boolean fixed`）ため、**`SETUP_FIXED=IN.DAT` と書きながら長さ行を書かない**。`notation:883`「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須」に反する Excel になる |
+  | 辺④ | トップレベルキーは `DataType` から（`YamlFormatWriter#sectionKey`）、`type:` は `fileType` から（`#emitFile`）出るため、**`SETUP_FIXED` のブロックが `setup_files` 配下の `type: "variable"` になる** |
+
+- **辺④は検出できない。** 上の YAML は本体スキーマに適合しており、辺②で読み戻すと
+  `YamlFormatReader#fileDataType` が `type: "variable"` から `SETUP_VARIABLE` を作るため、
+  **`SETUP_FIXED` のブロックが黙って `SETUP_VARIABLE` に化ける**（**XLS-36** の「読み戻すと別種のブロックに
+  なる」と同じ型）。**辺③の Excel を辺①で読み戻したときの挙動は未確認。**
+- **既存の不変条件も素通りする。** 同コンストラクタ末尾の
+  `if (fileType == FileType.FIXED) { ModelPreconditions.requireLengths(this.records, identifier); }` は
+  `fileType` だけを見るため、`DataType` ＝ `SETUP_FIXED` でも `fileType` ＝ `VARIABLE` なら
+  **XLS-30 の番人（固定長ファイル・電文でフィールド長 `null` を拒否する）が走らない**。実測でも、
+  `length` ＝ `null` のフィールド定義を持つ同じレコードが `fileType` ＝ `FIXED` では
+  `IllegalArgumentException`（「固定長ファイル・電文でフィールド長を持たないフィールド定義は保持できません…」）
+  で拒否され、`fileType` ＝ `VARIABLE`（`DataType` は `SETUP_FIXED` のまま）では通った。
+- **現れ方（辺④ 軸A の A-06〜A-09）**: `axis-matrix.md` の辺④ 軸A で
+  `SETUP_FIXED` ／ `EXPECTED_FIXED` ／ `SETUP_VARIABLE` ／ `EXPECTED_VARIABLE` の 4 行が ❌ である。
+  辺④は `sectionKey` が SETUP 系を `setup_files`・EXPECTED 系を `expected_files` へ **2 対 1** で写し、
+  固定長／可変長を分ける `type:` は `emitFile` が `fileType` から出して `DataType` を見ないため、
+  **4 種の `DataType` を区別する出力が辺④に無い**。テストを足しても埋まらない（出力が `DataType` に
+  依存しないため）。
+- **あるべき姿**: **`fileType` を `DataType` から導出し、重複そのものを無くす。** `DataType` → `FileType`
+  の向きは上の対応表から一意に定まる（**逆向きは SETUP／EXPECTED の情報が要るため一意でない。
+  4 対 2 の写像であって全単射ではない**）。導出は既に実装されており、辺①の
+  `XlsFormatReader#isFixed(DataType)` がそれである。**整合検査を足すより望ましい** ——
+  `steering.md` Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」の型であり、
+  そもそも**不正な状態を作れなくする**ほうが強い。これが済めば辺④の `type:` が `DataType` から出るため
+  **A-06〜A-09 は ✅ になり、軸C から C-10（`FileDataBlock.fileType`）という行自体が消える**
+  （フィールドが無くなるため）。
+- **影響範囲**: `new FileDataBlock(` は **`src/main` に 2 か所・`src/test` に 46 か所（合計 48 か所）**
+  ある（2026-08-21 実測。`grep -rc 'new FileDataBlock' src/main src/test --include=*.java`）。
+  ファイルは `src/main` が `xls/XlsFormatReader.java` ／ `yaml/YamlFormatReader.java` の 2 本、
+  `src/test` が `RoundTripTest.java` ／ `TestDataConverterTest.java` ／
+  `model/FileDataBlockTest.java` ／ `model/TestDataBlockTest.java` ／
+  `xls/XlsFormatWriterTest.java` ／ `xls/XlsFormatWriterModelTest.java` ／
+  `xls/XlsReferenceFixtureTest.java` ／ `yaml/YamlFormatWriterTest.java` ／
+  `yaml/YamlFormatWriterModelTest.java` の 9 本である。**コンストラクタから `fileType` 引数が消えるため、
+  4 辺すべての生成箇所に手が入る。**
+- **方針 4（食い違いの生成元の特定）: 辺①②のどちらのリーダーも食い違いを作らない。** 辺①は
+  `XlsFormatReader#isFixed(type)` で `DataType` から `fileType` を導いており、**すでに導出の向きに
+  なっている**。辺②は逆に `YamlFormatReader#fileDataType(setup, fileType)` で `fileType` から
+  `DataType` を作る。どちらも整合するため、**食い違いは呼び出し側のバグとしてのみ到達しうる**
+  （XLS-34〜XLS-38 と同じ）。
+- 判断: **仕様として不適切**（NTF 仕様として表現できない状態を中間モデルが保持でき、同じモデルから
+  辺③と辺④が別のファイル種別を書く）。
+- NTF 仕様としての判定: **要対応**（**未実施**。#27 では `src/main` を触らないため起票のみ）。
+  根拠は明文である —— 本体スキーマ `$defs.file_data.properties.type` の description が 4 種の
+  `DataType` と `fixed` ／ `variable` を 1 対 1 に定めており、`SETUP_FIXED` のブロックを
+  `type: "variable"` と書いた YAML は**この対応に反する**。辺③の出力も `notation:883` の
+  「固定長では 3 リストが同サイズで必須」に反する。**#25.5 で修正した 25 件とは別枠の、未実施の要対応で
+  ある。実施は #28 の後に独立タスクとして立てる。**
+- 担保テスト: **無い。** `FileDataBlockTest#固定可変とSETUP_EXPECTEDの全組合せを保持する` は
+  `SETUP_FIXED`＋`FIXED` ／ `EXPECTED_FIXED`＋`FIXED` ／ `SETUP_VARIABLE`＋`VARIABLE` ／
+  `EXPECTED_VARIABLE`＋`VARIABLE` の**対角 4 組だけ**を確かめており（テスト本文のコメントも
+  「4 つのファイル系データ種別と FileType の対角を網羅」と書いている）、食い違う組を扱うテストは
+  `src/test` に 1 本も無い。修正時に足す。
 
 ---
 
