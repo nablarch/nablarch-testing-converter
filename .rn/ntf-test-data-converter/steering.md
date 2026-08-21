@@ -1429,7 +1429,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] Acceptance criteria（フェーズ2分を含む全項目）を1件ずつ検証し、結果をまとめる → **検証は済み（2026-08-21・`becd7b3` 時点）。13 項目のうち 11 項目が充足、1 項目が条件つき充足、1 項目が検証不能。**
+- [x] Acceptance criteria（フェーズ2分を含む全項目）を1件ずつ検証し、結果をまとめる → **検証は済み（2026-08-21・`becd7b3` 時点）。13 項目のうち 11 項目が充足、1 項目が条件つき充足、1 項目が検証不能。**
   - **検証不能 1 件（要ユーザー判断）: 「全移動ファイルが本体現ブランチと package/import を除いて完全一致」。** **照合の相手が現存しない。** Assumptions が移動元とする `nablarch-testing` の `convert-testdata-excel-to-text`（現 HEAD `a155471`）は `src/main/java/nablarch/test/tool/converter` を **1 ファイルも持たない**（`git ls-tree -r --name-only a155471 | grep -c 'tool/converter'` → 0）。同リポジトリで converter を持つ ref は `worktree-agent-a79308e7e5862d004`（`d5ec1d0`）**だけ**で、そこにあるのは 25 ファイル。本リポジトリの初回取り込み `2a069bc`（28 ファイル）と package／import を除いて突き合わせると **一致 20・差分 5・上流に不在 3** で、同ブランチの 50 コミットを全部当たっても完全一致するコミットは無い。**#2 の QA は当時「全 28 件を source ブランチと diff して全件ゼロ」と記録しており（`checks/task-2.md`）、当時は照合できていたが、その後 upstream 側でブランチが失われている。基準 SHA を記録していなかった。**
   - **条件つき充足 1 件: 「辺①…軸A（`DataType` 14種）すべてが実ファイル経由で1回以上通っている」。** 13 種は ✅ で、残る 1 種 `DEFAULT` は **中間モデルが生成時に拒否するため入力を組めない**（`issues.md` XLS-20）。`axis-matrix.md` 辺① A-01 に `—` と理由・根拠テストを記載済み。
   - **充足 11 件**: `mvn test` 全 PASS（`Tests run: 597, Failures: 0, Errors: 0, Skipped: 2`）／ pom.xml の 4 依存（yaml `1.0.0-SNAPSHOT`・本体・poi-ooxml `3.8`・snakeyaml-engine `3.0.1`）／ 本体・yaml とも作業ツリーがクリーンで書き込みなし／ push 済み／ 軸B は 4 辺とも 4/4 ✅・軸C は空欄と ❌ に理由あり・`fileType` は FIXED ／ VARIABLE とも ✅／ 軸D は 8・12・8・9 で規定どおり全 ✅／ 軸E・軸F は到達不能な空欄を除き全 ✅／ 参照フィクスチャ `ProjectActionRequestTest.xlsx` と POI 生成物の一致は `XlsReferenceFixtureTest#poiGeneratedWorkbookReadsIdenticallyToExcelSavedWorkbook` が担保／ 対応表 315 行（✅283・❌5・空欄27、理由つき）／ カバレッジ計測と未到達分岐 34 件の分類（足すべき 19・不要 15）／ 課題一覧 57 件（要対応 26・うち未実施は XLS-44 の 1 件）／ `JAVA_HOME=… mvn clean test -Djacoco.skip=true` 全 PASS
@@ -1448,8 +1448,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #27（`becd7b3`）。**#28 は進行中** —— Acceptance criteria の検証は完了（`67a8780`）、ユーザーの判定待ち
+- **Next**: #28 の Evaluation gate。**下の未決 2 件に回答を得てから** `/rn:ty`（承認）／`/rn:gm`（差し戻し）を受ける
+- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし・未追跡パス無し）。**AC 13 項目の検証結果は #28 の Steps 1 に全文がある**（充足 11／条件つき充足 1／検証不能 1）。**ユーザー判断待ちが 2 件** —— ① **AC「全移動ファイルが本体現ブランチと完全一致」が検証不能**。照合相手が現存しない（`nablarch-testing` の `convert-testdata-excel-to-text` は converter を 0 ファイル、converter を持つ ref は `worktree-agent-a79308e7e5862d004`＝`d5ec1d0` の 25 ファイルのみで初回取り込み `2a069bc` の 28 ファイルとは一致 20／差分 5／不在 3）。提示した道は (1) 未確認と明記して承認 ／ (2) upstream の `git reflog --all` から移動元を復元して照合し直す ／ (3) 条件を再現できる形へ改める。**推奨は (2) を試し、駄目なら (3)。** ② **`issues.md` XLS-45 の解説書担当・スキーマ担当宛の申し送りを立てるか**（`issues.md` に「未決」と明記済み）。**#28 の後に独立タスクを 1 つ立てる約束がある** —— `issues.md` **XLS-44**（要対応・未実施。`FileDataBlock` の `fileType` を `DataType` から導出して重複を無くす。4 辺すべての生成箇所に手が入る）。**JaCoCo の再計測はしない**（Rules）
