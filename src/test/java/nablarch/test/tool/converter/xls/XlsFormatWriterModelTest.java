@@ -54,6 +54,9 @@ import org.junit.rules.TemporaryFolder;
  *       {@code issues.md} XLS-22）</li>
  *   <li><b>軸E 3 件</b>: E-1(0 件)＝セクション内ブロック数 0／E-2(0 件)＝ブロック内行数 0／
  *       E-3(0 件)＝ファイル内レコードレイアウト数 0</li>
+ *   <li><b>軸E 1 件（#27 で追加）</b>: E-1(1 件)＝セクション内ブロック数 1。
+ *       {@code axis-matrix.md} §3.5 の総点検で、シート全体の行数を見るアサートが {@code src/test} 全体で
+ *       0 件側の 1 か所しか無く 1 件側が空いていることが判明したため足した</li>
  * </ul>
  *
  * <p>
@@ -526,5 +529,45 @@ public class XlsFormatWriterModelTest {
         assertThat(line(sheet, 2), is(Arrays.asList("", "半角英字")));
         assertThat(line(sheet, 3), is(Arrays.asList("", "5")));
         assertThat("データ行は書かれない", sheet.getRow(4), is(nullValue()));
+    }
+
+    // ------------------------------------------------------------------ E-1(1 件)
+
+    /**
+     * Given: ブロックを 1 件だけ持つセクション（カラム名 2 件・データ行 1 行のテーブル）。
+     * When : 実 {@code .xlsx} へ書き出し、POI で開き直す。
+     * Then : シートの行は<b>全部で 3 行</b>（識別行・カラム名行・データ行 1 行）であり、
+     *        2 ブロック目は書かれない。
+     *
+     * <p>
+     * 担保する軸要素: E-1(1 件)（セクション内ブロック数 1）。
+     * <b>件数は出力側で固定する</b> —— {@code getPhysicalNumberOfRows()} がシート全体の行数を返すため、
+     * 2 ブロック目が書かれれば（ブロック間の空行は行を作らないので）6 になって落ちる。
+     * 「次の行が {@code null}」では 2 ブロック目の不在を示せない。
+     * {@code XlsFormatWriter#writeSection} はブロック間の空行を行を生成せずに {@code rowNum} を
+     * 進めるだけなので、2 ブロック目があっても直後の行は {@code null} のままだからである。
+     * </p>
+     *
+     * <p>
+     * カラム名は辞書順の逆（{@code B} → {@code A}）に並べてある。定義順と辞書順が一致していると、
+     * 並びを崩す変異を入れても落ちないためである（Rules「順序を主張するテストは、フィクスチャを
+     * 最初から定義順・辞書順とずらして作る」）。
+     * </p>
+     */
+    @Test
+    public void writesOnlyOneBlockWhenSectionHasSingleBlock() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("B", "A"), Collections.singletonList(row("b1", "a1")));
+
+        // When
+        Sheet sheet = writeAndReopenSheet(container("oneBlock", table));
+
+        // Then
+        assertThat("シート全体で 3 行（識別行・カラム名行・データ行 1 行）",
+                sheet.getPhysicalNumberOfRows(), is(3));
+        assertThat(line(sheet, 0), is(Arrays.asList("SETUP_TABLE=T")));
+        assertThat(line(sheet, 1), is(Arrays.asList("B", "A")));
+        assertThat(line(sheet, 2), is(Arrays.asList("b1", "a1")));
     }
 }
