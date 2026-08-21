@@ -9,7 +9,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 # Acceptance criteria
 
 - converter の `mvn test` が全テスト PASS する
-- 全移動ファイルが本体現ブランチと package/import を除いて完全一致（実装無改変）。**ただし #25.5 で修正した src/main のファイルは除外し、除外したファイル名・課題ID・変更理由を併記する**（ユーザー確定・2026-08-14）
+- 全移動ファイルが本体現ブランチと package/import を除いて完全一致（実装無改変）。**ただし #25.5 で修正した src/main のファイルは除外し、除外したファイル名・課題ID・変更理由を併記する**（ユーザー確定・2026-08-14）。**#26.5 で修正した `XlsFormatWriter.java` も同じ扱いとする**（`becbe30`。XLS-27 のマーカーカラムのセル値を `[空]` から `[EMPTY]` へ改めたもの。ユーザー確定・2026-08-20）——#26.5 はそれ自体が src/main を触るタスクとして承認されており、この 1 件だけが #25.5 の外にある
 - pom.xml が yaml・本体・poi 3.8・snakeyaml 3.0.1 の依存を正しく持つ
 - 本体（nablarch-testing）・yaml（nablarch-testing-yaml）に一切書き込んでいない
 - ブランチが push 済み
