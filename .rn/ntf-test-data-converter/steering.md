@@ -1300,7 +1300,18 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] 着手時に最新を採り直す（別セッションが並行して動いているため。申し送りの基準コミットは `c8ead78`）
+- [x] 着手時に最新を採り直す（別セッションが並行して動いているため。申し送りの基準コミットは `c8ead78`）→ **`804329a` で採り直した。** `git fetch --all` 後 `git log --oneline HEAD..@{u}` は 0 件で、**別セッションの並行変更は入っていない**（`c8ead78..HEAD` の 7 コミットはいずれも本セッション系列の #25.5〜#26 ぶん）。**`[空]` の出現箇所を数える導出コマンド**（件数が後から動いたときはこれを再実行して確かめる。ユーザー指示・2026-08-21）:
+
+  ```bash
+  git grep -c -F '[空]' -- .                                  # ファイル別の件数
+  git grep -o -F '[空]' -- . | wc -l                          # 総数
+  git grep -c -F '[空]' -- src/                               # Completion criteria の判定に使う範囲
+  find src -name '*.xls*' -exec sh -c \
+    'unzip -p "$1" | grep -qa "\[空\]" && echo "HIT: $1"' _ {} \;   # バイナリのフィクスチャに埋まっていないか
+  ```
+
+  **`804329a` 時点の実測: 全 19 件・6 ファイル。** 内訳は `src/` **6 件**（`xls/XlsFormatWriter.java` 1／`xls/XlsFormatWriterTest.java` 4／`SampleConversionTest.java` 1）と `.rn/` **13 件**（`steering.md` 6／`coverage/issues.md` 6／`coverage/inventory.md` 1）。`checks/` は 0 件。`.xls*` のフィクスチャ（1 本）を展開しての走査も 0 件で、**バイナリに埋まった `[空]` は無い**
+- [ ] `.rn/` 側の **現行の正を述べている 5 件**を `[EMPTY]` へ揃える（標準・ユーザー確定 2026-08-13「定義を変えたら現行の正を保持する文書は指示に無くても揃える」）。**揃える** = `coverage/inventory.md` 追補その 6 の軸表 `C-08 columnNames 空` 行／`coverage/issues.md` の ①冒頭「要対応 25 件の内訳」の XLS-27 の項 ②同じく冒頭の番人 7 つの決着表の `columnNames` 0 件 行 ③XLS-08 の末尾（「もう成り立たない」の直後）④XLS-27【決着】の「改修」箇条。**揃えない** = `steering.md` 6 件（引用ブロック 2・完了済みステップの時点記録 2・本タスク自身の表題と理由 2）と `coverage/issues.md` の XLS-27 プローブ実測（2026-08-19）の 2 件 —— **後者は当時書かれた版面そのものの記録なので値は書き換えず、現行の値の在り処を指す 1 行だけを足す**（件数は書かない）
 - [ ] `XlsFormatWriter.java` の定数 `EMPTY_BLOCK_MARKER_COLUMN` の**値だけ**を `[EMPTY]` に変える（**定数名は変えない**。`{@value}` を使う Javadoc と定数参照箇所には手を入れない）
 - [ ] `XlsFormatWriterTest.java`・`SampleConversionTest.java` の期待値を追随させる
 - [ ] self-check（OK/NG per completion criterion、checks/task-26.5.md に記録）
@@ -1315,6 +1326,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - `EMPTY_BLOCK_MARKER_COLUMN` を参照する箇所が `XlsFormatWriter` の 3 箇所のままであること
 - 定数名 `EMPTY_BLOCK_MARKER_COLUMN` が変わっていないこと
 - `XlsFormatWriter.java` の総行数が変わっていないこと（`coverage/coverage-report.md` が同ファイルの行番号を `da66425` 時点で引用しているため）
+- `.rn/` 側で現行の正を述べている 5 件が `[EMPTY]` になっており、残る `[空]` が引用・時点記録だけであること（上の導出コマンドで件数を確かめる）
 
 **担当外（報告に含めること）**: `nablarch-testing` 側 `docs/pr75/docs/ntf-empty-table-assertion.md` の「未決」記述の更新は**別リポジトリであり、#21〜#23 を進めている CC の担当**。本セッションは手を出さない。
 
