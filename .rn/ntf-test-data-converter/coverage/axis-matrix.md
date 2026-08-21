@@ -1177,7 +1177,7 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 | 分類 | 件数 | 該当 |
 |---|---|---|
 | 構造上の到達不能（読み手側が 1 シート／1 リソース単位 API） | 4 | 辺①・辺② の C-02(空) ／ E-4(複数)（2 辺 × 2 要素） |
-| 入力側が先に閉じている到達不能（辺①＝ NTF 本体の `DataFile` の注入と本体パーサ、辺②＝ YAML スキーマ） | 8 | 辺①・辺② の C-11(空) ／ C-13(空) ／ C-17(空) ／ C-20(省略)（2 辺 × 4 要素） |
+| 入力側が先に閉じている到達不能（閉じている機構は要素で分かれる。C-11(空) ／ C-13(空) は 2 辺とも NTF 本体の `DataFile` の注入、C-17(空) ／ C-20(省略) は辺①が本体パーサ・辺②が YAML スキーマ） | 8 | 辺①・辺② の C-11(空) ／ C-13(空) ／ C-17(空) ／ C-20(省略)（2 辺 × 4 要素） |
 | 中間モデルの不変条件による到達不能（#25.5） | 12 | 4 辺の A-01（4）／4 辺の C-15(空)（4）／辺③・辺④ の C-17(空)（2）／辺③・辺④ の C-20(省略)（2） |
 | その辺が読まないフィールド | 1 | 辺④ C-01（`YamlFormatWriter#write` はコンテナの名前を参照しない） |
 | 対象外（衝突検査は上位層）かつ上位層が担保済み | 1 | 辺④ F4-02 |
@@ -1193,6 +1193,22 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 **辺① C-17(空) ／ C-20(省略) は 2 つの分類にまたがる**（本体パーサが先に弾き、仮に届いても中間モデルが拒否する）。
 上表では先に効くほう（本体パーサ）に数えている。同じく辺② の 2 件はスキーマ側に数えている。
+
+**辺② の C-11(空) ／ C-13(空) を閉じているのはスキーマではない。** `$defs.directives` は
+`required` も `minProperties` も持たないため `directives: {}` はスキーマ検証を通る。それでも
+`FileDataBlock.directives` ／ `MessageDataBlock.directives` が空にならないのは、辺①と同じく
+NTF 本体の `DataFile` のコンストラクタが `file-type` を注入するからである（`issues.md` XLS-07）。
+§2.3 の 2 行の理由欄はもともとこの機構を挙げている。
+
+```sh
+unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
+  -name 'nablarch-testing-yaml-1.0.0-SNAPSHOT.jar')" \
+  nablarch/test/ntf-testdata-yaml-schema.json |
+  python3 -c 'import json,sys; d=json.load(sys.stdin)["$defs"]["directives"]; print(sorted(d.keys()))'
+```
+
+出力は `['additionalProperties', 'description', 'properties', 'type']` の 1 行で、
+`required` も `minProperties` も現れない。
 
 導出コマンド（分類の件数ではなく、空欄そのものの総数 27 を数える）:
 
