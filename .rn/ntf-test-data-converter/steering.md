@@ -1280,6 +1280,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] QA expert review（subagent）
 - [x] Craft expert review（subagent, writing）
 - [x] Verification expert review（subagent, fact-check）
+- [x] **追加 1 巡（ユーザー確定・2026-08-21。範囲は A 群 4 件＋B 群 5 件の 9 件に限る）**: 3 巡目で未処置のまま残した Valid 18 件のうち、**A 群 4 件（事実誤り）＝ C3-1・C3-2・C3-8・QA-4** と **B 群 5 件（引用の逐語性）＝ V3-1・V3-3〜V3-6** を直した。**QA-1 は却下**（分類「テストを足すべき 19／テスト不要 15」は動かさない。却下理由を `coverage-report.md` §3.1 #6 の行に 1 文で残した）。**残る C 群 8 件（用語・体裁）＝ QA-2・C3-3〜C3-7・C3-9・C3-10 は #27 の対応表を書くときにまとめて整える。** **QA-3（`checks/task-26.md` が無い）は無効だが、原因である未追跡を本コミットで解消した**（3 巡とも同じ指摘が上がったのは、worktree で起動したレビュアに未追跡ファイルが見えないためである）
 
 **Completion criteria**:
 
@@ -1368,8 +1369,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-21
-- **Last completed**: #25.5 不具合修正（TDD）
-- **Next**: #26 カバレッジ計測と未到達分岐の列挙（Steps は全て完了、check-off 前でユーザー判断待ち）
-- **Notes**: branch `ntf-test-data-converter`。#26 は完了条件 5 項目すべて OK、src/main 差分ゼロ。成果物は `3b33d5a`。**修正イテレーション上限 3 回を使い切り Craft(writing) が FAIL のまま**で、Valid と判定した未解決 18 件を `checks/task-26.md` の「未解決の指摘」表に記録済み。**ユーザー判断待ち＝どこまで直すか**（推奨: A 群 4 件〈事実誤り〉＋ B 群 5 件〈引用の逐語性〉を追加 1 巡で修正、C 群 9 件〈用語・体裁〉は #27 に回す、QA-1 は見出しの件数 19/15 が 20/14 に動くため単独判断）。再開時はこの判断を先に取る。JaCoCo の再計測は禁止（`da66425` 固定、`jacoco.csv` md5 `d28e374e9027ade63d7919f7a7b5826e`）。ユーザー未解決の未追跡パス: `?? .rn/ntf-test-data-converter/checks/task-26.md`（規約上 check-off コミットに載せるファイル。次セッションでコミットするか要確認）
+- **Status**: not suspended
+- **Date**: YYYY-MM-DD
+- **Last completed**: #N description
+- **Next**: #N description
+- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
