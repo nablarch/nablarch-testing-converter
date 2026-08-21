@@ -486,7 +486,7 @@ awk '/^## 1\. /,/^## 2\. /' axis-matrix.md | grep -E '^\| [A-F][0-9-]' \
 | C-16(値あり) | `RecordLayout.recordType` 値あり | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
 | C-16(省略) | 同 省略（`null`） | ✅ | `XlsFormatReaderRealFileTest#readsOmittedRecordTypeAsNullFromRealBook` | — | `""` ではなく `null`（`issues.md` XLS-06 の修正後） |
 | C-17(非空) | `RecordLayout.fields` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
-| C-17(空) | 同 空 | — | — | — | 到達不能。名前行が 2 列未満だと本体 `DataFileParser` が失敗し、仮に届いても `RecordLayout` が拒否する（`issues.md` XLS-22）。根拠テスト `XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook` ／ `#failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook` ／ `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない` |
+| C-17(空) | 同 空 | — | — | — | 到達不能。名前行が 2 列未満だと本体側が失敗し、仮に届いても `RecordLayout` が拒否する（`issues.md` XLS-22）。根拠テスト `XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook` ／ `#failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook` ／ `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない`。本体側の番人は 1 つではない —— 根拠テスト 2 件が通すのは `DataFileParser#processDirectives` の `line.size() < 2` だが、これは 1 断片目の名前行にしか効かない。2 断片目以降の名前行は `DataFileParser#onReadingValues` から `createNewFragment` を経て `DataFileFragment#setNames` の `assertNotNullOrEmpty` で閉じる。後者を通す根拠テストは `src/test` に無い（未確認。§6.2 の 8） |
 | C-18(非空) | `RecordLayout.rows` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
 | C-18(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook` | — | — |
 | C-19 | `FieldDef.name` | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | `null` は `FieldDef` が拒否する（`FieldDefTest#名称がnullのフィールド定義は生成できない`。`issues.md` XLS-31） |
@@ -1365,6 +1365,7 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 | 5 | `inventory.md` のスナップショット節の内容照合。§6.1 で内容まで確かめたのは `inventory.md` §0.1-2 の「担保の現在地」表（8 件）と、スナップショット節で見つけた 3 点だけである。名前のレベルでは同文書全体を機械照合したが（§6.1 の 105 ／ 34 ／ 103）、HEAD に無い 34 件の種別も、HEAD に在る 71 件の軸要素対応も読み分けていない。本書は `inventory.md` ／ `issues.md` ／ `coverage-report.md` を書き換えていない | 本書の判定はテストソースを正としているため影響しない |
 | 6 | 辺① C-13(空) の到達不能根拠が送信同期経路の 1 本だけである（§1.3）。受信 `MESSAGE` 経路でディレクティブ行 0 行を通す根拠テストが `src/test` に無い | 辺② の同じ行は 2 経路それぞれの根拠を挙げており、辺で厚みが割れている。到達不能という判定そのものは `DataFile` の注入機構（`issues.md` XLS-07）に依るため変わらない |
 | 7 | `model/` の不変条件の全数（§0.4）。上表 9 行＋下表 5 行の 14 行が全数かは数えていない | 本書が閉じているのは空欄の側だけである（§0.4 の末尾） |
+| 8 | 辺① C-17(空) の本体側の番人が 2 つある（§1.3）。根拠テスト 2 件が通すのは `DataFileParser#processDirectives` の 2 列ガードで、2 断片目以降の名前行を閉じる `DataFileFragment#setNames` の `assertNotNullOrEmpty` を通す根拠テストは `src/test` に無い | 到達不能という判定は変わらない（2 経路とも本体側で閉じることは実装を読んで確かめた）。理由欄が挙げていた機構名が実際より狭かった |
 
 上記以外の担保テストメソッドは、1 件残らずテストソースを開いて Given／When／Then とアサートを読み、
 その軸要素を担保していることを確かめた（§0.6 の実在照合コマンドで名前の実在も機械的に照合してある）。
