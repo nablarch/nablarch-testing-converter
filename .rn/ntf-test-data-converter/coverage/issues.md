@@ -4134,7 +4134,9 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
   `["path", "type", "records"]`、`properties.type` は `enum` ＝ `["fixed", "variable"]` で、
   description が「ファイル種別。fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
   （SETUP_VARIABLE / EXPECTED_VARIABLE）。NTF はこの値に応じてパーサ・フォーマッタを切り替える」と、
-  **4 種のデータタイプと 2 値の `type` を 1 対 1 に対応づけている**。解説書も同じで、
+  **4 種のデータタイプそれぞれに `fixed` ／ `variable` のどちらか一方を一意に割り当てている**
+  （`DataType` → `type` の向きが一意に定まる。逆向きは SETUP ／ EXPECTED の情報が要るため一意でない ——
+  4 対 2 の写像であって全単射ではない）。解説書も同じで、
   `notation:850`「固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
   `SETUP_FIXED`・`EXPECTED_FIXED`（固定長）、`SETUP_VARIABLE`・`EXPECTED_VARIABLE`（可変長）の
   いずれかのデータタイプで記述する。」が、**データタイプそのものに固定長／可変長の別を割り当てている**
@@ -4228,7 +4230,7 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
   辺③と辺④が別のファイル種別を書く）。
 - NTF 仕様としての判定: **要対応**（**未実施**。#27 では `src/main` を触らないため起票のみ）。
   根拠は明文である —— 本体スキーマ `$defs.file_data.properties.type` の description が 4 種の
-  `DataType` と `fixed` ／ `variable` を 1 対 1 に定めており、`SETUP_FIXED` のブロックを
+  `DataType` それぞれに `fixed` ／ `variable` のどちらか一方を一意に割り当てており、`SETUP_FIXED` のブロックを
   `type: "variable"` と書いた YAML は**この対応に反する**。辺③の出力も `notation:883` の
   「固定長では 3 リストが同サイズで必須」に反する。**#25.5 で修正した 25 件とは別枠の、未実施の要対応で
   ある。実施は #28 の後に独立タスクとして立てる。**
