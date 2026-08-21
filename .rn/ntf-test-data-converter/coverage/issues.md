@@ -3774,8 +3774,8 @@ YAML では「`group_id:` を置かない」か「1 文字以上の文字列を�
 `id` と `ID` を書いたスキーマ適合の YAML から `columnNames` ＝ `[ID, ID]` を作る（**YML-10**）。
 
 ```sh
-$ git -C ~/work/nablarch/nablarch-testing show 65911f5:src/main/java/nablarch/test/core/db/TableData.java \
-    | grep -n 'toUpperCase'
+git -C ~/work/nablarch/nablarch-testing show 65911f5:src/main/java/nablarch/test/core/db/TableData.java \
+  | grep -n 'toUpperCase'
 ```
 
 **却下した 2 案と理由**
@@ -3794,9 +3794,9 @@ $ git -C ~/work/nablarch/nablarch-testing show 65911f5:src/main/java/nablarch/te
   （「大文字小文字不問」）の話であり、カラム名の話ではない。
 
   ```sh
-  $ git -C ~/work/nablarch/nablarch-document show \
-        30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst \
-      | grep -n '大文字'
+  git -C ~/work/nablarch/nablarch-document show \
+      30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst \
+    | grep -n '大文字'
   ```
 
 - **スキーマが大文字変換に触れているのは `table` キーの説明だけである**
@@ -4008,10 +4008,11 @@ YML-05 は少ない側（不足を `""` で補完する挙動）に限定して�
   **黙って捨てることを認める明文は無い。**
 
   ```sh
-  $ git -C ~/work/nablarch/nablarch-document show \
-        30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '891p'
-  - データ要素数が不正である
+  git -C ~/work/nablarch/nablarch-document show \
+      30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '891p'
   ```
+
+  出力は `- データ要素数が不正である` の 1 行である。
 
 - **帰属は converter の外（本体パーサ）である。** `nablarch/test/core/file/DataFileFragment.java` の
   `addValue` が `String value = i < line.size() ? line.get(i) : "";` としてフィールド名の件数ぶんだけ
