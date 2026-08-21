@@ -820,7 +820,7 @@ grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 �
 | C-20(値あり) | `FieldDef.type` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 型行に出る。空文字は弾かれず空セルになる（`XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty`） |
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。`FieldDef` が `type` ＝ `null` を生成時に拒否するため入力を組めない（`issues.md` XLS-31。`steering.md` #25.5 §1-D）。根拠テスト `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `FieldDefTest#データ型が空文字のフィールド定義は生成できる` |
 | C-21(値あり) | `FieldDef.length` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 長さ行に `-` ／ `5` が原文のまま出る |
-| C-21(省略) | 同 省略（`null`） | ✅ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow` | `XlsFormatWriterTest#roundTripsVariableFile` | 到達できるのは可変長ファイルだけ。固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
+| C-21(省略) | 同 省略（`null`） | ❌ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（`length` の値には無反応） | `XlsFormatWriterTest#roundTripsVariableFile` | **省略された `length` が出力に現れないことを、値に反応する形でアサートしているテストが無い。** 到達できるのは可変長ファイルだけだが、`XlsFormatWriter#appendRecord` は長さ行を `if (fixed)` の中でしか作らないため、可変長では `getLength()` が 1 度も読まれない。したがって同じ入力の `length` を `null` から `"5"` に変えても出力は 1 行も変わらず、根拠テストは緑のままである。行 3 がデータ行であることは C-10 の VARIABLE 側の担保であって、この行の主張ではない。**テストを足しても埋まらない**（辺③の出力が可変長では `length` に依存しない）。他の (省略)／(空) 行（C-06(省略)・C-16(省略)・C-11(空)・C-13(空)・C-14(空)）はいずれも値を入れれば落ちる形であり、本行だけが例外である。なお固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
 
 ### 3.4 軸D 値の表現（セル型 8 ケース。すべて `getCellType()` をアサート）
 
@@ -1163,17 +1163,17 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 71 | 73 | 72 | 71 | 287 |
+| ✅ 担保あり | 71 | 73 | 71 | 71 | 286 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
-| ❌ 未担保 | 0 | 1 | 0 | 0 | 1 |
+| ❌ 未担保 | 0 | 1 | 1 | 0 | 2 |
 | — 空欄 | 8 | 8 | 5 | 6 | 27 |
 | **合計** | **79** | **82** | **77** | **77** | **315** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
 
-**❌ の 1 件は水平展開で出た（#27）。** 軸E の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)）が
+**❌ の 2 件は水平展開で出た（#27）。** 軸E の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)）が
 ✅ から ❌ へ動いたが、そちらは #27 の中でテストを 2 本足して埋めてある（`783810b` ／ `6d12021`）。
-残る 1 件は水平展開——「表が主張する内容を、テスト本文が実際には主張していない」を全セルへ広げた
+残る 2 件は水平展開——「表が主張する内容を、テスト本文が実際には主張していない」を全セルへ広げた
 点検——で出たもので、軸A〜D は空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
 
 「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある
