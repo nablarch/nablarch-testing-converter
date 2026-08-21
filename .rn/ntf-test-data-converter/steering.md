@@ -1314,16 +1314,16 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
   **`804329a` 時点の実測: 全 19 件・6 ファイル**（`<rev>` ＝ `804329a` で再現する）。内訳は `src/` **6 件**（`xls/XlsFormatWriter.java` 1／`xls/XlsFormatWriterTest.java` 4／`SampleConversionTest.java` 1）と `.rn/` **13 件**（`steering.md` 6／`coverage/issues.md` 6／`coverage/inventory.md` 1）。`checks/` は 0 件。`.xls*` のフィクスチャ（1 本）を展開しての走査も 0 件で、**バイナリに埋まった `[空]` は無い**
 
   **`<rev>` を省いた作業ツリーの値は、上の 19 件とは一致しない。** この記録と導出コマンドを `steering.md` へ書いたこと自体が `[空]` の出現を増やしており、以後も本タスクの記述が動けば増減する（レビュー指摘・2026-08-21）。**判定に使うのは `-- src/` の件数と `coverage/` 側の内訳であって、`steering.md` を含む総数ではない。** 時点どうしを比べるときは必ず `<rev>` を付けて数えること
-- [ ] `.rn/` 側の **現行の正を述べている記述**を `[EMPTY]` へ揃える（標準・ユーザー確定 2026-08-13「定義を変えたら現行の正を保持する文書は指示に無くても揃える」）。**分ける基準は「機構の説明か、観測した現物の記録か」である** —— いま converter が何を書き出すかを述べた文は、日付が入っていても**揃える**。当時観測した版面・出力そのものの記録は**値を残し**、現行値の在り処を指す 1 行を添える（件数は書かない）。
+- [x] `.rn/` 側の **現行の正を述べている記述**を `[EMPTY]` へ揃える（標準・ユーザー確定 2026-08-13「定義を変えたら現行の正を保持する文書は指示に無くても揃える」）。**分ける基準は「機構の説明か、観測した現物の記録か」である** —— いま converter が何を書き出すかを述べた文は、日付が入っていても**揃える**。当時観測した版面・出力そのものの記録は**値を残し**、現行値の在り処を指す 1 行を添える（件数は書かない）。
   - **揃える**: `coverage/inventory.md` 追補その 6 の軸表 `C-08 columnNames 空` 行／`coverage/issues.md` の ①冒頭「要対応 25 件の内訳」の XLS-27 の項 ②同じく冒頭の番人 7 つの決着表の `columnNames` 0 件 行 ③XLS-08 の末尾（「もう成り立たない」の直後）④XLS-27【決着】の「改修」箇条／**`steering.md` Decisions の訂正ブロック 2 つ**（「未完 1 件…は取り消した」と「~~XLS-27 の番人は…~~」節の冒頭）
   - **揃えない**: `coverage/issues.md` の XLS-27 プローブ実測（2026-08-19）の版面記録／`steering.md` の完了済みステップの時点記録・本タスク自身の表題と理由・本ステップの実測記録と導出コマンド
   - **`steering.md` Decisions の 2 つは、当初「引用ブロックだから揃えない」と分類していた。** 実物を開かず `grep` の 1 行だけで判断したのが誤りで、あれは逐語の引用ではなく**現在形で機構を述べた訂正ブロック**であり、しかも標準が「揃える」と定める Decisions の中にある。QA・Craft の 2 者が独立に指摘し、coordinator が実物を読んで追認した（2026-08-21）。**日付を裏切らないよう、値を差し替えたうえで「当時の値は `[空]`」を括弧で添える形にした**
-- [ ] `XlsFormatWriter.java` の定数 `EMPTY_BLOCK_MARKER_COLUMN` の**値だけ**を `[EMPTY]` に変える（**定数名は変えない**。`{@value}` を使う Javadoc と定数参照箇所には手を入れない）
-- [ ] `XlsFormatWriterTest.java`・`SampleConversionTest.java` の期待値を追随させる
-- [ ] self-check（OK/NG per completion criterion、checks/task-26.5.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, coding）
-- [ ] Verification expert review（subagent, test）
+- [x] `XlsFormatWriter.java` の定数 `EMPTY_BLOCK_MARKER_COLUMN` の**値だけ**を `[EMPTY]` に変える（**定数名は変えない**。`{@value}` を使う Javadoc と定数参照箇所には手を入れない）→ `becbe30`。`:543` の 1 行のみ。総行数 601・定数名・参照 3 箇所（`:213`／`:252`／`:543`）はいずれも不変
+- [x] `XlsFormatWriterTest.java`・`SampleConversionTest.java` の期待値を追随させる → `becbe30`。**テスト先行で RED を実測してから実装した**（`XlsFormatWriterTest` の期待値だけ先に変え、`Expected: is "[EMPTY]" but: was "[空]"` で 2 件 FAIL を確認）。`mvn clean test -Djacoco.skip=true` は `Tests run: 595, Failures: 0, Errors: 0, Skipped: 2`（**595 は本変更による目減りではない**。597 → 595 は `6114c35` の二重主張テスト 2 件削除によるもので、`0e234e1..HEAD` に `@Test` の増減は無い）
+- [x] self-check（OK/NG per completion criterion、checks/task-26.5.md に記録）→ **6 件すべて OK**
+- [x] QA expert review（subagent）→ **pass（6/6）。指摘 5 件。** `HeaderLine` のマーカー判定が `startsWith("[") && endsWith("]")` のみで値に依存しないことをソースで確かめ、本変更が本体パーサに対して振る舞い中立であることを裏づけた。F1（件数記録の自己無効化）は `3807b6a`、F2（Steps の締めと `checks/` の追跡）は本コミットで解消。F3〜F5 は持ち越し（下記）
+- [x] Craft expert review（subagent, coding）→ **pass（6/6）。指摘 5 件・採用 4 件／不採用 0 件・観測 1 件を採用。** A（self-check の Evidence が走査範囲を狭めて再現しない）は `checks/task-26.5.md`、C・D（ポインタの折り返しと版面図への注釈）は `d00da17`、B（件数記録の自己無効化）と E（`steering.md` の 2 件が同じ扱いを受けていない）は `3807b6a` で処置した
+- [x] Verification expert review（subagent, test）→ **pass（6/6）。変異試験で担保が二層であることを実証した** —— 定数を `[空]` へ戻すと 2 件、括弧なしの `EMPTY` にすると 4 件が落ちる（build テストが綴りを、往復テストが「角括弧で囲まれていること」を固定している）。**押さえられていない経路 5 件を指摘**（下記の持ち越し）
 
 **Completion criteria**:
 
@@ -1333,6 +1333,10 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 定数名 `EMPTY_BLOCK_MARKER_COLUMN` が変わっていないこと
 - `XlsFormatWriter.java` の総行数が変わっていないこと（`coverage/coverage-report.md` が同ファイルの行番号を `da66425` 時点で引用しているため）
 - `.rn/` 側で現行の正を述べている記述が `[EMPTY]` になっており、`[空]` が残るのは観測した現物の記録・完了済みステップの時点記録・本タスク自身の記述だけであること（上の導出コマンドの出力を 1 件ずつ開いて確かめる。`-- src/` は 0 件）
+
+**#27 への持ち越し候補（3 者のレビューで出た担保の穴。#26.5 では足さない。ユーザーの回答待ち・2026-08-21）**: いずれも**本変更が持ち込んだ欠陥ではなく既存の穴**である（変異試験で二層の担保が健全であることが実証されたため）。① 実 `.xlsx` を通る唯一の経路 `SampleConversionTest#convertsClimanSampleIncludingZeroRowTable` がマーカーを検証していない（ブック数とファイル存在だけを見ている。coordinator が実物で確認済み） ② `EXPECTED_TABLE` の 0 件往復テストが無い ③ 0 件テーブルが唯一・末尾のブロックの往復テストが無い ④ `columnNames=[]` かつ「セルを持たない行」を N 件持つ形（XLS-08 ／ YML-04）の往復テストが無い ⑤ 実カラム名が `[EMPTY]` と衝突する形の明示テストが無い ⑥ DB 実行経路（`TableData#replaceData`）の再実測が無い ⑦ 2026-08-19 プローブの (2)(4) は `[空]` での実測であり `[EMPTY]` で再実測していない ⑧ 命名規約そのもの（ASCII の角括弧トークンであること）を固定するテストが無い。
+
+**ユーザーへ出して未回答の 2 問（2026-08-21）**: ① 上の ⑧（命名規約を固定するテスト 1 本）を #26.5 で足すか、#27 へ回すか —— 足すとテスト件数が 595 → 596 になり、`steering.md`・`inventory.md` に記録済みの件数を導き直す必要が出る。② 上の 8 件と、別途見つけた `issues.md`「0 件テーブル制約の申し送り（XLS-27。解説書担当・対象 PJ 宛）」節の陳腐化（「0 件テーブルを含む YAML は Excel へ変換できない」「採否は未決であり、辺③の改修は未着手である」の 2 点が §6-K `839bf64` 以降 成り立たない。**宛先が社外なので古いまま渡すと誤った制約を伝えることになる**）を #27 の持ち越しへ加えてよいか。
 
 **担当外（報告に含めること）**: `nablarch-testing` 側 `docs/pr75/docs/ntf-empty-table-assertion.md` の「未決」記述の更新は**別リポジトリであり、#21〜#23 を進めている CC の担当**。本セッションは手を出さない。
 
@@ -1387,8 +1391,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #26 カバレッジ計測と未到達分岐の列挙（`58bae09`）
+- **Next**: #26.5 の Complete フェーズ —— `complete task #26.5` の完了マーカーコミットだけが残っている
+- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし）。**#26.5 は Steps 8 件すべて完了し、Verify も通過している**（self-check 6/6 OK、QA・Craft・Verification の 3 者とも pass 6/6、指摘の処置は `3807b6a`／`d00da17`／`checks/task-26.5.md`）。**残るのは完了マーカーコミットだけ**で、`/rn:dn` による中断のため打っていない。**ただし着手前にユーザーの回答が要る 2 問がある**（未回答。#26.5 の Completion criteria ではないため completion 自体は妨げない）—— ① 命名規約を固定するテスト 1 本を #26.5 で足すか #27 へ回すか（足すと 595 → 596 になり件数記録の導き直しが要る） ② 担保の穴 8 件と `issues.md` 申し送り節の陳腐化を #27 の持ち越しへ加えてよいか。**2 問の中身と持ち越し候補 8 件は #26.5 の Completion criteria 直後に記録してある**（そこが正）。**#27 への持ち越し 8 件**（用語・体裁。`checks/task-26.md`「追加 1 巡」節が正）: QA-2・C3-3〜C3-7・C3-9・C3-10。**JaCoCo の再計測は禁止**（`da66425` 固定、`jacoco.csv` md5 `d28e374e9027ade63d7919f7a7b5826e`）。未解決のブロッカー・未追跡パスは無い。
