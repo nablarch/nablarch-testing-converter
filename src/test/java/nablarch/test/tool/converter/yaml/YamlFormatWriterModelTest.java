@@ -50,6 +50,12 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
+ * <b>#27 で軸E をもう 1 件足した。</b>E-4(1 件)（コンテナ内セクション数 1）である。
+ * {@code axis-matrix.md} §4.5 の総点検で、出力ファイルの件数を見るアサートが辺④のテスト全体で
+ * 複数件側の 1 か所しか無く 1 件側が空いていることが判明したため足した。
+ * </p>
+ *
+ * <p>
  * <b>#25 のレビューで、送信同期 3 種（A-12 {@code EXPECTED_REQUEST_BODY_MESSAGES}／
  * A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}）が
  * #18 以来 ✅ と判定されていながら実際は 🔺 だったことが判明したため、3 件を追加した。</b>
@@ -504,6 +510,40 @@ public class YamlFormatWriterModelTest {
         assertThat(read(out, zebra), is(oneRowTableYaml("Z")));
         assertThat(read(out, alpha), is(oneRowTableYaml("A")));
         assertThat(read(out, mango), is(oneRowTableYaml("M")));
+    }
+
+    /**
+     * Given: セクションを 1 件だけ持つコンテナ（コンテナ名とセクション名は別にしてある）。
+     * When : {@code write}。
+     * Then : 出力先に書かれるファイルは<b>1 つだけ</b>で、名前は {@code <セクション名>.yaml}、
+     *        中身はそのセクションを直列化したものになる。
+     *
+     * <p>
+     * 担保する軸要素: E-4(1 件)（コンテナ内セクション数 1）。
+     * <b>件数は出力側で固定する</b> —— {@code out.list().length} が出力先ディレクトリの実ファイル数を
+     * 返すため、2 つ目が書き出されれば落ちる。{@code exists()} では件数を固定できない。
+     * </p>
+     *
+     * <p>
+     * 期待する中身は<b>リテラルで置いている</b>（{@code writer.serialize(...)} と突き合わせると
+     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけない。#25 レビュー指摘）。
+     * コンテナ名を {@code "book"}、セクション名を {@code "solo"} と別にしてあるので、
+     * ファイル名がコンテナ名から作られるようになれば落ちる。
+     * </p>
+     */
+    @Test
+    public void writesOneYamlFileWhenContainerHasSingleSection() throws IOException {
+        // Given
+        TestDataSection solo = section("solo", table("S"));
+        File out = folder.getRoot();
+
+        // When
+        writer.write(new TestDataContainer("book", Collections.singletonList(solo)),
+                out.getAbsolutePath());
+
+        // Then
+        assertThat("書かれたファイル数", out.list().length, is(1));
+        assertThat(read(out, solo), is(oneRowTableYaml("S")));
     }
 
     /**
