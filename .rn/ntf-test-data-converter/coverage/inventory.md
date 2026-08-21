@@ -297,7 +297,7 @@ RoundTripTest.java             30 @Test
 > 4 クラスが増減したため、いまはコマンドを実行しても再現しない。** `8c327d0`（#25.5 開始時点）で
 > 同じコマンドを実行すると `33 / 20 / 40 / 33 / 30` が返り、旧出力はその時点の値だったことが確かめられる
 > （`git grep -c '@Test' 8c327d0 -- <上の 5 ファイル>`）。**「steering 想定」の列は #18 当時の想定であり、
-> 突き合わせの記録として動かさない。** 全体の件数は §0.1-2 の追補その 6 が正である。
+> 突き合わせの記録として動かさない。** 全体の件数は §0.1-2 の最新の追補（2026-08-21 時点では追補その 8）が正である。
 
 `RoundTripTest`（30 件）は 4 辺いずれの担当クラスのテストでもないため下の 130 件には含まれないが、
 4 辺すべてを実ファイル経由で駆動するため §0.8-8 で扱う。
@@ -938,6 +938,38 @@ Tests run: 595, Failures: 0, Errors: 0, Skipped: 2
 
 **削除した 2 件が主張していた不変条件そのものは残っている**（上表の「残る 1 本」）。
 **残した側の Javadoc に「この軸では分岐しないため版を増やさない」ことと、移した担保先を書いた。**
+
+
+**追補その 8（2026-08-21 実測。#27 で軸E の穴 2 件を埋めたぶん）**
+
+追補その 7（595 件）から、**#27 の軸E 総点検で ❌ と確定した 2 件を埋めるテスト 2 件を足した**ぶんを
+導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 597
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1280
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 597
+```
+
+```
+Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**595 → 597（差 ＋2）の内訳** —— どちらも「入力にその件数を与えているだけで、出力に n＋1 件目が
+無いことをアサートしていない」型の穴であり、**件数を出力側で固定した**。
+
+| 追加したテスト | 埋めた軸要素 | 件数を固定した手段 | commit |
+|---|---|---|---|
+| `xls/XlsFormatWriterModelTest#writesOnlyOneBlockWhenSectionHasSingleBlock` | 辺③ E-1(1 件)（セクション内ブロック数 1） | シート全体の行数 `getPhysicalNumberOfRows()` を `is(3)`（識別行・カラム名行・データ行 1 行）。2 ブロック目が書かれれば 6 になって落ちる | `783810b` |
+| `yaml/YamlFormatWriterModelTest#writesOneYamlFileWhenContainerHasSingleSection` | 辺④ E-4(1 件)（コンテナ内セクション数 1） | 出力先ディレクトリの実ファイル数 `out.list().length` を `is(1)`。2 件目のセクションが書き出されれば落ちる | `6d12021` |
+
+**どちらも一時的に n＋1 件目を足して落ちることを実測した**（順に
+`Expected: is <3> but: was <6>` ／ `Expected: is <1> but: was <2>`）。
+**穴の所在と判定の根拠は `coverage/axis-matrix.md` §3.5 ／ §4.5 が正である。**
 
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
@@ -2546,6 +2578,12 @@ A-07／A-09 が同クラスに 0 件であることは
 `#writesTableWithoutDataRowsWhenRowsAreEmpty` ／ `#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` ／
 `#writesDirectiveRowsBeforeFwHeaderRowsInMessage` ／ `#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`）。
 
+**追補（2026-08-21 実測。#27）: 1 件増えて 12 件である。**
+`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java` → **12**。
+増えた 1 件は `#writesOnlyOneBlockWhenSectionHasSingleBlock`（辺③ E-1(1 件)＝セクション内ブロック数 1。
+`783810b`）で、これも軸要素の担保である（経緯は [§0.1-2](#s0-1-2) の追補その 8、
+判定の根拠は `coverage/axis-matrix.md` §3.5）。
+
 **JaCoCo 実測（#25.5 のレビュー 1 巡目まで反映・2026-08-14）**: `XlsFormatWriter` は
 分岐 **101 / 104**（3 未到達）・行 **157 / 158**（1 未到達）である。導出コマンド:
 
@@ -2765,7 +2803,11 @@ done
 
 出力は順に **16** ／ **17** ／ **2**（合計 **35**）。**#25.5 追補（2026-08-18）後は 16 ／ 14 ／ 2（合計 32）である**
 （`YamlFormatWriterModelTest` から YML-12 の 3形目・4形目・2形目 の読み戻し検査を 1 件ずつ、計 3 件削除した。
-いずれも番人の担保は `YamlFormatWriterTest` 側に置いたため、このコマンドの対象 3 クラスには入らない）。全体は `mvn clean test -Djacoco.skip=true` で
+いずれも番人の担保は `YamlFormatWriterTest` 側に置いたため、このコマンドの対象 3 クラスには入らない）。
+**さらに #27（2026-08-21）で 1 件増え、現在は 16 ／ 15 ／ 2（合計 33）である**
+（`YamlFormatWriterModelTest#writesOneYamlFileWhenContainerHasSingleSection`。辺④ E-4(1 件)＝
+コンテナ内セクション数 1 の担保。`6d12021`。経緯は [§0.1-2](#s0-1-2) の追補その 8、
+判定の根拠は `coverage/axis-matrix.md` §4.5）。全体は `mvn clean test -Djacoco.skip=true` で
 **501 → 536**（Failures 0 ／ Errors 0 ／ Skipped 0。**これは #25 完了時点の値**。#25.5 の途中では
 `Tests run: 540, Failures: 0, Errors: 0, Skipped: 2` であり、**現在（YML-12 2形目 まで反映・2026-08-18）は
 `Tests run: 547, Failures: 0, Errors: 0, Skipped: 0` である** —— [§0.1-2](#s0-1-2)）。

@@ -124,8 +124,9 @@
   辺③で「ブロックの最後の行の次が `null`」を根拠にするときは足りない ——
   `XlsFormatWriter#writeSection` がブロック間の空行を `rowNum += config.getBlankRowsBetweenBlocks();` で
   行を生成せずに飛ばすため、2 ブロック目があってもその手前の行は空行として `null` のままだからである
-  （既定値は 1。`ExcelFormatConfig#defaults` の末尾引数）。2 ブロック目の識別行が来る位置まで見る必要がある
-  （§3.5 の E-2(1件) がその形）。
+  （既定値は 1。`ExcelFormatConfig#defaults` の末尾引数）。2 ブロック目の識別行が来る位置まで見るか、
+  シート全体の行数（`getPhysicalNumberOfRows()`）を固定する必要がある
+  （前者は §3.5 の E-2(1件)、後者は同 E-1(1件) がその形）。
 - **読み手側の辺**（辺①・辺②）は実ファイルを入力とする経路の担保を正とする。in-memory 経路
   （`XlsFormatReaderTest` の `FakeTestDataReader` ／ `YamlFormatReaderTest` の `loadRawMap` 差し替え）だけの
   担保は ✅ に数えない。これは #20／#24 で確定した基準である。
@@ -385,7 +386,7 @@ EXTRACT | grep -c 'Test#'    # 照合対象（…Test クラスのメソッド�
 EXTRACT | grep -v 'Test#'    # 照合対象から外れるもの
 ```
 
-出力は 313 ／ 286 ／ 27 行である。27 行の内訳は、本リポジトリの `src/main` のメソッド 25 件と、
+出力は 315 ／ 288 ／ 27 行である（#27 でテストを 2 本足したぶん、313 ／ 286 から 2 ずつ増えている）。27 行の内訳は、本リポジトリの `src/main` のメソッド 25 件と、
 NTF 本体（`nablarch-testing`）のメソッド `TableData#replaceData` 1 件と、
 テストヘルパ `YamlFixture#onlyBlock` 1 件である。`TableData` が本リポジトリの `src/main` に無いことは
 `find src/main -name 'TableData.java' | wc -l` が 0 を返すことで分かる（`src/main` に現れるのは
@@ -853,7 +854,7 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
 |---|---|---|---|---|---|
 | E-1(0件) | セクション内ブロック数 0 | ✅ | `XlsFormatWriterModelTest#writesEmptySheetWhenSectionHasNoBlocks` | — | C-04(空) と同じ入力 |
-| E-1(1件) | 同 1 | ❌ | — | — | **出力に 2 ブロック目が無いことを固定するテストが `src/test` に無い。** 以前は `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty` の「識別行・カラム名行の次の行（行 2）が `null`」を根拠にしていたが、この推論は成り立たない —— `XlsFormatWriter#writeSection` はブロック間の空行を行を生成せずに飛ばすため、2 ブロック目があっても行 2 は空行として `null` のままで、2 ブロック目の識別行は行 3 に来る（§0.2 の軸E。空行数の既定値は 1）。同メソッドは E-2(0件) の担保としては有効である（データ行は空行を挟まないため行 2 が `null` なら 0 行が決まる）。下の導出のとおりシート全体の行数を見るテストは 1 件だけで、それは E-1(0件) 用である |
+| E-1(1件) | 同 1 | ✅ | `XlsFormatWriterModelTest#writesOnlyOneBlockWhenSectionHasSingleBlock` | — | #27 で追加（`783810b`）。シート全体の行数 `getPhysicalNumberOfRows()` を `is(3)`（識別行・カラム名行・データ行 1 行）で固定する。2 ブロック目が書き出されれば 6 になって落ちる（ブロック間の空行は行を作らないため 3+3）。実測で確かめた —— 一時的に 2 ブロック目を足すと `Expected: is <3> but: was <6>` で落ちる。「次の行が `null`」を根拠にする以前の判定は誤りだった —— `XlsFormatWriter#writeSection` はブロック間の空行を行を生成せずに `rowNum` を進めるため、2 ブロック目があっても行 2・行 3 は `null` のままで、2 ブロック目の識別行は行 4 に来る（これも同じ一時変更で実測した）。そのため `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty` は E-2(0件) の担保としてのみ有効である（データ行は空行を挟まないため行 2 が `null` なら 0 行が決まる） |
 | E-1(複数) | 同 複数 | ✅ | `XlsFormatWriterTest#insertsBlankRowBetweenBlocks` | — | 2 ブロックの間に空行 1 行が入る位置を固定する |
 | E-2(0件) | ブロック内行数 0 | ✅ | `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty`（テーブル経路）／ `#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（ファイル経路の値行） | — | 順に C-09(空) ／ C-18(空) と同じ入力 |
 | E-2(1件) | 同 1 | ✅ | `XlsFormatWriterTest#insertsBlankRowBetweenBlocks` | — | データ行 1 行のブロックを次のブロックの開始行で固定する —— 同メソッドの Then は `cell(sheet,0,0)` ／ `sheet.getRow(3)` が `null` ／ `cell(sheet,4,0)` の 3 点だけを見る（行 1・行 2 は見ていない）。ブロック間の空行は 1 行なので、2 ブロック目の識別行が行 4 に来ることは 1 ブロック目が行 0〜2 の 3 行であることを意味し、識別行・カラム名行を除いたデータ行は 1 行に決まる。データ行が 0 行なら 2 ブロック目は行 3 に、2 行なら行 5 に来て落ちる。`XlsFormatWriterTest#metaRowContainsOnlyValueCells` は担保ではない —— 同メソッドの Then は `sheet.getRow(0).getLastCellNum()` が 1 であることだけを見ており、行 0 は識別行なのでデータ行の件数も内容もアサートしていない |
@@ -864,15 +865,16 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 | E-4(1件) | コンテナ内セクション数 1 | ✅ | `XlsFormatWriterInvalidOutputTest#writesSheetNameOfExcelLimitLengthAsIs` | — | `getNumberOfSheets()` が 1 であることをアサートする（同メソッドの主眼は F3-04）。セクション 1 件 → シート 1 枚を固定しているのは `src/test` でここだけである（下の導出コマンド） |
 | E-4(複数) | 同 複数 | ✅ | `XlsFormatWriterTest#writesWorkbookFileWithSheetPerSection` | — | 2 セクション → 2 シート |
 
-E-1(1件) が ❌ である根拠（シート全体の行数を見ている箇所を `src/test` 全体から引く）:
+E-1(0件)／E-1(1件) の担保の唯一性（シート全体の行数を見ている箇所を `src/test` 全体から引く）:
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 grep -rn "getPhysicalNumberOfRows\|getLastRowNum" src/test --include=*.java | sed 's/:[0-9]*:/: /'
 ```
 
-出力は 1 行で、`XlsFormatWriterModelTest` が `getPhysicalNumberOfRows()` を `is(0)` で見ている
-1 か所だけである（＝ E-1(0件) の担保）。1 ブロックのときの総行数を見ている箇所は無い。
+出力は 3 行で、すべて `XlsFormatWriterModelTest` である。アサートは 2 行——`is(0)`（＝ E-1(0件)）と
+`is(3)`（＝ E-1(1件)。#27 で追加）。残る 1 行は追加したテストの Javadoc である。
+シート全体の行数を見ている箇所は、この 2 つのアサート以外に無い。
 
 E-4(1件) の唯一性の導出（`getNumberOfSheets()` を見ている箇所を `src/test` 全体から引く）:
 
@@ -1083,20 +1085,20 @@ YAML の特殊文字と制御文字を 1 文字ずつ `directives` のキーに�
 | E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` | — | ファイル系だけで到達する。 電文系は C-15(空) と同じ理由で到達不能 |
 | E-3(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serializeMessage_withDirectivesAndFwHeader` | — | 出力全文の完全一致なので、`records:` の下に断片が 1 つだけ出ることも固定される |
 | E-3(複数) | 同 複数 | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | 断片 2 件 |
-| E-4(1件) | コンテナ内セクション数 1 | ❌ | — | — | **出力 YAML が 1 ファイルだけであることを固定するテストが `src/test` に無い。** 以前は `YamlFormatWriterTest#write_writesEachSectionAsYamlFileWithSerializedContent` を担保としていたが、同メソッドの Then は `assertTrue(out.exists())` と「中身が `writer.serialize(section)` と一致する」の 2 本で、後者は実装の出力を実装の出力と比べる自己参照であり、ファイル件数も直列化結果の正しさも固定しない。件数を固定しているのは複数件側の `YamlFormatWriterModelTest#writesOneYamlFilePerSectionWhenContainerHasMultipleSections`（`out.list().length` を `is(3)`）と 0 件側の `#writesNothingWhenContainerHasNoSections`（出力先ディレクトリが作られないこと）だけである（下の導出）。なお同メソッドはコンテナ名と読み込み単位名が同じ `"td"` のため C-03 の担保にもならない（§4.3） |
+| E-4(1件) | コンテナ内セクション数 1 | ✅ | `YamlFormatWriterModelTest#writesOneYamlFileWhenContainerHasSingleSection` | — | #27 で追加（`6d12021`）。出力先ディレクトリの実ファイル数 `out.list().length` を `is(1)` で固定し、中身をリテラルで突き合わせる。2 件目のセクションが書き出されれば落ちる。実測で確かめた —— 一時的に 2 件目のセクションを足すと `Expected: is <1> but: was <2>` で落ちる。コンテナ名 `book` とセクション名 `solo` を別にしてあるので、ファイル名がコンテナ名から作られるようになっても落ちる。`YamlFormatWriterTest#write_writesEachSectionAsYamlFileWithSerializedContent` を担保としていた以前の判定は誤りだった —— 同メソッドの Then は `assertTrue(out.exists())` と「中身が `writer.serialize(section)` と一致する」の 2 本で、後者は実装の出力を実装の出力と比べる自己参照であり、ファイル件数も直列化結果の正しさも固定しない。なお同メソッドはコンテナ名と読み込み単位名が同じ `"td"` のため C-03 の担保にもならない（§4.3） |
 | E-4(複数) | 同 複数 | ✅ | `YamlFormatWriterModelTest#writesOneYamlFilePerSectionWhenContainerHasMultipleSections` | — | 3 セクション → 3 ファイル。書き出しの順序は固定していない（ファイルシステム上に順序が現れないため） |
 
-E-4(1件) が ❌ である根拠（出力ディレクトリのファイル件数を見ている箇所を辺④のテストから引く）:
+E-4(1件)／E-4(複数) の担保の唯一性（出力ディレクトリのファイル件数を見ている箇所を辺④のテストから引く）:
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/yaml/ | sed 's/:[0-9]*:/: /'
 ```
 
-出力は 3 行で、実際に件数をアサートしているのは `YamlFormatWriterModelTest` の
-`assertThat("書かれたファイル数", out.list().length, is(3))` の 1 行だけである
-（残る 2 行は `YamlTestDataValidatorTest` のコメント）。1 セクションのときに 1 ファイルであることを
-見ている行は無い。
+出力は 5 行。件数をアサートしているのは `YamlFormatWriterModelTest` の 2 行——
+`assertThat("書かれたファイル数", out.list().length, is(3))`（＝ E-4(複数)）と
+`is(1)`（＝ E-4(1件)。#27 で追加）。残る 3 行は追加したテストの Javadoc 1 行と
+`YamlTestDataValidatorTest` のコメント 2 行である。
 
 ### 4.6 軸F 異常系（3 ケース）
 
@@ -1137,22 +1139,24 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 71 | 74 | 71 | 70 | 286 |
+| ✅ 担保あり | 71 | 74 | 72 | 71 | 288 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
-| ❌ 未担保 | 0 | 0 | 1 | 1 | 2 |
+| ❌ 未担保 | 0 | 0 | 0 | 0 | 0 |
 | — 空欄 | 8 | 8 | 5 | 6 | 27 |
 | **合計** | **79** | **82** | **77** | **77** | **315** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
 
-**❌ の 2 件はどちらも書き手側の軸E「1 件」で、本巡の総点検で ✅ から動いたものである** ——
-辺③ E-1(1件)（§3.5）と辺④ E-4(1件)（§4.5）。いずれも入力にその件数を与えているだけで、
-出力に n＋1 件目が無いことをアサートしていない（判定基準は §0.2 の軸E）。
+**❌ は 0 件である。** 本巡の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)。どちらも書き手側の
+軸E「1 件」で、入力にその件数を与えているだけで出力に n＋1 件目が無いことをアサートしていなかった）が
+✅ から ❌ へ動いたが、#27 の中でテストを 2 本足して埋めた（`783810b` ／ `6d12021`）。
+どちらも件数を出力側で固定してあり、n＋1 件目が書き出されれば落ちることを実測で確かめてある
+（判定基準は §0.2 の軸E。個々の根拠は §3.5 ／ §4.5 の理由欄）。
 
 「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある
 （導出は §0.6 の ③）。§0.1 の「🔺 も 2 役を持つ」を参照。
 
-**❌ が 2 件であることは「穴が 2 つしかない」という意味ではない。** 本書の計上単位（§0.2）で
+**❌ が 0 件であることは「穴が無い」という意味ではない。** 本書の計上単位（§0.2）で
 数えたときの話であり、軸A〜F のどの要素にも当てはまらない担保の穴は各節末尾と §5.4 と §7 に開示してある。
 
 ### 5.3 空欄（`—`）27 件の内訳
@@ -1336,7 +1340,9 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 上記以外の担保テストメソッドは、1 件残らずテストソースを開いて Given／When／Then とアサートを読み、
 その軸要素を担保していることを確かめた（§0.6 の実在照合コマンドで名前の実在も機械的に照合してある）。
 **軸E については本巡で 4 辺 44 セルを総点検し、「0 件」「1 件」を主張するセルすべてについて
-担保テストの本文を開いて件数が固定されているかを確かめ直した**（結果は §5.2 の ❌ 2 件）。
+担保テストの本文を開いて件数が固定されているかを確かめ直した**（総点検で ❌ が 2 件出て、#27 の中で
+テストを 2 本足して埋めた。経緯は §5.2）。**この読み方——「表が主張する要素を、そのテスト本文が
+実際にアサートしているか」——を全セルへ広げる水平展開は本書の外（#27 の Steps）で扱う。**
 
 ---
 
