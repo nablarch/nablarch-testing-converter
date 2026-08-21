@@ -49,7 +49,7 @@ public class SampleConversionTest {
      * 先頭要素のキーで決まるため（{@code testdata_notation.rst:819}。{@code 30a8271} 時点）、
      * 0 件テーブル（同 {@code :836}）にはカラム名を書く場所が無く、中間モデルはカラム名 0 件になる。
      * 辺③は Excel の「データ行を書かない場合でも、カラム名の行は省略できない」制約（{@code :802}）を
-     * 満たすため、カラム名の行へマーカーカラム {@code [空]} を 1 つ書く（{@code :1515}）。
+     * 満たすため、カラム名の行へマーカーカラム {@code [EMPTY]} を 1 つ書く（{@code :1515}）。
      * 残る {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173}／{@code :199} の
      * {@code rows: []} は綴りは同じでも別物で、{@code expected_files} 配下のファイルデータの
      * 0 件レコードであり、カラム名は {@code fields:} に持つ。

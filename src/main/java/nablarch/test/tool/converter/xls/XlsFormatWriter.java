@@ -540,7 +540,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * 行の存在だけを満たす（{@code coverage/issues.md} <b>XLS-27</b>）。
      * </p>
      */
-    static final String EMPTY_BLOCK_MARKER_COLUMN = "[空]";
+    static final String EMPTY_BLOCK_MARKER_COLUMN = "[EMPTY]";
 
     /**
      * マーカーカラム（{@code [...]} 形式）か判定する。

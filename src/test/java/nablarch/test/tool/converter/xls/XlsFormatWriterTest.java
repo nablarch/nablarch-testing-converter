@@ -386,7 +386,7 @@ public class XlsFormatWriterTest {
     /**
      * Given: カラム名を 1 件も持たない 0 件テーブルブロック。
      * When : build。
-     * Then : カラム名の行にマーカーカラム {@code [空]} を 1 つだけ書く。
+     * Then : カラム名の行にマーカーカラム {@code [EMPTY]} を 1 つだけ書く。
      *
      * <p>
      * Excel 記法はデータ行が無くてもカラム名の行を省略できない
@@ -412,14 +412,14 @@ public class XlsFormatWriterTest {
 
         // Then: 識別子行の次の行はマーカーカラム 1 つだけ
         assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T"));
-        assertThat(cell(sheet, 1, 0), is("[空]"));
+        assertThat(cell(sheet, 1, 0), is("[EMPTY]"));
         assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
     }
 
     /**
      * Given: カラム名を 1 件も持たない 0 件 {@code LIST_MAP} ブロック。
      * When : build。
-     * Then : キーの行にマーカーカラム {@code [空]} を 1 つだけ書く。
+     * Then : キーの行にマーカーカラム {@code [EMPTY]} を 1 つだけ書く。
      *
      * <p>
      * {@code LIST_MAP} も {@code testdata_notation.rst:628}「1行目に {@code LIST_MAP=} に続けて
@@ -439,7 +439,7 @@ public class XlsFormatWriterTest {
 
         // Then
         assertThat(cell(sheet, 0, 0), is("LIST_MAP=lm"));
-        assertThat(cell(sheet, 1, 0), is("[空]"));
+        assertThat(cell(sheet, 1, 0), is("[EMPTY]"));
         assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
     }
 
