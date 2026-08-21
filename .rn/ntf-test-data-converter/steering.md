@@ -1441,8 +1441,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: —
-- **Last completed**: —
-- **Next**: —
-- **Notes**: —
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #26.5（`0672a16`）。**#27 は進行中で未完了。水平展開は完了済み**（`5b69963` まで。全 273 セル・結果 10 件）
+- **Next**: #27 の続き（未チェック 4 件。先頭は `issues.md` の通読確認）
+- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし・未追跡パス無し）。**次の具体行動**は `issues.md` を通読し、#19〜#26 で記録した課題が漏れなく載っていること・#25.5 で修正した課題（判定が要対応であるもの）を除き修正されていないことを確認すること。**ユーザー判断待ちが 2 件ある** —— ① 辺② C-10 を埋めるか（Acceptance criteria の「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」に触れる。軸E と同じく `—` の逃げ道が無い条件。**推奨は埋める** ＝ 実ファイル YAML で `type: "variable"` を読ませ `getFileType()` をアサートするテスト 1 本）、② 残る ❌ 5 件（辺④ A-06・A-07・A-08・A-09 ／ 辺③ C-21(省略)）の扱い（**テストを足しても埋まらない**。選択肢は (1) ❌ ＋ 理由の開示で #28 へ ／ (2) 中間モデルに不変条件を置く（`src/main` を触るため #25.5 の範囲外） ／ (3) 主張を 2 対 1 の写像へ書き改める。**推奨は (1)**）。回答が無いあいだは (1) の形（現状のまま）で進める。**#27 の残りは 4 つ** —— `issues.md` の通読確認／#26 からの持ち越し 8 件（用語・体裁。**対象は `coverage-report.md`**。内容の正は `checks/task-26.md`「追加 1 巡」節）／`checks/task-27.md` の self-check／**3 者レビューの 3 巡目**（Verify の反復上限は 3 巡で、これが最後の 1 巡。**2 巡で繰り返し出た欠陥型は「照合していない範囲について完全列挙・唯一性を断定する」であり、3 巡目でも同じ型を最初に探すこと**）
