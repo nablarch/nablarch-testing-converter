@@ -2875,6 +2875,28 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 
 **宛先 1: 対象 PJ（変換ツールの利用者）**
 
+- **この申し送りが当たるのはテーブル系の 4 データタイプだけである。ファイルデータ（`setup_files` ／
+  `expected_files`）とメッセージには当たらない。** 当たるのは `SETUP_TABLE` ／ `EXPECTED_TABLE` ／
+  `EXPECTED_COMPLETE_TABLE` ／ `LIST_MAP` の 4 つで、converter の中間モデルでは `ColumnRowDataBlock` の
+  系統にあたる（`TableDataBlock.java:34-35` の 3 種＋`ListMapBlock.java:29` が固定する `LIST_MAP`）。
+  辺③ `XlsFormatWriter.java:198-199` と辺④ `YamlFormatWriter.java:133-136` は、この 4 つだけを
+  「カラム名の行＋データ行」として扱う。`[EMPTY]` を置くのも、カラム名を `rows:` の先頭要素のキーへ
+  載せるのも、この経路だけである。
+  - **`:1515` はマーカーカラムが使えるデータタイプとして `SETUP_TABLE` ／ `EXPECTED_TABLE` ／ `LIST_MAP` の
+    3 つしか挙げていないが、`EXPECTED_COMPLETE_TABLE` も本体では同じ扱いになる。** `nablarch-testing` の
+    `BasicTestDataParser.java:175` が `EXPECTED_COMPLETED` を他のテーブル系と同じ `TableDataParser` へ渡し、
+    マーカーカラムの除外は `HeaderLine.java:40-41` がデータタイプに依らず行うためである
+    （`:1550` の一覧も「テーブル」とだけ書き、データタイプを挙げていない）。
+  - **ファイルデータとメッセージが当たらないのは、フィールド名称が `rows:` の外に置かれるためである。**
+    明文の YAML 記述例は `records:` の各要素に `fields:` と `rows:` を並べ（`:1134-1138`）、`:1143` が
+    「`rows:` の各行は配列形式で、`fields:` と同じ順序・同じ件数で値を並べる」と定める。実装も同じで、
+    辺④ `YamlFormatWriter#emitRecords:327-328` は `fields:` を行の件数と無関係に出力し、
+    辺③ `XlsFormatWriter#appendRecord:404-409` もフィールド名称の行を `fields` から必ず書く。
+    **データ行 0 件でもフィールド名称は残る**（`YamlFormatWriterTest#serialize_recordWithEmptyRows_emitsEmptyFlowList`
+    が、行 0 件のレコードが `fields:` にフィールド名称を残したまま `rows: []` になることを固定している）。
+    ファイルデータで「0 件」に当たるのは `records: []`（0 バイトの空ファイル。`:881` ／ `:1146`）だが、
+    この形はレコード定義そのものを持たないため、失われるフィールド名称が無い。メッセージの構成も
+    ファイルデータと同じである（`:1158`）。
 - **Excel の 0 件テーブルが持つカラム名は、YAML へ変換すると失われる。** 明文上、Excel の 0 件テーブルは
   カラム名の行を持つ（`testdata_notation.rst:789` の記述例はカラム名 3 つを書いた形／`:802`
   「データ行を書かない場合でも、カラム名の行は省略できない」）。いっぽう YAML はカラム名を
@@ -2901,6 +2923,12 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   初めて「マーカーカラムを 1 つ置く」と導ける。**明記されると読み手が導出せずに済む。**
   出典はいずれも `30a8271` 時点の
   `ja/development_tools/testing_framework/implementation/testdata_notation.rst`。
+  **伝達するときは、伝達時点の rev で行番号を採り直すこと。** 基準を `30a8271` に固定した上の記載は
+  動かさないが、`nablarch-document`（`ntf-yaml-support`）はその後も進んでおり、`fd2e44d` 時点では
+  `:1515` ／ `:1550` がそれぞれ `:1514` ／ `:1549` へ 1 行ずれている（`:789` ／ `:802` ／ `:819` ／
+  `:836` ／ `:881` ／ `:883` ／ `:1134-1138` ／ `:1143` ／ `:1146` ／ `:1158` は行番号が不変。
+  ただし `:836` と `:1143` は文面に空白エスケープの差がある。実測 2026-08-21）。
+  解説書担当は HEAD を見るため、行番号だけをそのまま渡すと別の段落を指す。
 
 ### XLS-28 同名で拡張子違いの Excel ブックが同居すると、片方の中身が読まれないまま同じ出力先に書かれる（影響度 高・**`overwrite=true` では検出できない**・**#25.5 で修正済み**）
 
