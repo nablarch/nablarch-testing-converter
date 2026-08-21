@@ -635,21 +635,55 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 その場では書き換えない取り決めである（各節に明記）。**削除したテスト名がそこに残っているため、
 現在どこが担保しているかをここに一括で示す。** 表の判定（✅ など）は変わっていない。
 
-| 削除したテスト | 担保の現在地（HEAD で存在を確認済み） |
+> **本表の書き替え（2026-08-21 実測）。** 本表は追補その 5 を書いた 2026-08-19 時点の HEAD で確認したものだが、
+> 同日の**追補その 6（§6-J-2・§6-J-3・§6-K）と追補その 7 に追随していなかった**。
+> 「担保の現在地」列に**現在の HEAD に存在しないテストメソッド名を挙げていた 4 行**（`convertsClimanSampleYamlToXls`
+> の行・辺③ C-08 の行・`promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` の行・
+> `serializeFile_fixedWithDirectivesAndOmittedLength` の行）と、C-17 の行の 2 つ目の名前、
+> および**表の直後の段落**を、実物（`src/test`）を開いて確かめた現在の担保へ書き替えた。
+> **削除したテスト（左列）は当時の記録なのでそのまま残す。**
+> 書き替え後の本表と直後の段落が「現在の担保」として挙げるテストメソッド 21 件が HEAD の `src/test` に
+> 実在することの確認コマンド（**出力が 0 行なら全件実在**。件数は下のリストの要素数がそのまま導出である）:
+>
+> ```sh
+> cd /home/tie303177/work/nablarch/nablarch-testing-converter
+> for m in convertsClimanSampleIncludingZeroRowTable \
+>          dropsMarkerOnlyRowsAsEmptyEntriesInRealBook \
+>          dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook \
+>          writesMarkerColumnForZeroRowTableBlock writesMarkerColumnForZeroRowListMapBlock \
+>          roundTripsZeroRowTableWithoutEatingNextBlock roundTripsZeroRowListMapWithoutEatingNextBlock \
+>          カラムなしでセルを持つ行を抱えるブロックは生成できない \
+>          データタイプDEFAULTのブロックは生成できない 名前がnullの読み込み単位は生成できない \
+>          データ型がnullのフィールド定義は生成できない データ型が空文字のフィールド定義は生成できる \
+>          serializeFile_fixedWithDirectivesAndMultipleRecords \
+>          固定長ファイルでフィールド長がnullのフィールド定義は保持できない \
+>          フィールド長がnullの電文ブロックは生成できない 可変長ファイルはフィールド長がnullでも生成できる \
+>          readFile_fixedWithoutLength_rejected フィールドを1件も持たないレコードは生成できない \
+>          レコード種別省略をnullで保持する 本文レコードが0件の電文ブロックは生成できない \
+>          メッセージ系の全データ種別を保持する; do
+>   grep -rqF "public void $m(" src/test --include=*.java || echo "NOT FOUND: $m"
+> done
+> ```
+
+| 削除したテスト | 担保の現在地（HEAD で存在を確認済み。2026-08-21 実測） |
 |---|---|
-| `convertsClimanSampleYamlToXls` | `SampleConversionTest#stopsClimanSampleConversionBecauseOfZeroRowTable`。**サンプルは現在「変換が止まる」ことを固定している**（XLS-27 は未完） |
+| `convertsClimanSampleYamlToXls` | `SampleConversionTest#convertsClimanSampleIncludingZeroRowTable`。**サンプルは現在「0 件テーブルを含んだまま変換が通る」ことを固定している**（出力ブック数 2 冊）。追補その 5 が挙げていた `#stopsClimanSampleConversionBecauseOfZeroRowTable` は、`issues.md` **XLS-27** の【決着】（0 件テーブルを落とさずマーカーカラムを書く）で反転し HEAD に無い（追補その 6 の末尾に同じことが書いてある） |
 | `readsEmptyColumnNamesFromMarkerOnlyTableInRealBook` ／ `#…ListMapInRealBook`（辺① C-08） | `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` ／ `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` |
-| `writesEmptyHeaderRowWhenColumnNamesAreEmpty`（辺③ C-08） | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` |
-| `promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` | **担保先なし。** 検査していた版面（カラム名 0 件のブロック）を辺③が書かなくなったため、読み戻す対象が無い |
+| `writesEmptyHeaderRowWhenColumnNamesAreEmpty`（辺③ C-08） | `XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` ／ `#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock`。**辺③はカラム名 0 件のブロックを拒否せず、マーカーカラム 1 列 `[EMPTY]` を書く**（`issues.md` **XLS-27** の【決着】）。カラム名 0 件で「セルを持つ行」だけは `TableDataBlockTest#カラムなしでセルを持つ行を抱えるブロックは生成できない` が拒否する（**XLS-21**）。追補その 5 が挙げていた `#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` は HEAD に無い（追補その 6 の C-08 行と同じ内容） |
+| `promotesFirstDataRowToColumnNamesWhenEmptyColumnNamesAreReadBack` | `XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock`。**読み戻す対象は XLS-27 の【決着】で戻った。** 辺③がマーカーカラム `[EMPTY]` を書き、辺①で読み戻すと `getColumnNames().isEmpty()` ／ `getRows().isEmpty()` がともに真のブロックになり、後続ブロックも食われないことをこの 2 件が固定している（`XlsFormatWriterTest` を開いて確認）。追補その 5 の「担保先なし」は追補その 6 に追随していなかった記述である |
 | `writesDefaultDataTypeMarker` ／ `dropsDefaultDataTypeBlockWhenReadBack` ／ `serialize_unsupportedDataType_throws`（A-01 `DEFAULT`） | `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。**辺③の A-01 は「書ける」から「生成時に拒否」へ変わった**（§1-G・XLS-20）。辺③④とも `DEFAULT` を持つ入力を組めない |
 | `rejectsNullSheetName`（辺③ F3 の `null` 側） | `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（`XlsFormatWriterInvalidOutputTest` のクラス Javadoc から参照を張ってある） |
 | `rejectsFieldWithoutTypeInFileBlock` ／ `#…InMessageBlock` ／ `serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#…InMessageBlock_rejected` ／ `契約違反のnull型もモデル自身は検査せず保持する`（C-20 `type` 省略） | `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `#データ型が空文字のフィールド定義は生成できる` |
-| `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人だけは辺③④に置いたままである**（§1-C）。担保は `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected` |
-| `rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected`（C-17 `fields` 空） | `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない` ／ `#レコード種別を省略してもフィールド0件のレコードは生成できない` |
+| `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人も中間モデルの生成時へ移った**（`FileDataBlock` ／ `MessageDataBlock` のコンストラクタが `ModelPreconditions#requireLengths` を呼ぶ。`issues.md` **XLS-30**・§6-J-3）。担保は `FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`、可変長が `null` を通すことは `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる`、辺②の拒否は `YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`。追補その 5 の「**`length` の番人だけは辺③④に置いたままである**」と、そこが挙げていた辺③④の 4 件（`XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected`）は**いずれも HEAD に無い** |
+| `rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected`（C-17 `fields` 空） | `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない`。**2 つ目に挙げていた `#レコード種別を省略してもフィールド0件のレコードは生成できない` は追補その 7 で削除した**（同じ番人・同じメッセージを主張する二重主張だったため。レコード種別 `null` の保持そのものは `#レコード種別省略をnullで保持する` が担保する） |
 
 **§3.1-3 の C-15 行が挙げる `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／
-`#rejectsSendSyncMessageBlockWithoutRecords` は HEAD にも在る**（削除していない）。
-本表に載せていないのはそのためである。
+`#rejectsSendSyncMessageBlockWithoutRecords` は、いずれも現在の HEAD に無い**（2026-08-21 実測）。
+追補その 5 を書いた時点では在ったため本表に載せていなかったが、同日の **§6-J-2**（`issues.md` **YML-12 2 形目**）で
+番人が `MessageDataBlock` の生成時へ移り、空振りになった 2 件は追補その 6 で削除されている。
+**現在の担保は `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` である**
+（送信系の版 `#本文レコードが0件の送信系電文ブロックも生成できない` は追補その 7 で削除した。
+電文系 5 種すべてを受理することは `#メッセージ系の全データ種別を保持する` が担保する）。追補その 6 の C-15 行と同じ内容である。
 
 **`src/main` に手を入れたファイル**（上の 4 つの表への追加ぶん。`git diff --numstat 04873de..HEAD -- src/main` の 17 件）:
 
@@ -1195,6 +1229,11 @@ YAML は本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$d
    識別セル `DEFAULT=T` が書き出されることを実測して固定した。あわせて
    `#dropsDefaultDataTypeBlockWhenReadBack` が「辺③で書けたブロックが辺①で読み戻すと消える」ことを実検査する。
    辺③（書ける）と辺④（例外）の非対称は `issues.md` **XLS-20** に記録した（修正はしない）。
+   **その後 #25.5 §1-G（XLS-20）で決着した（2026-08-21 に実物で確認して追記）**: `DataType.DEFAULT` の
+   データブロックは `TestDataBlock` の生成時に拒否されるようになり、辺③④とも `DEFAULT` を持つ入力を組めない。
+   上の 3 件（`XlsFormatWriterModelTest#writesDefaultDataTypeMarker` ／ `#dropsDefaultDataTypeBlockWhenReadBack` ／
+   辺④の `serialize_unsupportedDataType_throws`）は**いずれも HEAD に無い**。現在の担保は
+   `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない` である（§0.1-2 追補その 5 の対応表と同じ）。
 
 ### 0.8-8 `RoundTripTest`（30 件）の扱い
 
@@ -3200,3 +3239,6 @@ A-07／A-08 が ✅ になって揃った）。**この判定は辺③・辺④�
    固定した挙動は `XlsFormatWriterModelTest#writesDefaultDataTypeMarker`（識別セル `DEFAULT=T` が書かれる）、
    課題は `issues.md` **XLS-20**。あわせて「辺③が書いたブロックは辺①で読み戻すと黙って消える」ことも
    実測して `#dropsDefaultDataTypeBlockWhenReadBack` で固定した。
+   **その後 #25.5 §1-G で決着した（2026-08-21 に実物で確認して追記）**: `DEFAULT` は `TestDataBlock` の生成時に
+   拒否されるようになり、上の 2 件は**いずれも HEAD に無い**。現在の担保は
+   `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`（§0.8-7 ／ §0.1-2 追補その 5 の対応表）。
