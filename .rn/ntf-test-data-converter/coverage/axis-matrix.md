@@ -635,16 +635,16 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-14(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `fw_header:` を書かない入力で空 Map になる |
 | C-15(非空) | `MessageDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `record_type: FW_HEADER` のレコードも落とさない（`issues.md` YML-03 の解消後） |
 | C-15(空) | 同 空 | — | — | — | 到達不能。仮にスキーマを通っても `MessageDataBlock` が生成時に拒否する（`issues.md` YML-12 2形目）。根拠テスト `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `YamlFormatReaderTest#readMessage_emptyBody_rejected`。後者は `loadRawMap` を固定 Map に差し替える経路で走るためスキーマ検証を通っておらず、アサートしているのはモデル側の拒否である。スキーマ `$defs.message_data.records.minItems` ＝ 1 が先に閉じることの出典は本体スキーマ本体（下のコマンド）であって、これをアサートするテストは `src/test` に無い |
-| C-16(値あり) | `RecordLayout.recordType` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | `head` ／ `data` をアサートする |
+| C-16(値あり) | `RecordLayout.recordType` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | `head` をアサートする。2 件目の `data` は `getRecordType()` を見ておらず、固定しているのはレコード数 2 件と 2 件目の行数だけである |
 | C-16(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` ／ `#normalizesLowercaseDefaultRecordTypeToNull` | — | 後者は `"default"`（小文字）も `null` へ正規化されることを固定する |
 | C-17(非空) | `RecordLayout.fields` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 辞書順ではなく原文の記述順であることまで固定する |
 | C-17(空) | 同 空 | — | — | — | 到達不能。スキーマ `$defs.record_fragment.properties.fields.minItems` ＝ 1 で書けず、仮に届いても `RecordLayout` が拒否する。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない` |
 | C-18(非空) | `RecordLayout.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 値もフィールドの記述順に対応することまで固定する |
 | C-18(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` | — | — |
 | C-19 | `FieldDef.name` | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | `null` は `FieldDef` が拒否する（`FieldDefTest#名称がnullのフィールド定義は生成できない`） |
-| C-20(値あり) | `FieldDef.type` 値あり | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | — |
+| C-20(値あり) | `FieldDef.type` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | どちらも `getType()` が `半角英字` であることをアサートする。従来挙げていた `#preservesFieldOrderAndValueAlignmentFromRealYaml` は入力に `type` を書くだけで `getType()` を呼ばないため差し替えた |
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。スキーマ `$defs.field_def.required` が `type` を必須とし、仮に届いても `FieldDef` が拒否する。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` ／ `FieldDefTest#データ型がnullのフィールド定義は生成できない` |
-| C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する |
+| C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する。従来挙げていた `#preservesFieldOrderAndValueAlignmentFromRealYaml` は `getLength()` を呼ばないため差し替えた |
 | C-21(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` | — | 到達できるのは可変長ファイルだけ。固定長ファイルで `length` を書かない YAML はスキーマを通るが中間モデルの生成時に拒否される（`issues.md` XLS-30。`YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`） |
 C-15(空) の理由欄が引くスキーマ側の出典（テストではなく本体スキーマそのものを読む）:
 
