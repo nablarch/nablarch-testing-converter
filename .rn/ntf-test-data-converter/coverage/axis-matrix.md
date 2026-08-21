@@ -386,8 +386,14 @@ EXTRACT | grep -c 'Test#'    # 照合対象（…Test クラスのメソッド�
 EXTRACT | grep -v 'Test#'    # 照合対象から外れるもの
 ```
 
-出力は 315 ／ 288 ／ 27 行である（#27 でテストを 2 本足したぶん、313 ／ 286 から 2 ずつ増えている）。27 行の内訳は、本リポジトリの `src/main` のメソッド 25 件と、
-NTF 本体（`nablarch-testing`）のメソッド `TableData#replaceData` 1 件と、
+出力は 320 ／ 288 ／ 32 行である（#27 の水平展開で新たに 5 件のメソッドを引いたぶん、
+315 ／ 288 ／ 27 から抽出と対象外だけが増えた。5 件は NTF 本体の `DataFileParser#processDirectives` ／
+`DataFileParser#onReadingValues` ／ `DataFileFragment#setNames` と、`src/main` の
+`XlsFormatWriter#appendRecord` ／ `YamlFormatWriter#emitFile` で、いずれもテストクラスではないため
+照合対象 288 は変わらない）。
+32 行の内訳は、本リポジトリの `src/main` のメソッド 27 件と、
+NTF 本体（`nablarch-testing`）のメソッド 4 件（`TableData#replaceData` ／ `DataFileParser#processDirectives` ／
+`DataFileParser#onReadingValues` ／ `DataFileFragment#setNames`）と、
 テストヘルパ `YamlFixture#onlyBlock` 1 件である。`TableData` が本リポジトリの `src/main` に無いことは
 `find src/main -name 'TableData.java' | wc -l` が 0 を返すことで分かる（`src/main` に現れるのは
 `import nablarch.test.core.db.TableData;` と Javadoc の参照だけである）。
@@ -624,7 +630,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-08(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | `rows: []` で到達する。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-08(空) と同じ入力 |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ❌ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED 側のみ） | — | **VARIABLE 側を実ファイル経路でアサートしているテストが無い。** 従来 VARIABLE 側の根拠に挙げていた `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` は `getDirectives().get("file-type")` が `Variable` であることを見ており、これは C-11(非空) の担保であって `fileType` ではない。VARIABLE 側を `getFileType()` で押さえているのは `YamlFormatReaderTest` の in-memory 経路（`loadRawMap` 差し替え）だけで、§0.2 によりこれは ✅ に数えない。Acceptance criteria の「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」に触れる。スキーマ `$defs.file_data.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。導出は下のコマンド |
+| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ❌ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED 側のみ） | — | **VARIABLE 側を実ファイル経路でアサートしているテストが無い。** 従来 VARIABLE 側の根拠に挙げていた `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` は `getDirectives().get("file-type")` が `Variable` であることを見ており、これは C-11(非空) の担保であって `fileType` ではない。VARIABLE 側を `getFileType()` で押さえているのは `YamlFormatReaderTest` の in-memory 経路（`loadRawMap` 差し替え）だけで、§0.2 によりこれは ✅ に数えない。Acceptance criteria の「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」に触れる。スキーマ `$defs.file_data.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。導出は下のコマンド |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#stringifiesNonStringDirectiveValuesFromRealYaml` | — | integer ／ boolean の記法も文字列になることまで固定する |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile`（件数 1 をアサート） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
@@ -642,9 +648,9 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-18(非空) | `RecordLayout.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 値もフィールドの記述順に対応することまで固定する |
 | C-18(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` | — | — |
 | C-19 | `FieldDef.name` | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | `null` は `FieldDef` が拒否する（`FieldDefTest#名称がnullのフィールド定義は生成できない`） |
-| C-20(値あり) | `FieldDef.type` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | どちらも `getType()` が `半角英字` であることをアサートする。従来挙げていた `#preservesFieldOrderAndValueAlignmentFromRealYaml` は入力に `type` を書くだけで `getType()` を呼ばないため差し替えた |
+| C-20(値あり) | `FieldDef.type` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | どちらも `getType()` が `半角英字` であることをアサートする。従来挙げていた `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` は入力に `type` を書くだけで `getType()` を呼ばないため差し替えた |
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。スキーマ `$defs.field_def.required` が `type` を必須とし、仮に届いても `FieldDef` が拒否する。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` ／ `FieldDefTest#データ型がnullのフィールド定義は生成できない` |
-| C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する。従来挙げていた `#preservesFieldOrderAndValueAlignmentFromRealYaml` は `getLength()` を呼ばないため差し替えた |
+| C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する。従来挙げていた `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` は `getLength()` を呼ばないため差し替えた |
 | C-21(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` | — | 到達できるのは可変長ファイルだけ。固定長ファイルで `length` を書かない YAML はスキーマを通るが中間モデルの生成時に拒否される（`issues.md` XLS-30。`YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`） |
 C-15(空) の理由欄が引くスキーマ側の出典（テストではなく本体スキーマそのものを読む）:
 
