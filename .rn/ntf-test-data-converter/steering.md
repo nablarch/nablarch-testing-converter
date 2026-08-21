@@ -1272,14 +1272,14 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] Decisions 記載の手順（`mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` → `mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）でカバレッジを取得する
-- [ ] `XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラスの行・分岐カバレッジ数値を `.rn/ntf-test-data-converter/coverage/coverage-report.md` に記録する
-- [ ] 未到達の分岐を1件ずつ（クラス・メソッド・行番号つきで）列挙する
-- [ ] 各未到達分岐を「テストを足すべき」「テスト不要」に分類し、テスト不要には根拠を書く（Java イディオム／到達不能／NTF 仕様外 など）
-- [ ] self-check（OK/NG per completion criterion、checks/task-26.md に記録）
-- [ ] QA expert review（subagent）
-- [ ] Craft expert review（subagent, writing）
-- [ ] Verification expert review（subagent, fact-check）
+- [x] Decisions 記載の手順（`mvn clean jacoco:instrument test jacoco:restore-instrumented-classes` → `mvn jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec`）でカバレッジを取得する
+- [x] `XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラスの行・分岐カバレッジ数値を `.rn/ntf-test-data-converter/coverage/coverage-report.md` に記録する
+- [x] 未到達の分岐を1件ずつ（クラス・メソッド・行番号つきで）列挙する
+- [x] 各未到達分岐を「テストを足すべき」「テスト不要」に分類し、テスト不要には根拠を書く（Java イディオム／到達不能／NTF 仕様外 など）
+- [x] self-check（OK/NG per completion criterion、checks/task-26.md に記録）
+- [x] QA expert review（subagent）
+- [x] Craft expert review（subagent, writing）
+- [x] Verification expert review（subagent, fact-check）
 
 **Completion criteria**:
 
@@ -1288,6 +1288,34 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 各未到達分岐が「テストを足すべき」「テスト不要」に分類され、後者には根拠が書かれている
 - 「テストを足すべき」に分類されたものは、追加されたか `issues.md` へ残課題として記録されたかのいずれかになっている
 - src/main への変更がゼロ
+
+---
+
+### #26.5: マーカーカラムのセル値を `[空]` から `[EMPTY]` へ改める
+
+**Purpose**: 0 行テーブルを表す空ブロックマーカーのセル値を、英字大文字の `[EMPTY]` に改める。ユーザー確定（2026-08-20）。理由は ① マーカーカラムの命名は英字が慣習（解説書の例は `[no]`・`[desc]` ですべて英字小文字）② 検索性 ③ `[空]` は解説書で「そのセルが空である」の意味に別途使われ字面が衝突する ④ 人が書く印（`[no]`・`[desc]`）とツールが埋める印（`[EMPTY]`）を大文字で区別できる。
+
+**Prerequisites**: #26
+
+**Steps**:
+
+- [ ] 着手時に最新を採り直す（別セッションが並行して動いているため。申し送りの基準コミットは `c8ead78`）
+- [ ] `XlsFormatWriter.java` の定数 `EMPTY_BLOCK_MARKER_COLUMN` の**値だけ**を `[EMPTY]` に変える（**定数名は変えない**。`{@value}` を使う Javadoc と定数参照箇所には手を入れない）
+- [ ] `XlsFormatWriterTest.java`・`SampleConversionTest.java` の期待値を追随させる
+- [ ] self-check（OK/NG per completion criterion、checks/task-26.5.md に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+
+**Completion criteria**:
+
+- `grep -rn "\[空\]" src/` が 0 件
+- 既存テストが全件成功（`XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock` を含む）
+- `EMPTY_BLOCK_MARKER_COLUMN` を参照する箇所が `XlsFormatWriter` の 3 箇所のままであること
+- 定数名 `EMPTY_BLOCK_MARKER_COLUMN` が変わっていないこと
+- `XlsFormatWriter.java` の総行数が変わっていないこと（`coverage/coverage-report.md` が同ファイルの行番号を `da66425` 時点で引用しているため）
+
+**担当外（報告に含めること）**: `nablarch-testing` 側 `docs/pr75/docs/ntf-empty-table-assertion.md` の「未決」記述の更新は**別リポジトリであり、#21〜#23 を進めている CC の担当**。本セッションは手を出さない。
 
 ---
 
@@ -1340,8 +1368,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #25.5 不具合修正（TDD）
+- **Next**: #26 カバレッジ計測と未到達分岐の列挙（Steps は全て完了、check-off 前でユーザー判断待ち）
+- **Notes**: branch `ntf-test-data-converter`。#26 は完了条件 5 項目すべて OK、src/main 差分ゼロ。成果物は `3b33d5a`。**修正イテレーション上限 3 回を使い切り Craft(writing) が FAIL のまま**で、Valid と判定した未解決 18 件を `checks/task-26.md` の「未解決の指摘」表に記録済み。**ユーザー判断待ち＝どこまで直すか**（推奨: A 群 4 件〈事実誤り〉＋ B 群 5 件〈引用の逐語性〉を追加 1 巡で修正、C 群 9 件〈用語・体裁〉は #27 に回す、QA-1 は見出しの件数 19/15 が 20/14 に動くため単独判断）。再開時はこの判断を先に取る。JaCoCo の再計測は禁止（`da66425` 固定、`jacoco.csv` md5 `d28e374e9027ade63d7919f7a7b5826e`）。ユーザー未解決の未追跡パス: `?? .rn/ntf-test-data-converter/checks/task-26.md`（規約上 check-off コミットに載せるファイル。次セッションでコミットするか要確認）
