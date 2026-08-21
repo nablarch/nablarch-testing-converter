@@ -987,15 +987,42 @@ grep -c "emitMapRows(sb, entry, block.getColumnNames(), block.getRows());" \
 | A-03 | `EXPECTED_TABLE_DATA` | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `expected_tables:` キー |
 | A-04 | `EXPECTED_COMPLETED` | ✅ | `YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` | `RoundTripTest#yaml_expectedCompleteTable_isPreserved` | `expected_complete_tables:` キー |
 | A-05 | `LIST_MAP` | ✅ | `YamlFormatWriterTest#serializeListMap_usesIdKeyAndColumnOrder` | `RoundTripTest#yaml_listMap_isPreserved` | `list_maps:` キー |
-| A-06 | `SETUP_FIXED` | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | `RoundTripTest#yaml_setupFixed_isPreserved` ／ `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | `setup_files:` キー |
-| A-07 | `EXPECTED_FIXED` | ✅ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresExpectedFixedDataTypeThroughRealReader` | `RoundTripTest#yaml_expectedFixed_isPreserved` | `expected_files:` キーへ写ることを出力全文で。読み戻しても `EXPECTED_FIXED` ／ `FIXED` のまま |
-| A-08 | `SETUP_VARIABLE` | ✅ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresSetupVariableDataTypeThroughRealReader` | `RoundTripTest#yaml_setupVariable_isPreserved` | `setup_files:` キーへ写る |
-| A-09 | `EXPECTED_VARIABLE` | ✅ | `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength` | `RoundTripTest#yaml_expectedVariable_isPreserved` | `expected_files:` キー ＋ `type: "variable"` |
+| A-06 | `SETUP_FIXED` | ❌ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords`（`SETUP_VARIABLE` と区別しない） | `RoundTripTest#yaml_setupFixed_isPreserved` ／ `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | **`SETUP_FIXED` を `SETUP_VARIABLE` から区別する出力が辺④に無い。** 固定できているのは「SETUP 系 → `setup_files:`」という 2 対 1 の写像までである。§4.1 末尾を参照 |
+| A-07 | `EXPECTED_FIXED` | ❌ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresExpectedFixedDataTypeThroughRealReader`（どちらも `EXPECTED_VARIABLE` と区別しない） | `RoundTripTest#yaml_expectedFixed_isPreserved` | **`EXPECTED_FIXED` を `EXPECTED_VARIABLE` から区別する出力が辺④に無い。** 読み戻し側も同じで、`YamlFormatReader#fileDataType` がセクションキーと `type:` から `DataType` を組み直すため、入力の `DataType` を取り違えても `back.getDataType()` は一致してしまう。§4.1 末尾を参照 |
+| A-08 | `SETUP_VARIABLE` | ❌ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresSetupVariableDataTypeThroughRealReader`（どちらも `SETUP_FIXED` と区別しない） | `RoundTripTest#yaml_setupVariable_isPreserved` | **`SETUP_VARIABLE` を `SETUP_FIXED` から区別する出力が辺④に無い。** A-07 と同じく読み戻し側も区別しない。§4.1 末尾を参照 |
+| A-09 | `EXPECTED_VARIABLE` | ❌ | `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`（`EXPECTED_FIXED` と区別しない） | `RoundTripTest#yaml_expectedVariable_isPreserved` | **`EXPECTED_VARIABLE` を `EXPECTED_FIXED` から区別する出力が辺④に無い。** 従来この行が区別の根拠に挙げていた `type: "variable"` は `DataType` ではなく `FileDataBlock.fileType` から出る。§4.1 末尾を参照 |
 | A-10 | `MESSAGE` | ✅ | `YamlFormatWriterTest#serializeMessage_withDirectivesAndFwHeader` | `RoundTripTest#yaml_message_isPreserved` ／ `YamlFormatWriterTest#roundTrip_message_preservesFwHeaderAndBody` | `messages:` キー |
 | A-11 | `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `YamlFormatWriterTest#serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField` | `RoundTripTest#yaml_expectedRequestHeaderMessages_isPreserved` ／ `YamlFormatWriterTest#roundTrip_sendSync_preservesGroupIdAndNoField` | 単独ブロックの出力全文を完全一致でアサートする |
 | A-12 | `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesExpectedRequestBodyMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_expectedRequestBodyMessages_isPreserved` | #18〜#25 当初版は ✅ と誤判定していた（`YamlFormatWriterTest#serializeSendSync_allFourSectionKeys` は 4 キーが「どこかに現れる」ことしか見ていない）。#25 レビュー対応で追加（`inventory.md` §4.1-2） |
 | A-13 | `RESPONSE_HEADER_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesResponseHeaderMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_responseHeaderMessages_isPreserved` | 同上 |
 | A-14 | `RESPONSE_BODY_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesResponseBodyMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_responseBodyMessages_isPreserved` | 同上 |
+
+**ファイル系 4 種（A-06 ／ A-07 ／ A-08 ／ A-09）の `DataType` は、辺④の出力に完全には現れない。**
+`YamlFormatWriter#sectionKey` は `SETUP_FIXED` と `SETUP_VARIABLE` をどちらも `setup_files`、
+`EXPECTED_FIXED` と `EXPECTED_VARIABLE` をどちらも `expected_files` へ写す。固定長／可変長を分ける
+`type:` は `YamlFormatWriter#emitFile` が `block.getFileType()` から出しており、`DataType` を見ていない。
+`FileDataBlock` は `DataType` の FIXED ／ VARIABLE の別と `fileType` が一致することを検査しないため
+（コンストラクタが課すのは `DataType` が 4 種のいずれかであることと `fileType` が `null` でないことだけ）、
+両者を食い違わせたブロックを合法に作れてしまう。
+
+実測（`serialize` の出力を比べる。出力は 4 行とも `true`）:
+
+```
+fileType=FIXED    SETUP_FIXED    vs SETUP_VARIABLE    identical? true
+fileType=FIXED    EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
+fileType=VARIABLE SETUP_FIXED    vs SETUP_VARIABLE    identical? true
+fileType=VARIABLE EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
+```
+
+**この 4 件はテストを足しても埋まらない。** 埋めるには辺④の外を動かす必要がある —— 中間モデル側に
+「`DataType` の FIXED ／ VARIABLE の別と `fileType` が一致すること」の不変条件を置いて `type:` を
+`DataType` の関数にするか、この 4 行の主張を 2 対 1 の写像（SETUP 系 → `setup_files` ／
+EXPECTED 系 → `expected_files`）へ書き改めるかである。どちらも #27 の範囲を超えるため、
+ここでは ❌ として開示するにとどめる。
+
+`inventory.md` §4.1-2 が挙げる変異実測（`sectionKey` の分岐を入れ替えるとこれらのテストが落ちる）は
+事実だが、それは写像そのものの変異であって入力 `DataType` の差し替えではない。§0.2 の軸A の判定基準
+（その `DataType` に依存する出力をアサートしているか）で見ると、この 4 件は別の型に差し替えても通る。
 
 ### 4.2 軸B ブロック実装（4 要素）
 
@@ -1163,17 +1190,17 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 71 | 73 | 71 | 71 | 286 |
+| ✅ 担保あり | 71 | 73 | 71 | 67 | 282 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
-| ❌ 未担保 | 0 | 1 | 1 | 0 | 2 |
+| ❌ 未担保 | 0 | 1 | 1 | 4 | 6 |
 | — 空欄 | 8 | 8 | 5 | 6 | 27 |
 | **合計** | **79** | **82** | **77** | **77** | **315** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
 
-**❌ の 2 件は水平展開で出た（#27）。** 軸E の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)）が
+**❌ の 6 件は水平展開で出た（#27）。** 軸E の総点検でいったん 2 件（辺③ E-1(1件)・辺④ E-4(1件)）が
 ✅ から ❌ へ動いたが、そちらは #27 の中でテストを 2 本足して埋めてある（`783810b` ／ `6d12021`）。
-残る 2 件は水平展開——「表が主張する内容を、テスト本文が実際には主張していない」を全セルへ広げた
+残る 6 件は水平展開——「表が主張する内容を、テスト本文が実際には主張していない」を全セルへ広げた
 点検——で出たもので、軸A〜D は空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
 
 「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある
