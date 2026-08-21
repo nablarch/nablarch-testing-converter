@@ -61,3 +61,49 @@
    同じコマンドで `Tests run: 45, Failures: 0, Errors: 0, Skipped: 0`・`BUILD SUCCESS`。
 3. **全体で確認した。** `mvn clean test -Djacoco.skip=true` で `Tests run: 595, Failures: 0, Errors: 0, Skipped: 2`。
    **JaCoCo は一度も走らせていない**（全実行に `-Djacoco.skip=true` を付けた）。
+
+## 追記: 2 問への回答を受けた処置（2026-08-21）
+
+**上の「Ready to check off」で未回答としていた 2 問にユーザーが回答した。**
+
+| 問 | 回答 | 処置 |
+|---|---|---|
+| ① 命名規約を固定するテストを #26.5 で足すか | **足さない。⑧ として #27 へ回す** | steering `#26.5` の「2 問への回答」に根拠つきで記録。**テスト件数は 595 のまま** |
+| ②-1 担保の穴 8 件を #27 へ持ち越してよいか | **承認**（「二層の担保を実測で確かめたうえで、なお埋まっていない穴」と 1 文添える条件つき） | steering `#27` の Steps へ 1 行足した |
+| ②-2 `issues.md` 申し送り節の陳腐化を #27 へ持ち越してよいか | **却下。#26.5 の中で直す** | `issues.md` の当該節を全文書き替えた |
+
+**②-2 の処置の裏取り**（`src/` は無変更。`.md` 3 ファイルのみ変更）:
+
+```sh
+$ grep -rn 'カラム名を 1 件も持たないブロックは書き出せません' src/
+（0 件）
+$ grep -n 'カラム名を 1 件も持たない' src/main/java/nablarch/test/tool/converter/model/ColumnRowDataBlock.java
+93:                            "カラム名を 1 件も持たないブロックはセルを持つデータ行を持てません"
+$ grep -n 'EMPTY_BLOCK_MARKER_COLUMN' src/main/java/nablarch/test/tool/converter/xls/XlsFormatWriter.java
+213:     * {@value #EMPTY_BLOCK_MARKER_COLUMN} を 1 つだけ書く。</b>...
+252:                ? Arrays.asList(EMPTY_BLOCK_MARKER_COLUMN)
+543:    static final String EMPTY_BLOCK_MARKER_COLUMN = "[EMPTY]";
+$ sed -n '256,258p' src/main/java/nablarch/test/tool/converter/yaml/YamlFormatWriter.java
+        if (rows.isEmpty()) {
+            parent.line(key("rows") + ": []");
+            return;
+```
+
+**明文の実物確認**（`nablarch-document` `30a8271` の
+`ja/development_tools/testing_framework/implementation/testdata_notation.rst` を `git show` で取り出して確認）:
+`:789`「0件のデータは、以下のように記述する」の Excel 記述例は**カラム名 3 つを持つ形**、`:802`
+「データ行を書かない場合でも、カラム名の行は省略できない」、`:819`「カラム名は、最初の行（`rows:` の先頭要素）
+のキーで決まる」、`:836`「0件のデータは、`rows:` に空配列 `[]` を記載する」、`:1515` マーカーカラム、`:1550` 除外。
+**この 6 か所から「Excel の 0 件テーブルはカラム名を持つが YAML は持てない」＝往復でカラム名が復元されない、
+という伝達すべき事実を導いた。**
+
+## 完了時点の Completion criteria 再判定（2026-08-21・完了マーカーコミット直前）
+
+| # | 判定 | Evidence |
+|---|---|---|
+| 1 | OK | `grep -rn "\[空\]" src/ \| wc -l` → `0` |
+| 2 | OK | `mvn -o clean test -Djacoco.skip=true` → `Tests run: 595, Failures: 0, Errors: 0, Skipped: 2`・`BUILD SUCCESS` |
+| 3 | OK | `grep -c 'EMPTY_BLOCK_MARKER_COLUMN' .../XlsFormatWriter.java` → `3` |
+| 4 | OK | 同上（定数名 `EMPTY_BLOCK_MARKER_COLUMN` のまま） |
+| 5 | OK | `wc -l < .../XlsFormatWriter.java` → `601` |
+| 6 | OK | `git grep -c -F '[空]'` → `checks/task-26.5.md:10`（本表の記載ぶんを含む）・`coverage/issues.md:3`・`steering.md:17`。`issues.md` の 3 件はいずれも 2026-08-19 プローブの版面記録（`:2739`／`:2741`／`:2752`）で、揃えない側に分類済み |
