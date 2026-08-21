@@ -281,8 +281,7 @@ public class XlsFormatWriterTest {
         RecordLayout record = new RecordLayout("data",
                 Arrays.asList(new FieldDef("f1", "半角英字", "-"), new FieldDef("f2", "半角英字", "5")),
                 Collections.singletonList(row("abcd", "xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8"),
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat", map("text-encoding", "UTF-8"),
                 Collections.singletonList(record));
 
         // When
@@ -317,8 +316,8 @@ public class XlsFormatWriterTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("${v}")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv",
-                FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
+                Collections.singletonList(record));
 
         // When
         Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
@@ -345,8 +344,8 @@ public class XlsFormatWriterTest {
         RecordLayout data = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
                 Collections.singletonList(row("xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat",
-                FileDataBlock.FileType.FIXED, map(), Arrays.asList(header, data));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat", map(),
+                Arrays.asList(header, data));
 
         // When
         Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
@@ -376,8 +375,8 @@ public class XlsFormatWriterTest {
         RecordLayout second = new RecordLayout(null,   // 2 レコード目はレコード種別必須
                 Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
                 Collections.singletonList(row("xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                FileDataBlock.FileType.FIXED, map(), Arrays.asList(first, second));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat", map(),
+                Arrays.asList(first, second));
 
         // When / Then
         build(container("book", "sheet", file));
@@ -458,8 +457,8 @@ public class XlsFormatWriterTest {
         RecordLayout second = new RecordLayout("",   // 空文字も列 0 空＝NG
                 Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
                 Collections.singletonList(row("xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat",
-                FileDataBlock.FileType.FIXED, map(), Arrays.asList(first, second));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat", map(),
+                Arrays.asList(first, second));
 
         // When / Then
         build(container("book", "sheet", file));
@@ -476,8 +475,8 @@ public class XlsFormatWriterTest {
         RecordLayout only = new RecordLayout(null,
                 Collections.singletonList(new FieldDef("f1", "半角英字", "2")),
                 Collections.singletonList(row("xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "ok.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(only));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "ok.dat", map(),
+                Collections.singletonList(only));
 
         // When
         Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
@@ -914,8 +913,8 @@ public class XlsFormatWriterTest {
                 Collections.singletonList(row("v")));
         Map<String, String> directives = new LinkedHashMap<String, String>();
         directives.put("text-encoding", "");
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, directives, Collections.singletonList(record));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", directives,
+                Collections.singletonList(record));
 
         // When
         Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
@@ -1130,8 +1129,7 @@ public class XlsFormatWriterTest {
         RecordLayout record = new RecordLayout("data",
                 Arrays.asList(new FieldDef("f1", "半角英字", "-"), new FieldDef("f2", "半角英字", "5")),
                 Collections.singletonList(row("abcd", "xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8"),
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat", map("text-encoding", "UTF-8"),
                 Collections.singletonList(record));
 
         // When
@@ -1164,8 +1162,8 @@ public class XlsFormatWriterTest {
         RecordLayout data = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
                 Collections.singletonList(row("xy")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat",
-                FileDataBlock.FileType.FIXED, map(), Arrays.asList(header, data));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat", map(),
+                Arrays.asList(header, data));
 
         // When
         TestDataBlock read = roundTrip("rt_multi", "s", file).getSections().get(0).getBlocks().get(0);
@@ -1190,8 +1188,8 @@ public class XlsFormatWriterTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("${v}")));
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv",
-                FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
+                Collections.singletonList(record));
 
         // When
         TestDataBlock read = roundTrip("rt_var", "s", file).getSections().get(0).getBlocks().get(0);

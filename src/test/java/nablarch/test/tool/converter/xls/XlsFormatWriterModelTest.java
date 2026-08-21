@@ -211,8 +211,7 @@ public class XlsFormatWriterModelTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
                 Collections.singletonList(row("abcde")));
-        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_FIXED, "", "exp.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8"),
+        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_FIXED, "", "exp.dat", map("text-encoding", "UTF-8"),
                 Collections.singletonList(record));
 
         // When
@@ -225,6 +224,50 @@ public class XlsFormatWriterModelTest {
         assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字")));
         assertThat("固定長なので長さ行が出る", line(sheet, 4), is(Arrays.asList("", "5")));
         assertThat(line(sheet, 5), is(Arrays.asList("", "abcde")));
+    }
+
+    /**
+     * XLS-44。Given: 同じレコード（長さあり）を {@code SETUP_FIXED} ／ {@code SETUP_VARIABLE} で持つ 2 ブロック。
+     * When : それぞれ実 {@code .xlsx} へ書き出し、POI で開き直す。
+     * Then : 長さ行の有無が<b>データ種別だけで決まる</b>（固定長系は出る／可変長系は出ない）。
+     *
+     * <p>
+     * 導出前は長さ行の有無が引数の {@code fileType} で決まっていたため、識別セルに
+     * {@code SETUP_FIXED=…} と書きながら長さ行を書かない Excel を出せた
+     * （{@code coverage/issues.md} <b>XLS-44</b>。実測 2026-08-21）。これは
+     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）「固定長ファイルでは、フィールド名称・
+     * データ型・フィールド長の3リストが同サイズで必須」に反する。導出後はファイル種別を外から渡せない。
+     * </p>
+     */
+    @Test
+    public void writesLengthRowDecidedSolelyByDataType() {
+        // Given: 長さを持つ同一のレコード
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
+                Collections.singletonList(row("abcde")));
+
+        // When: 固定長系
+        Sheet fixed = writeAndReopenSheet(container("derivedFixed",
+                new FileDataBlock(DataType.SETUP_FIXED, "", "in.dat", map(),
+                        Collections.singletonList(record))));
+
+        // Then: 識別セルと長さ行が食い違わない
+        assertThat(line(fixed, 0), is(Arrays.asList("SETUP_FIXED=in.dat")));
+        assertThat(line(fixed, 1), is(Arrays.asList("data", "f1")));
+        assertThat(line(fixed, 2), is(Arrays.asList("", "半角英字")));
+        assertThat("SETUP_FIXED なので長さ行が出る", line(fixed, 3), is(Arrays.asList("", "5")));
+        assertThat(line(fixed, 4), is(Arrays.asList("", "abcde")));
+
+        // When: 可変長系（同じレコードを渡す）
+        Sheet variable = writeAndReopenSheet(container("derivedVariable",
+                new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
+                        Collections.singletonList(record))));
+
+        // Then: 長さ行が無く、データ行が 1 行上がる
+        assertThat(line(variable, 0), is(Arrays.asList("SETUP_VARIABLE=in.csv")));
+        assertThat(line(variable, 1), is(Arrays.asList("data", "f1")));
+        assertThat(line(variable, 2), is(Arrays.asList("", "半角英字")));
+        assertThat("SETUP_VARIABLE なので長さ行は出ない", line(variable, 3), is(Arrays.asList("", "abcde")));
     }
 
     /**
@@ -244,8 +287,8 @@ public class XlsFormatWriterModelTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("abcde")));
-        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_VARIABLE, "[g2]", "exp.csv",
-                FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record));
+        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_VARIABLE, "[g2]", "exp.csv", map(),
+                Collections.singletonList(record));
 
         // When
         Sheet sheet = writeAndReopenSheet(container("expectedVariable", file));
@@ -454,8 +497,7 @@ public class XlsFormatWriterModelTest {
     @Test
     public void writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty() {
         // Given
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8"),
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", map("text-encoding", "UTF-8"),
                 Collections.<RecordLayout>emptyList());
 
         // When
@@ -517,8 +559,8 @@ public class XlsFormatWriterModelTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
                 Collections.<List<String>>emptyList());
-        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", map(),
+                Collections.singletonList(record));
 
         // When
         Sheet sheet = writeAndReopenSheet(container("noRecordRows", file));

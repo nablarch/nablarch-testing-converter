@@ -56,8 +56,7 @@ public class TestDataBlockTest {
     public void グループIDがnullのファイルブロックは生成できない() {
         // Given / When
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, null, "in.dat",
-                    FileDataBlock.FileType.FIXED, Map.of(), List.of());
+            new FileDataBlock(DataType.SETUP_FIXED, null, "in.dat", Map.of(), List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             // Then
@@ -158,8 +157,7 @@ public class TestDataBlockTest {
         //        読み戻すと別種のブロック（テーブル）になる
         // When
         try {
-            new FileDataBlock(DataType.SETUP_TABLE_DATA, "", "in.dat",
-                    FileDataBlock.FileType.FIXED, Map.of(), List.of());
+            new FileDataBlock(DataType.SETUP_TABLE_DATA, "", "in.dat", Map.of(), List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             // Then

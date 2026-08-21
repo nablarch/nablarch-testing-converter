@@ -400,8 +400,7 @@ public class XlsReferenceFixtureTest {
                                 "テストマネージャー", "テストリーダー", "1", "テスト顧客名", "2015/01/01",
                                 "2016/12/31", "テスト備考", "1000", "2000", "3000", "4000"))));
 
-        return new FileDataBlock(DataType.EXPECTED_VARIABLE, "", CSV_PATH,
-                FileDataBlock.FileType.VARIABLE, directives, records);
+        return new FileDataBlock(DataType.EXPECTED_VARIABLE, "", CSV_PATH, directives, records);
     }
 
     /**

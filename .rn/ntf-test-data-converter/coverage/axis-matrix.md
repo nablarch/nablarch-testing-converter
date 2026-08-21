@@ -43,8 +43,9 @@
 **`n/a` は使わない。** 「省略」「空」という状態が存在しない要素については、そもそも
 「(値あり)／(省略)」「(非空)／(空)」の 2 行に割らず 1 行だけ立てる（軸C の行割りは §0.2 のとおり、
 省略可能フィールド 4 と空許容コレクション 11 だけを 2 行に割る）。したがって
-「存在しない状態」を表す行そのものが本書に無く、`n/a` を置く場所が無い。4 辺の C-10
-（`FileDataBlock.fileType`）がその例で、FIXED ／ VARIABLE の必須 2 値を 1 行で扱い状態は ✅ である。
+「存在しない状態」を表す行そのものが本書に無く、`n/a` を置く場所が無い。4 辺の C-19
+（`FieldDef.name`）がその例で、`null` を `FieldDef` が拒否するため「省略」の状態が存在せず、
+1 行だけを立てて状態は ✅ である。
 
 **「担保テストメソッド」欄と「🔺 往復」欄の `—` は「該当なし」**（`inventory.md` の凡例と同じ）であり、
 状態欄の `—`（空欄）とは意味が違う。状態が `—` の行は担保テストメソッドを持たないため
@@ -53,7 +54,7 @@
 **🔺 も 2 役を持つ。** 状態欄の値としての 🔺（＝その軸要素の担保が往復テストしか無い）と、
 列見出しとしての「🔺 往復」欄（＝状態欄が ✅ でも ✅ 以外でも、その軸要素を通す往復テストを併記する欄）である。
 §5.2 が報告する「🔺 弱い担保のみ 0 件」は状態欄だけの集計であって、🔺 往復欄が空という意味ではない
-（🔺 往復欄が `—` でない行は 98 行ある。導出は §0.6 の ③）。
+（🔺 往復欄が `—` でない行は 96 行ある。導出は §0.6 の ③）。
 なお `inventory.md` の凡例は 🔺 を「間接的・副次的にしか通っていない」と定義しているが、
 本書は「実ファイルを通す往復テスト経由でしか通っていない」に狭めて使う（§0.5 に挙げた 3 群だけを計上する）。
 
@@ -148,15 +149,20 @@
 |---|---|---|---|
 | A | データタイプ | `DataType` 14 種（A-01〜A-14） | `inventory.md` §0.2 |
 | B | ブロック実装 | sealed 階層の具象 4 種（B-1〜B-4） | `inventory.md` §0.3 |
-| C | 中間モデル全フィールド | 8 クラス 21 フィールド（C-01〜C-21） | `inventory.md` §0.4 |
+| C | 中間モデル全フィールド | 8 クラス 20 フィールド（C-01〜C-21。**C-10 は欠番**） | `inventory.md` §0.4 |
 | D | 値の表現 | 辺① 8／辺② 12／辺③ 8／辺④ 9 ケース | `inventory.md` §0.5 |
 | E | 多重度 | 4 観点 × 多重度（E-1〜E-3 は 0／1／複数、E-4 は 1／複数） | `inventory.md` §0.6 |
 | F | 異常系 | 辺① 6／辺② 5／辺③ 4／辺④ 3 ケース | `inventory.md` §0.7 |
 
-軸C の 21 フィールドは、必須スカラー 6（C-01・C-03・C-05・C-07・C-10・C-19）／
+軸C の 20 フィールドは、必須スカラー 5（C-01・C-03・C-05・C-07・C-19）／
 省略可能フィールド 4（C-06・C-16・C-20・C-21）／空許容コレクション 11
 （C-02・C-04・C-08・C-09・C-11・C-12・C-13・C-14・C-15・C-17・C-18）に分かれる。
-後ろの 2 群を 2 行に割るため、軸C は 1 辺あたり 6 ＋ 4×2 ＋ 11×2 ＝ 36 行になる。
+後ろの 2 群を 2 行に割るため、軸C は 1 辺あたり 5 ＋ 4×2 ＋ 11×2 ＝ 35 行になる。
+
+**C-10（`FileDataBlock.fileType`）は #29 で欠番になった。** 中間モデルが `fileType` を保持するのを
+やめ、`DataType` から導出するようにしたためである（`issues.md` XLS-44。`getFileType()` は導出値を
+返すアクセサとして残るが、フィールドではないので軸C の対象ではない）。**C-11 以降は繰り上げない** ——
+繰り上げると本書・`inventory.md`・`issues.md` に散らばる既存の ID 参照がすべて別の要素を指すためである。
 
 ### 0.4 中間モデルの不変条件が「到達不能」を作っている
 
@@ -175,7 +181,6 @@
 | `dataType` が `DataType.DEFAULT` のブロックは作れない | `TestDataBlock` | A-01 | 4 辺の A-01 を空欄にする（4 件） |
 | `dataType` ／ `groupId` ／ `identifier` が `null` のブロックは作れない | `TestDataBlock` | C-05・C-06・C-07 | 空欄を作らない（`null` 側だけを閉じる。3 要素とも 4 辺で ✅） |
 | カラム名 0 件のブロックは「セルを持つ行」を持てない | `ColumnRowDataBlock` | C-08(空) | 空欄を作らない（C-08(空) の形を限定するだけ。4 辺で ✅） |
-| `fileType` が `null` のファイルブロックは作れない | `FileDataBlock` | C-10 | 空欄を作らない（4 辺で ✅） |
 | 固定長ファイル・電文でフィールド長 `null` は保持できない | `ModelPreconditions#requireLengths` | C-21(省略) | 空欄を作らない（到達先を可変長ファイルに限定するだけ。辺①・辺②・辺④ は ✅、辺③ は ❌。§3.3） |
 | 本文レコード 0 件の電文ブロックは作れない | `MessageDataBlock` | C-15(空)・E-3(0件) | 4 辺の C-15(空) を空欄にする（4 件）。E-3(0件) は 4 辺で ✅（ファイル系で到達する） |
 | フィールド 0 件のレコードレイアウトは作れない | `RecordLayout` | C-17(空) | 辺③・辺④ の C-17(空) を空欄にする（2 件）。辺①・辺② の C-17(空) も空欄だが、先に効くのは本体パーサ／スキーマである（§5.3） |
@@ -185,10 +190,10 @@
 「本書の空欄への効き方」欄の件数は 4 ＋ 4 ＋ 2 ＋ 2 ＝ 12 で、§5.3 の分類
 「中間モデルの不変条件による到達不能」12 件と一致する。
 
-**上表の 9 行と、`model/` の `IllegalArgumentException` 送出箇所の数は単位が違う。**
+**上表の 8 行と、`model/` の `IllegalArgumentException` 送出箇所の数は単位が違う。**
 上表は「不変条件」を単位に数えたもので、1 つの不変条件が複数の箇所で送出しうる。
 `ModelPreconditions#requireNoNulls` がその例で、リスト版と Map 版の 2 つのオーバーロードが
-合わせて 3 箇所で送出する。したがって「9 と 20 の差が 11 個の不変条件である」とは読めない。
+合わせて 3 箇所で送出する。したがって「8 と 19 の差が 11 個の不変条件である」とは読めない。
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
@@ -204,8 +209,9 @@ perl -0777 -ne 'while (/\bstatic\b[^;{()]*\brequireNoNulls\s*\(/g) {
     END { print "$n\n" }' "$M"/ModelPreconditions.java
 ```
 
-出力は順に 20 ／ 2 ／ 3 —— 送出箇所は全体で 20 か所、`requireNoNulls` は
-オーバーロード 2 つで送出 3 か所、である。
+出力は順に 19 ／ 2 ／ 3 —— 送出箇所は全体で 19 か所、`requireNoNulls` は
+オーバーロード 2 つで送出 3 か所、である（#29 で `FileDataBlock` の `fileType` ＝ `null` の番人が
+到達不能になり撤去されたため、20 か所から 1 つ減った。`issues.md` XLS-29 ／ XLS-44）。
 
 上表に無い不変条件には、たとえば次のものがある（いずれも HEAD の `model/` を読んで確かめた）。
 どれも本書の状態欄を動かさない（拒否される形が軸要素の「空」「省略」に当たらないため）。
@@ -218,7 +224,7 @@ perl -0777 -ne 'while (/\bstatic\b[^;{()]*\brequireNoNulls\s*\(/g) {
 | リストの要素が `null` のモデルは作れない | `ModelPreconditions#requireNoNulls`（`issues.md` XLS-38） |
 | Map のキー・値が `null` のモデルは作れない | `ModelPreconditions#requireNoNulls`（Map 版。`issues.md` XLS-43） |
 
-**この 5 行も全数ではない**（上表 9 行と合わせて 14 行であり、送出箇所 20 との差は残る）。
+**この 5 行も全数ではない**（上表 8 行と合わせて 13 行であり、送出箇所 19 との差は残る）。
 `model/` の不変条件を全数で数えたわけではない（未確認。§6.2）。本書が閉じているのは空欄の側だけである ——
 §5.3 が「中間モデルの不変条件による到達不能」に分類した 12 件は、いずれも上表のどれかの行が作ったものであり、
 上表に現れない不変条件が作った空欄は本書に無い。§5.3 の総数 27 は本書自身から機械的に導いてある（§5.3 の導出コマンド）。
@@ -406,18 +412,18 @@ EXTRACT | grep -c 'Test#'    # 照合対象（…Test クラスのメソッド�
 EXTRACT | grep -v 'Test#'    # 照合対象から外れるもの
 ```
 
-出力は 320 ／ 288 ／ 32 行である（#27 の水平展開で新たに 5 件のメソッドを引いたぶん、
-315 ／ 288 ／ 27 から抽出と対象外だけが増えた。5 件は NTF 本体の `DataFileParser#processDirectives` ／
-`DataFileParser#onReadingValues` ／ `DataFileFragment#setNames` と、`src/main` の
-`XlsFormatWriter#appendRecord` ／ `YamlFormatWriter#emitFile` で、いずれもテストクラスではないため
-照合対象 288 は変わらない）。
-32 行の内訳は、本リポジトリの `src/main` のメソッド 27 件と、
+出力は 323 ／ 290 ／ 33 行である（**#29 の前は 320 ／ 288 ／ 32 だった。**#29 で本書が新たに引いた
+3 件——`YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType` ／
+`YamlFormatWriterModelTest#restoresAllFourFileDataTypesThroughRealReader` ／ `src/main` の
+`FileDataBlock#fileTypeOf`——のぶんだけ増えた。C-10 の 4 行が消えても、そこで引いていたメソッドは
+いずれも本書の別の行が引いているため、落ちた名前は無い）。
+33 行の内訳は、本リポジトリの `src/main` のメソッド 28 件と、
 NTF 本体（`nablarch-testing`）のメソッド 4 件（`TableData#replaceData` ／ `DataFileParser#processDirectives` ／
 `DataFileParser#onReadingValues` ／ `DataFileFragment#setNames`）と、
 テストヘルパ `YamlFixture#onlyBlock` 1 件である。`TableData` が本リポジトリの `src/main` に無いことは
 `find src/main -name 'TableData.java' | wc -l` が 0 を返すことで分かる（`src/main` に現れるのは
 `import nablarch.test.core.db.TableData;` と Javadoc の参照だけである）。
-`src/main` の 27 件が実在することは次で確かめる（`EXTRACT` は 1 つ上のブロックで定義した関数）。
+`src/main` の 28 件が実在することは次で確かめる（`EXTRACT` は 1 つ上のブロックで定義した関数）。
 除外するのは NTF 本体の 3 クラス（`TableData` ／ `DataFileParser` ／ `DataFileFragment`）と
 テストヘルパ `YamlFixture` である —— NTF 本体のメソッドは `src/main` に無いので、
 除外し忘れると `NG(class)` として出てしまい、実在しないものを実在しないと言うだけの出力になる。
@@ -436,8 +442,8 @@ FILTERED | while IFS='#' read -r cls mth; do
     done
 ```
 
-`wc -l` は 27 を返し、それ以降の出力が無いことが確認結果である。
-なお `case` 文の `*Test` に当たらないため、この 27 件はいずれも上の実在照合の対象外である。
+`wc -l` は 28 を返し、それ以降の出力が無いことが確認結果である。
+なお `case` 文の `*Test` に当たらないため、この 28 件はいずれも上の実在照合の対象外である。
 
 ---
 
@@ -505,7 +511,6 @@ awk '/^## 1\. /,/^## 2\. /' axis-matrix.md | grep -E '^\| [A-F][0-9-]' \
 | C-08(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` ／ `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` | `XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock` | マーカー列だけのブロックで到達する（`issues.md` XLS-08）。除外後は行も空になる。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
 | C-09(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRowsFromTableWithoutDataRowsInRealBook` ／ `#readsEmptyRowsFromListMapWithoutDataRowsInRealBook` | — | テーブル経路・LIST_MAP 経路の 2 つ |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook`（FIXED）／ `#readsSetupVariableFileBlockWithoutFieldLengthFromRealBook`（VARIABLE） | — | 必須の 2 値。「省略」は存在しない。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29） |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `XlsFormatReaderRealFileTest#readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook`（ディレクティブ行を 1 行も書かなくても件数 1） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
@@ -657,7 +662,6 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-08(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | `rows: []` で到達する。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-08(空) と同じ入力 |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.properties.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。実測で確かめた —— フィクスチャの `type` を `"variable"` から `"fixed"` へ変えると（可変長のまま `"fixed"` にすると `ModelPreconditions#requireLengths` が先に投げてアサートまで届かないため `length` も足す）`Expected: is <VARIABLE> but: was <FIXED>` で落ちる。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#stringifiesNonStringDirectiveValuesFromRealYaml` | — | integer ／ boolean の記法も文字列になることまで固定する |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile`（件数 1 をアサート） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
@@ -693,19 +697,6 @@ unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
 いずれも `['id', 'records'] 1` である。バージョンは `pom.xml` の `nablarch-testing-yaml` の
 `<version>` に合わせる。
 
-
-C-10 の担保の所在（辺②のテストで `getFileType()` を呼ぶ箇所を全部数え、経路で振り分ける）:
-
-```sh
-cd "$(git rev-parse --show-toplevel)"
-grep -rn 'getFileType()' src/test/java/nablarch/test/tool/converter/yaml --include=*.java \
-  | sed 's/:[0-9]*:/: /'
-```
-
-出力は 9 行で、実ファイル経路のクラス `YamlFormatReaderRealFileTest` の 2 行が
-`FileType.FIXED` と `FileType.VARIABLE` を 1 行ずつ見ている（上表の 2 メソッド）。残る 7 行は辺②の担保に数えない
-—— `YamlFormatReaderTest` の 3 行は in-memory 経路（§0.2）、`YamlFormatWriterModelTest` の 3 行と
-`YamlFormatWriterTest` の 1 行は辺④の書き出しを読み戻したものだからである。
 
 ### 2.4 軸D 値の表現（YAML スカラー 12 ケース）
 
@@ -835,7 +826,6 @@ grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 �
 | C-08(空) | 同 空 | ✅ | `XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` | `XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock` | マーカーカラム 1 列 `[EMPTY]` を書く（`issues.md` XLS-27 の【決着】。#26.5 でセル値を `[空]` から改めた）。カラム名 0 件かつ「セルを持つ行」は `ColumnRowDataBlock` が生成時に拒否する（`TableDataBlockTest#カラムなしでセルを持つ行を抱えるブロックは生成できない`。`issues.md` XLS-21）。残る穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `XlsFormatWriterTest#writesTableBlock` | — | — |
 | C-09(空) | 同 空 | ✅ | `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty` | — | 識別行とカラム名行だけ。データ行の位置は行そのものが無い |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `XlsFormatWriterTest#writesFixedFileBlock`（FIXED＝長さ行が出る）／ `#writesVariableFileWithoutLengthRow`（VARIABLE＝長さ行が出ない） | `XlsFormatWriterTest#roundTripsFixedFile` ／ `#roundTripsVariableFile` | `null` は `FileDataBlock` が生成時に拒否する（`FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない`。`issues.md` XLS-29） |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | ディレクティブ行が識別行の次に出る |
 | C-11(空) | 同 空 | ✅ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow` | — | ディレクティブ行が 1 行も出ない |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | — |
@@ -856,7 +846,7 @@ grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 �
 | C-20(値あり) | `FieldDef.type` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 型行に出る。空文字は弾かれず空セルになる（`XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty`） |
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。`FieldDef` が `type` ＝ `null` を生成時に拒否するため入力を組めない（`issues.md` XLS-31。`steering.md` #25.5 §1-D）。根拠テスト `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `FieldDefTest#データ型が空文字のフィールド定義は生成できる` |
 | C-21(値あり) | `FieldDef.length` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 長さ行に `-` ／ `5` が原文のまま出る |
-| C-21(省略) | 同 省略（`null`） | ❌ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（`length` の値には無反応） | `XlsFormatWriterTest#roundTripsVariableFile` | **省略された `length` が出力に現れないことを、値に反応する形でアサートしているテストが無い。** 到達できるのは可変長ファイルだけだが、`XlsFormatWriter#appendRecord` は長さ行を `if (fixed)` の中でしか作らないため、可変長では `getLength()` が 1 度も読まれない。したがって同じ入力の `length` を `null` から `"5"` に変えても出力は 1 行も変わらず、根拠テストは緑のままである。行 3 がデータ行であることは C-10 の VARIABLE 側の担保であって、この行の主張ではない。**テストを足しても埋まらない**（辺③の出力が可変長では `length` に依存しない）。辺③ 軸C の (省略)／(空) 行は 15 行あり、本行を除く 14 行（✅ 11 行・`—` 3 行）を全部あたった —— ✅ の 11 行はいずれもアサートが値の有無に反応する形であり、本行だけが例外である（母集団の導出コマンドと 11 行それぞれの根拠は本表の下）。なお固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
+| C-21(省略) | 同 省略（`null`） | ❌ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（`length` の値には無反応） | `XlsFormatWriterTest#roundTripsVariableFile` | **省略された `length` が出力に現れないことを、値に反応する形でアサートしているテストが無い。** 到達できるのは可変長ファイルだけだが、`XlsFormatWriter#appendRecord` は長さ行を `if (fixed)` の中でしか作らないため、可変長では `getLength()` が 1 度も読まれない。したがって同じ入力の `length` を `null` から `"5"` に変えても出力は 1 行も変わらず、根拠テストは緑のままである。行 3 がデータ行であることは可変長ファイルの版面そのものの担保であって、この行の主張ではない。**テストを足しても埋まらない**（辺③の出力が可変長では `length` に依存しない）。辺③ 軸C の (省略)／(空) 行は 15 行あり、本行を除く 14 行（✅ 11 行・`—` 3 行）を全部あたった —— ✅ の 11 行はいずれもアサートが値の有無に反応する形であり、本行だけが例外である（母集団の導出コマンドと 11 行それぞれの根拠は本表の下）。なお固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
 
 #### C-21(省略) が辺③ 軸C の (省略)／(空) 行で唯一の例外であることの照合
 
@@ -879,7 +869,8 @@ awk '/^## 3\. /,/^## 4\. /' axis-matrix.md \
 「値を入れれば落ちる」の判定対象にならない。残る `✅` 11 行が下表である。
 
 **下表の根拠は各メソッドの Then を読んだことであり、値を入れた変異を流した結果ではない。**
-本書が変異実測を記しているのは §2.3 の C-10 ／ §3.5 の E-1(1件) ／ §4.5 の E-4(1件) の 3 行であり、
+本書が変異実測を記しているのは §3.5 の E-1(1件) ／ §4.5 の E-4(1件) の 2 行であり
+（#29 の前は §2.3 の C-10 を加えた 3 行だった。C-10 の行は #29 で消えた。§0.3）、
 下表の 11 行はそこに含まれない（主張は本書の記述についてであって、本書に記していない変異実測が
 他に無いことまでは言わない）。
 
@@ -889,7 +880,7 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md | grep '実測で確かめた' \
   | awk -F'|' '{id=$2; gsub(/^ +| +$/,"",id); print id}'
 ```
 
-出力は `C-10` ／ `E-1(1件)` ／ `E-4(1件)` の 3 行である。
+出力は `E-1(1件)` ／ `E-4(1件)` の 2 行である。
 各行のアサートは、省略・空でない入力では成り立たない形になっている。
 
 | 担保テストメソッド | 軸要素 | 値の有無に反応するアサート |
@@ -1073,51 +1064,46 @@ grep -c "emitMapRows(sb, entry, block.getColumnNames(), block.getRows());" \
 | A-03 | `EXPECTED_TABLE_DATA` | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `expected_tables:` キー |
 | A-04 | `EXPECTED_COMPLETED` | ✅ | `YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` | `RoundTripTest#yaml_expectedCompleteTable_isPreserved` | `expected_complete_tables:` キー |
 | A-05 | `LIST_MAP` | ✅ | `YamlFormatWriterTest#serializeListMap_usesIdKeyAndColumnOrder` | `RoundTripTest#yaml_listMap_isPreserved` | `list_maps:` キー |
-| A-06 | `SETUP_FIXED` | ❌ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords`（`SETUP_VARIABLE` と区別しない） | `RoundTripTest#yaml_setupFixed_isPreserved` ／ `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | **`SETUP_FIXED` を `SETUP_VARIABLE` から区別する出力が辺④に無い。** 固定できているのは「SETUP 系 → `setup_files:`」という 2 対 1 の写像までである。§4.1 末尾を参照（原因は `issues.md` XLS-44） |
-| A-07 | `EXPECTED_FIXED` | ❌ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresExpectedFixedDataTypeThroughRealReader`（どちらも `EXPECTED_VARIABLE` と区別しない） | `RoundTripTest#yaml_expectedFixed_isPreserved` | **`EXPECTED_FIXED` を `EXPECTED_VARIABLE` から区別する出力が辺④に無い。** 読み戻し側も同じで、`YamlFormatReader#fileDataType` がセクションキーと `type:` から `DataType` を組み直すため、入力の `DataType` を取り違えても `back.getDataType()` は一致してしまう。§4.1 末尾を参照（原因は `issues.md` XLS-44） |
-| A-08 | `SETUP_VARIABLE` | ❌ | `YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder` ／ `#restoresSetupVariableDataTypeThroughRealReader`（どちらも `SETUP_FIXED` と区別しない） | `RoundTripTest#yaml_setupVariable_isPreserved` | **`SETUP_VARIABLE` を `SETUP_FIXED` から区別する出力が辺④に無い。** A-07 と同じく読み戻し側も区別しない。§4.1 末尾を参照（原因は `issues.md` XLS-44） |
-| A-09 | `EXPECTED_VARIABLE` | ❌ | `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`（`EXPECTED_FIXED` と区別しない） | `RoundTripTest#yaml_expectedVariable_isPreserved` | **`EXPECTED_VARIABLE` を `EXPECTED_FIXED` から区別する出力が辺④に無い。** 従来この行が区別の根拠に挙げていた `type: "variable"` は `DataType` ではなく `FileDataBlock.fileType` から出る。§4.1 末尾を参照（原因は `issues.md` XLS-44） |
+| A-06 | `SETUP_FIXED` | ✅ | `YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType`（`type: "fixed"`）／ `#restoresAllFourFileDataTypesThroughRealReader` | `RoundTripTest#yaml_setupFixed_isPreserved` ／ `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | #29 で ❌ から動いた。`type:` が `DataType` から出るようになったため、同じ `setup_files` キーを共有する `SETUP_VARIABLE` と区別される（`issues.md` XLS-44） |
+| A-07 | `EXPECTED_FIXED` | ✅ | `YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType`（`type: "fixed"`）／ `#restoresAllFourFileDataTypesThroughRealReader` ／ `#restoresExpectedFixedDataTypeThroughRealReader` | `RoundTripTest#yaml_expectedFixed_isPreserved` | #29 で ❌ から動いた。同じ `expected_files` キーを共有する `EXPECTED_VARIABLE` と `type:` で区別される |
+| A-08 | `SETUP_VARIABLE` | ✅ | `YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType`（`type: "variable"`）／ `#restoresAllFourFileDataTypesThroughRealReader` ／ `#restoresSetupVariableDataTypeThroughRealReader` | `RoundTripTest#yaml_setupVariable_isPreserved` | #29 で ❌ から動いた。`SETUP_FIXED` と `type:` で区別される |
+| A-09 | `EXPECTED_VARIABLE` | ✅ | `YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType`（`type: "variable"`）／ `#restoresAllFourFileDataTypesThroughRealReader` | `RoundTripTest#yaml_expectedVariable_isPreserved` | #29 で ❌ から動いた。`EXPECTED_FIXED` と `type:` で区別される |
 | A-10 | `MESSAGE` | ✅ | `YamlFormatWriterTest#serializeMessage_withDirectivesAndFwHeader` | `RoundTripTest#yaml_message_isPreserved` ／ `YamlFormatWriterTest#roundTrip_message_preservesFwHeaderAndBody` | `messages:` キー |
 | A-11 | `EXPECTED_REQUEST_HEADER_MESSAGES` | ✅ | `YamlFormatWriterTest#serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField` | `RoundTripTest#yaml_expectedRequestHeaderMessages_isPreserved` ／ `YamlFormatWriterTest#roundTrip_sendSync_preservesGroupIdAndNoField` | 単独ブロックの出力全文を完全一致でアサートする |
 | A-12 | `EXPECTED_REQUEST_BODY_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesExpectedRequestBodyMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_expectedRequestBodyMessages_isPreserved` | #18〜#25 当初版は ✅ と誤判定していた（`YamlFormatWriterTest#serializeSendSync_allFourSectionKeys` は 4 キーが「どこかに現れる」ことしか見ていない）。#25 レビュー対応で追加（`inventory.md` §4.1-2） |
 | A-13 | `RESPONSE_HEADER_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesResponseHeaderMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_responseHeaderMessages_isPreserved` | 同上 |
 | A-14 | `RESPONSE_BODY_MESSAGES` | ✅ | `YamlFormatWriterModelTest#writesResponseBodyMessagesUnderItsOwnSectionKey` | `RoundTripTest#yaml_responseBodyMessages_isPreserved` | 同上 |
 
-**ファイル系 4 種（A-06 ／ A-07 ／ A-08 ／ A-09）の `DataType` は、辺④の出力に完全には現れない。**
-`YamlFormatWriter#sectionKey` は `SETUP_FIXED` と `SETUP_VARIABLE` をどちらも `setup_files`、
-`EXPECTED_FIXED` と `EXPECTED_VARIABLE` をどちらも `expected_files` へ写す。固定長／可変長を分ける
-`type:` は `YamlFormatWriter#emitFile` が `block.getFileType()` から出しており、`DataType` を見ていない。
-`FileDataBlock` は `DataType` の FIXED ／ VARIABLE の別と `fileType` が一致することを検査しないため
-（コンストラクタが課すのは `DataType` が 4 種のいずれかであることと `fileType` が `null` でないことだけ）、
-両者を食い違わせたブロックを合法に作れてしまう。
+**ファイル系 4 種（A-06 ／ A-07 ／ A-08 ／ A-09）は #29 で ❌ から ✅ へ動いた。**
+辺④のトップレベルキーは SETUP 系 → `setup_files` ／ EXPECTED 系 → `expected_files` の **2 対 1** であり
+（`notation:212-235`（`30a8271` 時点））、固定長／可変長を分けるのは `type:` だけである。
+`YamlFormatWriter#emitFile` はその `type:` を `block.getFileType()` から出すが、**#29 でその
+`getFileType()` が `DataType` からの導出値になった**（`FileDataBlock#fileTypeOf`）。したがって
+4 種の `DataType` それぞれが辺④の出力に現れる。
 
-実測（`serialize` の出力を比べる。出力は 4 行とも `true`）:
+**#29 の前は 4 行とも ❌ だった。** `FileDataBlock` が `DataType` と `fileType` を別々に保持し、
+両者が食い違う組を検査しなかったため、`type:` は入力の `DataType` に依存しなかった
+（`issues.md` XLS-44。当時の実測では `fileType` を固定して `DataType` だけを差し替えた 4 通りの
+`serialize` 出力がすべて一致した）。**当時「テストを足しても埋まらない」と書いたとおり、埋まったのは
+辺④の外——中間モデル——を動かしたからである。**導出できるのは `DataType` → `FileType` の向きが
+本体スキーマ `$defs.file_data.properties.type` の description から一意に定まるためで、逆向きは
+SETUP ／ EXPECTED の情報が要るため一意でない（4 対 2 の写像であって全単射ではない）。
+**あわせて軸C から C-10（`FileDataBlock.fileType`）の行が消えた** —— フィールドそのものが無くなり、
+`getFileType()` は導出値を返すアクセサになったためである（§0.3 の欠番の扱い）。
 
-```
-fileType=FIXED    SETUP_FIXED    vs SETUP_VARIABLE    identical? true
-fileType=FIXED    EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
-fileType=VARIABLE SETUP_FIXED    vs SETUP_VARIABLE    identical? true
-fileType=VARIABLE EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
-```
-
-**この 4 件はテストを足しても埋まらない。** 出力が入力の `DataType` に依存しない以上、
-埋めるには辺④の外を動かすしかない —— `FileDataBlock` から `fileType` を無くし、`DataType` から
-導出して重複そのものを無くすことである（`issues.md` XLS-44。判定は要対応）。導出できるのは
-`DataType` → `FileType` の向きが本体スキーマ `$defs.file_data.properties.type` の description から
-一意に定まるためで、逆向きは SETUP ／ EXPECTED の情報が要るため一意でない（4 対 2 の写像であって
-全単射ではない）。これが済めば辺④の `type:` が `DataType` から出るため A-06〜A-09 は ✅ になり、
-軸C から C-10（`FileDataBlock.fileType`）という行自体が消える。#27 の中では直さない ——
-完了条件が `src/main` 無改変を求めるためで、実施は #28 の後に独立したタスクとして立てる
-（`steering.md` #27。ユーザー確定・2026-08-21）。
+`YamlFormatWriterModelTest#writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder`
+（トップレベルキーの初出順）と
+`YamlFormatWriterModelTest#restoresExpectedFixedDataTypeThroughRealReader` ／
+`YamlFormatWriterModelTest#restoresSetupVariableDataTypeThroughRealReader`（1 種ずつの往復）は
+#29 の前からある。
+前者はキーの 2 対 1 の写像を主張するもので `DataType` の 4 種を区別しないため、上表の担保には挙げない
+（§0.2 の軸A の判定基準）。後者 2 件は #29 の 4 種一括の往復テストと重なるが、識別子の保存も
+アサートしているため残してある。
 
 **この 4 行の主張を 2 対 1 の写像（SETUP 系 → `setup_files` ／ EXPECTED 系 → `expected_files`）へ
-書き改める道は採らない。** 表の主張を実装の出力に合わせて書き換えることになり、実装から判断することに
-なるためである（`steering.md` #27。ユーザー確定・2026-08-21）。したがって 4 行は XLS-44 が済むまで
-❌ のまま据え置く。
-
-`inventory.md` §4.1-2 が挙げる変異実測（`sectionKey` の分岐を入れ替えるとこれらのテストが落ちる）は
-事実だが、それは写像そのものの変異であって入力 `DataType` の差し替えではない。§0.2 の軸A の判定基準
-（その `DataType` に依存する出力をアサートしているか）で見ると、この 4 件は別の型に差し替えても通る。
+書き改める道は採らなかった。** 表の主張を実装の出力に合わせて書き換えることになり、実装から判断することに
+なるためである（`steering.md` #27。ユーザー確定・2026-08-21）。#29 で実装のほうを仕様へ寄せた結果、
+書き改めずに ✅ になった。
 
 ### 4.2 軸B ブロック実装（4 要素）
 
@@ -1146,7 +1132,6 @@ fileType=VARIABLE EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
 | C-08(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptyColumnsRow_emitsEmptyFlowMap` | — | セルを持たない行が `- {}` になる。カラム名 0 件かつ行 0 件のときはカラム名を書く場所が無く、往復するとカラム名が復元されない（`issues.md` XLS-27 の申し送り。0 件テーブルに残る担保の穴は §7 の ①〜⑧） |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptyRows_emitsEmptyFlowList` | — | `rows: []` |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords`（`type: "fixed"`）／ `#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength`（`type: "variable"`） | `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | `null` は `FileDataBlock` が生成時に拒否する（`issues.md` XLS-29） |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | — | `directives:` ブロックが記述順に出る |
 | C-11(空) | 同 空 | ✅ | `YamlFormatWriterTest#serializeFile_variableOmitsDirectivesAndRecordTypeAndLength` | — | `directives:` キーごと出ない |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | — | 断片 2 件 |
@@ -1272,35 +1257,38 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 |---|---|---|---|---|
 | A データタイプ | 14 | 14 | 14 | 14 |
 | B ブロック実装 | 4 | 4 | 4 | 4 |
-| C 中間モデル全フィールド | 36 | 36 | 36 | 36 |
+| C 中間モデル全フィールド | 35 | 35 | 35 | 35 |
 | D 値の表現 | 8 | 12 | 8 | 9 |
 | E 多重度 | 11 | 11 | 11 | 11 |
 | F 異常系 | 6 | 5 | 4 | 3 |
-| **合計** | **79** | **82** | **77** | **77** |
+| **合計** | **78** | **81** | **76** | **76** |
 
-辺ごとの行数は §0.6 の ①（4 辺で順に 79 ／ 82 ／ 77 ／ 77）、総計 315 は §0.6 の ⑤ で導く。
+辺ごとの行数は §0.6 の ①（4 辺で順に 78 ／ 81 ／ 76 ／ 76）、総計 311 は §0.6 の ⑤ で導く。
+**#29 で 4 辺とも 1 行減った** —— 軸C の C-10（`FileDataBlock.fileType`）が欠番になったためである（§0.3）。
 どちらも手計算ではなく本書自身を走査した値である。
 
 ### 5.2 辺 × 状態の件数
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 71 | 74 | 71 | 67 | 283 |
+| ✅ 担保あり | 70 | 73 | 70 | 70 | 283 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
-| ❌ 未担保 | 0 | 0 | 1 | 4 | 5 |
+| ❌ 未担保 | 0 | 0 | 1 | 0 | 1 |
 | — 空欄 | 8 | 8 | 5 | 6 | 27 |
-| **合計** | **79** | **82** | **77** | **77** | **315** |
+| **合計** | **78** | **81** | **76** | **76** | **311** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
 
-**❌ の 5 件は水平展開で出た（#27）。** 水平展開——「表が主張する内容を、テスト本文が実際には
-主張していない」を全セルへ広げた点検——では 6 件が ✅ から ❌ へ動いたが、そのうち辺② C-10 は
-#27 の中で `getFileType()` のアサートを 1 行足して ✅ へ戻してある（§2.3。`steering.md` #27 の
-ユーザー確定・2026-08-21）。軸E の総点検でいったん ❌ へ動いた 2 件（辺③ E-1(1件)・辺④ E-4(1件)）も
-テストを 2 件足して埋めてある（`783810b` ／ `6d12021`）。残る 5 件は軸A〜D であり、
+**❌ は #29 で 5 件から 1 件になった。** 水平展開——「表が主張する内容を、テスト本文が実際には
+主張していない」を全セルへ広げた点検（#27）——では 6 件が ✅ から ❌ へ動いた。そのうち辺② C-10 は
+#27 の中で `getFileType()` のアサートを 1 行足して ✅ へ戻し（`steering.md` #27 のユーザー確定・
+2026-08-21。その行自体が #29 で欠番になった。§0.3）、**辺④ の A-06〜A-09 の 4 件は #29 で ✅ へ動いた**
+（`type:` が `DataType` から出るようになったため。§4.1 末尾・`issues.md` XLS-44）。
+軸E の総点検でいったん ❌ へ動いた 2 件（辺③ E-1(1件)・辺④ E-4(1件)）もテストを 2 件足して
+埋めてある（`783810b` ／ `6d12021`）。**残る ❌ は辺③ C-21(省略) の 1 件**（`issues.md` XLS-45）であり、
 空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
 
-「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある
+「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 96 行ある
 （導出は §0.6 の ③）。§0.1 の「🔺 も 2 役を持つ」を参照。
 
 **❌ の件数は穴の総数ではない。** 上表は本書の計上単位（§0.2）で数えたときの件数であり、
@@ -1498,15 +1486,16 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 | 4 | 辺④が書き出す YAML のスキーマ適合（§4.6）。「`issues.md` YML-12 の 4 形以外にスキーマ違反を書き得る形が無い」ことは確かめていない | — |
 | 5 | `inventory.md` のスナップショット節の内容照合。§6.1 で内容まで確かめたのは `inventory.md` §0.1-2 の「担保の現在地」表（8 件）と、スナップショット節で見つけた 3 点だけである。名前のレベルでは同文書全体を機械照合したが（§6.1 の 106 ／ 34 ／ 104）、HEAD に無い 34 件の種別も、HEAD に在る 72 件の軸要素対応も読み分けていない。本書は `inventory.md` ／ `issues.md` ／ `coverage-report.md` を書き換えていない | 本書の判定はテストソースを正としているため影響しない |
 | 6 | 辺① C-13(空) の到達不能根拠が送信同期経路の 1 本だけである（§1.3）。受信 `MESSAGE` 経路でディレクティブ行 0 行を通す根拠テストが `src/test` に無い | 辺② の同じ行は 2 経路それぞれの根拠を挙げており、辺で厚みが割れている。到達不能という判定そのものは `DataFile` の注入機構（`issues.md` XLS-07）に依るため変わらない |
-| 7 | `model/` の不変条件の全数（§0.4）。上表 9 行＋下表 5 行の 14 行が全数かは数えていない | 本書が閉じているのは空欄の側だけである（§0.4 の末尾） |
+| 7 | `model/` の不変条件の全数（§0.4）。上表 8 行＋下表 5 行の 13 行が全数かは数えていない | 本書が閉じているのは空欄の側だけである（§0.4 の末尾） |
 | 8 | 辺① C-17(空) の本体側の番人が 2 つある（§1.3）。根拠テスト 2 件が通すのは `DataFileParser#processDirectives` の 2 列ガードで、2 断片目以降の名前行を閉じる `DataFileFragment#setNames` の `assertNotNullOrEmpty` を通す根拠テストは `src/test` に無い | 到達不能という判定は変わらない（2 経路とも本体側で閉じることは実装を読んで確かめた）。理由欄が挙げていた機構名が実際より狭かった |
 
 上記以外の担保テストメソッドは、1 件残らずテストソースを開いて Given／When／Then とアサートを読み、
 その軸要素を担保していることを確かめた（§0.6 の実在照合コマンドで名前の実在も機械的に照合してある）。
 
-**「表が主張する要素を、そのテスト本文が実際にアサートしているか」という読み方は、全 315 セルへ広げ終えた**
-（#27 の水平展開。2026-08-21）。内訳は空欄 27 件と、空欄でない 288 件 —— 軸A 52 件・軸B 16 件・
-軸C 125 件・軸D 37 件・軸E 42 件・軸F 16 件 —— で、27 ＋ 288 ＝ 315 である。
+**「表が主張する要素を、そのテスト本文が実際にアサートしているか」という読み方は、全セルへ広げ終えた**
+（#27 の水平展開。2026-08-21。当時は全 315 セルで、内訳は空欄 27 件と空欄でない 288 件だった）。
+**#29 で C-10 の 4 行が欠番になり、現在は全 311 セル**である —— 空欄 27 件と、空欄でない 284 件
+（軸A 52 件・軸B 16 件・軸C 121 件・軸D 37 件・軸E 42 件・軸F 16 件）で、27 ＋ 284 ＝ 311 である。
 着手は軸E の 44 セル（空欄でない 42 件と空欄 2 件）が先で、残りをあとから広げた。
 
 ```sh
@@ -1520,13 +1509,15 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md \
                     printf "計 全%d 空欄%d 空欄以外%d\n", t, b, t-b}'
 ```
 
-出力は 7 行で、末尾が `計 全315 空欄27 空欄以外288` である。結果は 3 通りに分かれた。
+出力は 7 行で、末尾が `計 全311 空欄27 空欄以外284` である（**#29 の前は `計 全315 空欄27 空欄以外288`
+だった。**C-10 の 4 行が欠番になったぶん減っている。§0.3）。#27 の水平展開の結果は 3 通りに分かれた。
 
 1. **状態が動いたもの 6 件** —— 辺② C-10 ／ 辺③ C-21(省略) ／ 辺④ A-06 ／ A-07 ／ A-08 ／ A-09。
    いずれも ✅ から ❌ へ動いた。理由は各行の理由欄と §4.1 末尾にある。
    このうち辺② C-10 は、そのあと
    `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` へ
-   `getFileType()` のアサートを 1 行足して ✅ へ戻した（§2.3）。現在 ❌ は 5 件である（§5.2）
+   `getFileType()` のアサートを 1 行足して ✅ へ戻した（その行自体が #29 で欠番になった。§0.3）。
+   **辺④ の 4 件は #29 で ✅ へ動いた**（§4.1 末尾）。現在 ❌ は辺③ C-21(省略) の 1 件である（§5.2）
 2. **状態は動かないが出典を直したもの 4 件** —— 辺② C-15(空)（スキーマ側の出典をテストから
    本体スキーマへ）／ §5.3 の分類（辺② C-11(空)・C-13(空) を閉じている機構）／
    辺① C-17(空)（本体側の番人が 2 つある。§6.2 の 8）／ 辺② の軸C 3 行
@@ -1537,7 +1528,8 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md \
 （`783810b` ／ `6d12021`）。軸E・軸F は Acceptance criteria が無条件に「埋まっている」ことを
 求めているため埋め、軸A〜D は ❌ を立てて理由を書く取り決めである（`steering.md` #27）。
 辺② C-10（軸C）だけはこの取り決めの例外で、既存フィクスチャに 1 行足すだけで閉じるため
-埋める判断が済んでいる（`steering.md` #27 のユーザー確定・2026-08-21）。
+埋める判断が済んでいた（`steering.md` #27 のユーザー確定・2026-08-21）。**その C-10 は #29 で
+欠番になった**（§0.3）。
 
 ---
 

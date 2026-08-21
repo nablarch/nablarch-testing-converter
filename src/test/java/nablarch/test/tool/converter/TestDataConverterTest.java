@@ -446,15 +446,15 @@ public class TestDataConverterTest {
         List<FieldDef> fields = Collections.singletonList(new FieldDef("f1", "半角英字", "5"));
         RecordLayout record = new RecordLayout("data", fields,
                 Collections.singletonList(Collections.singletonList("hello")));
-        FileDataBlock setupFile = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat",
-                FileDataBlock.FileType.FIXED, directives, Collections.singletonList(record));
+        FileDataBlock setupFile = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat", directives,
+                Collections.singletonList(record));
 
         // Given: variable expected_files ブロック
         List<FieldDef> outFields = Collections.singletonList(new FieldDef("c1", "半角英字", null));
         RecordLayout outRecord = new RecordLayout(null, outFields,
                 Collections.singletonList(Collections.singletonList("world")));
         FileDataBlock expectedFile = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, Collections.<String, String>emptyMap(),
+                Collections.<String, String>emptyMap(),
                 Collections.singletonList(outRecord));
 
         TestDataSection section = new TestDataSection("withFiles",

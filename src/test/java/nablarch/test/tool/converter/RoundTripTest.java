@@ -156,7 +156,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", "-"), field("f2", "数値", "5")),
                 rows(row("${v}", "12")));
         FileDataBlock original = file(DataType.SETUP_FIXED, "", "t.dat",
-                FileDataBlock.FileType.FIXED, directives("text-encoding", "UTF-8"),
+                directives("text-encoding", "UTF-8"),
                 Collections.singletonList(rec));
 
         // When
@@ -178,7 +178,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", "3")),
                 rows(row("abc")));
         FileDataBlock original = file(DataType.EXPECTED_FIXED, "", "e.dat",
-                FileDataBlock.FileType.FIXED, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -200,7 +200,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", null)),
                 rows(row("${v}")));
         FileDataBlock original = file(DataType.SETUP_VARIABLE, "", "in.csv",
-                FileDataBlock.FileType.VARIABLE, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -222,7 +222,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", null)),
                 rows(row("ok")));
         FileDataBlock original = file(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -453,7 +453,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", "-"), field("f2", "数値", "5")),
                 rows(row("${v}", "12")));
         FileDataBlock original = file(DataType.SETUP_FIXED, "", "t.dat",
-                FileDataBlock.FileType.FIXED, directives("text-encoding", "UTF-8"),
+                directives("text-encoding", "UTF-8"),
                 Collections.singletonList(rec));
 
         // When
@@ -475,7 +475,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", "3")),
                 rows(row("abc")));
         FileDataBlock original = file(DataType.EXPECTED_FIXED, "", "e.dat",
-                FileDataBlock.FileType.FIXED, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -497,7 +497,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", null)),
                 rows(row("${v}")));
         FileDataBlock original = file(DataType.SETUP_VARIABLE, "", "in.csv",
-                FileDataBlock.FileType.VARIABLE, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -519,7 +519,7 @@ public class RoundTripTest {
                 fields(field("f1", "半角英字", null)),
                 rows(row("ok")));
         FileDataBlock original = file(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, directives(),
+                directives(),
                 Collections.singletonList(rec));
 
         // When
@@ -840,9 +840,8 @@ public class RoundTripTest {
     }
 
     private static FileDataBlock file(DataType type, String groupId, String id,
-            FileDataBlock.FileType fileType, Map<String, String> directives,
-            List<RecordLayout> records) {
-        return new FileDataBlock(type, groupId, id, fileType, directives, records);
+            Map<String, String> directives, List<RecordLayout> records) {
+        return new FileDataBlock(type, groupId, id, directives, records);
     }
 
     private static MessageDataBlock message(DataType type, String groupId, String id,

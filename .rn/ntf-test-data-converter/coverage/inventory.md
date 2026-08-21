@@ -896,7 +896,7 @@ YamlFormatWriter#write（parent null 分岐）・#emitBlock（unsupported block 
 | C-08 `columnNames` 空 | `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames`（辺③が `IllegalArgumentException` で落とす） | **`XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` ／ `#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock`**。**落とさずマーカーカラム 1 列 `[EMPTY]` を書く**へ変わった（`issues.md` **XLS-27** の【決着】）。あわせて**カラム名 0 件で「セルを持つ行」**は `TableDataBlockTest#カラムなしでセルを持つ行を抱えるブロックは生成できない` が拒否する（**XLS-21**） |
 | C-15 `MessageDataBlock.records` 空 ／ E-3(0 件) のメッセージ経路 | `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords`（辺③） | **`MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない`**（送信系の版は追補その 7 で削除した。生成時拒否へ移設。`issues.md` **YML-12 2 形目**・§6-J-2）。**辺③④からこの版面へ到達する経路は無くなった** |
 | C-21 `FieldDef.length` ＝ `null` の固定長・電文経路 | `XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock`（辺③） | **`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-30**・§6-J-3）。**可変長は `null` が正しい**ため `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる` が通す |
-| `FileDataBlock.fileType` ＝ `null` | `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` ／ `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected`（辺③④） | **`FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない`**（生成時拒否へ移設。`issues.md` **XLS-29**） |
+| `FileDataBlock.fileType` ＝ `null` | `XlsFormatWriterTest#rejectsFileBlockWithoutFileType` ／ `YamlFormatWriterTest#serialize_fileBlockWithoutFileType_rejected`（辺③④） | **番人そのものが無くなった（#29）。** `fileType` は `DataType` からの導出値になり、`null` を渡す口が消えたため検査が到達不能になった（`issues.md` **XLS-44** ／ **XLS-29** の【2026-08-21・#29】）。生成時拒否の版 `FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない` も削除した。**不変条件は型が保証している** —— `FileDataBlock#fileTypeOf` が 4 種の `DataType` を `FIXED` ／ `VARIABLE` のどちらかへ必ず写す |
 
 **辺②（`YamlFormatReader`）の担保も動いた。** XLS-30 の移設により、スキーマ適合の YAML から
 長さ無しの固定長ファイルブロック／空ボディの電文が中間モデルへ入る経路が塞がった。
@@ -971,6 +971,39 @@ Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
 `Expected: is <3> but: was <6>` ／ `Expected: is <1> but: was <2>`）。
 **穴の所在と判定の根拠は `coverage/axis-matrix.md` §3.5 ／ §4.5 が正である。**
 
+**追補その 9（2026-08-21 実測。#29 で XLS-44 を実施したぶん）**
+
+追補その 8（597 件）から、**`FileDataBlock.fileType` を `DataType` からの導出に変えた**ぶんを
+導き直した（`issues.md` **XLS-44**）。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 600
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1280
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 600
+```
+
+```
+Tests run: 600, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**597 → 600（差 ＋3）の内訳** —— 追加 4 件・削除 1 件である。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `model/FileDataBlockTest#フィールド長がnullのフィールド定義は固定長系のデータ種別すべてで拒否される` | XLS-30 の番人が `DataType` 起点で走ること（導出前は `fileType` に `VARIABLE` を渡すと素通りした） |
+| ＋ | `xls/XlsFormatWriterModelTest#writesLengthRowDecidedSolelyByDataType` | 辺③の長さ行の有無が `DataType` だけで決まること |
+| ＋ | `yaml/YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType` | 辺④の `type:` が `DataType` から出ること（軸A A-06〜A-09） |
+| ＋ | `yaml/YamlFormatWriterModelTest#restoresAllFourFileDataTypesThroughRealReader` | 辺④→辺② の往復でファイル系 4 種が化けないこと |
+| − | `model/FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない` | **主張そのものが成り立たなくなった。** `fileType` を渡す口が消え、`fileType == null` の検査が到達不能になった（`issues.md` **XLS-29** の【2026-08-21・#29】）。番人を惜しんで別の検査に置き換えてはいない |
+
+`model/FileDataBlockTest#固定可変とSETUP_EXPECTEDの全組合せを保持する` は
+`#ファイル種別を4種のデータ種別から導出する` へ書き換えた（件数は増減しない）。
+**軸C の C-10（`FileDataBlock.fileType`）はこの変更で欠番になった**（§0.4 の追補）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -1023,7 +1056,6 @@ Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
 | C-07 | `TestDataBlock` | `identifier` | String | 必須 | — |
 | C-08 | `ColumnRowDataBlock` | `columnNames` | List | 空許容 | 空リスト |
 | C-09 | `ColumnRowDataBlock` | `rows` | List<List> | 空許容 | 空リスト |
-| C-10 | `FileDataBlock` | `fileType` | FileType | 必須（2値） | FIXED / VARIABLE（FileDataBlock の Javadoc） |
 | C-11 | `FileDataBlock` | `directives` | Map | 空許容 | 空 Map |
 | C-12 | `FileDataBlock` | `records` | List | 空許容 | 空リスト |
 | C-13 | `MessageDataBlock` | `directives` | Map | 空許容 | 空 Map |
@@ -1036,9 +1068,16 @@ Tests run: 597, Failures: 0, Errors: 0, Skipped: 2
 | C-20 | `FieldDef` | `type` | String | **省略可** | `null`（FieldDef の Javadoc「省略時は null」） |
 | C-21 | `FieldDef` | `length` | String | **省略可** | `null`（FieldDef の Javadoc「省略時は null」） |
 
-内訳: 必須スカラー 6 件（C-01, C-03, C-05, C-07, C-10, C-19）／
+内訳: 必須スカラー 5 件（C-01, C-03, C-05, C-07, C-19）／
 **省略可能フィールド 4 件**（C-06, C-16, C-20, C-21 — Javadoc に「省略時は…」と明記）／
 空許容コレクション 11 件（C-02, C-04, C-08, C-09, C-11, C-12, C-13, C-14, C-15, C-17, C-18）。
+**合計 20 フィールド。C-10 は欠番である。**
+
+**追補（2026-08-21・#29）: C-10（`FileDataBlock.fileType`）は欠番になった。** 中間モデルが
+`fileType` を保持するのをやめ、`DataType` から導出するようにしたためである（`issues.md` **XLS-44**）。
+`getFileType()` は導出値を返すアクセサとして残るが、フィールドではないので軸C の対象ではない。
+**C-11 以降は繰り上げない** —— 繰り上げると本書・`axis-matrix.md`・`issues.md` に散らばる既存の
+ID 参照がすべて別の要素を指すためである。
 
 **追補（2026-08-18・#25.5）: C-17 `RecordLayout.fields` の「空許容」は型定義上の話であり、契約としては
 1 件以上である。** Excel 記法・YAML スキーマのどちらもフィールドを持たないレコードレイアウトを
@@ -1088,6 +1127,8 @@ YAML は本体スキーマ `nablarch/test/ntf-testdata-yaml-schema.json` の `$d
 『値あり』『省略』の双方を通す」としているが、実定義上 `identifier`（C-07）と `fileType`（C-10）には
 「省略」の表現が存在しない（`identifier` は必須スカラー、`fileType` は FIXED/VARIABLE の 2 値）。
 本棚卸しでは実定義を正とし、`fileType` は「FIXED / VARIABLE 双方」、`identifier` は「値あり 1 通り」として扱う。
+**`fileType` は #29 でフィールドではなくなり、C-10 は欠番になった**（上の追補）。**固定長／可変長の
+双方を通すという要求そのものは残っており、いまはファイル系 4 種の `DataType`（A-06〜A-09）が担う。**
 `directives` / `fwHeaderFields` は「非空 / 空 Map」の双方として扱う。
 
 ### 0.5 軸D 値の表現 — 要素（辺ごとに定義が異なる。steering #19/#22/#24/#25 の記述を要素化）
@@ -2584,6 +2625,11 @@ A-07／A-09 が同クラスに 0 件であることは
 `783810b`）で、これも軸要素の担保である（経緯は [§0.1-2](#s0-1-2) の追補その 8、
 判定の根拠は `coverage/axis-matrix.md` §3.5）。
 
+**追補（2026-08-21 実測。#29）: さらに 1 件増えて 13 件である。**
+`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterModelTest.java` → **13**。
+増えた 1 件は `#writesLengthRowDecidedSolelyByDataType`（辺③の長さ行の有無が `DataType` だけで決まること。
+`issues.md` **XLS-44**）である。
+
 **JaCoCo 実測（#25.5 のレビュー 1 巡目まで反映・2026-08-14）**: `XlsFormatWriter` は
 分岐 **101 / 104**（3 未到達）・行 **157 / 158**（1 未到達）である。導出コマンド:
 
@@ -2804,10 +2850,12 @@ done
 出力は順に **16** ／ **17** ／ **2**（合計 **35**）。**#25.5 追補（2026-08-18）後は 16 ／ 14 ／ 2（合計 32）である**
 （`YamlFormatWriterModelTest` から YML-12 の 3形目・4形目・2形目 の読み戻し検査を 1 件ずつ、計 3 件削除した。
 いずれも番人の担保は `YamlFormatWriterTest` 側に置いたため、このコマンドの対象 3 クラスには入らない）。
-**さらに #27（2026-08-21）で 1 件増え、現在は 16 ／ 15 ／ 2（合計 33）である**
+**さらに #27（2026-08-21）で 1 件増え、16 ／ 15 ／ 2（合計 33）になった**
 （`YamlFormatWriterModelTest#writesOneYamlFileWhenContainerHasSingleSection`。辺④ E-4(1 件)＝
 コンテナ内セクション数 1 の担保。`6d12021`。経緯は [§0.1-2](#s0-1-2) の追補その 8、
-判定の根拠は `coverage/axis-matrix.md` §4.5）。全体は `mvn clean test -Djacoco.skip=true` で
+判定の根拠は `coverage/axis-matrix.md` §4.5）。**#29（2026-08-21）でさらに 2 件増え、
+現在は 16 ／ 17 ／ 2（合計 35）である**（`YamlFormatWriterModelTest#writesFileTypeKeyDerivedFromDataType` ／
+`#restoresAllFourFileDataTypesThroughRealReader`。辺④ 軸A の A-06〜A-09 の担保。`issues.md` **XLS-44**）。全体は `mvn clean test -Djacoco.skip=true` で
 **501 → 536**（Failures 0 ／ Errors 0 ／ Skipped 0。**これは #25 完了時点の値**。#25.5 の途中では
 `Tests run: 540, Failures: 0, Errors: 0, Skipped: 2` であり、**現在（YML-12 2形目 まで反映・2026-08-18）は
 `Tests run: 547, Failures: 0, Errors: 0, Skipped: 0` である** —— [§0.1-2](#s0-1-2)）。

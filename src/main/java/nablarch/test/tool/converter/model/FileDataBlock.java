@@ -13,7 +13,8 @@ import java.util.Set;
  * <p>
  * データ種別は {@link DataType#SETUP_FIXED}／{@link DataType#EXPECTED_FIXED}／
  * {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE} のいずれか。
- * 識別子はファイルパスを保持する。固定長か可変長かは SETUP／EXPECTED を問わず {@link FileType} で区別する。
+ * 識別子はファイルパスを保持する。固定長か可変長かは SETUP／EXPECTED を問わず {@link FileType} で区別し、
+ * その値は<b>データ種別から導出する</b>。
  * ディレクティブとレコードレイアウト群（FW_HEADER レコードもスキップせず保持）を記述順で持つ。
  * <b>この 4 種以外のデータ種別では生成できない。生成時点で拒否する</b>
  * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
@@ -21,20 +22,30 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * <b>{@code fileType} は必須であり {@code null} であってはならない。生成時点で拒否する。</b>
- * Excel 記法・YAML 記法のいずれも
- * 固定長でも可変長でもないファイルデータブロックを認めていないためである（Excel は
- * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）が「固定長ファイルと可変長ファイルには、
- * それぞれ固有の記法制約がある」と定め、固定長では「フィールド名称・データ型・フィールド長の3リストが
- * 同サイズで必須」・可変長では「フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は
- * 不要」と、記法をこの 2 種類に尽くしている。YAML は {@code :1146} が
- * 「{@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
- * {@code records} の3キーが必須であり、いずれかを省略するとエラーになる」と定め、本体スキーマ
- * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.file_data} も {@code type} を
- * {@code required} に含めたうえで {@code enum} ＝ {@code ["fixed", "variable"]} に限る）。
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める（{@code coverage/issues.md} <b>XLS-29</b>）。
- * <b>番人はもとは辺③④の書き出し側にあったが、2026-08-19 に生成時へ移した</b>
- * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * <b>{@code fileType} は保持せず、{@code dataType} から導出する</b>
+ * （{@code coverage/issues.md} <b>XLS-44</b>）。NTF 仕様はファイル種別をひとつの概念としてしか持たず、
+ * 4 種のデータ種別それぞれに固定長／可変長のどちらか一方を一意に割り当てている —— 本体スキーマ
+ * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.file_data.properties.type} の
+ * description が「fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
+ * （SETUP_VARIABLE / EXPECTED_VARIABLE）」と定め、{@code testdata_notation.rst:850}
+ * （{@code 30a8271} 時点）も「固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
+ * SETUP_FIXED・EXPECTED_FIXED（固定長）、SETUP_VARIABLE・EXPECTED_VARIABLE（可変長）の
+ * いずれかのデータタイプで記述する。」と、データタイプそのものに固定長／可変長の別を割り当てている。
+ * <b>したがってデータ種別が決まればファイル種別は決まる</b>（逆向きは SETUP／EXPECTED の情報が要るため
+ * 定まらない。4 対 2 の写像であって全単射ではない）。
+ * </p>
+ *
+ * <p>
+ * <b>導出にしたことで、食い違う組（例: {@code SETUP_FIXED} かつ可変長）は型として表現できない。</b>
+ * 以前は {@code dataType} と {@code fileType} を別々に引数で受け取り、食い違う組を検査せずに保持していた
+ * ため、同じモデルから辺③と辺④が別のファイル種別を書いた（{@code coverage/issues.md} <b>XLS-44</b>）。
+ * <b>これに伴い {@code fileType} ＝ {@code null} を拒否していた番人（XLS-29）は到達不能になり撤去した。</b>
+ * 退行ではなく、不正な状態を型が表現できなくなったため番人が不要になったものである
+ * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」の一段強い形）。
+ * <b>{@link FileType} と {@link #getFileType()} は残す</b> —— 消えたのは概念ではなく二つ目の真実の
+ * 置き場であり、NTF 仕様はファイル種別を名前つきの 2 値として持つ（YAML スキーマの {@code type} は
+ * {@code required} かつ {@code enum} ＝ {@code ["fixed", "variable"]}、Excel は
+ * {@code testdata_notation.rst:883} が記法を固定長ファイルと可変長ファイルの 2 種類に尽くしている）。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
@@ -55,47 +66,53 @@ public final class FileDataBlock extends TestDataBlock {
             DataType.SETUP_FIXED, DataType.EXPECTED_FIXED,
             DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE);
 
-    private final FileType fileType;
     private final Map<String, String> directives;
     private final List<RecordLayout> records;
 
     /**
      * コンストラクタ。
      *
+     * <p>固定長／可変長の区別は {@code dataType} から導出する（{@link #fileTypeOf(DataType)}）。</p>
+     *
      * @param dataType   データ種別
      * @param groupId    グループ ID（省略時は空文字）
      * @param identifier ファイルパス
-     * @param fileType   固定長／可変長の区別（必須。{@code null} 不可）
      * @param directives ディレクティブ（キー → 値。記述順を保つため挿入順を維持する Map を渡すこと）
      * @param records    レコードレイアウト群（記述順。FW_HEADER もスキップせず保持）
      * @throws IllegalArgumentException {@code dataType} が SETUP_FIXED ／ EXPECTED_FIXED ／
-     *                                  SETUP_VARIABLE ／ EXPECTED_VARIABLE のいずれでもない場合、
-     *                                  または {@code fileType} が {@code null} の場合
+     *                                  SETUP_VARIABLE ／ EXPECTED_VARIABLE のいずれでもない場合
      */
     public FileDataBlock(DataType dataType, String groupId, String identifier,
-                         FileType fileType, Map<String, String> directives, List<RecordLayout> records) {
+                         Map<String, String> directives, List<RecordLayout> records) {
         super(dataType, groupId, identifier);
         requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType);
-        if (fileType == null) {
-            throw new IllegalArgumentException(
-                    "ファイル種別が null のファイルデータブロックは作れません"
-                            + "（記法は固定長ファイルと可変長ファイルの 2 種類に尽きており、"
-                            + "どちらでもないファイルデータブロックを表す書き方がありません。"
-                            + "YAML スキーマ $defs.file_data の type は必須かつ"
-                            + " enum = [\"fixed\", \"variable\"] です）。"
-                            + " 識別子=[" + identifier + "]");
-        }
-        this.fileType = fileType;
         this.directives = ModelPreconditions.requireNoNulls("ディレクティブ", directives);
         this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
-        if (fileType == FileType.FIXED) {
+        if (getFileType() == FileType.FIXED) {
             ModelPreconditions.requireLengths(this.records, identifier);
         }
     }
 
-    /** @return 固定長／可変長の区別（必須。{@code null} 不可） */
+    /**
+     * ファイル系データ種別から固定長／可変長の区別を導出する。
+     *
+     * <p>
+     * 対応は本体スキーマ {@code $defs.file_data.properties.type} の description
+     * （fixed ＝ SETUP_FIXED ／ EXPECTED_FIXED、variable ＝ SETUP_VARIABLE ／ EXPECTED_VARIABLE）と
+     * {@code testdata_notation.rst:850}（{@code 30a8271} 時点）による。
+     * </p>
+     *
+     * @param dataType データ種別
+     * @return 固定長系なら {@link FileType#FIXED}、それ以外は {@link FileType#VARIABLE}
+     */
+    public static FileType fileTypeOf(DataType dataType) {
+        return dataType == DataType.SETUP_FIXED || dataType == DataType.EXPECTED_FIXED
+                ? FileType.FIXED : FileType.VARIABLE;
+    }
+
+    /** @return 固定長／可変長の区別（データ種別から導出した値） */
     public FileType getFileType() {
-        return fileType;
+        return fileTypeOf(getDataType());
     }
 
     /** @return ディレクティブ（記述順） */

@@ -287,10 +287,10 @@ public class YamlFormatWriterModelTest {
     @Test
     public void writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder() {
         // Given
-        FileDataBlock setupVariable = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv",
-                FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record()));
-        FileDataBlock expectedFixed = new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record()));
+        FileDataBlock setupVariable = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map(),
+                Collections.singletonList(record()));
+        FileDataBlock expectedFixed = new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat", map(),
+                Collections.singletonList(record()));
 
         // When / Then
         assertThat(serialize(setupVariable, expectedFixed), is(""
@@ -316,6 +316,73 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
+     * XLS-44。Given: ファイル系 4 種それぞれのファイルブロック。
+     * When : 直列化する。
+     * Then : {@code type:} が<b>データ種別から</b>出る
+     *        （{@code SETUP_FIXED} ／ {@code EXPECTED_FIXED} → {@code "fixed"}、
+     *        {@code SETUP_VARIABLE} ／ {@code EXPECTED_VARIABLE} → {@code "variable"}）。
+     *
+     * <p>
+     * 担保する軸要素: <b>A-06 ／ A-07 ／ A-08 ／ A-09</b>。辺④のトップレベルキーは
+     * SETUP 系 → {@code setup_files} ／ EXPECTED 系 → {@code expected_files} の <b>2 対 1</b> であり
+     * （{@code testdata_notation.rst:212-235}）、固定長／可変長を分けるのは {@code type:} だけである。
+     * 導出前はその {@code type:} が引数の {@code fileType} から出ていたため、
+     * <b>4 種のデータ種別を区別する出力が辺④に無く</b> 4 行とも ❌ だった
+     * （{@code coverage/issues.md} <b>XLS-44</b>「現れ方（辺④ 軸A の A-06〜A-09）」）。
+     * </p>
+     *
+     * <p>
+     * 検査の並びは {@code DataType} の定義順（{@code SETUP_FIXED} → {@code EXPECTED_FIXED} →
+     * {@code SETUP_VARIABLE} → {@code EXPECTED_VARIABLE}）とずらしてある。
+     * </p>
+     */
+    @Test
+    public void writesFileTypeKeyDerivedFromDataType() {
+        // Given/When/Then
+        assertThat(serialize(new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "e.csv",
+                map(), Collections.singletonList(record()))), containsString("type: \"variable\""));
+        assertThat(serialize(new FileDataBlock(DataType.SETUP_FIXED, "", "s.dat",
+                map(), Collections.singletonList(record()))), containsString("type: \"fixed\""));
+        assertThat(serialize(new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat",
+                map(), Collections.singletonList(record()))), containsString("type: \"fixed\""));
+        assertThat(serialize(new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv",
+                map(), Collections.singletonList(record()))), containsString("type: \"variable\""));
+    }
+
+    /**
+     * XLS-44。Given: ファイル系 4 種それぞれのファイルブロック。
+     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す（辺④→辺②）。
+     * Then : データ種別が 4 種とも元のまま復元される。
+     *
+     * <p>
+     * 導出前は {@code SETUP_FIXED} のブロックから {@code type: "variable"} が出せたため、
+     * 読み戻すと {@code YamlFormatReader#fileDataType} が {@code SETUP_VARIABLE} を作り、
+     * <b>黙って別種のブロックへ化けた</b>（{@code coverage/issues.md} <b>XLS-44</b>「辺④は検出できない」）。
+     * 出力する YAML は本体スキーマに適合してしまうため、この経路は検出できなかった。
+     * 導出後はファイル種別を外から渡せないため、この経路が塞がる。
+     * </p>
+     *
+     * <p>検査の並びは {@code DataType} の定義順とずらしてある。</p>
+     */
+    @Test
+    public void restoresAllFourFileDataTypesThroughRealReader() {
+        for (DataType type : Arrays.asList(DataType.SETUP_VARIABLE, DataType.EXPECTED_FIXED,
+                DataType.EXPECTED_VARIABLE, DataType.SETUP_FIXED)) {
+            // Given: 同じファイル名 td.yaml へ 4 回書くため、読み戻す前に YamlLoader のキャッシュを落とす
+            YamlLoader.clearCacheForTest();
+            FileDataBlock block = new FileDataBlock(type, "", "f.dat",
+                    map(), Collections.singletonList(record()));
+
+            // When
+            FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
+
+            // Then
+            assertThat(back.getDataType(), is(type));
+            assertThat(back.getFileType(), is(block.getFileType()));
+        }
+    }
+
+    /**
      * Given: {@code EXPECTED_FIXED} のファイルブロック。
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : {@code EXPECTED_FIXED} のまま復元される（{@code EXPECTED_VARIABLE} と混ざらない）。
@@ -326,8 +393,8 @@ public class YamlFormatWriterModelTest {
     @Test
     public void restoresExpectedFixedDataTypeThroughRealReader() {
         // Given
-        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat",
-                FileDataBlock.FileType.FIXED, map(), Collections.singletonList(record()));
+        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat", map(),
+                Collections.singletonList(record()));
 
         // When
         FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
@@ -348,8 +415,8 @@ public class YamlFormatWriterModelTest {
     @Test
     public void restoresSetupVariableDataTypeThroughRealReader() {
         // Given
-        FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv",
-                FileDataBlock.FileType.VARIABLE, map(), Collections.singletonList(record()));
+        FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map(),
+                Collections.singletonList(record()));
 
         // When
         FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
@@ -610,7 +677,7 @@ public class YamlFormatWriterModelTest {
     public void writesEmptyRecordsListForFileBlockWithoutRecords() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat",
-                FileDataBlock.FileType.FIXED, map("text-encoding", "UTF-8", "file-type", "Fixed"),
+                map("text-encoding", "UTF-8", "file-type", "Fixed"),
                 Collections.<RecordLayout>emptyList());
 
         // When / Then
@@ -762,8 +829,7 @@ public class YamlFormatWriterModelTest {
         List<String> failures = new ArrayList<>();
         for (String[] pair : KEYS_REQUIRING_QUOTES) {
             // Given
-            FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "k.dat",
-                    FileDataBlock.FileType.FIXED, map(pair[0], "v"),
+            FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "k.dat", map(pair[0], "v"),
                     Collections.<RecordLayout>emptyList());
             String expected = ""
                     + "setup_files:\n"
@@ -814,7 +880,7 @@ public class YamlFormatWriterModelTest {
     public void readsBackFileBlockWithEmptyRecords() {
         // Given / When
         FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(
-                new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat", FileDataBlock.FileType.FIXED,
+                new FileDataBlock(DataType.SETUP_FIXED, "", "n.dat",
                         map(), Collections.<RecordLayout>emptyList())), FileDataBlock.class);
 
         // Then
@@ -868,8 +934,7 @@ public class YamlFormatWriterModelTest {
     @Test
     public void failsToReadBackLiteralTabFieldSeparator() {
         // Given
-        FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv",
-                FileDataBlock.FileType.VARIABLE, map("field-separator", "\t"),
+        FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map("field-separator", "\t"),
                 Collections.singletonList(record()));
         assertThat("書き出しはタブをエスケープして忠実に書く",
                 serialize(block), containsString("field-separator: \"\\t\""));

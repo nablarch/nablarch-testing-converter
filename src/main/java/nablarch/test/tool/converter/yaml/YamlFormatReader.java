@@ -234,7 +234,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 FileDataBlock.FileType fileType = file instanceof FixedLengthFile
                         ? FileDataBlock.FileType.FIXED : FileDataBlock.FileType.VARIABLE;
                 blocks.add(new FileDataBlock(fileDataType(setup, fileType), formattedGroup, view.getPath(),
-                        fileType, toStringDirectives(view.getDirectives()),
+                        toStringDirectives(view.getDirectives()),
                         toRecordLayouts(view, records(entry))));
             }
         }

@@ -19,13 +19,13 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 （フェーズ2）
 
 - 辺①に実 `.xlsx` を入力とするテストが存在し、軸A（`DataType` 14種）すべてが実ファイル経由で1回以上通っている
-- 4辺それぞれで、軸B（`TestDataBlock` sealed 階層 4種）と軸C（中間モデル全フィールド。省略可能なフィールドは「値あり」「省略」の双方）が非デフォルト値で1回以上 IN／OUT されている。`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す
+- 4辺それぞれで、軸B（`TestDataBlock` sealed 階層 4種）と軸C（中間モデル全フィールド。省略可能なフィールドは「値あり」「省略」の双方）が非デフォルト値で1回以上 IN／OUT されている。**固定長・可変長の双方を通す**（#29 より前は「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」と書いていた。**#29 で `fileType` はフィールドではなくなり `DataType` からの導出値になったため、軸C の C-10 は欠番になり、この要求はファイル系 4 種の `DataType`（軸A の A-06〜A-09）が担う**。`issues.md` XLS-44。**要求そのものは変えていない**）
 - 軸D が4辺すべてでアサートされている（辺① セル種別8ケース／辺③ セル型8ケース（`getCellType()` をアサート）／辺② スキーマから導出したスカラー12ケース／辺④ YAML 表現9ケース）。ケース数の根拠は Decisions「軸D の対象範囲」
 - 4辺それぞれで軸E（0件／1件／複数件）と軸F（異常系）が埋まっている
 - 参照フィクスチャとして同梱した実物 `.xlsx`（Excel 保存物）1本と、POI 生成フィクスチャの読み取り結果が同一であることが確認されている（確認できない場合は差分が `issues.md` に「未確認」として記録されている）
 - 4辺ぶんの軸×要素対応表が成果物として存在し、各要素に担保テストメソッド名が記されている。空欄には理由が書かれている
 - 4辺の担当クラス（`XlsFormatReader` / `XlsFormatWriter` / `YamlFormatReader` / `YamlFormatWriter` / `TestCoreReaderAdapter` / 中間モデル各クラス）の行・分岐カバレッジが計測され、未到達分岐が列挙されている。テスト不要と判断したものには根拠が書かれている
-- 本作業で見つかった現状挙動の課題が課題一覧へ記録されている。**#25.5 で要対応と判定したものは修正され、それ以外は修正されずに記録のみである**（ユーザー確定・2026-08-14 の方針変更に合わせて改訂。改訂前は「修正されずに」が全件に掛かっていた。**件数は 5 → 6 → 7 → 15 と動いたため、件数ではなく `issues.md` の判定欄を正とする。2026-08-18 時点で要対応 15 件**。**#27 で XLS-44 を要対応として起票したが、これは #25.5 の対象ではなく未実施である**——#27 の完了条件が `src/main` 無変更を求めるため起票のみとし、実施は #28 の後に独立タスク（#29）として立てる。**#29 はマージ前に片付ける**（ユーザー確定・2026-08-21）。したがって本項の「修正され」は **#25.5 の時点で要対応と判定したもの**に掛かる）
+- 本作業で見つかった現状挙動の課題が課題一覧へ記録されている。**#25.5 で要対応と判定したものは修正され、それ以外は修正されずに記録のみである**（ユーザー確定・2026-08-14 の方針変更に合わせて改訂。改訂前は「修正されずに」が全件に掛かっていた。**件数は 5 → 6 → 7 → 15 と動いたため、件数ではなく `issues.md` の判定欄を正とする。2026-08-18 時点で要対応 15 件**。**#27 で XLS-44 を要対応として起票した。これは #25.5 の対象ではなく、#28 の承認後に独立タスク #29 として実施した**（マージ前に片付ける——ユーザー確定・2026-08-21）。したがって本項の「修正され」は **#25.5 の時点で要対応と判定したもの**に掛かる）
 - `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` が全テスト PASS する
 
 # Assumptions
@@ -50,7 +50,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 - **未知の挙動を調べる段階では期待値を先に決めない。** まず現状の挙動を実行して記録し、それが仕様として妥当かを判断してから固定する。**不具合と判定済みのものは、仕様どおりの期待値を先に書く（TDD）**（ユーザー確定・2026-08-14）
 - **本作業で見つかった不具合は、`issues.md` の「NTF 仕様としての判定」が要対応であるものに限り修正する。それ以外は従来どおり記録のみ**（**2026-08-18 時点で 15 件** ＝ XLS-06・XLS-08・XLS-16・XLS-22・XLS-27・XLS-28・XLS-29・XLS-30・XLS-31・XLS-32・XLS-33 ／ YML-02・YML-03・YML-08・YML-12。当初 5 件・ユーザー確定 2026-08-14 → **XLS-22 を追加して 6 件**・ユーザー確定 2026-08-18 → **YML-03 を追加して 7 件**・ユーザー指示 2026-08-18（帰属先の nablarch-testing-yaml が `0b53910` で直ったため）→ **`7200b0f` で XLS-27〜33 の 7 件が加わり XLS-08 が要対応へ移って 15 件** → **XLS-20 を追加して 16 件**・
-2026-08-19（`73297e2`。旧判定の根拠が事実誤りだったため。`issues.md` XLS-20 の【判定の訂正】） → **#25.5 §6 の中間モデル一巡点検で XLS-34〜38・XLS-40・XLS-41・XLS-43 が加わり、2026-08-19 時点で 24 件**）。**上の列挙は時点の記録であって正ではない。正は `issues.md` の判定欄であり、実数は `issues.md` 冒頭の導出コマンドから導くこと**（列挙を範囲の定義と読むと、あとから要対応になった課題が範囲外に読めてしまう。同じ取り残しが `7200b0f` のときに実際に起きた）。記録先は `.rn/ntf-test-data-converter/coverage/issues.md`。修正対象の判定根拠と手順は Decisions「不具合修正の対象と手順（#25.5）」。**この規定は #25.5 の作業範囲を定めるものであり、#25.5 より後に立った要対応には掛からない**（ユーザー確定・2026-08-21）。**#27 で起票した XLS-44 は要対応だが未実施である。**#27 の完了条件が `src/main` 無変更を求めるため起票のみとし、実施は #28 の後に独立タスク（#29）として立てる。**#29 はマージ前に片付ける**（ユーザー確定・2026-08-21）
+2026-08-19（`73297e2`。旧判定の根拠が事実誤りだったため。`issues.md` XLS-20 の【判定の訂正】） → **#25.5 §6 の中間モデル一巡点検で XLS-34〜38・XLS-40・XLS-41・XLS-43 が加わり、2026-08-19 時点で 24 件**）。**上の列挙は時点の記録であって正ではない。正は `issues.md` の判定欄であり、実数は `issues.md` 冒頭の導出コマンドから導くこと**（列挙を範囲の定義と読むと、あとから要対応になった課題が範囲外に読めてしまう。同じ取り残しが `7200b0f` のときに実際に起きた）。記録先は `.rn/ntf-test-data-converter/coverage/issues.md`。修正対象の判定根拠と手順は Decisions「不具合修正の対象と手順（#25.5）」。**この規定は #25.5 の作業範囲を定めるものであり、#25.5 より後に立った要対応には掛からない**（ユーザー確定・2026-08-21）。**#27 で起票した XLS-44 は要対応であり、#28 の承認後に独立タスク #29 として実施した**（#27 の完了条件が `src/main` 無変更を求めるため #27 では起票のみとした。マージ前に片付ける——ユーザー確定・2026-08-21）
 - 各辺の担保を往復テスト（`RoundTripTest`）の追加で代替しない。ただし**既存**の往復テスト（`RoundTripTest` 30件、`XlsFormatWriterTest#roundTrips*` 8件、`YamlFormatWriterTest#roundTrip_*` 6件）が実ファイル経由で通している軸要素は、棚卸しに「🔺弱い担保」として必ず計上する（重複テストを書かないため）。正式担保としては数えず、直接テストの追加対象からは外さない
 - 既存テストを軸で棚卸ししてから新規テストを足す。棚卸しなしの新規追加はしない
 - 対応表・カバレッジを示さずに「網羅した」と報告しない
@@ -1467,22 +1467,25 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] 【赤】`FileDataBlockTest` に、4 種の `DataType`（`SETUP_FIXED`／`EXPECTED_FIXED`／`SETUP_VARIABLE`／`EXPECTED_VARIABLE`）それぞれについて導出されたファイル種別が `FIXED`／`FIXED`／`VARIABLE`／`VARIABLE` になることを主張するテストを書く（既存の `固定可変とSETUP_EXPECTEDの全組合せを保持する` は対角 4 組を「引数で渡して保持されること」しか見ていないため、導出を主張する形へ書き換える）
-- [ ] 【赤】XLS-30 の番人が `DataType` 起点で走ることを主張するテストを書く —— `DataType` ＝ `SETUP_FIXED`（または `EXPECTED_FIXED`）で `length` ＝ `null` のフィールド定義を持つブロックが `IllegalArgumentException` で拒否されること。**XLS-44 の観測では `fileType` ＝ `VARIABLE` を渡すとこの検査が素通りしていた**（`issues.md` XLS-44「既存の不変条件も素通りする」）
-- [ ] 【赤】辺③ —— `DataType` ＝ `SETUP_FIXED` のブロックから長さ行が出ること／`SETUP_VARIABLE` のブロックからは出ないことを `XlsFormatWriterModelTest` で主張する（現在の出力条件は `XlsFormatWriter#layoutFile` の `boolean fixed = block.getFileType() == FileType.FIXED`）
-- [ ] 【赤】辺④ —— `type:` が `DataType` から出ることを 4 ケースで主張する（`SETUP_FIXED`／`EXPECTED_FIXED` → `type: "fixed"`、`SETUP_VARIABLE`／`EXPECTED_VARIABLE` → `type: "variable"`）。これが `axis-matrix.md` 辺④ 軸A の **A-06〜A-09**（現在 ❌ 4 件）の担保になる
-- [ ] 【赤】辺④→辺② の往復で `SETUP_FIXED` が `SETUP_VARIABLE` へ化けないことを主張するテストを書く（XLS-44 の「辺④は検出できない」経路が塞がることの担保）
-- [ ] 【緑】`FileDataBlock` のコンストラクタから `FileType` 引数を外し、`DataType` から導出する。`getFileType()` は導出値を返す。末尾の `if (fileType == FileType.FIXED) { ModelPreconditions.requireLengths(...); }` を導出値（＝ `DataType`）起点にする
-- [ ] 【緑】`src/main` の生成箇所 2 か所を追随させる —— `xls/XlsFormatReader.java`（既に `isFixed(type)` で導出しており、引数を落とすだけ）／`yaml/YamlFormatReader.java`（`fileDataType(setup, fileType)` で `DataType` を決める向きは変えず、`FileDataBlock` へ `fileType` を渡すのをやめる）
-- [ ] 【緑】導出ロジックの重複を残さない —— `XlsFormatReader#isFixed(DataType)` と `YamlFormatWriter#emitFile` の三項演算子（`getFileType() == FIXED ? "fixed" : "variable"`）が、`FileDataBlock` の導出と二重定義にならない形へ寄せる
-- [ ] 【緑】`src/test` の生成箇所 46 か所を追随させる（`grep -rc 'new FileDataBlock' src/main src/test --include=*.java | grep -v ':0$'` → `src/main` 2・`src/test` 46・計 48。2026-08-21 実測）。**食い違う組を作っていたテスト（あれば）は、その意図ごと見直す**
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
-- [ ] 文書を現行定義へ揃える（`steering.md`／`coverage/inventory.md`／`coverage/issues.md`／`coverage/axis-matrix.md`。`checks/` は揃えない）
+- [x] 【赤】`FileDataBlockTest` に、4 種の `DataType`（`SETUP_FIXED`／`EXPECTED_FIXED`／`SETUP_VARIABLE`／`EXPECTED_VARIABLE`）それぞれについて導出されたファイル種別が `FIXED`／`FIXED`／`VARIABLE`／`VARIABLE` になることを主張するテストを書く（既存の `固定可変とSETUP_EXPECTEDの全組合せを保持する` は対角 4 組を「引数で渡して保持されること」しか見ていないため、導出を主張する形へ書き換える）
+- [x] 【赤】XLS-30 の番人が `DataType` 起点で走ることを主張するテストを書く —— `DataType` ＝ `SETUP_FIXED`（または `EXPECTED_FIXED`）で `length` ＝ `null` のフィールド定義を持つブロックが `IllegalArgumentException` で拒否されること。**XLS-44 の観測では `fileType` ＝ `VARIABLE` を渡すとこの検査が素通りしていた**（`issues.md` XLS-44「既存の不変条件も素通りする」）
+- [x] 【赤】辺③ —— `DataType` ＝ `SETUP_FIXED` のブロックから長さ行が出ること／`SETUP_VARIABLE` のブロックからは出ないことを `XlsFormatWriterModelTest` で主張する（現在の出力条件は `XlsFormatWriter#layoutFile` の `boolean fixed = block.getFileType() == FileType.FIXED`）
+- [x] 【赤】辺④ —— `type:` が `DataType` から出ることを 4 ケースで主張する（`SETUP_FIXED`／`EXPECTED_FIXED` → `type: "fixed"`、`SETUP_VARIABLE`／`EXPECTED_VARIABLE` → `type: "variable"`）。これが `axis-matrix.md` 辺④ 軸A の **A-06〜A-09**（現在 ❌ 4 件）の担保になる
+- [x] 【赤】辺④→辺② の往復で `SETUP_FIXED` が `SETUP_VARIABLE` へ化けないことを主張するテストを書く（XLS-44 の「辺④は検出できない」経路が塞がることの担保）
+- [x] 【緑】`FileDataBlock` のコンストラクタから `FileType` 引数を外し、`DataType` から導出する。`getFileType()` は導出値を返す。末尾の `if (fileType == FileType.FIXED) { ModelPreconditions.requireLengths(...); }` を導出値（＝ `DataType`）起点にする
+- [x] 【緑】`src/main` の生成箇所 2 か所を追随させる —— `xls/XlsFormatReader.java`（既に `isFixed(type)` で導出しており、引数を落とすだけ）／`yaml/YamlFormatReader.java`（`fileDataType(setup, fileType)` で `DataType` を決める向きは変えず、`FileDataBlock` へ `fileType` を渡すのをやめる）
+- [x] 【緑】**`FileType` enum と `getFileType()` は残す**（ユーザー確定・2026-08-21）。NTF 仕様が「ファイル種別」を名前つきの 2 値として持つためである（本体スキーマ `$defs.file_data.properties.type` は `required` かつ `enum` ＝ `["fixed", "variable"]`／`notation:883`（`30a8271` 時点）は記法を固定長ファイルと可変長ファイルの 2 種類に尽くしている）。**XLS-44 が消すのは概念ではなく二つ目の真実の置き場である。**真偽値へ寄せると仕様側の語彙をモデルから落とし、辺④で 2 値を復元し直すことになる
+- [x] 【緑】寄せる重複は **`XlsFormatReader#isFixed(DataType)`（`XlsFormatReader.java:682`）の 1 か所だけ**にする（ユーザー確定・2026-08-21）。`DataType` → ファイル種別で、モデルが持つ導出とまったく同じものだから消える。**次の 3 か所は寄せない** —— `YamlFormatWriter.java:193` の `getFileType() == FIXED ? "fixed" : "variable"`（ファイル種別 → YAML の語への写像。辺④固有の語彙変換）／`XlsFormatWriter.java:286` の `boolean fixed = block.getFileType() == FileType.FIXED`（辺③固有の長さ行の出し分け）／`YamlFormatReader.java:517` の `fileDataType(boolean setup, FileType)`（逆向き。辺②が `DataType` を決めるのに必要）
+- [x] 【緑】**XLS-29 の番人が到達不能になることを記録する。** `fileType` 引数が消えると `fileType == null` の検査は到達できず、それを主張する `FileDataBlockTest#ファイル種別がnullのファイルブロックは生成できない` も成立しなくなる。**これは退行ではなく、番人が不要になった（不正な状態を型が表現できなくなった）ということである。**テストは削除し、`issues.md` の XLS-29（`:3012`）・番人の表（`:132`）・`:4156` を「生成時の検査から、型として表現不能へ改めた（#29）」と更新する。**番人を惜しんで `DataType` の `null` 検査などに置き換えないこと**（ユーザー確定・2026-08-21）
+- [x] 【緑】`src/test` の生成箇所 46 か所を追随させる（`grep -rc 'new FileDataBlock' src/main src/test --include=*.java | grep -v ':0$'` → `src/main` 2・`src/test` 46・計 48。2026-08-21 実測）。**食い違う組を作っていたテスト（あれば）は、その意図ごと見直す**
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [x] 文書を現行定義へ揃える（`steering.md`／`coverage/inventory.md`／`coverage/issues.md`／`coverage/axis-matrix.md`。`checks/` は揃えない）
   - `issues.md` XLS-44 —— 判定欄を「要対応・**実施済み（#29）**」へ改め、担保テスト名を書く。「未実施は XLS-44 の 1 件」と書いている箇所（冒頭 `:17`・`:101`・`:4125` ほか）を実施済みへ改める
   - `axis-matrix.md` —— 辺④ 軸A の A-06〜A-09 を ✅ にし担保テスト名を入れる。軸C の `FileDataBlock.fileType` の行は**フィールドが無くなるため削る**（削った旨を注記する）
   - `steering.md` Acceptance criteria —— 「`FileDataBlock.fileType` は `FIXED`／`VARIABLE` の両方を通す」を、フィールド消滅後に成り立つ表現（固定長系・可変長系の `DataType` を両方通す）へ改める。「未実施は XLS-44 の 1 件」「#29 はマージ前に片付ける」の記述も実施済みへ揃える
   - `inventory.md` —— テストメソッドを増減させたため、件数をコマンドから導き直して出典コマンドを併記する（Rules の #22 規定）
-- [ ] 1 コミットにまとめて push する
+  - `issues.md` —— `XlsFormatReader#isFileType(DataType)`（`:670`）が `FileDataBlock.PERMITTED_TYPES` と同じ集合を二重に持っている件。**寄せられるなら寄せてよいが必須ではない**（#29 の範囲を広げてまでやることではない）。寄せない場合は `issues.md` に 1 行残す（ユーザー確定・2026-08-21）
+- [x] 1 コミットにまとめて push する
 
 **Completion criteria**:
 
@@ -1492,6 +1495,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 辺④ の `type:` が `DataType` から出る（`SETUP_FIXED`／`EXPECTED_FIXED` → `fixed`、`SETUP_VARIABLE`／`EXPECTED_VARIABLE` → `variable`）
 - 辺④→辺② の往復で `SETUP_FIXED` が `SETUP_VARIABLE` へ化けない
 - `axis-matrix.md` 辺④ 軸A の A-06〜A-09 が ✅ で、担保テストメソッド名が記されている
+- `FileType` enum と `getFileType()` が残っている（消すのはフィールドと二つ目の真実の置き場であって、仕様側の語彙ではない）
+- XLS-29 の番人の到達不能化が `issues.md` に記録されている（`DataType` の `null` 検査などへ置き換えていない）
 - `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` が全テスト PASS する
 - `steering.md`・`coverage/inventory.md`・`coverage/issues.md`・`coverage/axis-matrix.md` が現行定義へ揃っている（`checks/` は対象外）
 - 本体・yaml に書き込んでいない

@@ -157,7 +157,7 @@ public class YamlFormatWriterTest {
         RecordLayout data = new RecordLayout("data",
                 list(field("f2", "数値", "5")), rows(row("12"), row("")));
         FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat",
-                FileDataBlock.FileType.FIXED, directives("file-type", "Fixed", "text-encoding", "UTF-8"),
+                directives("file-type", "Fixed", "text-encoding", "UTF-8"),
                 Arrays.asList(head, data));
 
         // When / Then
@@ -195,8 +195,8 @@ public class YamlFormatWriterTest {
         RecordLayout record = new RecordLayout(null,
                 list(field("c1", "半角英字", null), field("c2", "半角英字", null)),
                 rows(row("x", "${b}")));
-        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, directives(), Collections.singletonList(record));
+        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv", directives(),
+                Collections.singletonList(record));
 
         // When / Then
         assertThat(serialize(block), is(""
@@ -437,8 +437,8 @@ public class YamlFormatWriterTest {
         // Given: フィールドは 1 件（0 件は書き出し時に弾かれる）、データ行だけが空
         RecordLayout empty = new RecordLayout(null,
                 list(new FieldDef("c1", "半角英字", "5")), rows());
-        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, directives(), Collections.singletonList(empty));
+        FileDataBlock block = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", directives(),
+                Collections.singletonList(empty));
 
         // When / Then
         assertThat(serialize(block), is(""
@@ -477,8 +477,8 @@ public class YamlFormatWriterTest {
         // Given
         RecordLayout record = new RecordLayout(null,
                 list(field("c1", "", null)), rows(row("v")));
-        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
-                FileDataBlock.FileType.VARIABLE, directives(), Collections.singletonList(record));
+        FileDataBlock block = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv", directives(),
+                Collections.singletonList(record));
 
         // When / Then
         assertTrue(serialize(block).contains("          - {name: \"c1\", type: \"\"}\n"));
@@ -577,8 +577,8 @@ public class YamlFormatWriterTest {
         // Given
         RecordLayout head = new RecordLayout("head", list(field("f1", "半角英字", "5")), rows(row("${a}")));
         RecordLayout data = new RecordLayout("data", list(field("f2", "数値", "5")), rows(row("12"), row("")));
-        FileDataBlock original = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat",
-                FileDataBlock.FileType.FIXED, directives(), Arrays.asList(head, data));
+        FileDataBlock original = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", directives(),
+                Arrays.asList(head, data));
 
         // When
         FileDataBlock back = (FileDataBlock) roundTrip(original);

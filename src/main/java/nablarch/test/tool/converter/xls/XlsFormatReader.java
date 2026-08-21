@@ -204,15 +204,15 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private List<TestDataBlock> readFileBlocks(String basePath, String resourceName, String groupId, DataType type) {
         List<? extends DataFile> files = adapter.readFiles(basePath, resourceName, groupId, type);
-        FileDataBlock.FileType fileType = isFixed(type) ? FileDataBlock.FileType.FIXED : FileDataBlock.FileType.VARIABLE;
+        boolean fixed = FileDataBlock.fileTypeOf(type) == FileDataBlock.FileType.FIXED;
         List<TestDataBlock> result = new ArrayList<>();
         for (DataFile file : files) {
             FileView view = TestCoreFileAdapter.read(file);
             List<List<String>> bodyLines =
                     adapter.readBlockBodyLines(basePath, resourceName, groupId, view.getPath(), type);
-            result.add(new FileDataBlock(type, groupId, view.getPath(), fileType,
+            result.add(new FileDataBlock(type, groupId, view.getPath(),
                     toStringDirectives(view.getDirectives()),
-                    toRecordLayouts(view, bodyLines, isFixed(type))));
+                    toRecordLayouts(view, bodyLines, fixed)));
         }
         return result;
     }
@@ -668,19 +668,10 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return ファイル系なら真
      */
     private static boolean isFileType(DataType type) {
-        return isFixed(type)
+        return type == DataType.SETUP_FIXED
+                || type == DataType.EXPECTED_FIXED
                 || type == DataType.SETUP_VARIABLE
                 || type == DataType.EXPECTED_VARIABLE;
-    }
-
-    /**
-     * 固定長ファイルのデータタイプか判定する。
-     *
-     * @param type データタイプ
-     * @return 固定長なら真
-     */
-    private static boolean isFixed(DataType type) {
-        return type == DataType.SETUP_FIXED || type == DataType.EXPECTED_FIXED;
     }
 
     /**

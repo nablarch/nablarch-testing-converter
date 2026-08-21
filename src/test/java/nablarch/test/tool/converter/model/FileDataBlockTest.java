@@ -34,7 +34,7 @@ public class FileDataBlockTest {
 
         // When
         FileDataBlock sut = new FileDataBlock(
-                DataType.SETUP_FIXED, "g1", "test.dat", FileType.FIXED, directives, records);
+                DataType.SETUP_FIXED, "g1", "test.dat", directives, records);
 
         // Then
         assertThat(sut.getDataType(), is(DataType.SETUP_FIXED));
@@ -49,7 +49,7 @@ public class FileDataBlockTest {
     public void 可変長ファイルの種別を区別し空のディレクティブとレコードを保持する() {
         // Given/When: 可変長・EXPECTED。ディレクティブもレコードも空
         FileDataBlock sut = new FileDataBlock(
-                DataType.EXPECTED_VARIABLE, "", "out.csv", FileType.VARIABLE,
+                DataType.EXPECTED_VARIABLE, "", "out.csv",
                 new LinkedHashMap<>(), List.of());
 
         // Then
@@ -63,7 +63,7 @@ public class FileDataBlockTest {
     public void ディレクティブがnullのファイルブロックは生成できない() {
         // Given: ディレクティブなしは空 Map で表す（XLS-38）
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, null, List.of());
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", null, List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("ディレクティブ"));
@@ -84,7 +84,7 @@ public class FileDataBlockTest {
 
         // When / Then
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", directives, List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("ディレクティブのキーに null は指定できません"));
@@ -104,7 +104,7 @@ public class FileDataBlockTest {
 
         // When / Then
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", directives, List.of());
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("ディレクティブ \"text-encoding\" の値が null です"));
@@ -122,7 +122,7 @@ public class FileDataBlockTest {
 
         // When
         FileDataBlock sut = new FileDataBlock(
-                DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED, directives, List.of());
+                DataType.SETUP_FIXED, "", "t.dat", directives, List.of());
 
         // Then
         assertThat(sut.getDirectives().get(""), is(""));
@@ -131,7 +131,7 @@ public class FileDataBlockTest {
     @Test
     public void レコード群がnullのファイルブロックは生成できない() {
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat",
                     new LinkedHashMap<>(), null);
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
@@ -145,7 +145,7 @@ public class FileDataBlockTest {
         List<RecordLayout> records = Arrays.asList(
                 new RecordLayout("data", List.of(new FieldDef("id", "数値", "5")), List.of()), null);
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat",
                     new LinkedHashMap<>(), records);
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
@@ -153,21 +153,38 @@ public class FileDataBlockTest {
         }
     }
 
+    /**
+     * XLS-44。ファイル種別は<b>データ種別から導出される</b>。
+     * <p>
+     * 本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
+     * {@code $defs.file_data.properties.type} の description が「fixed = 固定長
+     * （SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長（SETUP_VARIABLE / EXPECTED_VARIABLE）」と、
+     * 4 種のデータ種別それぞれに {@code fixed} ／ {@code variable} のどちらか一方を一意に割り当てている。
+     * 解説書も同じで、{@code testdata_notation.rst:850}（{@code 30a8271} 時点）が
+     * データタイプそのものに固定長／可変長の別を割り当てている。
+     * したがって<b>データ種別が決まればファイル種別は決まる</b>（逆向きは SETUP／EXPECTED の情報が要るため
+     * 定まらない。4 対 2 の写像であって全単射ではない）。
+     * </p>
+     * <p>
+     * 導出にしたことで、食い違う組（例: {@code SETUP_FIXED} かつ可変長）は<b>型として表現できない</b>。
+     * 以前はコンストラクタが両方を引数で受け取り、食い違う組を検査せずに保持していた
+     * （{@code coverage/issues.md} <b>XLS-44</b>）。
+     * </p>
+     */
     @Test
-    public void 固定可変とSETUP_EXPECTEDの全組合せを保持する() {
-        // Given: 4 つのファイル系データ種別と FileType の対角を網羅
-        // When/Then
-        assertFileBlock(DataType.SETUP_FIXED, FileType.FIXED);
-        assertFileBlock(DataType.EXPECTED_FIXED, FileType.FIXED);
-        assertFileBlock(DataType.SETUP_VARIABLE, FileType.VARIABLE);
-        assertFileBlock(DataType.EXPECTED_VARIABLE, FileType.VARIABLE);
+    public void ファイル種別を4種のデータ種別から導出する() {
+        // Given/When/Then: 固定長系 2 種 → FIXED、可変長系 2 種 → VARIABLE
+        assertDerivedFileType(DataType.SETUP_FIXED, FileType.FIXED);
+        assertDerivedFileType(DataType.EXPECTED_FIXED, FileType.FIXED);
+        assertDerivedFileType(DataType.SETUP_VARIABLE, FileType.VARIABLE);
+        assertDerivedFileType(DataType.EXPECTED_VARIABLE, FileType.VARIABLE);
     }
 
-    private static void assertFileBlock(DataType dataType, FileType fileType) {
+    private static void assertDerivedFileType(DataType dataType, FileType expected) {
         FileDataBlock sut = new FileDataBlock(
-                dataType, "", "f", fileType, new LinkedHashMap<>(), List.of());
+                dataType, "", "f", new LinkedHashMap<>(), List.of());
         assertThat(sut.getDataType(), is(dataType));
-        assertThat(sut.getFileType(), is(fileType));
+        assertThat(sut.getFileType(), is(expected));
     }
 
     @Test
@@ -181,29 +198,12 @@ public class FileDataBlockTest {
 
         // When
         FileDataBlock sut = new FileDataBlock(
-                DataType.SETUP_FIXED, "", "msg.dat", FileType.FIXED, new LinkedHashMap<>(), records);
+                DataType.SETUP_FIXED, "", "msg.dat", new LinkedHashMap<>(), records);
 
         // Then: FW_HEADER も保持され、レコード順は崩れない
         assertThat(sut.getRecords().size(), is(2));
         assertThat(sut.getRecords().get(0).getRecordType(), is("FW_HEADER"));
         assertThat(sut.getRecords().get(1).getRecordType(), is("data"));
-    }
-
-    /**
-     * XLS-29。ファイル種別が {@code null} のファイルブロックは生成できない。
-     * 記法は固定長ファイルと可変長ファイルの 2 種類に尽きており（{@code testdata_notation.rst:883}）、
-     * YAML は {@code :1146} が {@code type} を必須キーと定め、本体スキーマ {@code $defs.file_data} も
-     * {@code type} を {@code required} かつ {@code enum} ＝ {@code ["fixed", "variable"]} に限る。
-     * どちらでもないファイルデータブロックは 4 辺のどこにも書き出せない。
-     */
-    @Test
-    public void ファイル種別がnullのファイルブロックは生成できない() {
-        try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", null, new LinkedHashMap<>(), List.of());
-            fail("IllegalArgumentException が送出されるべき");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage(), containsString("ファイル種別が null のファイルデータブロックは作れません"));
-        }
     }
 
     /**
@@ -221,11 +221,43 @@ public class FileDataBlockTest {
 
         // When / Then
         try {
-            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", FileType.FIXED,
-                    new LinkedHashMap<>(), records);
+            new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", new LinkedHashMap<>(), records);
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("フィールド長を持たないフィールド定義は保持できません"));
+        }
+    }
+
+    /**
+     * XLS-44 ／ XLS-30。フィールド長の検査は<b>データ種別を起点に</b>走る。
+     * <p>
+     * 導出前は末尾の検査が {@code fileType} だけを見ていたため、データ種別 ＝ {@code SETUP_FIXED} でも
+     * 引数の {@code fileType} に {@code VARIABLE} を渡せば XLS-30 の番人が走らなかった
+     * （{@code coverage/issues.md} <b>XLS-44</b>「既存の不変条件も素通りする」。実測 2026-08-21）。
+     * 導出後はファイル種別を外から渡せないため、固定長系のデータ種別なら必ず走る。
+     * </p>
+     */
+    @Test
+    public void フィールド長がnullのフィールド定義は固定長系のデータ種別すべてで拒否される() {
+        // Given: 長さの無いフィールドを 1 件持つレコード
+        List<RecordLayout> records = List.of(
+                new RecordLayout("data", List.of(new FieldDef("id", "数値", null)), List.of()));
+
+        // When / Then: 固定長系 2 種はいずれも拒否される
+        for (DataType fixedType : List.of(DataType.SETUP_FIXED, DataType.EXPECTED_FIXED)) {
+            try {
+                new FileDataBlock(fixedType, "", "t.dat", new LinkedHashMap<>(), records);
+                fail("IllegalArgumentException が送出されるべき: " + fixedType);
+            } catch (IllegalArgumentException e) {
+                assertThat(e.getMessage(), containsString("フィールド長を持たないフィールド定義は保持できません"));
+            }
+        }
+
+        // Then: 可変長系はフィールド長を要求しないため保持できる（記法どおり）
+        for (DataType variableType : List.of(DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE)) {
+            FileDataBlock sut = new FileDataBlock(variableType, "", "t.csv", new LinkedHashMap<>(), records);
+            assertThat(sut.getFileType(), is(FileType.VARIABLE));
+            assertThat(sut.getRecords(), is(records));
         }
     }
 
@@ -238,7 +270,7 @@ public class FileDataBlockTest {
     public void 可変長ファイルはフィールド長がnullでも生成できる() {
         // Given / When
         FileDataBlock sut = new FileDataBlock(
-                DataType.SETUP_VARIABLE, "", "t.csv", FileType.VARIABLE, new LinkedHashMap<>(),
+                DataType.SETUP_VARIABLE, "", "t.csv", new LinkedHashMap<>(),
                 List.of(new RecordLayout(null, List.of(new FieldDef("id", "数値", null)), List.of())));
 
         // Then
