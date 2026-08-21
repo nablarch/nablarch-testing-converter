@@ -1,12 +1,14 @@
 # カバレッジ計測と未到達分岐の一覧（タスク #26）
 
 **対象 6 区分（§1）の未到達分岐は 34 件で、分類は「テストを足すべき」19 件・「テスト不要」15 件である。**
-未到達行は 16 件で、うち 8 行は上の分岐の裏面である（`throw` ／ `return` 行。§4）。
+未到達行は 16 件で、うち 8 行は上の分岐のいずれかに紐づく（その分岐の未到達側でだけ実行される行。
+相手の `#` は §4 の表の「§3 の対応」欄にある）。
 「テストを足すべき」19 件は `issues.md` §7 へ **14 件の課題**（`COV-01`〜`COV-14`）としてまとめた
 （1 課題が複数分岐にまたがる）。テストは足していない。
 辺②（`YamlFormatReader`）と中間モデルの 12 クラスは行・分岐とも 100% だが、**100% は担保を意味しない**（§1 の注記）。
-**§6 に 6 項目を開示した。うち「担保の穴」は §6-1・§6-2・§6-5・§6-6 の 4 件で、
-§6-3 は処置済みの台帳訂正、§6-4 は確かめきれなかったことである**（性質が違うものを 1 つの件数にまとめない）。
+**§6 に 6 節・7 件を開示した。うち「担保の穴」は §6-1・§6-2・§6-5・§6-6 の 4 件、
+処置済みの台帳訂正は §6-3(a)・§6-3(b) の 2 件、確かめきれなかったことは §6-4 の 1 件である**
+（性質が違うものを 1 つの件数にまとめない。§6-3 だけは 1 節の中に体裁の手当てと事実誤りの訂正を含むため 2 件に分けた）。
 
 ## 0. 計測条件
 
@@ -162,8 +164,11 @@ awk -F, 'NR>1 && $2 ~ /converter\.model$/ { print $3 }' target/site/jacoco/jacoc
 
 ## 2. 未到達分岐の全数と、どちら側が未到達かの導出
 
-**未到達分岐の総数は 34 件・未到達行は 16 件。** JaCoCo の分岐は `IFxx` ／ `TABLESWITCH` ／ `LOOKUPSWITCH` の
-出口エッジ数であり、1 行に複数の条件がある場合はその行にまとまって計上される。
+**未到達分岐の総数は 34 件・未到達行は 16 件。** JaCoCo が数える分岐は `IFxx` ／ `TABLESWITCH` ／ `LOOKUPSWITCH` の
+出口エッジであり、1 行に複数の条件がある場合はその行にまとまって計上される。
+**本書はこの出口エッジを一貫して「分岐」と呼び、数えるときの助数詞は「件」でそろえる**
+（`switch` の `case` が飛ぶ先だけは「飛び先」と呼んで分岐と呼び分ける。
+同じ飛び先を共有する `case` は 1 件の分岐に畳まれるためである）。
 行単位の `mb`（未到達分岐数）・`cb`（到達分岐数）・`mi`（未実行命令数）・`ci`（実行命令数）は
 `target/site/jacoco/jacoco.xml` から取る。
 
@@ -217,7 +222,7 @@ EOF
 
 **`isEmptyEntry` の 4 分岐（#22）は実在テストで側を確定した。**
 `XlsFormatReader.java:585`（`if (value != null && !value.isEmpty())`）は `mb=1 cb=3` で、
-4 分岐のうち 1 本だけが未到達である。**`!value.isEmpty()` の false 側（＝空文字の要素）は
+4 件の分岐のうち 1 件だけが未到達である。**`!value.isEmpty()` の false 側（＝空文字の要素）は
 次の 2 件が到達させている。**
 
 | 到達させているテスト | 入力 | アサート | 通る呼び出し元 |
@@ -230,8 +235,26 @@ EOF
 そのため `isEmptyEntry`（`:583-590`）のループは、
 1 要素目で `value != null` が true・`!value.isEmpty()` が **false** になって次の要素へ進み、
 2 要素目（`abc` ／ `val`）で `!value.isEmpty()` が **true** になって `return false` する。
-**`value != null` の true 側と `!value.isEmpty()` の両側の計 3 本が到達済みであるから、
-残る 1 本すなわち `value != null` の false 側が未到達である。**
+**`value != null` の true 側と `!value.isEmpty()` の両側の計 3 件が到達済みであるから、
+残る 1 件すなわち `value != null` の false 側が未到達である。**
+
+**`isQuotationWrapped` の `L510`（#16）も実在テストで側を確定した。**
+`L510`（`value.startsWith("\"") && value.endsWith("\"")`）は `mb=1 cb=3` で、到達済み 3 件の内訳は次のとおり。
+
+- **(a)(b)** `L494`（`return stripQuotes(value);`）が到達済み（`mi=0 ci=3`）＝ `startsWith("\"")` の true 側と
+  `endsWith("\"")` の true 側。ここを通れるのは `L510` だけである（`L511` は `mb=3 cb=1` で
+  全角側が一度も true にならない。#17〜#19）。
+- **(c)** `startsWith("\"")` の **false 側**は `XlsFormatReaderTest#readMapsExpectedRequestHeaderMessageBlock` が
+  通している —— 入力 `XlsFormatReaderTest.java:567` `lines.add(row("text-encoding", "ms932"));`、
+  アサート 同 `:584` `assertThat(message.getDirectives().get("text-encoding"), is("ms932"));`。
+  `ms932` は 5 文字なので `L507` を抜け、`record-separator` ／ `field-separator` でもないので
+  `L493` の `isQuotationWrapped` へ入る。このテストの入力は `EXPECTED_REQUEST_HEADER_MESSAGES`（送信同期系）
+  なので `readSendSyncBlocks` を通り、経路は `XlsFormatReader.java:276` → `toStringDirectives`（`:467-475`）
+  → `normalizeDirectiveValue`（`:472` から `:482`）→ `:493` である
+  （`toStringDirectives` の呼び出しは `:214` `:246` `:276` の 3 箇所で、
+  `:246` は `readMessageBlock` が `DataType.MESSAGE` を扱う別経路である）。
+
+**したがって残る 1 件、すなわち `endsWith("\"")` の false 側が未到達である。**
 
 ## 3. 未到達分岐 34 件の一覧と分類
 
@@ -250,6 +273,12 @@ EOF
 **引用の内側に現れる鉤括弧は、入れ子を避けるため『 』へ改めている**（例 §6-3 の `steering.md` 引用）。
 **出典を添えない鉤括弧は引用ではなく、本書内の分類ラベル**（「テストを足すべき」「テスト不要」など）
 **または語の強調である。**
+
+**根拠欄が挙げる「こう書けば到達する」は、コードを読んで導いた推定であり、実行して確かめた事実ではない。**
+#26 ではテストを 1 件も足していないためである（§5。`git diff --stat da66425 58bae09 -- src/main src/test pom.xml` が無出力。
+`58bae09` は #26 の完了コミット）。実行して確かめた事実は、JaCoCo の数値（`mi` ／ `ci` ／ `mb` ／ `cb`）と、
+**到達済みの側**を示す実在テスト（§2）だけである。両者は文体では区別できないので、ここで断る。
+**同じ断りが `issues.md` §7 の `- 到達する入力:` 欄にも掛かる**（同欄も #26 で書いたものである）。
 
 **節の並びは辺①（§3.1）→ 辺③（§3.2）→ 辺④（§3.3）→ 区分⑤（§3.4）である**
 （辺②は未到達分岐 0 件のため節を置かない。§1 の区分別合計）。
@@ -278,9 +307,23 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（' $F                  # → 15
 |---|---|---|
 | 型の全数分岐 | 取りうる値を上ですべて分岐し尽くしているため、残る側へ入る値が型・列挙として存在しない（sealed 階層／`DataType`） | 3 |
 | 中間モデルの不変条件 | その値は中間モデルの生成時に拒否されるため、この箇所へ届かない | 2 |
-| 内部整合性ガード | `src/main` 自身が「到達＝実装のバグ」と明記しているガード | 4 |
+| 内部整合性ガード | `src/main` 自身が「到達＝実装のバグ」と明記しているガード。**4 件とも根拠はそのコメントだけで、到達可能性は §6-5(a) で「未確認」と自認している** | 4 |
 | 実 `.xlsx` では生じない／Fake から到達可 | 実 `.xlsx` 経路のセル値は `PoiXlsReader.java:123`（`cell == null ? "" : cell.toString()`）により必ず非 `null` である。**ただし converter の Fake リーダ経由では到達できる**（§6-1 に開示） | 4 |
 | 本体パーサが先に弾く | その入力を書いても、本体パーサが器の組み立て時に失敗するため、この箇所へ届かない | 2 |
+
+**到達可能性の開示（§6-5）への参照は、行ごとではなく上の凡例に 1 か所だけ置いた。** 「内部整合性ガード」は 4 件（#8〜#11）が
+すべて §6-5(a) の対象なので、分類ラベルの側に 1 回書けば §3.1 のどの行からも辿れる。
+各行にも `§6-5` を書くと、§6-5 が `#5・#8・#9・#10・#11` を名指ししているのと**同じ関係を 2 方向に**
+手書きすることになる（`steering.md` Rules「同じ関係を 2 方向に手書きしない」）。
+ラベルから開示節への参照はその関係の写しではないので、規約と衝突しない。
+**「型の全数分岐」は 3 件のうち #5 だけが §6-5(b) の対象でラベルの側では表せないため、
+そちらは #5 の行に書いてある。**
+
+**同じ「実 `.xlsx` では `null` が生じない」状況でも、記法の明文がその `null` の扱いを定めているものは、
+この理由を使わず「テストを足すべき」にしている。** これが #21（`stripQuotes`）と #22（`isEmptyEntry`）の
+分け目である —— #22 は `notation:1535`「全要素が null または空文字のエントリは読み飛ばされる。」が
+`null` を名指ししているのに対し、#21 の根拠は呼び出し元 4 箇所の実装と `issues.md` XLS-09 だけで、
+`null` の扱いを定めた明文は挙がっていない（切り分けは → `issues.md` COV-14）。
 
 件数の導出（合計 15）。
 
@@ -320,7 +363,7 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
 | 13 | `readFieldDefs` | **397** | `i < originalLengths.size()` の **false 側**（`originalLengths != null` の両側は到達済み） | テスト不要（本体パーサが先に弾く） | 同上（固定長でフィールド長行だけが短い状態）。証人テストは `XlsFormatReaderInvalidInputTest#failsWhenLengthRowIsShorterThanNameRowInRealBook` で、Javadoc が「型行・長さ行の不一致は本体パーサが弾く」という非対称を固定すると書いている。`issues.md` C-20 の行と `notation:883` ／ `notation:889` は #12 と同じ |
 | 14 | `isQuotationWrapped` | **507** | `value == null` の **true 側** | テスト不要（実 `.xlsx` では生じない／Fake から到達可） | 唯一の呼び出し元は `normalizeDirectiveValue`（`XlsFormatReader.java:493`）であり、`value` はディレクティブ行のセル値。`PoiXlsReader.java:123` により `null` にならない |
 | 15 | `isQuotationWrapped` | **507** | `value.length() <= 2` の **true 側** | **テストを足すべき** | 2 文字以下のディレクティブ値。ソース自身が「デフォルトディレクティブとして本体器に注入される `"` 1 文字（可変長の `quoting-delimiter` 既定値）等は記法ではなく生値であり…ここでも素通しする」（`XlsFormatReader.java:490-492`）と、**通ることを前提にした挙動**を書いているのに一度も通っていない。未到達行 `L508 (return false)` と整合 |
-| 16 | `isQuotationWrapped` | **510** | `value.endsWith("\"")` の **false 側** | **テストを足すべき** | 半角 `"` で始まるが `"` で終わらない値（例 `"abc`）。`notation:1325`「半角または全角ダブルクォートで**前後が囲まれた場合のみ**、外側1層を除去する」の「のみ」を守っていることを示す分岐。`L510` は `mb=1 cb=3` で、到達済み 3 本の内訳は次のとおり。**(a)(b)** `L494 (return stripQuotes(value))` が到達済み（`mi=0 ci=3`）＝`startsWith("\"")` true 側と `endsWith("\"")` true 側。ここを通れるのは `L510` だけである（`L511` は `mb=3 cb=1` で全角側が一度も true にならない。#17〜#19）。**(c)** `startsWith("\"")` の **false 側**は `XlsFormatReaderTest#readMapsExpectedRequestHeaderMessageBlock` が通している —— 入力 `XlsFormatReaderTest.java:567` `lines.add(row("text-encoding", "ms932"));`、アサート 同 `:584` `assertThat(message.getDirectives().get("text-encoding"), is("ms932"));`。`ms932` は 5 文字なので `L507` を抜け、`record-separator` ／ `field-separator` でもないので `L493` の `isQuotationWrapped` へ入る（このテストの入力は `EXPECTED_REQUEST_HEADER_MESSAGES`＝送信同期系なので `readSendSyncBlocks` を通り、経路は `XlsFormatReader.java:276` → `toStringDirectives`（`:467-475`）→ `normalizeDirectiveValue`（`:472` から `:482`）→ `:493`。`toStringDirectives` の呼び出しは `:214` `:246` `:276` の 3 箇所で、`:246` は `readMessageBlock` が `DataType.MESSAGE` を扱う別経路である）。**残る 1 本が `endsWith("\"")` の false 側である。** |
+| 16 | `isQuotationWrapped` | **510** | `value.endsWith("\"")` の **false 側** | **テストを足すべき** | 半角 `"` で始まるが `"` で終わらない値（例 `"abc`）。`notation:1325`「半角または全角ダブルクォートで**前後が囲まれた場合のみ**、外側1層を除去する」の「のみ」を守っていることを示す分岐であり、到達不能ではない。どちらの側が未到達か（`L510` は `mb=1 cb=3`。到達済み 3 件の内訳）は §2 で確定した |
 | 17 | `isQuotationWrapped` | **511** | `value.startsWith("”")` の **true 側** | **テストを足すべき** | 全角 `”` の記法。`notation:1325`「**半角または全角**ダブルクォートで前後が囲まれた場合のみ」／`notation:1397`「前後のダブルクォート（**全角・半角問わない**）を除いた文字列として扱う」。`mb=3 cb=1` で到達済みは `startsWith("”")` の false 側だけ |
 | 18 | `isQuotationWrapped` | **511** | `value.endsWith("”")` の **true 側** | **テストを足すべき** | 同上 |
 | 19 | `isQuotationWrapped` | **511** | `value.endsWith("”")` の **false 側** | **テストを足すべき** | 同上（`”` で始まり `”` で終わらない値） |
@@ -347,9 +390,9 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
 | 30 | `emitBlock` | **139** | `else if (block instanceof MessageDataBlock)` の **false 側** | テスト不要（型の全数分岐） | #27 と同型（sealed 階層の全数分岐）。未到達行 `L143` の `throw` と整合 |
 | 31 | `rawGroup` | **484** | `groupId.charAt(last) == ']'` の **false 側**（`groupId.charAt(0) == '['` の両側は到達済み） | **テストを足すべき** | `[` で始まるが `]` で終わらないグループ ID（例 `[abc`）。**辺①から作れる** —— `TestCoreReaderAdapter#markerGroupId`（`:282-286`）はマーカー先頭セルのうちデータタイプ名の直後から `=` までをそのまま切り出すため
 （`firstCell.substring(type.getName().length())` の結果から `indexOf('=')` の手前までを取る。**この 1 文は原典の引用ではなく実装の要約である**）、`SETUP_TABLE[abc=T` と書けば中間モデルの `groupId` は `"[abc"` になる。中間モデルの契約も `groupId` に `null` を禁じるだけで（`TestDataBlock.java:17`・`:121`）、`[ ]` で囲まれた形であることは要求していない。`charAt(0) == '['` の false 側は `YamlFormatWriterTest#serialize_unbracketedGroupId_isUsedAsRawValue`（グループ ID `"raw"`）が担保。**分類の経緯（初版の「記法外」根拠を退けた理由）・YAML スキーマの確認・XLS-39 との切り分けは → `issues.md` COV-13** |
-| 32 | `sectionKey` | **503** | `switch (type)` の **`default` 側** | テスト不要（中間モデルの不変条件） | `default` は `throw new IllegalArgumentException("unsupported DataType: " …)`（未到達行 `L520`）。`case` が網羅していないのは `DataType.DEFAULT` だけで、その値は `TestDataBlock` が生成時に拒否する（`issues.md` XLS-20）。`mb=1 cb=11` は、13 個の `case` ラベルのうち `SETUP_FIXED`／`SETUP_VARIABLE` と `EXPECTED_FIXED`／`EXPECTED_VARIABLE` がそれぞれ同じ飛び先を共有し、switch の相異なる後続が 11 + `default` の 12 本になるためである |
+| 32 | `sectionKey` | **503** | `switch (type)` の **`default` 側** | テスト不要（中間モデルの不変条件） | `default` は `throw new IllegalArgumentException("unsupported DataType: " …)`（未到達行 `L520`）。`case` が網羅していないのは `DataType.DEFAULT` だけで、その値は `TestDataBlock` が生成時に拒否する（`issues.md` XLS-20）。`mb=1 cb=11` は、13 個の `case` ラベルのうち `SETUP_FIXED`／`SETUP_VARIABLE` と `EXPECTED_FIXED`／`EXPECTED_VARIABLE` がそれぞれ同じ飛び先を共有するため、相異なる飛び先が 11 になり、`default` を加えて分岐が 12 件になるためである |
 
-### 3.4 `TestCoreReaderAdapter.BodyLineCollector`（2 件）
+### 3.4 区分⑤ `TestCoreReaderAdapter.BodyLineCollector`（2 件）
 
 | # | メソッド | 行（`da66425` 時点） | 未到達の側 | 分類 | 根拠 |
 |---|---|---|---|---|---|
@@ -358,9 +401,11 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
 
 ## 4. 未到達行 16 件の一覧
 
-**16 行のうち 8 行は §3 のいずれかの分岐に紐づく**（`throw` 行・`return` 行）。
+**16 行のうち 8 行は §3 のいずれかの分岐に紐づく** —— その分岐の未到達側でだけ実行される行であり、
+下表の「§3 の対応」欄に相手の `#` を示した。
 **残る 8 行（`TestCoreReaderAdapter.java`）は分岐を持たない未到達行**であり、§3 のどの分岐にも紐づかない
-（理由は表の下）。
+（理由は表の下）。**`throw` ／ `return` という行の形は両者を分けない** —— 紐づかない 8 行のうち 4 行
+（`TestCoreReaderAdapter.java:389`・`394`・`483`・`488`）も `return false;` である。
 
 | ファイル | 行 | 内容 | §3 の対応 |
 |---|---|---|---|
@@ -408,13 +453,16 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
 
 ## 6. 開示：担保の穴・台帳の訂正・確かめきれなかったこと
 
-**6 項目ある。性質は同じではない。**
+**6 節あり、性質で数えると 7 件ある。**
+**この 6 節のうち §6-3 だけは 1 節の中に性質の違う 2 件を含むため、表では (a)(b) に分けた**
+（性質が違うものを 1 つの件数にまとめない）。
 
 | # | 内容 | 性質 |
 |---|---|---|
 | §6-1 | 「実 `.xlsx` では生じない／Fake から到達可」4 件は Fake リーダ経由で到達可能 | **担保の穴** |
 | §6-2 | 対象 6 区分の外に未分類の未到達が分岐 16 件・行 63 件 | **担保の穴** |
-| §6-3 | `inventory.md` から他ファイルの行番号を落とし、古い JaCoCo 数値に日付を付けた | 処置済みの台帳訂正（穴ではない） |
+| §6-3(a) | `inventory.md` から他ファイルの行番号を落とし、古い JaCoCo 数値に計測日を付けた | 処置済みの台帳訂正（陳腐化した記述の手当て。論旨は変えていない。穴ではない） |
+| §6-3(b) | `inventory.md` の 1 文が `DirectiveUtil` の未到達**行**について実測と反対のことを述べていた | **処置済みの事実誤りの訂正**（穴ではない） |
 | §6-4 | `-o` なしでの再現は未確認 | 確かめきれなかったこと |
 | §6-5 | 「テスト不要」5 件（#5・#8〜#11）の根拠が外部の契約でなく `src/main` 自身のコメント・実行時の 1 行である | **担保の穴** |
 | §6-6 | `@Ignore` 2 件（YML-14・XLS-40）があるべき姿を書いたまま無効化されている | **担保の穴** |
@@ -493,18 +541,23 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
    ここを拾うことは保証されていない。** 拾うかどうかは #27 で決める必要がある
    （**少なくとも `XlsOutputConfig` の書式オプションは明示的に扱いを決めること**）。
 
-3. **§6-3 `inventory.md` の訂正 —— 他ファイルの行番号を落とし、古い JaCoCo 数値に計測日を付けた。**
+3. **§6-3 `inventory.md` の訂正。この節は性質の違う 2 つを含む** —— **(a)** 陳腐化した記述の手当て
+   （他ファイルの行番号を落とす・`L` 形式の反例を落とす・古い JaCoCo 数値に計測日を付ける）と、
+   **(b)** 事実誤りの訂正（`DirectiveUtil` について台帳の 1 文が実測と反対のことを述べていた）である。
+   **(b) の範囲は、下で `(b)` と印を付けたところから「ここまでが (b)」までである。
+   それ以外はすべて (a) である。**
+
    同文書の辺③④の JaCoCo 実測（`XlsFormatWriter` `line 157/158 branch 101/104`、
    `YamlFormatWriter` `line 157/159 branch 86/90`）は**本計測と一致している**が、併記されていた未到達の
    行番号はコミット `54d2057`（Javadoc・コメントのみの変更）による行ずれで古くなっていた。
-   **さらに `DirectiveUtil` について、台帳の 1 文が事実誤りだった。**
+   **(b) さらに `DirectiveUtil` について、台帳の 1 文が事実誤りだった。**
    誤っていたのは括弧書きの「下記 `jacoco.xml` の走査で未到達行は L45 のみ」だけである
    （`9cc42b2` 時点の `inventory.md`。`git show 9cc42b2:.rn/ntf-test-data-converter/coverage/inventory.md | grep -n '未到達行は L45 のみ'` → `721:` の行）。
    実測は `toStringDirectives` の三項演算子 1 行が**部分実行**（`mb=1 cb=1`・`ci=9`。行としては到達済み）
    であり、`DirectiveUtil` の未到達行は 0 件である（`line 20/20`）。
    **一方、その 9 行前の段落「未到達は `DirectiveUtil.java:45` の `value == null ? null : valueMapper.map(...)` の
    `null` 側 1 分岐である。」は正しい**（同 `:712-713`。**分岐**について述べており、行については述べていない）。
-   **台帳の誤りは `:721` の括弧書き 1 文に閉じる。**
+   **台帳の誤りは `:721` の括弧書き 1 文に閉じる。**（ここまでが (b)。以降は (a) に戻る。）
    `steering.md` Rules「台帳（`coverage/inventory.md`）に『他ファイルの行番号』…を書かない…。
    **行番号とファイル行数は**他ファイルを編集するたびに移動し、台帳を直すと台帳の別箇所が自己無効化する。
    識別はクラス名・メソッド名で行う」に従い、**行番号を書き直すのではなく落とし、
@@ -527,11 +580,13 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
    日付つきの過去形でも数値は数値であり、書式からは陳腐化を判定できないためである。
 
    **処置後の状態は次のコマンドで確かめられる**（件数を手で書かない）。
+   **`inventory.md` は #26 のあとも凍結出力ブロックが追記されており、そのたびに両方の件数が動く。
+   ここで確かめたいのは #26 の処置後の状態なので、`git show` で #26 の完了コミット `58bae09` に固定した。**
 
    ```sh
-   F=.rn/ntf-test-data-converter/coverage/inventory.md
-   grep -cE '\.java:[0-9]+|\bL[0-9]{2,4}\b' $F                                   # → 8
-   grep -E '\.java:[0-9]+|\bL[0-9]{2,4}\b' $F | grep -cE '^(② |   )src/test/java/'  # → 8
+   B=58bae09:.rn/ntf-test-data-converter/coverage/inventory.md
+   git show $B | grep -cE '\.java:[0-9]+|\bL[0-9]{2,4}\b'                                    # → 8
+   git show $B | grep -E '\.java:[0-9]+|\bL[0-9]{2,4}\b' | grep -cE '^(② |   )src/test/java/'  # → 8
    ```
 
    **2 つが一致するので、残る 8 件はすべて `grep -rn '^    @Ignore' src/test --include=*.java` の
