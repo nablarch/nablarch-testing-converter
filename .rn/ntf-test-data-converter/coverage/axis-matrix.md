@@ -339,14 +339,17 @@ perl -CSDA -ne 'next unless /^\| [A-F][0-9-]/; my @c = split(/\|/, $_, -1);
 （`void` のテストメソッドと、`void` を返さないテストヘルパの両方を拾う。§0.1 の略記規約 4）。
 §6 は照合対象から外す —— §6 は「`inventory.md` がこの名前を挙げているが HEAD に無い」と述べる節で、
 無いことがそこでの主張である（その名前は下の別コマンドで「無いこと」を照合する）。
+**末尾に `*` が付いた形も照合対象から外す** —— `XlsFormatWriterTest#roundTrips*` のような接頭辞であって
+メソッド名ではないからである（§0.5 が引く `inventory.md` §0.8-8 の一文がこの形を含む）。
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
 A=.rn/ntf-test-data-converter/coverage/axis-matrix.md
 awk '/^## 6\. /{skip=1} /^## 7\. /{skip=0} !skip' "$A" \
   | perl -CSDA -ne 'chomp; for my $c (/^\|/ ? split(/\|/, $_, -1) : ($_)) { my $k;
-        while ($c =~ /`([A-Z][A-Za-z0-9]*)?#(\w+)/g) {
-          print(((defined $1 ? ($k = $1) : ($k // "UNRESOLVED")) . "#$2\n")) } }' \
+        while ($c =~ /`([A-Z][A-Za-z0-9]*)?#(\w+)(\*?)/g) {
+          $k = $1 if defined $1; next if $3 ne "";   # 末尾が * のものは接頭辞であって method 名ではない
+          print((($1 // $k // "UNRESOLVED") . "#$2\n")) } }' \
   | sort -u \
   | while IFS='#' read -r cls mth; do
       case "$cls" in
@@ -393,8 +396,9 @@ A=.rn/ntf-test-data-converter/coverage/axis-matrix.md
 EXTRACT() {
   awk '/^## 6\. /{skip=1} /^## 7\. /{skip=0} !skip' "$A" \
     | perl -CSDA -ne 'chomp; for my $c (/^\|/ ? split(/\|/, $_, -1) : ($_)) { my $k;
-          while ($c =~ /`([A-Z][A-Za-z0-9]*)?#(\w+)/g) {
-            print(((defined $1 ? ($k = $1) : ($k // "UNRESOLVED")) . "#$2\n")) } }' \
+          while ($c =~ /`([A-Z][A-Za-z0-9]*)?#(\w+)(\*?)/g) {
+            $k = $1 if defined $1; next if $3 ne "";   # 末尾が * のものは接頭辞
+            print((($1 // $k // "UNRESOLVED") . "#$2\n")) } }' \
     | sort -u
 }
 EXTRACT | wc -l              # 抽出（重複を除く）
