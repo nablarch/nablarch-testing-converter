@@ -70,7 +70,7 @@
 表のセルで太字が残っていないことの導出は §0.6 の ⑥。
 
 **表記の規約 —— 「担保テストメソッド」欄は `クラス名#メソッド名` の形で書く。**
-略記（クラス名を省いて `#` からメソッド名だけを書く形）には次の 3 つの制約を置く。
+略記（クラス名を省いて `#` からメソッド名だけを書く形）には次の 4 つの制約を置く。
 
 1. 略記が指すのは、同じセル内でそれより前に完全な形で書いた直近のクラスである。1 セルに 2 つ以上の
    クラス名が現れるときは、その略記より前にある最後のものを指す。セルをまたいで
@@ -79,7 +79,7 @@
 2. 略記できるのは、クラス名が `Test` で終わるテストクラスのメソッドだけである。
 3. `src/main` のメソッドは略記しない（`XlsFormatWriter#layout` のように必ずクラス名を書く）。
    したがって略記は、本書では必ずテストクラスのメソッドを指す。
-4. テストヘルパ（`@Test` の付かないメソッド）もクラス名を書き切る。 §0.6 の実在照合コマンドは
+4. テストヘルパ（`@Test` の付かないメソッド）もクラス名を書き切る。§0.6 の実在照合コマンドは
    `void` メソッドだけを照合するため、`void` を返さないヘルパは照合の網に掛からない。
    本書が引くヘルパは `XlsFormatReaderRealFileTest#onlyBlock`（§1.5）と
    `YamlFixture#onlyBlock`（§2.5）で、`src/test` には同名の定義が 5 クラスに 6 つある
@@ -99,6 +99,9 @@
 `notation:nnn`（`nablarch-document` の `30a8271` 時点の `testdata_notation.rst` の行番号）からの引用には
 `coverage-report.md` §3 と同じ正規化を掛ける —— RST のインラインエスケープ `\ `（バックスラッシュ＋半角空白）を
 半角空白へ均し、全角の括弧・読点に隣接して生じるぶんは落とす。
+
+**アサートの助数詞は「本」。** アサート文 1 つを 1 本と数える（「点」「つ」とは書かない）。
+テストメソッドの数も「本」で数え、軸要素・セル・行の数は「件」「行」を使う。
 
 **節番号の付け方。** 見出しは `## <番号>. `／`### <番号>.<枝番> `／`#### ` の 3 段で、
 枝番はピリオドで継ぐ（`### 6.1` であって `### 6-1.` ではない）。ハイフンは
@@ -174,9 +177,9 @@
 | カラム名 0 件のブロックは「セルを持つ行」を持てない | `ColumnRowDataBlock` | C-08(空) | 空欄を作らない（C-08(空) の形を限定するだけ。4 辺で ✅） |
 | `fileType` が `null` のファイルブロックは作れない | `FileDataBlock` | C-10 | 空欄を作らない（4 辺で ✅） |
 | 固定長ファイル・電文でフィールド長 `null` は保持できない | `ModelPreconditions#requireLengths` | C-21(省略) | 空欄を作らない（到達先を可変長ファイルに限定するだけ。辺①・辺②・辺④ は ✅、辺③ は ❌。§3.3） |
-| 本文レコード 0 件の電文ブロックは作れない | `MessageDataBlock` | C-15(空)・E-3(0件) | 4 辺の C-15(空) を空欄にする（4 件）。 E-3(0件) は 4 辺で ✅（ファイル系で到達する） |
-| フィールド 0 件のレコードレイアウトは作れない | `RecordLayout` | C-17(空) | 辺③・辺④ の C-17(空) を空欄にする（2 件）。 辺①・辺② の C-17(空) も空欄だが、先に効くのは本体パーサ／スキーマである（§5.3） |
-| `name` ／ `type` が `null` のフィールド定義は作れない | `FieldDef` | C-19・C-20(省略) | 辺③・辺④ の C-20(省略) を空欄にする（2 件）。 C-19 は 4 辺で ✅。辺①・辺② の C-20(省略) も空欄だが、先に効くのは本体パーサ／スキーマである（§5.3） |
+| 本文レコード 0 件の電文ブロックは作れない | `MessageDataBlock` | C-15(空)・E-3(0件) | 4 辺の C-15(空) を空欄にする（4 件）。E-3(0件) は 4 辺で ✅（ファイル系で到達する） |
+| フィールド 0 件のレコードレイアウトは作れない | `RecordLayout` | C-17(空) | 辺③・辺④ の C-17(空) を空欄にする（2 件）。辺①・辺② の C-17(空) も空欄だが、先に効くのは本体パーサ／スキーマである（§5.3） |
+| `name` ／ `type` が `null` のフィールド定義は作れない | `FieldDef` | C-19・C-20(省略) | 辺③・辺④ の C-20(省略) を空欄にする（2 件）。C-19 は 4 辺で ✅。辺①・辺② の C-20(省略) も空欄だが、先に効くのは本体パーサ／スキーマである（§5.3） |
 | コンテナ・読み込み単位の名前 `null` は作れない | `TestDataContainer` ／ `TestDataSection` | C-01・C-03 | 空欄を作らない（辺④ C-01 は空欄だが理由は別で、辺④がコンテナの名前を読まないためである。§4.3） |
 
 「本書の空欄への効き方」欄の件数は 4 ＋ 4 ＋ 2 ＋ 2 ＝ 12 で、§5.3 の分類
@@ -549,9 +552,9 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | E-2(0件) | ブロック内行数 0 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRowsFromTableWithoutDataRowsInRealBook` ／ `#readsEmptyRowsFromListMapWithoutDataRowsInRealBook` | — | C-09(空) と同じ入力 |
 | E-2(1件) | 同 1 | ✅ | `XlsFormatReaderRealFileTest#readsExpectedTableBlockWithGroupIdFromRealBook` | — | `getRows()` をリスト全体（1 行ぶん）と等値でアサートするため件数が 1 に決まる |
 | E-2(複数) | 同 複数 | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | 2 行 |
-| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook` | — | ファイル系だけで到達する。 電文系は C-15(空) と同じ理由で到達不能（根拠テスト `XlsFormatReaderRealFileTest#rejectsMessageWithFwHeaderOnlyInRealBook`） |
+| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook` | — | ファイル系だけで到達する。電文系は C-15(空) と同じ理由で到達不能（根拠テスト `XlsFormatReaderRealFileTest#rejectsMessageWithFwHeaderOnlyInRealBook`） |
 | E-3(1件) | 同 1 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` ／ `#readsMessageBlockFromRealBook` | — | どちらも `records.size()==1` をアサートする |
-| E-3(複数) | 同 複数 | ✅ | `XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` | — | ファイル系だけで到達する。 電文系は本体 `MessageParser` が 2 つ目の名前行を値行として吸収するため到達不能（`issues.md` XLS-15。根拠テスト `XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook`） |
+| E-3(複数) | 同 複数 | ✅ | `XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook` | — | ファイル系だけで到達する。電文系は本体 `MessageParser` が 2 つ目の名前行を値行として吸収するため到達不能（`issues.md` XLS-15。根拠テスト `XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook`） |
 | E-4(1件) | コンテナ内セクション数 1 | ✅ | `XlsFormatReaderRealFileTest#readsContainerAndSectionNamesFromRealBookAndSheetNames` | — | `sections.size()==1` をアサートする |
 | E-4(複数) | 同 複数 | — | — | — | 到達不能。C-02(空) と同じ 1 シート単位 API（`inventory.md` §0.8-6）。根拠テスト `XlsFormatReaderRealFileTest#readsContainerAndSectionNamesFromRealBookAndSheetNames`（`container.getSections().size()` を 1 でアサートする） |
 
@@ -572,11 +575,11 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 
 | 担保テストメソッド | WARN メッセージに含むことをアサートする項目 |
 |---|---|
-| `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook` | ブック名 ／ シート名 ／ ブロック識別子 ／ カラム名 ／ 採用列番号（「3 列目」）の 5 つ |
-| `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook` | ブック名 ／ ブロック識別子 ／ カラム名 ／ 採用列番号（「3 列目」）の 4 つ（シート名は見ていない） |
+| `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook` | ブック名 ／ シート名 ／ ブロック識別子 ／ カラム名 ／ 採用列番号（「3 列目」）の 5 本 |
+| `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook` | ブック名 ／ ブロック識別子 ／ カラム名 ／ 採用列番号（「3 列目」）の 4 本（シート名は見ていない） |
 
 どちらも「重複は後勝ちで 1 件に絞られる」「採用されるのは後方の列の値」「WARN ログの件数は 1」の
-3 点は共通してアサートする。
+3 本は共通してアサートする。
 
 #### F1-06 を担保する 7 メソッド
 
@@ -650,17 +653,17 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-08(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | `rows: []` で到達する。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-08(空) と同じ入力 |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
+| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.properties.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#stringifiesNonStringDirectiveValuesFromRealYaml` | — | integer ／ boolean の記法も文字列になることまで固定する |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile`（件数 1 をアサート） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
-| C-12(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords` | — | スキーマ `$defs.file_data` は `records.minItems` ＝ 0 |
+| C-12(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords` | — | スキーマ `$defs.file_data.properties.records.minItems` ＝ 0 |
 | C-13(非空) | `MessageDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMessageDirectivesFromRealYaml` | — | — |
 | C-13(空) | 同 空 | — | — | — | 到達不能。C-11(空) と同じく NTF 本体の `DataFile` が `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テストは 2 つの生成経路それぞれにある —— 受信メッセージ経路が `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage`、送信系経路が `#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInSendSync` |
 | C-14(非空) | `MessageDataBlock.fwHeaderFields` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsFwHeaderFieldsFromRealYaml` | — | 記述順で入ることまで固定する |
 | C-14(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `fw_header:` を書かない入力で空 Map になる |
 | C-15(非空) | `MessageDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInMessageFromRealYaml` | — | `record_type: FW_HEADER` のレコードも落とさない（`issues.md` YML-03 の解消後） |
-| C-15(空) | 同 空 | — | — | — | 到達不能。仮にスキーマを通っても `MessageDataBlock` が生成時に拒否する（`issues.md` YML-12 2形目）。根拠テスト `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `YamlFormatReaderTest#readMessage_emptyBody_rejected`。後者は `loadRawMap` を固定 Map に差し替える経路で走るためスキーマ検証を通っておらず、アサートしているのはモデル側の拒否である。スキーマ `$defs.message_data.records.minItems` ＝ 1 が先に閉じることの出典は本体スキーマ本体（下のコマンド）であって、これをアサートするテストは `src/test` に無い |
+| C-15(空) | 同 空 | — | — | — | 到達不能。仮にスキーマを通っても `MessageDataBlock` が生成時に拒否する（`issues.md` YML-12 2形目）。根拠テスト `MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない` ／ `YamlFormatReaderTest#readMessage_emptyBody_rejected`。後者は `loadRawMap` を固定 Map に差し替える経路で走るためスキーマ検証を通っておらず、アサートしているのはモデル側の拒否である。スキーマ `$defs.message_data.properties.records.minItems` ＝ 1 が先に閉じることの出典は本体スキーマ本体（下のコマンド）であって、これをアサートするテストは `src/test` に無い |
 | C-16(値あり) | `RecordLayout.recordType` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | `head` をアサートする。2 件目の `data` は `getRecordType()` を見ておらず、固定しているのはレコード数 2 件と 2 件目の行数だけである |
 | C-16(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` ／ `#normalizesLowercaseDefaultRecordTypeToNull` | — | 後者は `"default"`（小文字）も `null` へ正規化されることを固定する |
 | C-17(非空) | `RecordLayout.fields` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` | — | 辞書順ではなく原文の記述順であることまで固定する |
@@ -672,6 +675,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。スキーマ `$defs.field_def.required` が `type` を必須とし、仮に届いても `FieldDef` が拒否する。根拠テスト `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing` ／ `FieldDefTest#データ型がnullのフィールド定義は生成できない` |
 | C-21(値あり) | `FieldDef.length` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsIntegerLengthNotationAsString` ／ `#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | — | 前者は integer 記法 `length: 10` が文字列 `"10"` になることを固定する。従来挙げていた `YamlFormatReaderRealFileTest#preservesFieldOrderAndValueAlignmentFromRealYaml` は `getLength()` を呼ばないため差し替えた |
 | C-21(省略) | 同 省略（`null`） | ✅ | `YamlFormatReaderRealFileTest#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile` | — | 到達できるのは可変長ファイルだけ。固定長ファイルで `length` を書かない YAML はスキーマを通るが中間モデルの生成時に拒否される（`issues.md` XLS-30。`YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`） |
+
 C-15(空) の理由欄が引くスキーマ側の出典（テストではなく本体スキーマそのものを読む）:
 
 ```sh
@@ -735,7 +739,7 @@ LIST_MAP 経路とレコード断片経路で測ったのは D2-06 と D2-11 の
 | E-2(0件) | ブロック内行数 0 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-09(空) と同じ入力 |
 | E-2(1件) | 同 1 | ✅ | `YamlFormatReaderRealFileTest#readsFourBlockImplementationsFromOneRealYaml` | — | テーブル・LIST_MAP とも `getRows().size()` が 1 であることをアサートする |
 | E-2(複数) | 同 複数 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | 2 行 |
-| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords` | — | ファイル系だけで到達する。 電文系は C-15(空) と同じ理由で到達不能 |
+| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords` | — | ファイル系だけで到達する。電文系は C-15(空) と同じ理由で到達不能 |
 | E-3(1件) | 同 1 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` | — | `getRecords().size()` を 1 でアサートする |
 | E-3(複数) | 同 複数 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | 断片 2 件 |
 | E-4(1件) | コンテナ内セクション数 1 | ✅ | `YamlFormatReaderRealFileTest#namesContainerAndSectionByResourceNameWithoutBlocks` | — | `sections.size()==1` をアサートする |
@@ -948,9 +952,9 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 | E-1(1件) | 同 1 | ✅ | `XlsFormatWriterModelTest#writesOnlyOneBlockWhenSectionHasSingleBlock` | — | #27 で追加（`783810b`）。シート全体の行数 `getPhysicalNumberOfRows()` を `is(3)`（識別行・カラム名行・データ行 1 行）で固定する。2 ブロック目が書き出されれば 6 になって落ちる（ブロック間の空行は行を作らないため 3+3）。実測で確かめた —— 一時的に 2 ブロック目を足すと `Expected: is <3> but: was <6>` で落ちる。「次の行が `null`」を根拠にする以前の判定は誤りだった —— `XlsFormatWriter#writeSection` はブロック間の空行を行を生成せずに `rowNum` を進めるため、2 ブロック目があっても行 2・行 3 は `null` のままで、2 ブロック目の識別行は行 4 に来る（これも同じ一時変更で実測した）。そのため `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty` は E-2(0件) の担保としてのみ有効である（データ行は空行を挟まないため行 2 が `null` なら 0 行が決まる） |
 | E-1(複数) | 同 複数 | ✅ | `XlsFormatWriterTest#insertsBlankRowBetweenBlocks` | — | 2 ブロックの間に空行 1 行が入る位置を固定する |
 | E-2(0件) | ブロック内行数 0 | ✅ | `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty`（テーブル経路）／ `#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（ファイル経路の値行） | — | 順に C-09(空) ／ C-18(空) と同じ入力 |
-| E-2(1件) | 同 1 | ✅ | `XlsFormatWriterTest#insertsBlankRowBetweenBlocks` | — | データ行 1 行のブロックを次のブロックの開始行で固定する —— 同メソッドの Then は `cell(sheet,0,0)` ／ `sheet.getRow(3)` が `null` ／ `cell(sheet,4,0)` の 3 点だけを見る（行 1・行 2 は見ていない）。ブロック間の空行は 1 行なので、2 ブロック目の識別行が行 4 に来ることは 1 ブロック目が行 0〜2 の 3 行であることを意味し、識別行・カラム名行を除いたデータ行は 1 行に決まる。データ行が 0 行なら 2 ブロック目は行 3 に、2 行なら行 5 に来て落ちる。`XlsFormatWriterTest#metaRowContainsOnlyValueCells` は担保ではない —— 同メソッドの Then は `sheet.getRow(0).getLastCellNum()` が 1 であることだけを見ており、行 0 は識別行なのでデータ行の件数も内容もアサートしていない |
+| E-2(1件) | 同 1 | ✅ | `XlsFormatWriterTest#insertsBlankRowBetweenBlocks` | — | データ行 1 行のブロックを次のブロックの開始行で固定する —— 同メソッドの Then は `cell(sheet,0,0)` ／ `sheet.getRow(3)` が `null` ／ `cell(sheet,4,0)` の 3 本だけを見る（行 1・行 2 は見ていない）。ブロック間の空行は 1 行なので、2 ブロック目の識別行が行 4 に来ることは 1 ブロック目が行 0〜2 の 3 行であることを意味し、識別行・カラム名行を除いたデータ行は 1 行に決まる。データ行が 0 行なら 2 ブロック目は行 3 に、2 行なら行 5 に来て落ちる。`XlsFormatWriterTest#metaRowContainsOnlyValueCells` は担保ではない —— 同メソッドの Then は `sheet.getRow(0).getLastCellNum()` が 1 であることだけを見ており、行 0 は識別行なのでデータ行の件数も内容もアサートしていない |
 | E-2(複数) | 同 複数 | ✅ | `XlsFormatWriterTest#writesTableBlock` | — | 2 行 |
-| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` | — | ファイル系だけで到達する。 電文系は C-15(空) と同じ理由で到達不能 |
+| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` | — | ファイル系だけで到達する。電文系は C-15(空) と同じ理由で到達不能 |
 | E-3(1件) | 同 1 | ✅ | `XlsFormatWriterModelTest#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty` | — | ディレクティブ 0 件のファイルブロックなので、レコードレイアウト 1 件が行 1〜3（名前行・型行・長さ行）を占め、同メソッドが行 4 を `null` でアサートする。レコードレイアウトどうしは空行を挟まない（`XlsFormatWriterTest#writesMultipleRecordLayouts` が 1 件目の名前行を行 1、2 件目の名前行を行 5 でアサートしており、1 件目が占める 4 行＝名前・型・長さ・データ各 1 行の直後に 2 件目が始まる）ため、2 件目があれば行 4 から始まって落ちる。`XlsFormatWriterTest#writesFixedFileBlock` は担保ではない —— 同メソッドの Then は行 0〜5 の内容を見るだけで行 6 にも総行数にも触れず、2 件目のレコードレイアウトが余計に書き出されても通る |
 | E-3(複数) | 同 複数 | ✅ | `XlsFormatWriterTest#writesMultipleRecordLayouts` | `XlsFormatWriterTest#roundTripsMultipleRecordLayouts` | 断片 2 件の版面の開始行を固定する |
 | E-4(1件) | コンテナ内セクション数 1 | ✅ | `XlsFormatWriterInvalidOutputTest#writesSheetNameOfExcelLimitLengthAsIs` | — | `getNumberOfSheets()` が 1 であることをアサートする（同メソッドの主眼は F3-04）。セクション 1 件 → シート 1 枚を固定しているのは `src/test` でここだけである（下の導出コマンド） |
@@ -965,7 +969,7 @@ grep -rn "getPhysicalNumberOfRows\|getLastRowNum" src/test --include=*.java | se
 
 出力は 3 行で、すべて `XlsFormatWriterModelTest` である。アサートは 2 行——`is(0)`（＝ E-1(0件)）と
 `is(3)`（＝ E-1(1件)。#27 で追加）。残る 1 行は追加したテストの Javadoc である。
-シート全体の行数を見ている箇所は、この 2 つのアサート以外に無い。
+シート全体の行数を見ている箇所は、この 2 本のアサート以外に無い。
 
 E-4(1件) の唯一性の導出（`getNumberOfSheets()` を見ている箇所を `src/test` 全体から引く）:
 
@@ -982,7 +986,7 @@ grep -rn "getNumberOfSheets()" src/test --include=*.java | sed 's/:[0-9]*:/: /'
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
 |---|---|---|---|---|---|
 | F3-01 | 出力先不在 | ✅ | `XlsFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesWorkbook` | — | 例外にならず多階層の出力先が作られる。対になる「親に通常ファイルが居座りディレクトリを作れない」ケースは `XlsFormatWriterTest#wrapsIoFailure`（`UncheckedIOException`） |
-| F3-02 | `overwrite=false` 衝突 | — | — | — | 対象外（衝突検査は上位層）。 `XlsFormatWriter` は `overwrite` を保持せず、検査は `TestDataConverter#checkOverwrite` で完結する。辺③に書いても再現できないためここでは空欄とする。ただし上位層にも `.xlsx` 側の担保が無い —— この穴は §5.4 に開示する |
+| F3-02 | `overwrite=false` 衝突 | — | — | — | 対象外（衝突検査は上位層）。`XlsFormatWriter` は `overwrite` を保持せず、検査は `TestDataConverter#checkOverwrite` で完結する。辺③に書いても再現できないためここでは空欄とする。ただし上位層にも `.xlsx` 側の担保が無い —— この穴は §5.4 に開示する |
 | F3-03 | 書き込み権限なし | ✅ | `XlsFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | — | `UncheckedIOException` ＋ 原因 `AccessDeniedException`。ファイルは作られない。POSIX 権限が効かない環境では `Assume` でスキップする |
 | F3-04 | シート名が Excel 制約違反 | ✅ | `XlsFormatWriterInvalidOutputTest#rejectsSheetNameContainingSlash`（代表。全 14 件は下表） | — | 31 文字ちょうどはそのまま、32 文字以上は `IllegalArgumentException`（`issues.md` XLS-16 の修正後）。`null` は辺③の担保ではない —— `TestDataSection` ／ `TestDataContainer` が生成時に拒否するため（`TestDataContainerTest#名前がnullの読み込み単位は生成できない`。`issues.md` XLS-33）。アポストロフィ（先頭／末尾）は #22 のスコープ外で未担保 |
 
@@ -1050,7 +1054,7 @@ grep -c "emitMapRows(sb, entry, block.getColumnNames(), block.getRows());" \
 
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
 |---|---|---|---|---|---|
-| A-01 | `DEFAULT` | — | — | — | 到達不能。`TestDataBlock` が `DEFAULT` のブロックを生成時に拒否するため入力を組めない（`issues.md` XLS-20。`steering.md` #25.5 §1-G）。根拠テスト `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。#18 以来 ✅ の根拠だった辺④の例外テストは入力を組めなくなったため削除済みで、HEAD に該当メソッドは無い。 副作用として `YamlFormatWriter#sectionKey` の `default` 分岐が到達不能になった（`coverage-report.md` §3.3） |
+| A-01 | `DEFAULT` | — | — | — | 到達不能。`TestDataBlock` が `DEFAULT` のブロックを生成時に拒否するため入力を組めない（`issues.md` XLS-20。`steering.md` #25.5 §1-G）。根拠テスト `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。#18 以来 ✅ の根拠だった辺④の例外テストは入力を組めなくなったため削除済みで、HEAD に該当メソッドは無い。副作用として `YamlFormatWriter#sectionKey` の `default` 分岐が到達不能になった（`coverage-report.md` §3.3） |
 | A-02 | `SETUP_TABLE_DATA` | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `RoundTripTest#yaml_setupTable_isPreserved` ／ `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader` | `setup_tables:` キーへ写ることを出力全文の完全一致で固定する |
 | A-03 | `EXPECTED_TABLE_DATA` | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `expected_tables:` キー |
 | A-04 | `EXPECTED_COMPLETED` | ✅ | `YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` | `RoundTripTest#yaml_expectedCompleteTable_isPreserved` | `expected_complete_tables:` キー |
@@ -1114,7 +1118,7 @@ fileType=VARIABLE EXPECTED_FIXED vs EXPECTED_VARIABLE identical? true
 
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
 |---|---|---|---|---|---|
-| C-01 | `TestDataContainer.name` | — | — | — | 辺④はコンテナの名前を読まない。 `YamlFormatWriter#write` は `container.getSections()` を走査して `section.getName() + ".yaml"` を組むだけで、`container.getName()` を 1 度も参照しない（導出コマンドは本表の下）。出力先ディレクトリ名を決めるのは上位層の `ConverterPathResolver#outputBaseForYaml` であり辺④の担当ではない |
+| C-01 | `TestDataContainer.name` | — | — | — | 辺④はコンテナの名前を読まない。`YamlFormatWriter#write` は `container.getSections()` を走査して `section.getName() + ".yaml"` を組むだけで、`container.getName()` を 1 度も参照しない（導出コマンドは本表の下）。出力先ディレクトリ名を決めるのは上位層の `ConverterPathResolver#outputBaseForYaml` であり辺④の担当ではない |
 | C-02(非空) | `TestDataContainer.sections` 非空 | ✅ | `YamlFormatWriterModelTest#writesOneYamlFilePerSectionWhenContainerHasMultipleSections` | — | 3 セクション → 3 ファイル |
 | C-02(空) | 同 空 | ✅ | `YamlFormatWriterModelTest#writesNothingWhenContainerHasNoSections` | — | 例外にならず、ファイルも出力先ディレクトリも作られない（辺③がシート 0 枚のブックを書くのとは非対称） |
 | C-03 | `TestDataSection.name` | ✅ | `YamlFormatWriterModelTest#writesOneYamlFilePerSectionWhenContainerHasMultipleSections` | — | 読み込み単位の名前が `<名前>.yaml` になる。Given がコンテナ名と読み込み単位名を違えているため、ファイル名の由来が決まる —— コンテナ名 `td` に対し読み込み単位名は `zebra` ／ `alpha` ／ `mango` で、書かれた 3 ファイルを読み込み単位名で引き当てる。`YamlFormatWriterTest#write_writesEachSectionAsYamlFileWithSerializedContent` は Given のコンテナ名と読み込み単位名が両方 `"td"` のため由来を判別できない（同メソッドが固定するのは中身が `serialize` の結果と一致すること） |
@@ -1210,7 +1214,7 @@ YAML の特殊文字と制御文字を 1 文字ずつ `directives` のキーに�
 | E-2(0件) | ブロック内行数 0 | ✅ | `YamlFormatWriterTest#serialize_emptyRows_emitsEmptyFlowList` | — | C-09(空) と同じ入力 |
 | E-2(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serialize_emptyColumnsRow_emitsEmptyFlowMap` ／ `#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | — | どちらも出力全文の完全一致で、`rows:` の下に要素が 1 つだけ出ることが決まる（前者は `- {}` 1 件、後者は 2 ブロックがそれぞれ 1 行）。`YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` は担保ではない —— 同メソッドの Then は `startsWith("expected_complete_tables:\n")` の 1 本だけで `rows` を一切アサートしていない（同メソッドは A-04 ／ C-05 の担保である） |
 | E-2(複数) | 同 複数 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | 2 行 |
-| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` | — | ファイル系だけで到達する。 電文系は C-15(空) と同じ理由で到達不能 |
+| E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` | — | ファイル系だけで到達する。電文系は C-15(空) と同じ理由で到達不能 |
 | E-3(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serializeMessage_withDirectivesAndFwHeader` | — | 出力全文の完全一致なので、`records:` の下に断片が 1 つだけ出ることも固定される |
 | E-3(複数) | 同 複数 | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | `YamlFormatWriterTest#roundTrip_fixedFile_isPreservedThroughRealReader` | 断片 2 件 |
 | E-4(1件) | コンテナ内セクション数 1 | ✅ | `YamlFormatWriterModelTest#writesOneYamlFileWhenContainerHasSingleSection` | — | #27 で追加（`6d12021`）。出力先ディレクトリの実ファイル数 `out.list().length` を `is(1)` で固定し、中身をリテラルで突き合わせる。2 件目のセクションが書き出されれば落ちる。実測で確かめた —— 一時的に 2 件目のセクションを足すと `Expected: is <1> but: was <2>` で落ちる。コンテナ名 `book` とセクション名 `solo` を別にしてあるので、ファイル名がコンテナ名から作られるようになっても落ちる。`YamlFormatWriterTest#write_writesEachSectionAsYamlFileWithSerializedContent` を担保としていた以前の判定は誤りだった —— 同メソッドの Then は `assertTrue(out.exists())` と「中身が `writer.serialize(section)` と一致する」の 2 本で、後者は実装の出力を実装の出力と比べる自己参照であり、ファイル件数も直列化結果の正しさも固定しない。なお同メソッドはコンテナ名と読み込み単位名が同じ `"td"` のため C-03 の担保にもならない（§4.3） |
@@ -1233,7 +1237,7 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
 |---|---|---|---|---|---|
 | F4-01 | 出力先不在 | ✅ | `YamlFormatWriterInvalidOutputTest#createsMissingOutputDirectoriesAndWritesYaml` | — | 例外にならず多階層の出力先が作られる。対になる「親に通常ファイルが居座りディレクトリを作れない」ケースは `YamlFormatWriterTest#write_ioError_throwsUncheckedIOException` |
-| F4-02 | `overwrite=false` 衝突 | — | — | — | 対象外（衝突検査は上位層）。 `YamlFormatWriter` は `overwrite` を保持せず、検査は `TestDataConverter#checkOverwrite` で完結する。辺④は上位層に担保がある（挙げるテストは §5.4）。同じ `—` でも辺③の F3-02 は上位層にも担保が無く、中身が正反対である（§5.4） |
+| F4-02 | `overwrite=false` 衝突 | — | — | — | 対象外（衝突検査は上位層）。`YamlFormatWriter` は `overwrite` を保持せず、検査は `TestDataConverter#checkOverwrite` で完結する。辺④は上位層に担保がある（挙げるテストは §5.4）。同じ `—` でも辺③の F3-02 は上位層にも担保が無く、中身が正反対である（§5.4） |
 | F4-03 | 書き込み権限なし | ✅ | `YamlFormatWriterInvalidOutputTest#wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable` | — | `UncheckedIOException: failed to write YAML: <パス>` ＋ 原因 `AccessDeniedException`。ファイルは作られない |
 
 **軸F の外に残る空欄**: `YamlFormatWriter#write` の `parent == null` 分岐（`issues.md` COV-09）、
@@ -1342,11 +1346,11 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md | awk -F'|' '{gsub(/ /,"",$4)} $4 == "�
 穴が無いからではない。§7 の 8 件とは別の穴である（§7 は #26.5 から持ち越した 0 件テーブル関連の 8 件で、
 ユーザー確定の単位。ここに 9 件目として足さない）。
 
-- 上位層の衝突検査そのものは担保されている。 `TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`
+- 上位層の衝突検査そのものは担保されている。`TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse`
   ／ `ConverterMojoTest#throwsMojoExecutionExceptionOnOverwriteConflict` の 2 件。
   この 2 件が辺④ F4-02（§4.6）の「上位層に担保がある」の中身でもある ——
   どちらも XLS→YAML で `YamlFormatHandler#outputPaths` を通るため、`.yaml` 側の衝突は実際に通っている。
-- ただし 2 件とも出力側は `.yaml` である。 出力先へ事前にファイルを置いてから
+- ただし 2 件とも出力側は `.yaml` である。出力先へ事前にファイルを置いてから
   変換するテストは `src/test` に 4 か所あり、4 か所とも `.yaml` である。
 
 ```sh
@@ -1370,7 +1374,7 @@ grep -rnE 'Files\.(createFile|write)\(out\b' src/test --include=*.java | sed 's/
 ### 6.1 `inventory.md` の記述と HEAD のテストソースが食い違っていた箇所
 
 `inventory.md` の §1〜§4 は各タスク時点のスナップショットであり書き換えない取り決めだが、
-`inventory.md` §0.1-2 の「担保の現在地」を述べた記述は現行の正を述べる位置にある。 そこで本タスクでは
+`inventory.md` §0.1-2 の「担保の現在地」を述べた記述は現行の正を述べる位置にある。そこで本タスクでは
 同 §0.1-2 の「担保の現在地（HEAD で存在を確認済み。2026-08-21 実測）」表を全数、機械的に照合した。
 
 ```sh
@@ -1487,8 +1491,22 @@ perl -CSDA -ne 'while (/`#(\w+)/g) { print "#$1\n" }' "$I" | sort -u | wc -l   #
 その軸要素を担保していることを確かめた（§0.6 の実在照合コマンドで名前の実在も機械的に照合してある）。
 
 **「表が主張する要素を、そのテスト本文が実際にアサートしているか」という読み方は、全 315 セルへ広げ終えた**
-（#27 の水平展開。2026-08-21）。内訳は軸E の 44 セル（先行）と、空欄 27 件・軸F 16 件・軸B 16 件・
-軸D 37 件・軸A 52 件・軸C 125 件である。結果は 3 通りに分かれた。
+（#27 の水平展開。2026-08-21）。内訳は空欄 27 件と、空欄でない 288 件 —— 軸A 52 件・軸B 16 件・
+軸C 125 件・軸D 37 件・軸E 42 件・軸F 16 件 —— で、27 ＋ 288 ＝ 315 である。
+着手は軸E の 44 セル（空欄でない 42 件と空欄 2 件）が先で、残りをあとから広げた。
+
+```sh
+cd "$(git rev-parse --show-toplevel)"/.rn/ntf-test-data-converter/coverage
+# 軸ごとの行数と、そのうち空欄（—）の件数
+grep -E '^\| [A-F][0-9-]' axis-matrix.md \
+  | awk -F'|' '{id=$2; gsub(/ /,"",id); ax=substr(id,1,1); st=$4; gsub(/ /,"",st);
+                n[ax]++; t++; if (st == "—") {e[ax]++; b++}}
+               END {for (k in n) printf "軸%s 全%d 空欄%d 空欄以外%d\n", k, n[k], e[k], n[k]-e[k] | "sort";
+                    close("sort");
+                    printf "計 全%d 空欄%d 空欄以外%d\n", t, b, t-b}'
+```
+
+出力は 7 行で、末尾が `計 全315 空欄27 空欄以外288` である。結果は 3 通りに分かれた。
 
 1. **状態が動いたもの 6 件** —— 辺② C-10 ／ 辺③ C-21(省略) ／ 辺④ A-06 ／ A-07 ／ A-08 ／ A-09。
    いずれも ✅ から ❌ へ動いた。理由は各行の理由欄と §4.1 末尾にある。

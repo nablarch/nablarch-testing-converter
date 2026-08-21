@@ -174,7 +174,7 @@ XLS-42 は 2026-08-19 に **XLS-41 から切り出した**もので、XLS-41 自
 各課題の判定欄は `- NTF 仕様としての判定` で始まる 1 行だけなので、**行頭からその見出しに錨を打って数える**。
 
 ```
-$ cd ~/work/nablarch/nablarch-testing-converter
+$ cd "$(git rev-parse --show-toplevel)"
 $ F=.rn/ntf-test-data-converter/coverage/issues.md
 $ grep -c '^### \(XLS\|YML\)-' $F
 57
@@ -1440,7 +1440,7 @@ loud に失敗するもの（XLS-22）、記録のみのもの（XLS-23・XLS-24
   `grep -n "^### 3.1 " <台帳>` で見出しを引き、表本体はその 4 行後から 40 行である）:
 
   ```sh
-  cd /home/tie303177/work/nablarch/nablarch-testing-converter
+  cd "$(git rev-parse --show-toplevel)"
   h=$(grep -n "^### 3.1 " .rn/ntf-test-data-converter/coverage/inventory.md | cut -d: -f1)
   awk -v s=$((h+4)) 'NR>=s && NR<s+40' .rn/ntf-test-data-converter/coverage/inventory.md \
     | awk -F'|' '{print $8}' | sort | uniq -c
@@ -2458,10 +2458,10 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
   **以下の行番号は本書の基準 `30a8271` 時点のもの**であり、次のコマンドで確かめられる。
 
   ```sh
-  cd /home/tie303177/work/nablarch/nablarch-document
   for n in 881 1109 1146 1158 1257; do
     printf '%s: ' "$n"
-    git show 30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
+    git -C ~/work/nablarch/nablarch-document show \
+      30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n "${n}p"
   done
   ```
 
