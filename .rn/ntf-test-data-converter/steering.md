@@ -1440,7 +1440,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
   - **条件つき充足 1 件: 「辺①…軸A（`DataType` 14種）すべてが実ファイル経由で1回以上通っている」。** 13 種は ✅ で、残る 1 種 `DEFAULT` は **中間モデルが生成時に拒否するため入力を組めない**（`issues.md` XLS-20）。`axis-matrix.md` 辺① A-01 に `—` と理由・根拠テストを記載済み。
   - **充足 11 件**: `mvn test` 全 PASS（`Tests run: 597, Failures: 0, Errors: 0, Skipped: 2`）／ pom.xml の 4 依存（yaml `1.0.0-SNAPSHOT`・本体・poi-ooxml `3.8`・snakeyaml-engine `3.0.1`）／ 本体・yaml とも作業ツリーがクリーンで書き込みなし／ push 済み／ 軸B は 4 辺とも 4/4 ✅・軸C は空欄と ❌ に理由あり・`fileType` は FIXED ／ VARIABLE とも ✅／ 軸D は 8・12・8・9 で規定どおり全 ✅／ 軸E・軸F は到達不能な空欄を除き全 ✅／ 参照フィクスチャ `ProjectActionRequestTest.xlsx` と POI 生成物の一致は `XlsReferenceFixtureTest#poiGeneratedWorkbookReadsIdenticallyToExcelSavedWorkbook` が担保／ 対応表 315 行（✅283・❌5・空欄27、理由つき）／ カバレッジ計測と未到達分岐 34 件の分類（足すべき 19・不要 15）／ 課題一覧 57 件（要対応 26・うち未実施は XLS-44 の 1 件）／ `JAVA_HOME=… mvn clean test -Djacoco.skip=true` 全 PASS
   - **❌ 5 件は開示のまま #28 へ持ち込んでいる**（辺③ C-21(省略) ＝ `issues.md` XLS-45 ／ 辺④ A-06〜A-09 ＝ `issues.md` XLS-44。後者は要対応・未実施で、実施は #28 の後に独立タスク）
-- [ ] 結果をユーザーへ提示し、`/rn:ty`（承認）または `/rn:gm`（差し戻し）の判定を受ける
+- [ ] 結果をユーザーへ提示し、`/rn:ty`（承認）または `/rn:gm`（差し戻し）の判定を受ける → **提示は済み（2026-08-21・`ae30342` 時点）。判定は未受領。**提示内容は AC 13 項目（充足 12／条件つき充足 1／検証不能 0）、ゲート再実行（`JAVA_HOME=… mvn clean test -Djacoco.skip=true` → `Tests run: 597, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS）、および判定前に見てほしい 3 点（下記）。
+  - **ユーザー判断待ち 3 件（いずれも本作業では手を付けていない）**: ① **`U-1` の所在** —— 申し送りの束に挙がっている ID だが本リポジトリの文書に無い（`grep -rn 'U-1' .rn/ntf-test-data-converter/` → 0 件。`nablarch-testing/.rn` にも無い）。`issues.md`「申し送りの束」の表に「未確認・渡す前に所在を確認すること」として保持している。 ② **移動元 `1035207` の退避** —— reflog 依存で `gc.reflogExpireUnreachable` 既定 30 日に対し作成から約 2 か月。gc が走れば消える。救出用のタグ・ブランチを本体に作るかは未決（**現時点で本体には作らないこと**がユーザー指示）。 ③ **XLS-39（グループ ID に使える文字の明文化）を申し送りの束に含めるか** —— 2026-08-21 の指示が挙げた 5 件（U-1・XLS-27・XLS-40・XLS-42・XLS-45）に無いため、束の節に「未指定」として開示している。
 
 **Completion criteria**:
 
@@ -1454,8 +1455,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: YYYY-MM-DD
-- **Last completed**: #N description
-- **Next**: #N description
-- **Notes**: bounded forward pointer — branch/PR, next concrete action, open blockers, user-deferred paths, open questions / pending decisions not yet captured in `design.md`; not a re-narration of the session (that lives in `git log`)
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #27（`becd7b3`）。**#28 は進行中** —— AC の検証と提示は済み（`ae30342`）、判定は未受領
+- **Next**: #28 の Evaluation gate。`/rn:ty`（承認）／`/rn:gm`（差し戻し）を受ける。**#28 の Steps 2 に、提示内容とユーザー判断待ち 3 件（U-1 の所在／`1035207` の退避／XLS-39 を束に含めるか）を書いてある**
+- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし・未追跡パス無し）。**AC 13 項目の検証結果は #28 の Steps 1 に全文がある**（充足 12／条件つき充足 1／**検証不能 0**）。**承認後に立てる独立タスクが 1 つある** —— `issues.md` **XLS-44**（要対応・未実施。`FileDataBlock` の `fileType` を `DataType` から導出して重複を無くす。4 辺すべての生成箇所に手が入る）。**申し送り 5 件は `issues.md`「申し送りの束」が保持しており、converter 完了後にまとめて出す**（単独では出さない）。**JaCoCo の再計測はしない**（Rules）。**本体 `nablarch-testing` にはタグ・ブランチを含め一切書き込まない**（ユーザー指示・2026-08-21）
