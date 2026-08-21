@@ -101,14 +101,14 @@
 半角空白へ均し、全角の括弧・読点に隣接して生じるぶんは落とす。
 
 **アサートの助数詞は「本」。** アサート文 1 つを 1 本と数える（「点」「つ」とは書かない）。
-テストメソッドの数も「本」で数え、軸要素・セル・行の数は「件」「行」を使う。
+テストメソッド・軸要素・セルの数は「本」ではなく「件」で数え、表の行数は「行」で数える。
 
 **節番号の付け方。** 見出しは `## <番号>. `／`### <番号>.<枝番> `／`#### ` の 3 段で、
 枝番はピリオドで継ぐ（`### 6.1` であって `### 6-1.` ではない）。ハイフンは
 `inventory.md` §0.8-6 ／ `steering.md` #25.5 §6-J-2 のように他文書側が下位項目に使う記法であり、
 本書の節番号には使わない。
 
-**巨大セルの分離基準。** 担保テストメソッド欄にメソッド名を 4 つ以上並べない。
+**巨大セルの分離基準。** 担保テストメソッド欄にメソッド名を 4 件以上並べない。
 4 件以上になる軸要素は、同欄に代表 1 件と「全 n 件は下表」と書き、直下に `####` の内訳表を置く。
 件数が 4 未満でも、メソッドごとにアサートする内容が違う場合は同じ形にしてよい（§1.6 の F1-05 がその例）。
 本書で内訳表を持つのは F1-05 ／ F1-06 ／ D3-06 ／ D3-08 ／ F3-04 ／ D4-07 の 6 か所である。
@@ -321,7 +321,7 @@ for n in 1 2 3 4; do
 done
 # ③ 🔺 往復欄が「該当なし」でない行数（状態欄の 🔺 の件数とは別物。§0.1）
 grep -E '^\| [A-F][0-9-]' axis-matrix.md | awk -F'|' '{gsub(/ /,"",$6)} $6 != "—"' | wc -l
-# ④ 担保テストメソッド欄にメソッド名を 4 つ以上並べたセル（§0.1 の分離基準。出力が無いのが正）
+# ④ 担保テストメソッド欄にメソッド名を 4 件以上並べたセル（§0.1 の分離基準。出力が無いのが正）
 perl -CSDA -ne 'next unless /^\| [A-F][0-9-]/; my @c = split(/\|/, $_, -1);
     my $n = () = ($c[4] =~ /#\w/g); my $id = $c[1]; $id =~ s/^\s+|\s+$//g;
     print "$id ($n)\n" if $n >= 4;' axis-matrix.md
@@ -657,7 +657,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-08(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | `rows: []` で到達する。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ／ `#readsEmptyColumnNamesAndRowsFromListMapWithoutRows` | — | C-08(空) と同じ入力 |
-| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.properties.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
+| C-10 | `FileDataBlock.fileType`（FIXED ／ VARIABLE の双方） | ✅ | `YamlFormatReaderRealFileTest#readsEmptyRecordsFromFixedFileWithoutRecords`（FIXED）／ `#readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile`（VARIABLE） | — | 必須の 2 値。スキーマ `$defs.file_data.properties.type` が必須かつ `enum` ＝ `["fixed","variable"]` のため「省略」は存在しない（行を割らない理由）。`null` は `FileDataBlock` が拒否する（`issues.md` XLS-29）。VARIABLE 側は #27 で `getFileType()` のアサートを 1 行足して閉じた —— それまで VARIABLE 側の根拠に挙げていたのは同メソッドの `getDirectives().get("file-type")` で、それは C-11(非空) の担保であって `fileType` ではなかった。実測で確かめた —— フィクスチャの `type` を `"variable"` から `"fixed"` へ変えると（可変長のまま `"fixed"` にすると `ModelPreconditions#requireLengths` が先に投げてアサートまで届かないため `length` も足す）`Expected: is <VARIABLE> but: was <FIXED>` で落ちる。`getFileType()` を呼ぶテストが 2 経路のどちらに属するかは下のコマンドで導く |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatReaderRealFileTest#stringifiesNonStringDirectiveValuesFromRealYaml` | — | integer ／ boolean の記法も文字列になることまで固定する |
 | C-11(空) | 同 空 | — | — | — | 到達不能。NTF 本体の `DataFile` のコンストラクタが `file-type` を必ず注入する（`issues.md` XLS-07）。根拠テスト `YamlFormatReaderRealFileTest#readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile`（件数 1 をアサート） |
 | C-12(非空) | `FileDataBlock.records` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml` | — | — |
@@ -878,8 +878,18 @@ awk '/^## 3\. /,/^## 4\. /' axis-matrix.md \
 `—` の 3 行（C-15(空) ／ C-17(空) ／ C-20(省略)）は入力そのものを組めないため
 「値を入れれば落ちる」の判定対象にならない。残る `✅` 11 行が下表である。
 
-**下表の根拠は各メソッドの Then を読んだことであり、値を入れた変異を流した結果ではない**
-（変異まで流してあるのは §3.5 の E-1(1件) と §4.5 の E-4(1件) の 2 行だけである）。
+**下表の根拠は各メソッドの Then を読んだことであり、値を入れた変異を流した結果ではない。**
+本書が変異実測を記しているのは §2.3 の C-10 ／ §3.5 の E-1(1件) ／ §4.5 の E-4(1件) の 3 行であり、
+下表の 11 行はそこに含まれない（主張は本書の記述についてであって、本書に記していない変異実測が
+他に無いことまでは言わない）。
+
+```sh
+cd "$(git rev-parse --show-toplevel)"/.rn/ntf-test-data-converter/coverage
+grep -E '^\| [A-F][0-9-]' axis-matrix.md | grep '実測で確かめた' \
+  | awk -F'|' '{id=$2; gsub(/^ +| +$/,"",id); print id}'
+```
+
+出力は `C-10` ／ `E-1(1件)` ／ `E-4(1件)` の 3 行である。
 各行のアサートは、省略・空でない入力では成り立たない形になっている。
 
 | 担保テストメソッド | 軸要素 | 値の有無に反応するアサート |
@@ -913,7 +923,7 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 
 出力は 18 ／ 3 ／ 13。生バイト経路は定義 1 行と呼び出し 2 行、開き直し経路は定義 1 行と
 呼び出し 12 行（テストメソッドから直接 10 件、ヘルパ `XlsFormatWriterCellTypeTest#assertReplacedWithQuestionMark`
-と `XlsFormatWriterCellTypeTest#assertWrittenAsIs` から 1 件ずつ）で、後者のヘルパ 2 つを 6 件のテストメソッドが使うため
+と `XlsFormatWriterCellTypeTest#assertWrittenAsIs` から 1 件ずつ）で、後者のヘルパ 2 件を 6 件のテストメソッドが使うため
 開き直しに届くテストメソッドは 10 ＋ 6 ＝ 16 件になる。
 
 | 軸要素 | 内容 | 状態 | 担保テストメソッド | 🔺 往復 | 理由・注記 |
@@ -1287,7 +1297,7 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 主張していない」を全セルへ広げた点検——では 6 件が ✅ から ❌ へ動いたが、そのうち辺② C-10 は
 #27 の中で `getFileType()` のアサートを 1 行足して ✅ へ戻してある（§2.3。`steering.md` #27 の
 ユーザー確定・2026-08-21）。軸E の総点検でいったん ❌ へ動いた 2 件（辺③ E-1(1件)・辺④ E-4(1件)）も
-テストを 2 本足して埋めてある（`783810b` ／ `6d12021`）。残る 5 件は軸A〜D であり、
+テストを 2 件足して埋めてある（`783810b` ／ `6d12021`）。残る 5 件は軸A〜D であり、
 空欄へ振り替えず ❌ を立てて理由を書く取り決め（`steering.md` #27）に従う。
 
 「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 98 行ある

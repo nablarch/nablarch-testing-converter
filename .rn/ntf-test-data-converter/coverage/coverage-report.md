@@ -26,8 +26,12 @@ git diff HEAD -- src/main src/test pom.xml | wc -l   # → 0
 grep -n '^jacoco\.exec$' .gitignore                  # → 3:jacoco.exec
 ```
 
-**実行したコマンド**（この順にそのまま実行する。1 つめの前に `rm -f jacoco.exec` を行い、
-`jacoco.exec` が前回実行の追記で汚れていないことを担保している）。
+**実行したコマンド**（#26 で `da66425` に対してこの順に実行した記録である。
+1 つめの前に `rm -f jacoco.exec` を行い、`jacoco.exec` が前回実行の追記で汚れていないことを担保している）。
+**このコマンド列は再実行しない** —— `steering.md` Rules が「JaCoCo の再計測はしない」と定めており、
+流し直すと行番号と数値が動いて本書が引く行番号がすべて自己無効化するためである。
+したがって 1 行目の `cd` 先は #26 の実行者のチェックアウトパスの記録であって、読み手が実行するための手順ではない
+（コマンドを個人のチェックアウトパスでなくリポジトリルートから始める規約は `axis-matrix.md` §0.6）。
 
 ```sh
 cd /home/tie303177/work/nablarch/nablarch-testing-converter
@@ -38,7 +42,8 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFi
 
 **本書の全数値は、上の 1 回の実行が作った `target/site/jacoco/` の
 `jacoco.csv` ／ `jacoco.xml`（同一実行のペア）だけから導いている。**
-別の実行と突き合わせるときは、上の 2 コマンドを流し直して次の md5 を比べる。
+次の md5 がその 1 回の実行を同定する（別の実行と突き合わせる必要が生じたときの照合子であり、
+上のとおり突き合わせのために流し直すことはしない）。
 
 ```sh
 md5sum target/site/jacoco/jacoco.csv
@@ -388,8 +393,7 @@ grep -cE '^\| [0-9]+ \|.*テスト不要（本体パーサが先に弾く）' $F
 |---|---|---|---|---|---|
 | 29 | `write` | **84** | `if (parent != null)` の **false 側** | **テストを足すべき** | #26 と同型（`YamlFormatWriter.java:83` に**同型の**コメントがある。例示ファイル名だけが違い、`XlsFormatWriter.java:106` は `"foo.xlsx"`、こちらは `"foo.yaml"`） |
 | 30 | `emitBlock` | **139** | `else if (block instanceof MessageDataBlock)` の **false 側** | テスト不要（型の全数分岐） | #27 と同型（sealed 階層の全数分岐）。未到達行 `L143` の `throw` と整合 |
-| 31 | `rawGroup` | **484** | `groupId.charAt(last) == ']'` の **false 側**（`groupId.charAt(0) == '['` の両側は到達済み） | **テストを足すべき** | `[` で始まるが `]` で終わらないグループ ID（例 `[abc`）。**辺①から作れる** —— `TestCoreReaderAdapter#markerGroupId`（`:282-286`）はマーカー先頭セルのうちデータタイプ名の直後から `=` までをそのまま切り出すため
-（`firstCell.substring(type.getName().length())` の結果から `indexOf('=')` の手前までを取る。**この 1 文は原典の引用ではなく実装の要約である**）、`SETUP_TABLE[abc=T` と書けば中間モデルの `groupId` は `"[abc"` になる。中間モデルの契約も `groupId` に `null` を禁じるだけで（`TestDataBlock.java:17`・`:121`）、`[ ]` で囲まれた形であることは要求していない。`charAt(0) == '['` の false 側は `YamlFormatWriterTest#serialize_unbracketedGroupId_isUsedAsRawValue`（グループ ID `"raw"`）が担保。**分類の経緯（初版の「記法外」根拠を退けた理由）・YAML スキーマの確認・XLS-39 との切り分けは → `issues.md` COV-13** |
+| 31 | `rawGroup` | **484** | `groupId.charAt(last) == ']'` の **false 側**（`groupId.charAt(0) == '['` の両側は到達済み） | **テストを足すべき** | `[` で始まるが `]` で終わらないグループ ID（例 `[abc`）。**辺①から作れる** —— `TestCoreReaderAdapter#markerGroupId`（`:282-286`）はマーカー先頭セルのうちデータタイプ名の直後から `=` までをそのまま切り出すため（`firstCell.substring(type.getName().length())` の結果から `indexOf('=')` の手前までを取る。**この 1 文は原典の引用ではなく実装の要約である**）、`SETUP_TABLE[abc=T` と書けば中間モデルの `groupId` は `"[abc"` になる。中間モデルの契約も `groupId` に `null` を禁じるだけで（`TestDataBlock.java:17`・`:121`）、`[ ]` で囲まれた形であることは要求していない。`charAt(0) == '['` の false 側は `YamlFormatWriterTest#serialize_unbracketedGroupId_isUsedAsRawValue`（グループ ID `"raw"`）が担保。**分類の経緯（初版の「記法外」根拠を退けた理由）・YAML スキーマの確認・XLS-39 との切り分けは → `issues.md` COV-13** |
 | 32 | `sectionKey` | **503** | `switch (type)` の **`default` 側** | テスト不要（中間モデルの不変条件） | `default` は `throw new IllegalArgumentException("unsupported DataType: " …)`（未到達行 `L520`）。`case` が網羅していないのは `DataType.DEFAULT` だけで、その値は `TestDataBlock` が生成時に拒否する（`issues.md` XLS-20）。`mb=1 cb=11` は、13 個の `case` ラベルのうち `SETUP_FIXED`／`SETUP_VARIABLE` と `EXPECTED_FIXED`／`EXPECTED_VARIABLE` がそれぞれ同じ飛び先を共有するため、相異なる飛び先が 11 になり、`default` を加えて分岐が 12 件になるためである |
 
 ### 3.4 区分⑤ `TestCoreReaderAdapter.BodyLineCollector`（2 件）

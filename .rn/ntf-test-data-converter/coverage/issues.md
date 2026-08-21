@@ -4229,9 +4229,9 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
 - NTF 仕様としての判定: **要対応**（**未実施**。#27 では `src/main` を触らないため起票のみ）。
   根拠は明文である —— 本体スキーマ `$defs.file_data.properties.type` の description が 4 種の
   `DataType` それぞれに `fixed` ／ `variable` のどちらか一方を一意に割り当てており、`SETUP_FIXED` のブロックを
-  `type: "variable"` と書いた YAML は**この対応に反する**。辺③の出力も `notation:883` の
-  「固定長では 3 リストが同サイズで必須」に反する。**#25.5 で修正した 25 件とは別枠の、未実施の要対応で
-  ある。実施は #28 の後に独立タスクとして立てる。**
+  `type: "variable"` と書いた YAML は**この対応に反する**。辺③の出力も
+  `notation:883`「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須」に反する。
+  **#25.5 で修正した 25 件とは別枠の、未実施の要対応である。実施は #28 の後に独立タスクとして立てる。**
 - 担保テスト: **無い。** `FileDataBlockTest#固定可変とSETUP_EXPECTEDの全組合せを保持する` は
   `SETUP_FIXED`＋`FIXED` ／ `EXPECTED_FIXED`＋`FIXED` ／ `SETUP_VARIABLE`＋`VARIABLE` ／
   `EXPECTED_VARIABLE`＋`VARIABLE` の**対角 4 組だけ**を確かめており（テスト本文のコメントも
