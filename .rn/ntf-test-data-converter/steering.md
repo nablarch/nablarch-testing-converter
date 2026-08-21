@@ -1394,8 +1394,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-21
+- **Last completed**: #26.5 マーカーカラムのセル値を `[EMPTY]` へ改める（`0672a16`）
+- **Next**: #27 4辺の軸×要素対応表と課題一覧の提出
+- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし・未追跡パス無し）。**次は #27 の Steps 1**（`coverage/axis-matrix.md` を新規に作る）。**#27 の Steps には持ち越し 2 群が入っている** —— #26 からの 8 件（用語・体裁。内容の正は `checks/task-26.md`「追加 1 巡」節）と、#26.5 からの 8 件（担保の穴。内容の正は #26.5 の「#27 へ持ち越す担保の穴 8 件」）。後者は**添える 1 文が指定されている**ので Steps の本文を読むこと。**未解決のブロッカー・ユーザー回答待ちは無い**（#26.5 の 2 問は `0672a16` で処置済み）。**JaCoCo の再計測はしない**（Rules に記載）。
