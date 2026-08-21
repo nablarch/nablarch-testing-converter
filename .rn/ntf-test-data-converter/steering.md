@@ -59,6 +59,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **JaCoCo の再計測はしない**（ユーザー指示・2026-08-21）。#26 の計測は `da66425` 固定であり、全数値の出典は `coverage/coverage-report.md` §0 が記録した 1 回の実行（`jacoco.csv` md5 `d28e374e9027ade63d7919f7a7b5826e`）である。流し直すと行番号と数値が動き、`coverage-report.md` が引用する行番号がすべて自己無効化する
 - **レビュア subagent は `isolation: worktree` で起動する**（#23 で確立・2026-08-13）。レビュア には `checks/{task-id}.md`（自己点検）を渡さない・読ませない
 - **順序を主張するテストは、フィクスチャを最初から定義順・辞書順とずらして作る**（#24 の教訓・ユーザー確定・2026-08-14）。#24 で 3 巡かけて出た生存変異 9 件は、共通原因が「順序を主張する入力が辞書順・定義順と一致していた」ことだった。一致していると、順序を壊す変異を入れてもテストが通ってしまい、アサートが順序を担保していない。これは辺②に固有の話ではないため、#25 以降でフィクスチャを作るときは書く時点でずらす。3 巡かけて見つけるより書くときに外すほうが安い
+- **State をプレースホルダへ戻すときに失われる記録は、戻す前に Steps か Rules へ移す**（ユーザー確定・2026-08-21。以後の既定）。`/rn:up` の State リセットで消えるのは「次に何をするか」だけであるべきで、制約（例: JaCoCo を再計測しない）や持ち越し事項が State にしか無い状態でリセットすると復元できない
 - **作業対象と無関係なファイルの変更は、独立した `chore:` コミットに分ける**（ユーザー確定・2026-08-14）。`.gitignore` への `.claude/worktrees/` 追加が `c15d531`（辺②のレビュー反映コミット）に相乗りしていた。履歴は書き換えないが、以降は分ける
 
 # Tasks
@@ -1394,8 +1395,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-21
-- **Last completed**: #26.5 マーカーカラムのセル値を `[EMPTY]` へ改める（`0672a16`）
-- **Next**: #27 4辺の軸×要素対応表と課題一覧の提出
-- **Notes**: branch `ntf-test-data-converter`（push 済み・ローカル差分なし・未追跡パス無し）。**次は #27 の Steps 1**（`coverage/axis-matrix.md` を新規に作る）。**#27 の Steps には持ち越し 2 群が入っている** —— #26 からの 8 件（用語・体裁。内容の正は `checks/task-26.md`「追加 1 巡」節）と、#26.5 からの 8 件（担保の穴。内容の正は #26.5 の「#27 へ持ち越す担保の穴 8 件」）。後者は**添える 1 文が指定されている**ので Steps の本文を読むこと。**未解決のブロッカー・ユーザー回答待ちは無い**（#26.5 の 2 問は `0672a16` で処置済み）。**JaCoCo の再計測はしない**（Rules に記載）。
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
