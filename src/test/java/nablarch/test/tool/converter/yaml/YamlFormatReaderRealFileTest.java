@@ -545,7 +545,7 @@ public class YamlFormatReaderRealFileTest {
      * <b>注入されるキーはファイル種別で違う</b>。
      * </p>
      *
-     * <p>担保する軸要素: A-07／B-3／C-11(空が到達不能である根拠。可変長側)／C-21(省略＝null。実ファイル経路)。</p>
+     * <p>担保する軸要素: A-07／B-3／C-10(VARIABLE)／C-11(空が到達不能である根拠。可変長側)／C-21(省略＝null。実ファイル経路)。</p>
      */
     @Test
     public void readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile() {
@@ -562,6 +562,7 @@ public class YamlFormatReaderRealFileTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getFileType(), is(FileDataBlock.FileType.VARIABLE));
         assertThat("可変長では field-separator も注入される", block.getDirectives().size(), is(2));
         assertThat(block.getDirectives().get("file-type"), is("Variable"));
         assertThat(block.getDirectives().get("field-separator"), is(","));
