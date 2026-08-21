@@ -397,19 +397,26 @@ NTF 本体（`nablarch-testing`）のメソッド 4 件（`TableData#replaceData
 テストヘルパ `YamlFixture#onlyBlock` 1 件である。`TableData` が本リポジトリの `src/main` に無いことは
 `find src/main -name 'TableData.java' | wc -l` が 0 を返すことで分かる（`src/main` に現れるのは
 `import nablarch.test.core.db.TableData;` と Javadoc の参照だけである）。
-`src/main` の 25 件が実在することは次で確かめる（`EXTRACT` は 1 つ上のブロックで定義した関数）。
+`src/main` の 27 件が実在することは次で確かめる（`EXTRACT` は 1 つ上のブロックで定義した関数）。
+除外するのは NTF 本体の 3 クラス（`TableData` ／ `DataFileParser` ／ `DataFileFragment`）と
+テストヘルパ `YamlFixture` である —— NTF 本体のメソッドは `src/main` に無いので、
+除外し忘れると `NG(class)` として出てしまい、実在しないものを実在しないと言うだけの出力になる。
 
 ```sh
 cd "$(git rev-parse --show-toplevel)"
-EXTRACT | grep -v 'Test#' | grep -v '^TableData#' | grep -v '^YamlFixture#' \
-  | while IFS='#' read -r cls mth; do
+FILTERED() {
+  EXTRACT | grep -v 'Test#' \
+    | grep -vE '^(TableData|DataFileParser|DataFileFragment|YamlFixture)#'
+}
+FILTERED | wc -l             # 照合対象（`src/main` のメソッド）
+FILTERED | while IFS='#' read -r cls mth; do
       f=$(find src/main -name "$cls.java")
       if [ -z "$f" ]; then echo "NG(class) $cls#$mth"
       elif ! grep -qE "\b$mth[[:space:]]*\(" "$f"; then echo "NG(method) $cls#$mth"; fi
     done
 ```
 
-出力が無いことが確認結果である。
+`wc -l` は 27 を返し、それ以降の出力が無いことが確認結果である。
 なお `case` 文の `*Test` に当たらないため、この 27 件はいずれも上の実在照合の対象外である。
 
 ---
