@@ -1,7 +1,8 @@
 # 現状挙動の課題一覧と、担保の穴の一覧
 
-フェーズ2（タスク #19〜#26）で「実行して記録した現状の挙動」のうち、仕様として妥当でないと判断したもの、
-または挙動を固定できなかったものを記録する。
+フェーズ2（タスク #19〜#27）で「実行して記録した現状の挙動」のうち、仕様として妥当でないと判断したもの、
+または挙動を固定できなかったものを記録する。**どのタスクで記録したかは `##` 見出しが示す**
+（節ごとの件数は §7 の柱書に置いた `awk` で導ける）。
 
 **あわせて、#26 のカバレッジ計測で洗い出した「担保の穴」（＝挙動が仕様どおりか確かめていない未到達分岐）を
 `COV-nn` として §7 に記録する。** `XLS-nn` ／ `YML-nn` が「挙動が妥当でない」と言っているのに対し、
@@ -4122,11 +4123,20 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
   `["path", "type", "records"]`、`properties.type` は `enum` ＝ `["fixed", "variable"]` で、
   description が「ファイル種別。fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
   （SETUP_VARIABLE / EXPECTED_VARIABLE）。NTF はこの値に応じてパーサ・フォーマッタを切り替える」と、
-  **4 種のデータタイプと 2 値の `type` を 1 対 1 に対応づけている**。解説書も同じで、`notation:206`
-  「データタイプごとに専用のトップレベルキーを使う（完全一致のため前方一致は発生しない）。対応は、
-  以下のとおりである。」に続く対応表 `notation:212-235` が `SETUP_FIXED`・`SETUP_VARIABLE` →
-  `setup_files` ／ `EXPECTED_FIXED`・`EXPECTED_VARIABLE` → `expected_files` と定める。
+  **4 種のデータタイプと 2 値の `type` を 1 対 1 に対応づけている**。解説書も同じで、
+  `notation:850`「固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
+  `SETUP_FIXED`・`EXPECTED_FIXED`（固定長）、`SETUP_VARIABLE`・`EXPECTED_VARIABLE`（可変長）の
+  いずれかのデータタイプで記述する。」が、**データタイプそのものに固定長／可変長の別を割り当てている**
+  （引用は RST のエスケープを外した本文）。`notation:902` も「準備用ファイルデータ
+  （`SETUP_FIXED`・`SETUP_VARIABLE`）は、固定長・可変長の区別なくまとめて収集される。…
+  **固定長か可変長かは、データブロック内の記述で区別される。**」と、収集の単位（SETUP／EXPECTED）と
+  固定長／可変長の別を分けて述べている。
   **したがって `DataType` が決まればファイル種別は決まる。**
+
+  > **`notation:206` と対応表 `:212-235` はこの主張の出典にならない。** あの表が定めるのは
+  > 「データタイプ → YAML のトップレベルキー」であって、`SETUP_FIXED` と `SETUP_VARIABLE` は
+  > **同じ `setup_files` へ落ちる**。1 対 1 の対応ではなく 2 対 1 の写像であり、むしろ下の
+  > 「現れ方（辺④ 軸A の A-06〜A-09）」で辺④のキーが 2 対 1 になることの出典である。
 - **中間モデルはこれを 2 つのフィールドで持っている。** `FileDataBlock` は `DataType`
   （`TestDataBlock` から継承）と `FileType`（`FIXED` ／ `VARIABLE`）を別々に保持し、コンストラクタが
   課すのは 2 つだけである —— `requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType)`
@@ -4173,8 +4183,12 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
   で拒否され、`fileType` ＝ `VARIABLE`（`DataType` は `SETUP_FIXED` のまま）では通った。
 - **現れ方（辺④ 軸A の A-06〜A-09）**: `axis-matrix.md` の辺④ 軸A で
   `SETUP_FIXED` ／ `EXPECTED_FIXED` ／ `SETUP_VARIABLE` ／ `EXPECTED_VARIABLE` の 4 行が ❌ である。
-  辺④は `sectionKey` が SETUP 系を `setup_files`・EXPECTED 系を `expected_files` へ **2 対 1** で写し、
-  固定長／可変長を分ける `type:` は `emitFile` が `fileType` から出して `DataType` を見ないため、
+  辺④は `sectionKey` が SETUP 系を `setup_files`・EXPECTED 系を `expected_files` へ **2 対 1** で写す
+  （これは記法どおりである —— `notation:206`「データタイプごとに専用のトップレベルキーを使う
+  （完全一致のため前方一致は発生しない）。対応は、以下のとおりである。」に続く対応表 `notation:212-235` が
+  `SETUP_FIXED`・`SETUP_VARIABLE` → `setup_files` ／ `EXPECTED_FIXED`・`EXPECTED_VARIABLE` →
+  `expected_files` と定める）。一方、固定長／可変長を分ける `type:` は `emitFile` が `fileType` から
+  出して `DataType` を見ないため、
   **4 種の `DataType` を区別する出力が辺④に無い**。テストを足しても埋まらない（出力が `DataType` に
   依存しないため）。
 - **あるべき姿**: **`fileType` を `DataType` から導出し、重複そのものを無くす。** `DataType` → `FileType`
@@ -4315,7 +4329,10 @@ NTF の YAML 記法として書けるため、**中間モデルがその値を�
 ## §7 #26 で洗い出した「テストを足すべき」未到達分岐（2026-08-20）
 
 **`COV-nn` の性格・欄・件数の扱いは、上部の凡例の `COV-nn` 行に定義がある。**
-本節より前の `XLS-nn` ／ `YML-nn` は `## #19`〜`## #25.5` の下にある。
+本節より前の `XLS-nn` ／ `YML-nn` は `## #19` から `## #27` までの **11 の `##` 節**に分かれて置かれている
+（`## §6` 中間モデル一巡点検・`## #27` 軸×要素対応表の点検を含む）。節ごとの件数は
+`awk '/^## /{h=$0} /^### (XLS|YML)-/{print h}' .rn/ntf-test-data-converter/coverage/issues.md | uniq -c`
+で導ける（2026-08-21 実測で 11 節・計 57 件）。
 
 > **裸の `§n`（`§1-D`・`§6` など）は #25.5 の修正作業の内部ラベルであって、本ファイルの節番号ではない。**
 > 本ファイルの `##`〜`####` 見出しのうち `§` を持つのは 4 本だけである
