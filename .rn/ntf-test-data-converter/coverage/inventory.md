@@ -702,7 +702,7 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 | `converter/model/TestDataContainer.java` | **XLS-37 / XLS-38** | 名前の `null`・コレクションの `null` 拒否 |
 | `converter/model/TestDataSection.java` | **§1-F(XLS-33) / XLS-38** | 同上 |
 | `converter/xls/XlsFormatReader.java` | **XLS-08** | マーカーカラム除外のあとに空エントリ判定を行う |
-| `converter/xls/XlsFormatWriter.java` | **XLS-27 / §1-B / §1-C / §1-D / §1-F / XLS-22** | 0 件テーブルの番人を追加。`FieldDef`・`RecordLayout` へ移した番人を撤去 |
+| `converter/xls/XlsFormatWriter.java` | **XLS-27 / §1-B / §1-C / §1-D / §1-F / XLS-22**（＋ **#26.5**） | 0 件テーブルの番人を追加。`FieldDef`・`RecordLayout` へ移した番人を撤去。**#26.5（`becbe30`）で `EMPTY_BLOCK_MARKER_COLUMN` を `"[空]"` から `"[EMPTY]"` へ改めた**（1 行の変更。**この 1 件だけが #25.5 の外にある src/main 変更であり、`steering.md` の Acceptance criteria が実装無改変の除外として名指ししている**） |
 | `converter/yaml/YamlFormatWriter.java` | **§1-B / §1-C / §1-D / §1-F / §1-G / XLS-22** | 同上 |
 | `converter/xls/BlockLayout.java` ／ `converter/xls/Fill.java` | **§1-G(XLS-20)** | `DEFAULT` の識別セルを書く経路が消えたことに伴う 1 行ずつの調整 |
 
