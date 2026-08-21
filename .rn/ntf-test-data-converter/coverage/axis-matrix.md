@@ -839,7 +839,46 @@ grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 �
 | C-20(値あり) | `FieldDef.type` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 型行に出る。空文字は弾かれず空セルになる（`XlsFormatWriterTest#writesOmittedMetaAndFieldAsEmpty`） |
 | C-20(省略) | 同 省略（`null`） | — | — | — | 到達不能。`FieldDef` が `type` ＝ `null` を生成時に拒否するため入力を組めない（`issues.md` XLS-31。`steering.md` #25.5 §1-D）。根拠テスト `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `FieldDefTest#データ型が空文字のフィールド定義は生成できる` |
 | C-21(値あり) | `FieldDef.length` 値あり | ✅ | `XlsFormatWriterTest#writesFixedFileBlock` | — | 長さ行に `-` ／ `5` が原文のまま出る |
-| C-21(省略) | 同 省略（`null`） | ❌ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（`length` の値には無反応） | `XlsFormatWriterTest#roundTripsVariableFile` | **省略された `length` が出力に現れないことを、値に反応する形でアサートしているテストが無い。** 到達できるのは可変長ファイルだけだが、`XlsFormatWriter#appendRecord` は長さ行を `if (fixed)` の中でしか作らないため、可変長では `getLength()` が 1 度も読まれない。したがって同じ入力の `length` を `null` から `"5"` に変えても出力は 1 行も変わらず、根拠テストは緑のままである。行 3 がデータ行であることは C-10 の VARIABLE 側の担保であって、この行の主張ではない。**テストを足しても埋まらない**（辺③の出力が可変長では `length` に依存しない）。他の (省略)／(空) 行（C-06(省略)・C-16(省略)・C-11(空)・C-13(空)・C-14(空)）はいずれも値を入れれば落ちる形であり、本行だけが例外である。なお固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
+| C-21(省略) | 同 省略（`null`） | ❌ | `XlsFormatWriterTest#writesVariableFileWithoutLengthRow`（`length` の値には無反応） | `XlsFormatWriterTest#roundTripsVariableFile` | **省略された `length` が出力に現れないことを、値に反応する形でアサートしているテストが無い。** 到達できるのは可変長ファイルだけだが、`XlsFormatWriter#appendRecord` は長さ行を `if (fixed)` の中でしか作らないため、可変長では `getLength()` が 1 度も読まれない。したがって同じ入力の `length` を `null` から `"5"` に変えても出力は 1 行も変わらず、根拠テストは緑のままである。行 3 がデータ行であることは C-10 の VARIABLE 側の担保であって、この行の主張ではない。**テストを足しても埋まらない**（辺③の出力が可変長では `length` に依存しない）。辺③ 軸C の (省略)／(空) 行は 15 行あり、本行を除く 14 行（✅ 11 行・`—` 3 行）を全部あたった —— ✅ の 11 行はいずれもアサートが値の有無に反応する形であり、本行だけが例外である（母集団の導出コマンドと 11 行それぞれの根拠は本表の下）。なお固定長ファイル・電文の `null` は `ModelPreconditions#requireLengths` が拒否する（`issues.md` XLS-30。`FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`） |
+
+#### C-21(省略) が辺③ 軸C の (省略)／(空) 行で唯一の例外であることの照合
+
+**唯一性の主張を弱めず、照合の範囲を実際に 11 行へ広げる道を採った。** ❌ が単発の欠陥なのか
+系統的な穴なのかで読み手の受け取りが変わるため、範囲を狭めると本行の理由欄が伝えたいことが
+残らないからである。
+
+母集団（辺③ 軸C の (省略)／(空) 行）と状態の導出:
+
+```sh
+cd "$(git rev-parse --show-toplevel)"/.rn/ntf-test-data-converter/coverage
+awk '/^## 3\. /,/^## 4\. /' axis-matrix.md \
+  | grep -E '^\| C-[0-9]+\((省略|空)\)' \
+  | awk -F'|' '{id=$2; gsub(/^ +| +$/,"",id); st=$4; gsub(/ /,"",st); print st, id; c[st]++}
+               END {print "---"; for (k in c) print k, c[k]}'
+```
+
+出力は 15 行＋区切り＋集計 3 行で、集計は `✅` 11 ／ `—` 3 ／ `❌` 1 である。
+`—` の 3 行（C-15(空) ／ C-17(空) ／ C-20(省略)）は入力そのものを組めないため
+「値を入れれば落ちる」の判定対象にならない。残る `✅` 11 行が下表である。
+
+**下表の根拠は各メソッドの Then を読んだことであり、値を入れた変異を流した結果ではない**
+（変異まで流してあるのは §3.5 の E-1(1件) と §4.5 の E-4(1件) の 2 行だけである）。
+各行のアサートは、省略・空でない入力では成り立たない形になっている。
+
+| 担保テストメソッド | 軸要素 | 値の有無に反応するアサート |
+|---|---|---|
+| `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections` | C-02(空) | `workbook.getNumberOfSheets()` が `is(0)`。読み込み単位を 1 件入れるとシートが 1 枚できる |
+| `XlsFormatWriterModelTest#writesEmptySheetWhenSectionHasNoBlocks` | C-04(空) | `sheet.getPhysicalNumberOfRows()` が `is(0)` かつ `sheet.getRow(0)` が `null`。ブロックを 1 件入れると識別行ができる |
+| `XlsFormatWriterTest#writesTableBlock` | C-06(省略) | `cell(sheet,0,0)` が `SETUP_TABLE=USERS`。`groupId` に値を入れると識別セルに角括弧が挟まる |
+| `XlsFormatWriterTest#writesMarkerColumnForZeroRowTableBlock` ／ `#writesMarkerColumnForZeroRowListMapBlock` | C-08(空) | `cell(sheet,1,0)` が `[EMPTY]` かつ `sheet.getRow(1).getLastCellNum()` が 1。カラム名を入れるとその名前が出る |
+| `XlsFormatWriterModelTest#writesTableWithoutDataRowsWhenRowsAreEmpty` | C-09(空) | `sheet.getRow(2)` が `null`。データ行を 1 行入れると行 2 ができる |
+| `XlsFormatWriterTest#writesVariableFileWithoutLengthRow` | C-11(空) | `line(sheet,1)` が名前行 `["data", "f1"]`。ディレクティブを入れると行 1 がディレクティブ行になる |
+| `XlsFormatWriterModelTest#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty` | C-12(空) | `sheet.getRow(2)` が `null`。レコードレイアウトを 1 件入れると行 2 に名前行ができる |
+| `XlsFormatWriterTest#writesMessageBlock` | C-13(空) | `line(sheet,1)` が FW 制御ヘッダ行 `["requestId", "${rid}"]`。ディレクティブを入れると行 1 がディレクティブ行になる |
+| `XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo` | C-14(空) | `line(sheet,1)` が名前行 `["no", "requestId", "resendFlag"]`。`fwHeaderFields` に値を入れると行 1 が FW 制御ヘッダ行になる |
+| `XlsFormatWriterTest#allowsNullRecordTypeOnSingleRecord` | C-16(省略) | `line(sheet,1)` が `["", "f1"]`。`recordType` に値を入れると名前行の列 0 にその値が出る |
+| `XlsFormatWriterModelTest#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty` | C-18(空) | `sheet.getRow(4)` が `null`。データ行を 1 行入れると行 4 ができる |
+
 
 ### 3.4 軸D 値の表現（セル型 8 ケース。すべて `getCellType()` をアサート）
 
