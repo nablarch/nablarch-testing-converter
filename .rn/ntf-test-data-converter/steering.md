@@ -1509,8 +1509,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-24
+- **Last completed**: #29（`758491e`）。**全 29 タスクが完了**（未チェックの Steps は 0 件）
+- **Next**: 残るのは**マージ**。**#29 は #28 の sign-off（`372f862` で承認）より後に実施したため、AC を再提示してから出すかは未決** —— ユーザー判断を仰ぐこと（#29 は AC の 2 項目に触れている: 軸C の「`fileType` は `FIXED`／`VARIABLE` の両方を通す」の書き改めと、「未実施は XLS-44 の 1 件」の解消）
+- **Notes**: branch `ntf-test-data-converter`（`758491e` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 600, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**❌ は辺③ C-21(省略)（`issues.md` XLS-45）の 1 件のみ**で、これは対応不要・申し送りの束（XLS-27・XLS-39・XLS-40・XLS-42・XLS-45 の 5 件）に入っている。**別リポジトリ `nablarch-testing-yaml` の作業ツリーが clean でない**（`M .rn/ntf-yaml/steering.md` ／ `?? .rn/ntf-yaml/checks/task-16.md`。別セッションのタスク #16 の記録であり、本セッションは同リポジトリへ一切書いていない）
