@@ -1502,6 +1502,39 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 本体・yaml に書き込んでいない
 
 ---
+### #30: XLS-44 —— `FileDataBlock#fileTypeOf(DataType)` の受け口を締める
+
+**Purpose**: #29 で `fileType` を `DataType` からの導出に変えたが、導出の置き場である `FileDataBlock#fileTypeOf(DataType)` は `public static` で、**ファイル系 4 種以外の `DataType`（例 `LIST_MAP`）を渡すと黙って `VARIABLE` を返す**（`return dataType == SETUP_FIXED || dataType == EXPECTED_FIXED ? FIXED : VARIABLE;`）。呼び出し側 2 か所（`FileDataBlock#getFileType()`／`XlsFormatReader.java:207`）はいずれも手前で 4 種に絞っているため誤りは起きないが、**#29 の趣旨は「不正な状態を型で表現できなくする」ことであり、同じ亀裂が公開ヘルパの側に小さく残っている。到達可能性を理由に残さない**（ユーザー確定・2026-08-24）。
+
+**Prerequisites**: #29
+
+**Steps**:
+
+- [ ] 【赤】`FileDataBlockTest` に、`fileTypeOf` へファイル系 4 種以外の `DataType`（例 `DataType.LIST_MAP`）を渡すと `IllegalArgumentException` になることを主張するテストを**1 本だけ**足す。4 種それぞれが `FIXED`／`FIXED`／`VARIABLE`／`VARIABLE` を返すことは既存の `FileDataBlockTest#ファイル種別を4種のデータ種別から導出する` が担保しているため、足すのは拒否側の 1 本でよい（ユーザー確定・2026-08-24）
+- [ ] 【緑】`fileTypeOf` の冒頭で `PERMITTED_TYPES` を検査する（`requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType)`）。コンストラクタが既に持っている検査と同じ考え方であり、**新しい仕組みは要らない**。**XLS-36 の既存の例外メッセージと振る舞いは変えない**（`TestDataBlockTest#ファイル系でないデータ種別のファイルブロックは生成できない` が `"FileDataBlock"` を含むことを主張している）。コンストラクタ経由では検査が二重に走ることになるが、それでよい（ユーザー確定・2026-08-24）
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` で全 PASS を確認する
+- [ ] 文書を現行定義へ揃える
+  - `issues.md` —— XLS-44 の「**修正（#29）**」に続けて **1 行**足す（受け口を締めた旨）。**新しい課題番号は立てない**（ユーザー確定・2026-08-24）
+  - `inventory.md` —— テストメソッドを 1 件増やしたため、件数をコマンドから導き直して出典コマンドを併記する（Rules の #22 規定。600 → 601）
+  - `axis-matrix.md` は動かない（軸要素の担保状況は変わらないため）
+- [ ] self-check（OK/NG per completion criterion、`checks/task-30.md` に記録）
+- [ ] QA expert review（subagent）
+- [ ] Craft expert review（subagent, coding）
+- [ ] Verification expert review（subagent, test）
+- [ ] **1 コミット**にまとめて push する（ユーザー確定・2026-08-24。#29 と同じ形）
+
+**Completion criteria**:
+
+- `FileDataBlock#fileTypeOf(DataType)` にファイル系 4 種以外の `DataType` を渡すと `IllegalArgumentException` になる
+- 4 種の `DataType` に対する戻り値（`FIXED`／`FIXED`／`VARIABLE`／`VARIABLE`）と、XLS-36 の例外メッセージが**変わっていない**
+- **`null` の検査を足していない**（XLS-29 の番人を復活させない —— ユーザー確定・2026-08-24）
+- **`fileTypeOf` の可視性を下げていない**（導出の唯一の置き場であるため `public static` のままでよい）
+- `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` が全テスト PASS する
+- `issues.md` の XLS-44 に受け口を締めた旨が 1 行記録され、新しい課題番号が立っていない
+- `inventory.md` のテスト件数がコマンドから導き直され、出典コマンドが併記されている
+- 本体（`nablarch-testing`）・yaml（`nablarch-testing-yaml`）に書き込んでいない
+
+---
 
 # State
 
@@ -1509,8 +1542,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-24
-- **Last completed**: #29（`758491e`）。**全 29 タスクが完了**（未チェックの Steps は 0 件）
-- **Next**: 残るのは**マージ**。**#29 は #28 の sign-off（`372f862` で承認）より後に実施したため、AC を再提示してから出すかは未決** —— ユーザー判断を仰ぐこと（#29 は AC の 2 項目に触れている: 軸C の「`fileType` は `FIXED`／`VARIABLE` の両方を通す」の書き改めと、「未実施は XLS-44 の 1 件」の解消）
-- **Notes**: branch `ntf-test-data-converter`（`758491e` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 600, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**❌ は辺③ C-21(省略)（`issues.md` XLS-45）の 1 件のみ**で、これは対応不要・申し送りの束（XLS-27・XLS-39・XLS-40・XLS-42・XLS-45 の 5 件）に入っている。**別リポジトリ `nablarch-testing-yaml` の作業ツリーが clean でない**（`M .rn/ntf-yaml/steering.md` ／ `?? .rn/ntf-yaml/checks/task-16.md`。別セッションのタスク #16 の記録であり、本セッションは同リポジトリへ一切書いていない）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
