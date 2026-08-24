@@ -1556,14 +1556,69 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+### #31: XLS-45 —— 可変長ファイルのフィールド定義が `length` を持つ状態を中間モデルで作れなくする
+
+**Purpose**: **NTF 仕様として、可変長ファイルでは `length` を書けない**（ユーザー確定・2026-08-24。YAML 記法は未リリースであり、記法側を変更してよい）。この決定により `issues.md` **XLS-45** の「NTF 仕様としての判定」は **対応不要 → 要対応**へ変わる。中間モデルの生成時に拒否し、可変長＋`length` という状態そのものを作れなくする（`steering.md` Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」。**書き出し側の番人ではない**）。
+
+**明文の根拠**（すべて実物で確認済み）:
+
+1. **Excel 記法に可変長のフィールド長行は無い。** `nablarch-document`（ブランチ `ntf-yaml-support`）の `ja/development_tools/testing_framework/implementation/testdata_notation.rst` —— `notation:1076`「固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない点のみである。」／`notation:883`「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である。」（行番号は本書ほかと同じ `30a8271` 基準。**確認時の HEAD は `3132688`** であり、同ブランチの HEAD でも `:1076` の本文は一致した）
+2. **可変長では数値の `length` は NTF 実行時に使われない。** 本体 `nablarch-testing` の `nablarch/test/core/file/VariableLengthFileFragment.java` の `createFieldDefinition` は `setName`／`setPosition`／`setEncoding` だけを設定し、`lengths` を一度も読まない（同ファイルに `lengths` の出現は 0 件。`addValue` の上書きも無い）
+3. **`"-"` だけは効いてしまう。** 同 `nablarch/test/core/file/DataFileFragment.java` の `setLengths` が `"-"` を `isOndemandCalcFieldSizeList` に立て、`addValue` が該当フィールドの値に `removeLineSeparatorWithTrim`（改行と前後空白の除去）を掛ける。**これは長さの指定ではなく値の整形であり、フィールド長の枠に相乗りしている。**可変長でこれが起きるのは相乗りの結果であって、追認すべき仕様ではない
+
+**Prerequisites**: #30
+
+**やらないこと**（ユーザー確定・2026-08-24）:
+
+- **辺③④のライタに番人や WARN を足さない。** 可変長が `length` を持てなくなれば、`XlsFormatWriter` が黙って落とす経路も `YamlFormatWriter` の非対称も、両方とも到達しなくなる
+- **`YamlTestDataValidator` を改修しない。** スキーマをクラスパスの `/nablarch/test/ntf-testdata-yaml-schema.json` から読むだけなので、スキーマ側の対応が入れば V-SCH は自動で追随する。スキーマ対応が入るまで V-SCH が通ることは織り込み済みでよい
+- **本体（`nablarch-testing`）を直さない。** 可変長で `length` が来なくなれば `nablarch-testing-yaml` の `YamlFileBuilder` にある `messaging || hasLength` の分岐が偽になり、上記のトリム経路に入らない。**放置ではなく到達しなくなる**
+- **固定長側の既存の振る舞い・例外メッセージを変えない**（既存テストが文言を主張している）
+- **メッセージ系（`messaging`）は常に固定長なので影響しない**
+- **`nablarch-testing`・`nablarch-testing-yaml` に書き込まない**
+
+**Steps**:
+
+- [ ] 【赤】`FileDataBlockTest` に、可変長のデータ種別（`SETUP_VARIABLE`／`EXPECTED_VARIABLE`）で `length` を持つフィールド定義のブロックが `IllegalArgumentException` で拒否されることを主張するテストを足す。**`"-"` も同じく拒否されること**を含める（`"-"` は長さの指定ではなく値の整形の指示であり、フィールド長の枠に相乗りしているだけである）
+- [ ] 【赤】辺②の**実ファイル経路**で、可変長ファイルのフィールドに `length` を書いた YAML が `IllegalArgumentException` で落ちることを主張するテストを `YamlFormatReaderInvalidInputTest` に足す（**`loadRawMap` 差し替えの in-memory 経路は担保に数えない**。スキーマは現時点で可変長の `length` を許すため、`YamlTestDataValidator` は通り、中間モデルの生成時に落ちる）
+- [ ] 【緑】`ModelPreconditions` に可変長側の検査を足し、`FileDataBlock` のコンストラクタから呼ぶ（`getFileType() == FIXED` のときは既存の `requireLengths`、`VARIABLE` のときは新しい検査）。**固定長側の既存メッセージは変えない**
+- [ ] 【緑】Javadoc を揃える —— `FieldDef`（「可変長ファイルでは省略可（`null` 可）」→ 可変長では `length` を持てない）／`FileDataBlock`／`ModelPreconditions`（「可変長ファイルは呼び出さない」の段）
+- [ ] 【緑】既存テストのうち可変長＋`length` を組んでいるものがあれば、その意図ごと見直す
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` で全 PASS を確認する
+- [ ] 文書を現行定義へ揃える（`steering.md`／`coverage/inventory.md`／`coverage/issues.md`／`coverage/axis-matrix.md`。`checks/` は揃えない）
+  - `issues.md` XLS-45 —— **見出しと判定を「要対応・#31 で修正済み」へ改める**。「NTF 仕様としての判定: 対応不要（明文に反していない）」の段は、上記の決定で覆ったことを明記して**書き直す（消さず、経緯が追える形で）**
+  - `issues.md` 冒頭の内訳 —— 要対応 26 → 27／対応不要 28 → 27（合計 57 は不変）。判定欄の**導出コマンドを実行して**値を導き直す。「判断」と「NTF 仕様としての判定」が食い違う一覧から **XLS-45 を外す**（14 件 → 13 件）
+  - `issues.md` XLS-45 の申し送りの節 —— **問いではなくなった。**「無視／禁止／任意のどれか決めてほしい」から「**禁止で確定**（ユーザー確定・2026-08-24）。スキーマと解説書の対応を別途依頼済み」へ書き直し、**申し送りの束の表からも外す**（束は 4 件になる）
+  - `steering.md` Rules —— 申し送りの束の列挙を 4 件（XLS-27・XLS-39・XLS-40・XLS-42）へ改める
+  - `axis-matrix.md` —— **辺③ 軸C の C-21(省略) の ❌ が動くかを導出コマンドから確かめて報告する**（こちらでは断定していない）。動くなら表・§5.2・§0.3 系の集計をコマンドから導き直す
+  - `inventory.md` —— テストメソッドを増やしたため、件数をコマンドから導き直して出典コマンドを併記する（Rules の #22 規定）
+- [ ] self-check（OK/NG per completion criterion、`checks/task-31.md` に記録）
+- [ ] **1 コミット**にまとめて push する（レビュア subagent は回さない —— Rules・ユーザー確定 2026-08-24）
+
+**Completion criteria**:
+
+- **可変長の `FileDataBlock` を `length` 付きで生成できない**（`SETUP_VARIABLE`／`EXPECTED_VARIABLE` で `length` が非 `null` のフィールド定義を含むと `IllegalArgumentException`。`"-"` も含む）。**拒否は中間モデルの生成時であって、書き出し側の番人ではない**
+- 辺②の**実ファイル経路**で、可変長ファイルのフィールドに `length` を書いた YAML が落ちる（`loadRawMap` 差し替えの in-memory 経路は担保に数えない）
+- **固定長側の振る舞いと例外メッセージが変わっていない**
+- **辺③④のライタに番人も WARN も足していない**／**`YamlTestDataValidator` を改修していない**
+- `issues.md` XLS-45 の見出しと判定が「要対応・#31 で修正済み」になっており、旧判定（対応不要）が覆った経緯が残っている
+- `issues.md` 冒頭の件数（要対応／対応不要）が導出コマンドから導き直されている
+- XLS-45 の申し送りが「禁止で確定」へ書き直され、申し送りの束の表が 4 件になっている（`steering.md` Rules の列挙も 4 件）
+- `axis-matrix.md` の辺③ 軸C C-21(省略) について、❌ が動くか動かないかが**導出コマンドの出力とともに**報告されている
+- `inventory.md` のテスト件数がコマンドから導き直され、出典コマンドが併記されている
+- `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` が全テスト PASS する
+- 本体（`nablarch-testing`）・yaml（`nablarch-testing-yaml`）に書き込んでいない
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-24
-- **Last completed**: #30（`34e78cc` ＋ 続きの `ba84c2d`。いずれも push 済み）。**全 30 タスクが完了**（未チェックの Steps は 0 件）
-- **Next**: **#30 は承認済み（`/rn:ty`・2026-08-24。`34e78cc` ＋ `ba84c2d`）。全 30 タスク完了。**次は、ユーザーから渡される予定の要対応 1 件を受け取ること（内容は未受領）。**マージ可否の判断は出さない**
-- **Notes**: branch `ntf-test-data-converter`（`ba84c2d` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 602, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。持ち越しの制約は Rules に記録済み（レビュア subagent を回さない／申し送りの束は出さない／「要対応 0 件」と書かない）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
