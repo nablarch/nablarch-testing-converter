@@ -1349,9 +1349,20 @@ public class YamlFormatReaderInvalidInputTest {
      * <b>スキーマ検証は通る。</b>本体スキーマ {@code $defs.field_def.properties.length} は可変長で
      * {@code length} を禁じておらず（「可変長ファイルでは不要（省略可）」とだけ書く）、
      * {@code YamlTestDataValidator} はそのスキーマをクラスパスから読むだけである。
-     * <b>スキーマ側の対応が入れば検証の段で落ちるようになるが、そのときも本テストは緑のままである</b>
-     * （落ちる段が前へ動くだけで、例外の型は変わる可能性がある——そのため型ではなくメッセージで
-     * 突き合わせず、converter 側の番人が出す文言だけを主張する）。
+     * <b>そのため今は、converter 側の中間モデルの生成時に {@code IllegalArgumentException} で落ちる。</b>
+     * 本テストはその型とメッセージの両方を主張している。
+     * </p>
+     *
+     * <p>
+     * <b>スキーマ側の対応が入れば、本テストは落ちる。</b>落ちる段がスキーマ検証まで前へ動き、
+     * 例外が {@code YamlSchemaValidationException} へ変わるためである。同クラスは
+     * {@code IllegalStateException} を継承しており（nablarch-testing-yaml の
+     * {@code src/main/java/nablarch/test/core/reader/yaml/YamlSchemaValidationException.java:12}
+     * （{@code a5cb6dd} 時点）「{@code public class YamlSchemaValidationException extends IllegalStateException}」）、
+     * {@code IllegalArgumentException} のサブクラスではない。{@code YamlFixture.read} が包み直さないことは、
+     * 同じ経路でこの例外をそのまま受ける {@link #failsWithSchemaValidationExceptionWhenFieldTypeIsMissing}
+     * から分かる。<b>そのときは本テストを、スキーマ違反を主張する形（{@code assertSchemaViolation}）へ
+     * 書き替える。</b>
      * </p>
      *
      * <p>担保する軸要素: なし（XLS-45 の根拠テスト。辺②の実ファイル経路で落ちることの担保）。</p>

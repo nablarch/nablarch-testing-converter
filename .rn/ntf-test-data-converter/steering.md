@@ -1595,7 +1595,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
   - `inventory.md` —— テストメソッドを増やしたため、件数をコマンドから導き直して出典コマンドを併記する（Rules の #22 規定）
 - [x] self-check（OK/NG per completion criterion、`checks/task-31.md` に記録）
 - [x] **1 コミット**にまとめて push する（レビュア subagent は回さない —— Rules・ユーザー確定 2026-08-24）
-- [ ] **【差し戻し対応・2026-08-24】**`YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml` の Javadoc と `checks/task-31.md` 2 行目の Evidence を実物どおりへ直す —— 「今は converter の生成時に落ちる」／「スキーマ側の対応が入ると落ちる段が前へ動き、例外が `YamlSchemaValidationException`（`IllegalStateException` 系）へ変わるため本テストは落ちる」／「そのときは本テストをスキーマ違反を主張する形へ書き替える」の 3 点。**テスト本文・アサートは変えない**（現状の主張は正しい）／**`src/main` を触らない**／**ほかは直さない**。1 コミット
+- [x] **【差し戻し対応・2026-08-24】**`YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml` の Javadoc と `checks/task-31.md` 2 行目の Evidence を実物どおりへ直す —— 「今は converter の生成時に落ちる」／「スキーマ側の対応が入ると落ちる段が前へ動き、例外が `YamlSchemaValidationException`（`IllegalStateException` 系）へ変わるため本テストは落ちる」／「そのときは本テストをスキーマ違反を主張する形へ書き替える」の 3 点。**テスト本文・アサートは変えない**（現状の主張は正しい）／**`src/main` を触らない**／**ほかは直さない**。1 コミット
 
 **Completion criteria**:
 
