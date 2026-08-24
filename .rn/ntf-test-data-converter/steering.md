@@ -1621,6 +1621,6 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-08-24
-- **Last completed**: #30（`34e78cc` ＋ `ba84c2d`。承認済み）。**#31 は差し戻しを受けて `8a6c158` で対応し、push 済み。再判定待ち**（未チェックの Steps は 0 件）
-- **Next**: **#31 の再判定を受け取ること**（`/rn:ty` または `/rn:gm`）。**マージ可否の判断は出さない**（Rules。#31 完了後も同じ）
-- **Notes**: branch `ntf-test-data-converter`（`8a6c158` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 605, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS、`git diff 96b5aea..HEAD -- src/main/` は空。**差し戻しで指摘された `checks/task-31.md` 2 行目の「緑のまま」の断定は、実物には無かった**（不完全な記述だったため 3 点を書き足した）—— この報告への応答は未受領。**#31 で導き直した台帳の宣言値のずれ 7 か所のうち 2 件は出所が未確認**（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件）—— 表は `checks/task-31.md`「台帳の宣言値のずれ」。持ち越しの制約は Rules に記録済み
+- **Last completed**: **#31（`8a6c158`。ユーザー承認済み・2026-08-24）**。これで **#1〜#31 の全 31 タスクが完了**した
+- **Next**: **新しいタスクを起こす指示を待つ**（指示が来るまで State は `paused` のまま）。**マージ可否の判断は出さない**（Rules。調整側が出す）
+- **Notes**: branch `ntf-test-data-converter`（`8a6c158` push 済み・作業ツリーはクリーン）。#31 の承認時にユーザーが検証した出典 —— `YamlSchemaValidationException.java:12`（nablarch-testing-yaml `a5cb6dd`）が `extends IllegalStateException`／converter 側 `:135`・`:382` の引用一致／`git diff 96b5aea..HEAD -- src/main/` は空／`src/` 差分は 1 ファイル +14/-3 で Javadoc 行のみ。**差し戻し時の「同じ断定が `checks/task-31.md` にも残っている」という指摘はユーザー自身が撤回した**（`96b5aea` の全体 grep で「緑のまま」のヒットは Javadoc 1 か所のみ）。steering の Rules 追記（他リポジトリの挙動には rev 付き出典を添える）は妥当と確認され、そのまま残す。**#31 で導き直した台帳の宣言値のずれ 7 か所のうち 2 件は出所が未確認**（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件）—— 表は `checks/task-31.md`「台帳の宣言値のずれ」。**申し送りの束 4 件（XLS-27・XLS-39・XLS-40・XLS-42）は未提出**（出す判断は調整側）
