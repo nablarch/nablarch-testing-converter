@@ -1619,8 +1619,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-24
+- **Last completed**: #30（`34e78cc` ＋ `ba84c2d`。承認済み）。**#31 は差し戻しを受けて `8a6c158` で対応し、push 済み。再判定待ち**（未チェックの Steps は 0 件）
+- **Next**: **#31 の再判定を受け取ること**（`/rn:ty` または `/rn:gm`）。**マージ可否の判断は出さない**（Rules。#31 完了後も同じ）
+- **Notes**: branch `ntf-test-data-converter`（`8a6c158` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 605, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS、`git diff 96b5aea..HEAD -- src/main/` は空。**差し戻しで指摘された `checks/task-31.md` 2 行目の「緑のまま」の断定は、実物には無かった**（不完全な記述だったため 3 点を書き足した）—— この報告への応答は未受領。**#31 で導き直した台帳の宣言値のずれ 7 か所のうち 2 件は出所が未確認**（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件）—— 表は `checks/task-31.md`「台帳の宣言値のずれ」。持ち越しの制約は Rules に記録済み
