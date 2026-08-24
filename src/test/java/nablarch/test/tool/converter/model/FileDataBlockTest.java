@@ -232,6 +232,40 @@ public class FileDataBlockTest {
         }
     }
 
+    /**
+     * XLS-44 ／ XLS-34。導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
+     * <b>{@code null} を {@link IllegalArgumentException} で拒否する</b>。
+     * <p>
+     * データブロックは必ず 1 つのデータタイプを持つ（Excel 形式はマーカー、YAML 形式は
+     * トップレベルキーがデータタイプから決まるため、<b>データタイプの無いブロックはどちらの形式でも
+     * 書けない</b> —— {@code coverage/issues.md} <b>XLS-34</b>）。{@code null} に対する答えは
+     * そこで確定しており、{@link TestDataBlock} のコンストラクタは同じ入力を
+     * {@link IllegalArgumentException} で拒否している。<b>受け口によって
+     * {@link NullPointerException} と {@link IllegalArgumentException} に分かれてよい理由は無い。</b>
+     * </p>
+     * <p>
+     * 主張は例外の種類とメッセージの趣旨の両方に掛ける。種類だけを主張すると、メッセージ組み立ての
+     * {@code dataType.getName()} が投げる {@link NullPointerException} を
+     * {@link IllegalArgumentException} で包み直す実装（趣旨の異なるメッセージになる）が通ってしまう。
+     * </p>
+     */
+    @Test
+    public void データ種別がnullではファイル種別を導出できない() {
+        // When / Then: NullPointerException ではなく IllegalArgumentException で落ちる
+        try {
+            FileDataBlock.fileTypeOf(null);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat("データ種別が null である旨がメッセージに出るべき",
+                    e.getMessage(), containsString("データ種別が null"));
+            // XLS-34 の趣旨（データタイプの無いブロックはどちらの形式でも書けない）であること
+            assertThat("XLS-34 の趣旨がメッセージに出るべき",
+                    e.getMessage(), containsString("どちらの形式でも書けません"));
+            assertThat("ブロック名がメッセージに出るべき",
+                    e.getMessage(), containsString("FileDataBlock"));
+        }
+    }
+
     private static void assertDerivedFileType(DataType dataType, FileType expected) {
         // 静的受け口の受理側を直接主張する（コンストラクタ経由の間接担保に頼らない）
         assertThat(FileDataBlock.fileTypeOf(dataType), is(expected));

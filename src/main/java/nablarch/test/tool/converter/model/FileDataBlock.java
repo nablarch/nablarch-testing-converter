@@ -106,13 +106,16 @@ public final class FileDataBlock extends TestDataBlock {
      * <b>導出の対応が定まっているのはこの 4 種だけであり、それ以外のデータ種別は受け口で拒否する</b>
      * （{@code coverage/issues.md} <b>XLS-44</b>）。検査はコンストラクタと同じ
      * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} による
-     * （コンストラクタ経由では二重に走るが、それでよい）。
+     * （コンストラクタ経由では二重に走るが、それでよい）。<b>{@code null} も同じ検査が
+     * {@link IllegalArgumentException} で拒否する</b> —— データタイプの無いブロックはどちらの形式でも
+     * 書けず（{@code coverage/issues.md} <b>XLS-34</b>）、{@link TestDataBlock} のコンストラクタが
+     * 同じ入力を拒否しているため、<b>受け口によって例外の種類が分かれる状態は残さない</b>。
      * </p>
      *
-     * @param dataType データ種別（{@code null} は検査しない。渡した場合の例外の種類は規定しない）
+     * @param dataType データ種別（{@code null} 不可）
      * @return 固定長系（SETUP_FIXED ／ EXPECTED_FIXED）なら {@link FileType#FIXED}、
      *         可変長系（SETUP_VARIABLE ／ EXPECTED_VARIABLE）なら {@link FileType#VARIABLE}
-     * @throws IllegalArgumentException {@code dataType} が非 {@code null} で、かつ SETUP_FIXED ／
+     * @throws IllegalArgumentException {@code dataType} が {@code null} の場合、または SETUP_FIXED ／
      *                                  EXPECTED_FIXED ／ SETUP_VARIABLE ／ EXPECTED_VARIABLE の
      *                                  いずれでもない場合
      */

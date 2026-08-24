@@ -60,3 +60,32 @@
   うち `FileDataBlock#getFileType()` は非 `null` が保証された `getDataType()` を渡し（`TestDataBlock`
   のコンストラクタが `null` を拒否）、`XlsFormatReader#readFileBlocks` は呼び出し元でファイル系 4 種に
   絞っている。タスクの禁止事項どおり `null` 検査は足していない。**レビュー 2 巡目で `issues.md` XLS-44 に記録した**（`public static` かつ maven プラグイン配布のため、リポジトリ外の呼び出し側には非互換である旨も併記）。
+
+---
+
+## 追加分（`fileTypeOf(null)` を閉じる。2026-08-24。ユーザー確定により #30 の続きとして実施）
+
+**上の表は 1 コミット目（`34e78cc`）時点の記録であり、そのまま残す**（`checks/` は時点の証拠記録であるため
+書き換えない —— `steering.md` Rules「文書の揃え方」）。**ただし「`null` の検査を足していない」の行と、
+QA 欄・申し送りが述べる「`fileTypeOf(null)` は `NullPointerException` になる」「リポジトリ外の
+呼び出し側には非互換」は、この追加分で覆っている。** 現行の正はこの節と `issues.md` XLS-44 である。
+
+| Criterion（追加分） | Self-check | Evidence |
+|---|---|---|
+| `FileDataBlock.fileTypeOf(null)` が `IllegalArgumentException` になる（`NullPointerException` にならない） | OK | `TestDataBlock#requireDataTypeOf` の冒頭に `dataType == null` の分岐を足し、XLS-34 と同じ趣旨のメッセージで投げる。【赤】実装前の `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn test -Djacoco.skip=true -Dtest=FileDataBlockTest` は `Tests run: 16, Failures: 0, Errors: 1` で `java.lang.NullPointerException: Cannot invoke "nablarch.test.core.reader.DataType.getName()" because "dataType" is null`（`FileDataBlockTest.java:256`）。【緑】同コマンドは `Tests run: 16, Failures: 0, Errors: 0, Skipped: 0` で BUILD SUCCESS |
+| メッセージの趣旨が XLS-34 と同じ | OK | 実装のメッセージは「データ種別が null のデータブロックを FileDataBlock として作ることはできません（データブロックは必ず 1 つのデータタイプを持ちます。Excel 形式はマーカー、YAML 形式はトップレベルキーがデータタイプから決まるため、データタイプの無いブロックはどちらの形式でも書けません）。」。括弧内は `TestDataBlock` のコンストラクタ（XLS-34）の文面と同一。テストは `"データ種別が null"` ／ `"どちらの形式でも書けません"` ／ `"FileDataBlock"` の 3 つを主張する（種類だけを主張すると、NPE を IAE で包み直す実装が通ってしまうため） |
+| `requireDataTypeOf` の既存メッセージ本文を変えていない（`null` は別の分岐） | OK | `git diff` の `TestDataBlock.java` は「`if (dataType == null) { throw … }`」ブロックの追加と Javadoc のみ。`!permitted.contains(dataType)` 側の文字列リテラルは 1 文字も動いていない。XLS-36 の文言を主張する `TestDataBlockTest#ファイル系でないデータ種別のファイルブロックは生成できない` ／ `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない` はいずれも PASS |
+| `fileTypeOf` に独自の例外メッセージを持たせていない | OK | `FileDataBlock.java` の変更は Javadoc のみ（`git diff` の実装行の増減は 0）。`fileTypeOf` は `requireDataTypeOf` を呼ぶ 1 行のまま |
+| 既存の振る舞いが変わっていない（コンストラクタ経路） | OK | `super(dataType, …)` が先に `null` を落とすため `requireDataTypeOf` に `null` は届かない。`TestDataBlockTest`（`Tests run: 12, Failures: 0`）を含め全 602 件が PASS で、期待値を書き換えた既存テストは 0 件 |
+| Javadoc から「例外の種類は規定しない」が消え、`@throws` の「非 `null` で、かつ」の限定も外れている | OK | `grep -rn '例外の種類は規定しない' src/` → ヒット 0 件。`FileDataBlock#fileTypeOf` は `@param dataType データ種別（{@code null} 不可）` ／ `@throws IllegalArgumentException {@code dataType} が {@code null} の場合、または …`、`TestDataBlock#requireDataTypeOf` も同形 |
+| `issues.md` XLS-44 の `fileTypeOf(null)` の記述が書き直され、非互換の記述の前提が検証されている | OK | 「非互換」の記述は**落とした**。検証: `git log --oneline -S'fileTypeOf' -- src/main/java/nablarch/test/tool/converter/model/FileDataBlock.java` → `758491e`（#29）の 1 件のみ＝ #29 で新設したメソッドである。`git branch -a --contains 758491e` → `ntf-test-data-converter` と `remotes/origin/ntf-test-data-converter` の 2 つのみ、`git merge-base --is-ancestor 758491e origin/main` は非 0（`origin/main` の祖先ではない）。`git tag` → 0 件。`pom.xml` の `<version>` は `1.0.0-SNAPSHOT`。**`fileTypeOf` を含む版はまだ配布されておらず、外部呼び出し側は存在しえない** |
+| `inventory.md` の件数がコマンドから導き直され、出典コマンドが併記されている | OK | §0.1-2 に「追補その 11（2026-08-24 実測）」を追加。① `grep -rc '^    @Test' src/test --include=*.java \| awk -F: '{s+=$2} END {print s}'` → **602**、② `grep -rn '^    @Ignore' src/test --include=*.java` → 既存 2 件（YML-14・XLS-40）、③ `git grep -c '^    @Test'` → `8c327d0: 536` ／ **`HEAD: 602`**（追補その 10 と同じ注記つき —— 記録時の `HEAD` ＝ `b59104b` は 601 で、この続きの 1 コミットが載った状態で 602 になる） |
+| `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` が全テスト PASS する | OK | `Tests run: 602, Failures: 0, Errors: 0, Skipped: 2` ／ `BUILD SUCCESS`。`Skipped: 2` は既存の `@Ignore`（YML-14・XLS-40）で増減なし |
+| 本体（`nablarch-testing`）・yaml（`nablarch-testing-yaml`）に書き込んでいない | OK | 追加分の作業で両リポジトリのファイルは 1 つも開いていない（変更は当リポジトリの `src/main` 2 本・`src/test` 1 本・`.rn/` 3 本のみ。`git diff --stat` で確認） |
+
+**レビュア subagent は回していない**（`steering.md` Rules「#30 以降、レビュア subagent は回さない」。
+ユーザー確定・2026-08-24）。差分はユーザーが全行読む。
+
+**逸脱の追認（ユーザー・2026-08-24）**: 1 コミット目で逸脱として報告した 2 件 —— `inventory.md` の
+件数をコマンドから導き直したこと／`TestDataBlock` の Javadoc を訂正したこと —— は
+**いずれも Rules に従った結果であり、直さないほうが誤りだった**として追認された。

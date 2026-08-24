@@ -1527,13 +1527,13 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **追加ステップ（`fileTypeOf(null)` を閉じる。ユーザー確定・2026-08-24）** —— **#30 の承認は「`fileTypeOf(null)` を閉じるまで」を条件とする。**`34e78cc` はそのまま残し、続きを **1 コミット**で足す。`fileTypeOf(null)` が `NullPointerException` になる状態を残さない —— `TestDataBlock` のコンストラクタは同じ入力を「データ種別が null のデータブロックは作れません」で拒否しており、**判定は XLS-34 で確定済み**（データタイプの無いブロックはどちらの形式でも書けない）である。決まっている答えがあるのに受け口によって NPE と IAE に分かれるのは、#30 が閉じようとした穴の残りである。「`null` は検査しない。渡した場合の例外の種類は規定しない」を production の契約に書くのは、**決めていないことを契約にしたもの**であり暫定対応にあたる。
 
-- [ ] 【赤】`FileDataBlockTest` に、`FileDataBlock.fileTypeOf(null)` が `IllegalArgumentException` になることを主張するテストを **1 本**足す（現状は `NullPointerException`）
-- [ ] 【緑】`TestDataBlock#requireDataTypeOf` に `null` の分岐を足し、**XLS-34 と同じ趣旨のメッセージ**で `IllegalArgumentException` を投げる。**既存メッセージ本文は変えない**（`permitted.contains` 側の XLS-36 のメッセージは既存テストが文言を主張しているため無変更。`null` は**別の分岐**として足す）。**`fileTypeOf` に独自の例外メッセージを持たせない**（ユーザー確定・2026-08-24。`fileTypeOf(LIST_MAP)` のメッセージも XLS-36 のままでよい —— そこで拒否している事実は「そのデータ種別は `FileDataBlock` の系統ではない」でコンストラクタと同一であり、独自メッセージにすると `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない` が主張している「生成時と同じ検査による拒否」という担保が崩れる）
-- [ ] Javadoc から「`null` は検査しない。渡した場合の例外の種類は規定しない」を消し、`@throws` の「非 `null` で、かつ」の限定も外す（`FileDataBlock#fileTypeOf` ／ `TestDataBlock#requireDataTypeOf` の 2 か所）
-- [ ] `issues.md` XLS-44 の「`fileTypeOf(null)` は `VARIABLE` → `NullPointerException` に変わる」を書き直す。**あわせて非互換の記述を検証する** —— `fileTypeOf` は #29 で新設したメソッドであり、それ以前に外部から呼べた API ではない。「外部呼び出し側には非互換」と言えるのは #29 以降の版を誰かが使っている場合だけなので、その前提が立つか確かめ、**立たないなら非互換の記述は落とす**
-- [ ] `inventory.md` のテスト件数をコマンドから導き直す（Rules の #22 規定）
-- [ ] `checks/task-30.md` に追加分の self-check を追記する
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全 PASS を確認し、**1 コミット**にまとめて push する
+- [x] 【赤】`FileDataBlockTest` に、`FileDataBlock.fileTypeOf(null)` が `IllegalArgumentException` になることを主張するテストを **1 本**足す（現状は `NullPointerException`）
+- [x] 【緑】`TestDataBlock#requireDataTypeOf` に `null` の分岐を足し、**XLS-34 と同じ趣旨のメッセージ**で `IllegalArgumentException` を投げる。**既存メッセージ本文は変えない**（`permitted.contains` 側の XLS-36 のメッセージは既存テストが文言を主張しているため無変更。`null` は**別の分岐**として足す）。**`fileTypeOf` に独自の例外メッセージを持たせない**（ユーザー確定・2026-08-24。`fileTypeOf(LIST_MAP)` のメッセージも XLS-36 のままでよい —— そこで拒否している事実は「そのデータ種別は `FileDataBlock` の系統ではない」でコンストラクタと同一であり、独自メッセージにすると `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない` が主張している「生成時と同じ検査による拒否」という担保が崩れる）
+- [x] Javadoc から「`null` は検査しない。渡した場合の例外の種類は規定しない」を消し、`@throws` の「非 `null` で、かつ」の限定も外す（`FileDataBlock#fileTypeOf` ／ `TestDataBlock#requireDataTypeOf` の 2 か所）
+- [x] `issues.md` XLS-44 の「`fileTypeOf(null)` は `VARIABLE` → `NullPointerException` に変わる」を書き直す。**あわせて非互換の記述を検証する** —— `fileTypeOf` は #29 で新設したメソッドであり、それ以前に外部から呼べた API ではない。「外部呼び出し側には非互換」と言えるのは #29 以降の版を誰かが使っている場合だけなので、その前提が立つか確かめ、**立たないなら非互換の記述は落とす**
+- [x] `inventory.md` のテスト件数をコマンドから導き直す（Rules の #22 規定）
+- [x] `checks/task-30.md` に追加分の self-check を追記する
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全 PASS を確認し、**1 コミット**にまとめて push する
 
 **やらないこと**（ユーザー確定・2026-08-24）: `requireDataTypeOf` の既存メッセージ本文を変えない／`fileTypeOf` に独自の例外メッセージを持たせない／辺③④のライタに番人や WARN を足さない／`nablarch-testing`・`nablarch-testing-yaml` に書き込まない。
 

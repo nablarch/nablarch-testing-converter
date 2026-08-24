@@ -166,18 +166,32 @@ public abstract sealed class TestDataBlock
      * <b>ただしコンストラクタ以外（{@link FileDataBlock#fileTypeOf(DataType)}）からも直接呼ばれるため、
      * {@code null} ／ {@link DataType#DEFAULT} がここへ届く経路がある。</b>
      * その場合 {@link DataType#DEFAULT} は XLS-20 の専用メッセージにならず、このメソッドの
-     * {@code IllegalArgumentException}（XLS-36 のメッセージ）になる。{@code null} は下のメッセージ
-     * 組み立ての {@code dataType.getName()} で落ちるため、例外の種類は規定しない。
+     * {@code IllegalArgumentException}（XLS-36 のメッセージ）になる。
+     * <b>{@code null} はこのメソッド自身が {@link IllegalArgumentException} で拒否する</b> ——
+     * データブロックは必ず 1 つのデータタイプを持ち、データタイプの無いブロックはどちらの形式でも
+     * 書けない（{@code coverage/issues.md} <b>XLS-34</b>）。答えは
+     * {@link #TestDataBlock(DataType, String, String)} で確定しており、<b>受け口によって
+     * {@link NullPointerException} と {@link IllegalArgumentException} に分かれる状態は残さない</b>
+     * （メッセージの趣旨はコンストラクタと同じで、文面は本メソッド専用のもの）。
      * </p>
      *
      * @param blockClass 具体ブロックのクラス
      * @param permitted  そのクラスが取りうるデータ種別
-     * @param dataType   検査するデータ種別（{@code null} は検査しない。渡した場合の例外の種類は規定しない）
-     * @throws IllegalArgumentException {@code dataType} が非 {@code null} で、かつ {@code permitted} に
-     *                                  含まれない場合（{@link DataType#DEFAULT} を含む）
+     * @param dataType   検査するデータ種別（{@code null} 不可）
+     * @throws IllegalArgumentException {@code dataType} が {@code null} の場合、または
+     *                                  {@code permitted} に含まれない場合
+     *                                  （{@link DataType#DEFAULT} を含む）
      */
     static void requireDataTypeOf(Class<? extends TestDataBlock> blockClass,
                                   Set<DataType> permitted, DataType dataType) {
+        if (dataType == null) {
+            throw new IllegalArgumentException(
+                    "データ種別が null のデータブロックを "
+                            + blockClass.getSimpleName() + " として作ることはできません"
+                            + "（データブロックは必ず 1 つのデータタイプを持ちます。Excel 形式は"
+                            + "マーカー、YAML 形式はトップレベルキーがデータタイプから決まるため、"
+                            + "データタイプの無いブロックはどちらの形式でも書けません）。");
+        }
         if (!permitted.contains(dataType)) {
             throw new IllegalArgumentException(
                     "データ種別 " + dataType.getName() + " のデータブロックを "

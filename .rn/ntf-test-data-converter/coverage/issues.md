@@ -4280,13 +4280,34 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
     （それまでは `public static` の受け口が黙って `VARIABLE` を返していた。到達可能性を理由に残さない ——
     ユーザー確定・2026-08-24）。担保は
     `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない`。
-  - **`fileTypeOf(null)` の振る舞いが変わった（#30。非互換）** —— 変更前は黙って `VARIABLE` を
-    返していたが、変更後は `NullPointerException` になる（`EnumSet.contains(null)` が `false` を返し、
-    `requireDataTypeOf` のメッセージ組み立ての `dataType.getName()` で落ちる）。`null` 検査を足さない
-    判断（XLS-29 の番人を復活させない）の帰結である。**`fileTypeOf` は `public static` で、この成果物は
-    maven プラグインとして配布されるため、リポジトリ外の呼び出し側にとっては非互換**である。
-    リポジトリ内に該当する呼び出しは無い（呼び出しは `FileDataBlock#getFileType()` と
-    `XlsFormatReader#readFileBlocks` の 2 か所で、いずれも手前でファイル系 4 種に絞っている）。
+  - **`fileTypeOf(null)` も `IllegalArgumentException` で閉じた（#30 の続き。ユーザー確定・2026-08-24）**
+    —— `TestDataBlock#requireDataTypeOf` に `null` の分岐を足し、XLS-34 と同じ趣旨のメッセージ
+    （「データ種別が null のデータブロックを FileDataBlock として作ることはできません（…データタイプの
+    無いブロックはどちらの形式でも書けません）。」）で拒否する。**受け口によって `NullPointerException` と
+    `IllegalArgumentException` に分かれる状態を残さないためである** —— `null` に対する答えは
+    **XLS-34 で確定済み**であり、`TestDataBlock` のコンストラクタは同じ入力を
+    `IllegalArgumentException` で拒否している。「`null` は検査しない。渡した場合の例外の種類は規定しない」を
+    production の契約に書くのは、決めていないことを契約にしたものであり暫定対応にあたる。担保は
+    `FileDataBlockTest#データ種別がnullではファイル種別を導出できない`。
+    - **経緯**: `#30` の 1 コミット目（`34e78cc`）の時点では `fileTypeOf(null)` は
+      `NullPointerException` になっていた（`EnumSet.contains(null)` が `false` を返し、
+      `requireDataTypeOf` のメッセージ組み立ての `dataType.getName()` で落ちるため）。`null` 検査を
+      足さない当初の判断（XLS-29 の番人を復活させない）の帰結だったが、**XLS-29 の番人は
+      `fileType` ＝ `null` の拒否であり、そのフィールド自体が #29 で消えている**。ここで足したのは
+      `dataType` ＝ `null` の拒否（XLS-34）であって、番人の復活ではない。
+    - **既存の振る舞いは変えていない** —— コンストラクタ経路では `super(...)` が先に `null` を落とすため
+      `requireDataTypeOf` に `null` は届かない。変わったのは `fileTypeOf(null)` だけである。
+      XLS-36 のメッセージ本文も無変更（`null` は別の分岐として足した）。
+    - **非互換ではない**（2026-08-24 に前提を検証して記述を落とした）。`fileTypeOf` は **#29 で新設した
+      メソッド**であり（`git log -S'fileTypeOf' -- src/main/java/nablarch/test/tool/converter/model/FileDataBlock.java`
+      → `758491e` の 1 件のみ）、それ以前に外部から呼べた API ではない。「外部呼び出し側には非互換」と
+      言えるのは #29 以降の版を誰かが使っている場合だけだが、**`758491e` は
+      `ntf-test-data-converter` ブランチ（と同名のリモート追跡ブランチ）にしか存在せず、
+      `origin/main` の祖先ではない**（`git branch -a --contains 758491e` ／
+      `git merge-base --is-ancestor 758491e origin/main` が非 0）。**タグは 0 件**（`git tag`）、
+      バージョンは `1.0.0-SNAPSHOT`（`pom.xml`）で、`fileTypeOf` を含む版はまだ配布されていない。
+      リポジトリ内に該当する呼び出しも無い（呼び出しは `FileDataBlock#getFileType()` と
+      `XlsFormatReader#readFileBlocks` の 2 か所で、いずれも手前でファイル系 4 種に絞っている）。
   - **寄せ残しが 2 か所ある（記録のみ・課題として立てない）** —— いずれも
     `FileDataBlock.PERMITTED_TYPES` と同じ 4 種の分割を二重に持つ。
     - `XlsFormatReader#isFileType(DataType)` —— 「ファイル系 4 種のいずれか」という述語。

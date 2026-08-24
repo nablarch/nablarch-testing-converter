@@ -1041,6 +1041,39 @@ Tests run: 601, Failures: 0, Errors: 0, Skipped: 2
 担保しているため、足したのは拒否側の 1 本だけである。**XLS-36 の例外メッセージは変えていない**
 （検査はコンストラクタと同じ `TestDataBlock#requireDataTypeOf` を使う）。
 
+**追補その 11（2026-08-24 実測。#30 の続きで `fileTypeOf(null)` を閉じたぶん）**
+
+追補その 10（601 件）から、**`fileTypeOf(null)` が `NullPointerException` ではなく
+`IllegalArgumentException` になるようにした**ぶんを導き直した（`issues.md` **XLS-44** ／ **XLS-34**）。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 602
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1280
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 602   ← この続きの 1 コミットが載った状態の値（記録時の HEAD b59104b は 601。追補その 10 と同じ注）
+```
+
+```
+Tests run: 602, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**601 → 602（差 ＋1）の内訳** —— 追加 1 件のみ。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `model/FileDataBlockTest#データ種別がnullではファイル種別を導出できない` | `FileDataBlock.fileTypeOf(null)` が `NullPointerException` ではなく `IllegalArgumentException` になり、メッセージが XLS-34 の趣旨（データタイプの無いブロックはどちらの形式でも書けない）であること |
+
+**受け口によって例外の種類が分かれる状態を残さないための 1 本である。** `TestDataBlock` の
+コンストラクタは同じ入力（`dataType` ＝ `null`）を `IllegalArgumentException` で拒否しており
+（`TestDataBlockTest#データ種別がnullのデータブロックは生成できない`）、`null` に対する答えは
+XLS-34 で確定している。**コンストラクタ経路の振る舞いは変わっていない** —— `super(...)` が先に
+`null` を落とすため `requireDataTypeOf` に `null` は届かない。**XLS-36 の例外メッセージも変えていない**
+（`null` は `requireDataTypeOf` の別の分岐として足した）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
