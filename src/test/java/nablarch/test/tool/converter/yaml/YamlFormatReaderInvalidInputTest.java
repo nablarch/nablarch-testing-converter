@@ -1324,4 +1324,56 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("原文の大小がそのまま残る", block.getColumnNames(), is(Arrays.asList("id", "ID")));
         assertThat("どちらの値も失われない", block.getRows(), is(Arrays.asList(Arrays.asList("1", "2"))));
     }
+    // ------------------------------------------------------------------ XLS-45 可変長ファイルの length
+
+    /**
+     * Given: 可変長ファイルのフィールド定義に {@code length} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code IllegalArgumentException} で止まる。
+     *
+     * <p>
+     * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24。
+     * {@code coverage/issues.md} <b>XLS-45</b>）。Excel 記法に可変長のフィールド長行が無く
+     * （{@code testdata_notation.rst:1076}（{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの
+     * 場合はフィールド長行を記載しない点のみである。」）、書ける先の無い値を中間モデルが保持できると
+     * 辺③で黙って落ちるためである。拒否するのは<b>中間モデルの生成時</b>であって書き出し側ではない。
+     * </p>
+     *
+     * <p>
+     * <b>本テストは実ファイル経路である。</b>{@code loadRawMap} を差し替える in-memory 経路
+     * （{@code YamlFormatReaderTest}）では YAML のパースもスキーマ検証も通らないため、
+     * 「この YAML が落ちる」ことの担保にならない。
+     * </p>
+     *
+     * <p>
+     * <b>スキーマ検証は通る。</b>本体スキーマ {@code $defs.field_def.properties.length} は可変長で
+     * {@code length} を禁じておらず（「可変長ファイルでは不要（省略可）」とだけ書く）、
+     * {@code YamlTestDataValidator} はそのスキーマをクラスパスから読むだけである。
+     * <b>スキーマ側の対応が入れば検証の段で落ちるようになるが、そのときも本テストは緑のままである</b>
+     * （落ちる段が前へ動くだけで、例外の型は変わる可能性がある——そのため型ではなくメッセージで
+     * 突き合わせず、converter 側の番人が出す文言だけを主張する）。
+     * </p>
+     *
+     * <p>担保する軸要素: なし（XLS-45 の根拠テスト。辺②の実ファイル経路で落ちることの担保）。</p>
+     */
+    @Test
+    public void rejectsVariableFileFieldWithLengthFromRealYaml() {
+        // Given / When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> YamlFixture.read(dir(), ""
+                        + "setup_files:\n"
+                        + "  - path: \"v.csv\"\n"
+                        + "    type: \"variable\"\n"
+                        + "    records:\n"
+                        + "      - fields:\n"
+                        + "          - {name: \"c1\", type: \"半角英字\", length: \"10\"}\n"
+                        + "        rows:\n"
+                        + "          - [\"a\"]\n"));
+
+        // Then
+        assertThat(thrown.getMessage(),
+                containsString("可変長ファイルでフィールド長を持つフィールド定義は保持できません"));
+        assertThat("どのファイルのどのフィールドかが分かること",
+                thrown.getMessage(), containsString("フィールド名=[c1]"));
+    }
 }

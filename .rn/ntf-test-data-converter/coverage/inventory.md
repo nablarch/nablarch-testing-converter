@@ -675,7 +675,7 @@ Tests run: 598, Failures: 0, Errors: 0, Skipped: 2
 | `writesDefaultDataTypeMarker` ／ `dropsDefaultDataTypeBlockWhenReadBack` ／ `serialize_unsupportedDataType_throws`（A-01 `DEFAULT`） | `TestDataBlockTest#データタイプDEFAULTのブロックは生成できない`。**辺③の A-01 は「書ける」から「生成時に拒否」へ変わった**（§1-G・XLS-20）。辺③④とも `DEFAULT` を持つ入力を組めない |
 | `rejectsNullSheetName`（辺③ F3 の `null` 側） | `TestDataContainerTest#名前がnullの読み込み単位は生成できない`（`XlsFormatWriterInvalidOutputTest` のクラス Javadoc から参照を張ってある） |
 | `rejectsFieldWithoutTypeInFileBlock` ／ `#…InMessageBlock` ／ `serialize_fieldWithNullTypeInFileBlock_rejected` ／ `#…InMessageBlock_rejected` ／ `契約違反のnull型もモデル自身は検査せず保持する`（C-20 `type` 省略） | `FieldDefTest#データ型がnullのフィールド定義は生成できない`。境界（空文字は通す）は `#データ型が空文字のフィールド定義は生成できる` |
-| `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人も中間モデルの生成時へ移った**（`FileDataBlock` ／ `MessageDataBlock` のコンストラクタが `ModelPreconditions#requireLengths` を呼ぶ。`issues.md` **XLS-30**・§6-J-3）。担保は `FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`、可変長が `null` を通すことは `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる`、辺②の拒否は `YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`。追補その 5 の「**`length` の番人だけは辺③④に置いたままである**」と、そこが挙げていた辺③④の 4 件（`XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected`）は**いずれも HEAD に無い** |
+| `serializeFile_fixedWithDirectivesAndOmittedLength` | 記法検査は `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` へ書き直した。**`length` の番人も中間モデルの生成時へ移った**（`FileDataBlock` ／ `MessageDataBlock` のコンストラクタが `ModelPreconditions#requireLengths` を呼ぶ。`issues.md` **XLS-30**・§6-J-3）。担保は `FileDataBlockTest#固定長ファイルでフィールド長がnullのフィールド定義は保持できない` ／ `MessageDataBlockTest#フィールド長がnullの電文ブロックは生成できない`、可変長が `null` を通すことは `FileDataBlockTest#可変長ファイルはフィールド長がnullでも生成できる`、辺②の拒否は `YamlFormatReaderTest#readFile_fixedWithoutLength_rejected`。**#31 で可変長側に逆向きの番人（`ModelPreconditions#requireNoLengths`。`length` が `null` でないものを拒否する）が付いた**（`issues.md` **XLS-45**。担保は `FileDataBlockTest#可変長ファイルでフィールド長を持つフィールド定義は保持できない` ほか。追補その 12）。追補その 5 の「**`length` の番人だけは辺③④に置いたままである**」と、そこが挙げていた辺③④の 4 件（`XlsFormatWriterTest#rejectsFieldWithoutLengthInFixedFileBlock` ／ `#rejectsFieldWithoutLengthInMessageBlock` ／ `YamlFormatWriterTest#serialize_fieldWithoutLengthInFixedFileBlock_rejected` ／ `#serialize_fieldWithoutLengthInMessageBlock_rejected`）は**いずれも HEAD に無い** |
 | `rejectsRecordWithoutFieldsInFileBlock` ／ `#…InMessageBlock` ／ `serialize_recordWithoutFieldsInFileBlock_rejected` ／ `#…InMessageBlock_rejected`（C-17 `fields` 空） | `RecordLayoutTest#フィールドを1件も持たないレコードは生成できない`。**2 つ目に挙げていた `#レコード種別を省略してもフィールド0件のレコードは生成できない` は追補その 7 で削除した**（同じ番人・同じメッセージを主張する二重主張だったため。レコード種別 `null` の保持そのものは `#レコード種別省略をnullで保持する` が担保する） |
 
 **§3.1-3 の C-15 行が挙げる `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／
@@ -1073,6 +1073,45 @@ Tests run: 602, Failures: 0, Errors: 0, Skipped: 2
 XLS-34 で確定している。**コンストラクタ経路の振る舞いは変わっていない** —— `super(...)` が先に
 `null` を落とすため `requireDataTypeOf` に `null` は届かない。**XLS-36 の例外メッセージも変えていない**
 （`null` は `requireDataTypeOf` の別の分岐として足した）。
+
+**追補その 12（2026-08-24 実測。#31 で XLS-45 を実施したぶん）**
+
+追補その 11（602 件）から、**可変長ファイルのフィールド定義が `length` を持てないようにした**ぶんを
+導き直した（`issues.md` **XLS-45**）。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 605
+② src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:740
+     @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。…")
+   src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java:1280
+     @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData…")
+③ 8c327d0: 536
+   HEAD: 605   ← #31 の 1 コミットが載った状態の値（記録時の HEAD ea1d560 は 602。追補その 10 と同じ注）
+```
+
+```
+Tests run: 605, Failures: 0, Errors: 0, Skipped: 2
+```
+
+**602 → 605（差 ＋3）の内訳** —— 追加 3 件のみ。削除は無い。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `model/FileDataBlockTest#可変長ファイルでフィールド長を持つフィールド定義は保持できない` | 可変長系のデータ種別のブロックが `length` を持つフィールド定義を保持できず `IllegalArgumentException` になること |
+| ＋ | `model/FileDataBlockTest#フィールド長を持つフィールド定義は可変長系のデータ種別すべてで拒否される` | 拒否が可変長系 2 種（`SETUP_VARIABLE` ／ `EXPECTED_VARIABLE`）すべてに掛かり、`"10"` ／ `"-"` ／ 空文字の 3 表記すべてを弾くこと（6 通り）。`"-"` を含めているのは、それが本体で値の整形（改行・前後空白の除去）を起こす唯一の表記であり、長さの指定ではなくフィールド長の枠に相乗りしているためである |
+| ＋ | `yaml/YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml` | **辺②の実ファイル経路**で、可変長ファイルのフィールドに `length` を書いた YAML が落ちること（`loadRawMap` 差し替えの in-memory 経路は担保に数えない） |
+
+**既存テスト 6 件の入力を直した（件数は増減しない）。** いずれも可変長のブロックへ長さつきの
+レコードを渡していたもので、そのままでは中間モデルの生成時に落ちる。
+`xls/XlsFormatWriterModelTest#writesLengthRowDecidedSolelyByDataType` は
+「長さを持つ同一のレコードを固定長系・可変長系の両方へ渡す」形だったのを
+「名前・型・データ行が同じで長さだけが違う 2 つのレコード」へ改めた
+（XLS-44 の主張は「識別セルと長さ行が食い違わないこと」であり、長さの値ではなくデータ種別で決まる）。
+`yaml/YamlFormatWriterModelTest` の 5 件は、同クラスの共有ヘルパ `record()` の可変長版
+`variableRecord()`（長さだけを落とし、名前・型・値は同じ）を足して差し替えた。
+
+**辺③④のライタ・`YamlTestDataValidator` には番人も WARN も足していない**（`issues.md` XLS-45 の
+「converter 側の対応（#31）」）。
 
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
@@ -2158,7 +2197,13 @@ awk '/YML-04 先頭行のキー集合/,0' \
   | grep -c '^    @Test'
 ```
 
-出力は順に **8** ／ **2** ／ **21**（8 ＋ 2 ＋ 21 ＝ 31）。
+出力は順に **8** ／ **2** ／ **24**（8 ＋ 2 ＋ 24 ＝ 34）。**2026-08-24 に #31 で導き直した** ——
+宣言値は **8** ／ **2** ／ **21**（計 31）のまま取り残されており、3 件ずれていた。
+うち 1 件は #31 が末尾に足した
+`YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml`
+（`issues.md` **XLS-45**）、残る 2 件は #31 より前に足されて宣言値へ反映されなかったぶんである
+（**どのタスクのぶんかは未確認**）。**3 つ目の区間だけが動いており、軸F の 8 件（1 つ目）と
+ローダの失敗経路 2 件（2 つ目）は変わっていない。**
 8 件のメソッド名は §2.1-2 の軸F 表に全件挙げてある
 （F2-01 が 2 件／F2-02 が 1 件／F2-03 が 1 件／F2-04 が 3 件／F2-05 が 1 件）。
 
@@ -2308,16 +2353,28 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 ```
 
 ```
-@Test=40 build=28 write=10 neither=2
+@Test=45 build=31 write=12 neither=2
 ```
 
-`@Test=40` が `grep -c '@Test' <同ファイル>` の 40 と一致することが、切り出しに漏れが無いことの確認になる
+**2026-08-24 に #31 で導き直した** —— 宣言値は `@Test=40 build=28 write=10 neither=2` のまま
+取り残されており、`grep -c '@Test'` の 45（§0.1 の 5 クラス表）と食い違っていた。
+**#31 は `XlsFormatWriterTest` を触っていない**ため、ずれは #31 より前に生じたものである
+（`839bf64`（§6-K・0 件テーブル）が `roundTripsZeroRowTableWithoutEatingNextBlock` ／
+`roundTripsZeroRowListMapWithoutEatingNextBlock` の 2 件を足しており、`write` の 10 → 12 はこれで説明が付く。
+`build` の 28 → 31 の 3 件がどのタスクのぶんかは**未確認**）。
+
+`@Test=45` が `grep -c '@Test' <同ファイル>` の 45 と一致することが、切り出しに漏れが無いことの確認になる
 （`@Test(expected = ...)` 付きの 4 件を落とさないため、パターンは `^    @Test$` ではなく `^    @Test` である）。
 `build` と `write` の両方を呼ぶメソッドは無い。
 
-**実ファイルを書く 10 件**: `roundTrip` ヘルパ経由の 8 件（`roundTripsTable` / `roundTripsNullCellAsLiteralNullString` /
+**実ファイルを書く 12 件**: `roundTrip` ヘルパ経由の 10 件（`roundTripsTable` /
+`roundTripsZeroRowTableWithoutEatingNextBlock` / `roundTripsZeroRowListMapWithoutEatingNextBlock` /
+`roundTripsNullCellAsLiteralNullString` /
 `roundTripsListMap` / `roundTripsFixedFile` / `roundTripsMultipleRecordLayouts` / `roundTripsVariableFile` /
-`roundTripsMessage` / `roundTripsSendSyncMessage`）と `writesWorkbookFileWithSheetPerSection` ／ `wrapsIoFailure`。
+`roundTripsMessage` / `roundTripsSendSyncMessage`）と `writesWorkbookFileWithSheetPerSection` ／ `wrapsIoFailure`
+（**0 件テーブル・0 件 LIST_MAP の 2 件は §6-K の `839bf64` で足されたもので、上の宣言値と同じく
+反映が取り残されていた**。出典 `git log -S'roundTripsZeroRowTableWithoutEatingNextBlock' --oneline
+-- src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterTest.java`）。
 **どちらも呼ばない 2 件**: `eachGroupHasDistinctDefaultColor` ／ `rejectsNegativeBlankRows`。
 どちらも `ExcelFormatConfig` だけを叩き、`XlsFormatWriter` のブックを作らない
 （前者は既定色 4 種が互いに異なることを、後者は負数を渡すと `IllegalArgumentException` になることを見る）。

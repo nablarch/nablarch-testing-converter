@@ -227,7 +227,8 @@ public class XlsFormatWriterModelTest {
     }
 
     /**
-     * XLS-44。Given: 同じレコード（長さあり）を {@code SETUP_FIXED} ／ {@code SETUP_VARIABLE} で持つ 2 ブロック。
+     * XLS-44。Given: 名前・型・データ行が同じレコードを {@code SETUP_FIXED}（長さあり）／
+     *        {@code SETUP_VARIABLE}（長さなし）で持つ 2 ブロック。
      * When : それぞれ実 {@code .xlsx} へ書き出し、POI で開き直す。
      * Then : 長さ行の有無が<b>データ種別だけで決まる</b>（固定長系は出る／可変長系は出ない）。
      *
@@ -238,18 +239,31 @@ public class XlsFormatWriterModelTest {
      * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）「固定長ファイルでは、フィールド名称・
      * データ型・フィールド長の3リストが同サイズで必須」に反する。導出後はファイル種別を外から渡せない。
      * </p>
+     *
+     * <p>
+     * <b>2 ブロックのレコードは長さだけが違う。</b>#31（{@code coverage/issues.md} <b>XLS-45</b>）で
+     * 可変長系のブロックが長さを持つフィールド定義を保持できなくなったため、
+     * <b>「長さを持つ同一のレコードを両方へ渡す」形はもはや組めない</b>
+     * （組めば {@code FileDataBlock} の生成が {@code IllegalArgumentException} で落ちる。
+     * {@code FileDataBlockTest#フィールド長を持つフィールド定義は可変長系のデータ種別すべてで拒否される}）。
+     * XLS-44 が主張したいのは<b>識別セルと長さ行が食い違わないこと</b>であり、それは長さの値ではなく
+     * データ種別で決まる。ここで固定するのはその主張である。
+     * </p>
      */
     @Test
     public void writesLengthRowDecidedSolelyByDataType() {
-        // Given: 長さを持つ同一のレコード
-        RecordLayout record = new RecordLayout("data",
+        // Given: 名前・型・データ行が同じで、長さだけが違う 2 つのレコード
+        RecordLayout fixedRecord = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
+                Collections.singletonList(row("abcde")));
+        RecordLayout variableRecord = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("abcde")));
 
         // When: 固定長系
         Sheet fixed = writeAndReopenSheet(container("derivedFixed",
                 new FileDataBlock(DataType.SETUP_FIXED, "", "in.dat", map(),
-                        Collections.singletonList(record))));
+                        Collections.singletonList(fixedRecord))));
 
         // Then: 識別セルと長さ行が食い違わない
         assertThat(line(fixed, 0), is(Arrays.asList("SETUP_FIXED=in.dat")));
@@ -258,10 +272,10 @@ public class XlsFormatWriterModelTest {
         assertThat("SETUP_FIXED なので長さ行が出る", line(fixed, 3), is(Arrays.asList("", "5")));
         assertThat(line(fixed, 4), is(Arrays.asList("", "abcde")));
 
-        // When: 可変長系（同じレコードを渡す）
+        // When: 可変長系
         Sheet variable = writeAndReopenSheet(container("derivedVariable",
                 new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
-                        Collections.singletonList(record))));
+                        Collections.singletonList(variableRecord))));
 
         // Then: 長さ行が無く、データ行が 1 行上がる
         assertThat(line(variable, 0), is(Arrays.asList("SETUP_VARIABLE=in.csv")));

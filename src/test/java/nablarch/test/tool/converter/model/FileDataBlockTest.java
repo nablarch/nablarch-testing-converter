@@ -365,6 +365,72 @@ public class FileDataBlockTest {
         assertThat(sut.getRecords().get(0).getFields().get(0).getLength(), is(nullValue()));
     }
 
+    /**
+     * XLS-45。<b>可変長ファイルでフィールド長を持つフィールド定義のブロックは生成できない。</b>
+     * <p>
+     * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24）。
+     * Excel 記法に可変長のフィールド長行が無い（{@code testdata_notation.rst:1076}
+     * （{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
+     * 点のみである。」／{@code :883}「可変長ファイルでは、フィールド名称・データ型の2リストが
+     * 同サイズで必須であり、フィールド長は不要である。」）ためであり、書ける先の無い値を
+     * 中間モデルが保持できると辺③で黙って落ちる。<b>生成時点で拒否する</b>
+     * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+     * </p>
+     */
+    @Test
+    public void 可変長ファイルでフィールド長を持つフィールド定義は保持できない() {
+        // Given: 長さを持つフィールドを 1 件持つレコード
+        List<RecordLayout> records = List.of(
+                new RecordLayout("data", List.of(new FieldDef("id", "数値", "10")), List.of()));
+
+        // When / Then
+        try {
+            new FileDataBlock(DataType.SETUP_VARIABLE, "", "t.csv", new LinkedHashMap<>(), records);
+            fail("IllegalArgumentException が送出されるべき");
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("可変長ファイルでフィールド長を持つフィールド定義は保持できません"));
+        }
+    }
+
+    /**
+     * XLS-45。拒否は<b>可変長系のデータ種別すべて</b>に掛かり、<b>{@code null} 以外のすべての表記</b>を弾く。
+     * <p>
+     * <b>{@code "-"} も弾く。</b>{@code "-"}（オンデマンド計算）は本体
+     * {@code DataFileFragment#setLengths} が {@code isOndemandCalcFieldSizeList} に立て、
+     * {@code #addValue} が当該フィールドの値から改行と前後空白を除去する（本体 sources jar の
+     * 同ファイル。数値の {@code length} は {@code VariableLengthFileFragment#createFieldDefinition} が
+     * {@code lengths} を一度も読まないため可変長では使われない）。<b>これは長さの指定ではなく値の整形で
+     * あり、フィールド長の枠に相乗りしている。</b>可変長でこれが効くのは相乗りの結果であって、
+     * 追認すべき仕様ではない（ユーザー確定・2026-08-24）。
+     * </p>
+     * <p>
+     * <b>空文字も弾く。</b>固定長側（{@code ModelPreconditions#requireLengths}）が「弾くのは
+     * {@code null} だけで空文字は弾かない」という境界であるのに対し、可変長側の境界は
+     * 「{@code null} 以外はすべて弾く」である。可変長ではフィールド長行そのものが記法に無く、
+     * 空文字であっても書き出す先が無いためである。
+     * </p>
+     */
+    @Test
+    public void フィールド長を持つフィールド定義は可変長系のデータ種別すべてで拒否される() {
+        for (DataType variableType : List.of(DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE)) {
+            for (String length : List.of("10", "-", "")) {
+                // Given: 長さを持つフィールドを 1 件持つレコード
+                List<RecordLayout> records = List.of(
+                        new RecordLayout("data", List.of(new FieldDef("id", "数値", length)), List.of()));
+
+                // When / Then
+                try {
+                    new FileDataBlock(variableType, "", "t.csv", new LinkedHashMap<>(), records);
+                    fail("IllegalArgumentException が送出されるべき: " + variableType + " length=[" + length + "]");
+                } catch (IllegalArgumentException e) {
+                    assertThat(e.getMessage(),
+                            containsString("可変長ファイルでフィールド長を持つフィールド定義は保持できません"));
+                    assertThat("どのフィールドが原因かが分かること", e.getMessage(), containsString("フィールド名=[id]"));
+                }
+            }
+        }
+    }
+
     @Test
     public void FileType列挙は固定長と可変長の2種() {
         // When / Then: FileType 列挙値は FIXED / VARIABLE のみ

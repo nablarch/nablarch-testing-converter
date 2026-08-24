@@ -249,6 +249,24 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
+     * {@link #record()} の<b>可変長ファイル用</b>。フィールド長だけを落とし、名前・型・値は同じである。
+     *
+     * <p>
+     * 可変長ファイルではフィールド定義がフィールド長を持てない（#31。{@code coverage/issues.md}
+     * <b>XLS-45</b>。{@code FileDataBlock} の生成時に拒否される）ため、可変長のブロックを組む
+     * テストは {@link #record()} を使えない。<b>長さ以外を揃えてあるので、固定長側との差は
+     * 長さ行／{@code length} キーの有無だけになる。</b>
+     * </p>
+     *
+     * @return フィールド長を持たないレコードレイアウト
+     */
+    private static RecordLayout variableRecord() {
+        return new RecordLayout(null,
+                Arrays.asList(new FieldDef("flag", "半角英字", null), new FieldDef("date", "半角英字", null)),
+                Collections.singletonList(Arrays.asList("true", "2026-08-07")));
+    }
+
+    /**
      * 記述順を保つ文字列マップを組み立てる。
      *
      * @param kv キーと値を交互に並べたもの
@@ -288,7 +306,7 @@ public class YamlFormatWriterModelTest {
     public void writesSetupVariableAndExpectedFixedUnderTheirSectionKeysInEncounterOrder() {
         // Given
         FileDataBlock setupVariable = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map(),
-                Collections.singletonList(record()));
+                Collections.singletonList(variableRecord()));
         FileDataBlock expectedFixed = new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat", map(),
                 Collections.singletonList(record()));
 
@@ -299,8 +317,8 @@ public class YamlFormatWriterModelTest {
                 + "    type: \"variable\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
-                + "          - {name: \"flag\", type: \"半角英字\", length: \"5\"}\n"
-                + "          - {name: \"date\", type: \"半角英字\", length: \"10\"}\n"
+                + "          - {name: \"flag\", type: \"半角英字\"}\n"
+                + "          - {name: \"date\", type: \"半角英字\"}\n"
                 + "        rows:\n"
                 + "          - [\"true\", \"2026-08-07\"]\n"
                 + "\n"
@@ -340,13 +358,13 @@ public class YamlFormatWriterModelTest {
     public void writesFileTypeKeyDerivedFromDataType() {
         // Given/When/Then
         assertThat(serialize(new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "e.csv",
-                map(), Collections.singletonList(record()))), containsString("type: \"variable\""));
+                map(), Collections.singletonList(variableRecord()))), containsString("type: \"variable\""));
         assertThat(serialize(new FileDataBlock(DataType.SETUP_FIXED, "", "s.dat",
                 map(), Collections.singletonList(record()))), containsString("type: \"fixed\""));
         assertThat(serialize(new FileDataBlock(DataType.EXPECTED_FIXED, "", "e.dat",
                 map(), Collections.singletonList(record()))), containsString("type: \"fixed\""));
         assertThat(serialize(new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv",
-                map(), Collections.singletonList(record()))), containsString("type: \"variable\""));
+                map(), Collections.singletonList(variableRecord()))), containsString("type: \"variable\""));
     }
 
     /**
@@ -370,8 +388,10 @@ public class YamlFormatWriterModelTest {
                 DataType.EXPECTED_VARIABLE, DataType.SETUP_FIXED)) {
             // Given: 同じファイル名 td.yaml へ 4 回書くため、読み戻す前に YamlLoader のキャッシュを落とす
             YamlLoader.clearCacheForTest();
-            FileDataBlock block = new FileDataBlock(type, "", "f.dat",
-                    map(), Collections.singletonList(record()));
+            FileDataBlock block = new FileDataBlock(type, "", "f.dat", map(),
+                    Collections.singletonList(
+                            FileDataBlock.fileTypeOf(type) == FileDataBlock.FileType.FIXED
+                                    ? record() : variableRecord()));
 
             // When
             FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
@@ -416,7 +436,7 @@ public class YamlFormatWriterModelTest {
     public void restoresSetupVariableDataTypeThroughRealReader() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map(),
-                Collections.singletonList(record()));
+                Collections.singletonList(variableRecord()));
 
         // When
         FileDataBlock back = YamlFixture.onlyBlock(writeAndReadBack(block), FileDataBlock.class);
@@ -935,7 +955,7 @@ public class YamlFormatWriterModelTest {
     public void failsToReadBackLiteralTabFieldSeparator() {
         // Given
         FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map("field-separator", "\t"),
-                Collections.singletonList(record()));
+                Collections.singletonList(variableRecord()));
         assertThat("書き出しはタブをエスケープして忠実に書く",
                 serialize(block), containsString("field-separator: \"\\t\""));
 

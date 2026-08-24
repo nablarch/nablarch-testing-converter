@@ -160,7 +160,9 @@ final class ModelPreconditions {
      * <p>
      * <b>可変長ファイルは呼び出さない。</b>{@code :883} は「可変長ファイルでは、フィールド名称・データ型の
      * 2リストが同サイズで必須であり、フィールド長は不要である」と定めており、{@code null} が正しい形である。
-     * 電文にはこの逃げ道が無いため常に必須となる。
+     * 電文にはこの逃げ道が無いため常に必須となる。<b>可変長ファイルは代わりに
+     * {@link #requireNoLengths(List, String)} を呼ぶ</b>——「不要」ではなく<b>書けない</b>ためである
+     * （{@code coverage/issues.md} <b>XLS-45</b>）。
      * </p>
      *
      * <p>
@@ -184,6 +186,64 @@ final class ModelPreconditions {
                                     + "書き出せません）。"
                                     + " 識別子=[" + identifier + "] レコード番号=" + i
                                     + " フィールド名=[" + field.getName() + "]");
+                }
+            }
+        }
+    }
+
+    /**
+     * レコードレイアウト群のすべてのフィールド定義が<b>フィールド長を持たない</b>ことを検査する。
+     *
+     * <p>
+     * 呼び出し元は<b>可変長</b>の {@link FileDataBlock} だけである。
+     * <b>NTF 仕様として、可変長ファイルでは {@code length} を書けない</b>（ユーザー確定・2026-08-24。
+     * {@code coverage/issues.md} <b>XLS-45</b>）。Excel 記法に可変長のフィールド長行が無いためである
+     * （{@code testdata_notation.rst:1076}（{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの
+     * 場合はフィールド長行を記載しない点のみである。」／{@code :883}「可変長ファイルでは、
+     * フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である。」）。
+     * 書ける先の無い値を中間モデルが保持できると、辺③（中間モデル → Excel）で例外にも警告にもならずに
+     * 落ちる（{@code XlsFormatWriter#appendRecord} は長さ行を {@code if (fixed)} の中でしか作らない）。
+     * <b>生成時点で拒否し、書き出し側には番人を置かない</b>
+     * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+     * </p>
+     *
+     * <p>
+     * <b>弾くのは {@code null} 以外のすべてで、{@code "-"} も空文字も弾く。</b>
+     * {@link #requireLengths(List, String)}（固定長側）が「弾くのは {@code null} だけ」であるのと
+     * 境界が逆である。可変長ではフィールド長行そのものが記法に無く、どの表記であっても書き出す先が
+     * 無いためである。<b>{@code "-"}（オンデマンド計算）も例外ではない</b>——本体
+     * {@code nablarch/test/core/file/DataFileFragment.java} の {@code setLengths} が {@code "-"} を
+     * {@code isOndemandCalcFieldSizeList} に立て、{@code addValue} が当該フィールドの値から改行と
+     * 前後空白を除去するため、可変長でも NTF の格納値が変わる。しかしこれは<b>長さの指定ではなく
+     * 値の整形であり、フィールド長の枠に相乗りしている</b>だけであって、追認すべき仕様ではない
+     * （ユーザー確定・2026-08-24）。数値の {@code length} は
+     * {@code VariableLengthFileFragment#createFieldDefinition} が {@code lengths} を一度も読まないため、
+     * 可変長では NTF 実行時に使われない。
+     * </p>
+     *
+     * <p>
+     * <b>電文（{@link MessageDataBlock}）は呼び出さない。</b>常に固定長であり
+     * （{@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
+     * フィールド長・データという、前述のファイルデータと同じ構成を持つ」）、
+     * {@link #requireLengths(List, String)} の側に掛かる。
+     * </p>
+     *
+     * @param records    検査対象
+     * @param identifier 識別子（診断メッセージ用）
+     * @throws IllegalArgumentException フィールド長が {@code null} でないフィールド定義が含まれる場合
+     */
+    static void requireNoLengths(List<RecordLayout> records, String identifier) {
+        for (int i = 0; i < records.size(); i++) {
+            RecordLayout record = records.get(i);
+            for (FieldDef field : record.getFields()) {
+                if (field.getLength() != null) {
+                    throw new IllegalArgumentException(
+                            "可変長ファイルでフィールド長を持つフィールド定義は保持できません"
+                                    + "（記法は可変長ファイルにフィールド長行を持たないため、"
+                                    + "書き出す先がありません）。"
+                                    + " 識別子=[" + identifier + "] レコード番号=" + i
+                                    + " フィールド名=[" + field.getName() + "]"
+                                    + " フィールド長=[" + field.getLength() + "]");
                 }
             }
         }

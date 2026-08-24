@@ -48,6 +48,20 @@ import java.util.Set;
  * {@code testdata_notation.rst:883} が記法を固定長ファイルと可変長ファイルの 2 種類に尽くしている）。
  * </p>
  *
+ * <p>
+ * <b>可変長ファイルではフィールド定義がフィールド長を持てない。生成時点で拒否する</b>
+ * （{@code coverage/issues.md} <b>XLS-45</b>。ユーザー確定・2026-08-24）。
+ * Excel 記法に可変長のフィールド長行が無いためである（{@code testdata_notation.rst:1076}
+ * （{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
+ * 点のみである。」／{@code :883}「可変長ファイルでは、フィールド名称・データ型の2リストが
+ * 同サイズで必須であり、フィールド長は不要である。」）。
+ * <b>保持できると辺③（中間モデル → Excel）で例外にも警告にもならずに落ちる</b>ため、
+ * 書き出し側に番人を置くのではなく、そもそも作れなくする
+ * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * 拒否の詳細（{@code "-"} も空文字も弾くこと、その根拠）は
+ * {@link ModelPreconditions#requireNoLengths} の Javadoc にある。
+ * </p>
+ *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
  *
  * @author kiyotis
@@ -74,13 +88,22 @@ public final class FileDataBlock extends TestDataBlock {
      *
      * <p>固定長／可変長の区別は {@code dataType} から導出する（{@link #fileTypeOf(DataType)}）。</p>
      *
+     * <p>
+     * <b>フィールド長の不変条件は導出したファイル種別で分かれる。</b>固定長系ではすべてのフィールド定義が
+     * フィールド長を持たなければならず（{@link ModelPreconditions#requireLengths}。
+     * {@code coverage/issues.md} <b>XLS-30</b>）、<b>可変長系ではひとつも持ってはならない</b>
+     * （{@link ModelPreconditions#requireNoLengths}。{@code coverage/issues.md} <b>XLS-45</b>）。
+     * </p>
+     *
      * @param dataType   データ種別
      * @param groupId    グループ ID（省略時は空文字）
      * @param identifier ファイルパス
      * @param directives ディレクティブ（キー → 値。記述順を保つため挿入順を維持する Map を渡すこと）
      * @param records    レコードレイアウト群（記述順。FW_HEADER もスキップせず保持）
      * @throws IllegalArgumentException {@code dataType} が SETUP_FIXED ／ EXPECTED_FIXED ／
-     *                                  SETUP_VARIABLE ／ EXPECTED_VARIABLE のいずれでもない場合
+     *                                  SETUP_VARIABLE ／ EXPECTED_VARIABLE のいずれでもない場合、
+     *                                  固定長系でフィールド長を持たないフィールド定義がある場合、
+     *                                  または可変長系でフィールド長を持つフィールド定義がある場合
      */
     public FileDataBlock(DataType dataType, String groupId, String identifier,
                          Map<String, String> directives, List<RecordLayout> records) {
@@ -90,6 +113,8 @@ public final class FileDataBlock extends TestDataBlock {
         this.records = ModelPreconditions.requireNoNulls("レコードレイアウトのリスト", records);
         if (getFileType() == FileType.FIXED) {
             ModelPreconditions.requireLengths(this.records, identifier);
+        } else {
+            ModelPreconditions.requireNoLengths(this.records, identifier);
         }
     }
 
