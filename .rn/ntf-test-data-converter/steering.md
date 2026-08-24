@@ -1617,8 +1617,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-24
+- **Last completed**: #30（`34e78cc` ＋ `ba84c2d`。承認済み）。**#31 は成果コミット `96b5aea` を push 済みで、判定待ち**（未チェックの Steps は 0 件）
+- **Next**: **#31 の判定を受け取ること**（`/rn:ty` または `/rn:gm`）。**マージ可否の判断は出さない**（Rules。#31 完了後も同じ）
+- **Notes**: branch `ntf-test-data-converter`（`96b5aea` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 605, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**#31 で台帳の宣言値のずれを 7 か所導き直した。うち 2 件は出所が未確認**（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件）—— 旧値・実測値・理由は `checks/task-31.md`「台帳の宣言値のずれ」の表にある。持ち越しの制約は Rules に記録済み
