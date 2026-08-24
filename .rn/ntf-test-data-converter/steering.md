@@ -1541,8 +1541,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-24
+- **Last completed**: #30（`34e78cc`。push 済み）。**全 30 タスクが完了**（未チェックの Steps は 0 件）
+- **Next**: **#30 の `/rn:ty` 判定待ち。**承認されれば converter の要対応は 0 件で、残るのは**マージ**のみ。判定前に決めてほしい既知の残件が 1 件 —— `fileTypeOf` の拒否メッセージが XLS-36 のもの（「データブロックを FileDataBlock として作ることはできません」）で、何も生成しない導出ヘルパの文脈と合わない。専用メッセージで投げる案は「新しい仕組みは要らない」「既存メッセージと振る舞いは変えない」に反するため却下済み（現状維持でよければ #30 は完了）
+- **Notes**: branch `ntf-test-data-converter`（`34e78cc` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 601, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**#30 以降レビュア subagent は回さない**（Rules に記録済み。完了報告に `git diff --stat <前タスクの完了コミット>..HEAD -- src/` と `mvn clean test` の最終行を付ける）。**申し送りの束（XLS-27・XLS-39・XLS-40・XLS-42・XLS-45）はまだ出さない** —— 出す判断は調整側でする（ユーザー指示・2026-08-24）
