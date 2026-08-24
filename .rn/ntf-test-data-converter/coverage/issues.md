@@ -4274,10 +4274,30 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
     寄せたのは `XlsFormatReader#isFixed(DataType)` の 1 か所だけで、これはモデルの導出と同一だった。
   - **`axis-matrix.md` の辺④ 軸A A-06〜A-09 は ❌ から ✅ へ動き、軸C の C-10（`FileDataBlock.fileType`）は
     欠番になった**（フィールドが無くなったため）。
-  - **寄せ残しが 1 か所ある（記録のみ・課題として立てない）** —— `XlsFormatReader#isFileType(DataType)` は
-    「ファイル系 4 種のいずれか」という述語で、`FileDataBlock.PERMITTED_TYPES` と同じ集合を二重に持つ。
-    #29 の範囲を広げてまで寄せることはしない判断である（ユーザー確定・2026-08-21）。`isFixed` のほうは
-    モデルの導出と同一だったため #29 で撤去し、`FileDataBlock#fileTypeOf` へ寄せた。
+  - **導出の受け口も締めた（#30）** —— `FileDataBlock#fileTypeOf` の冒頭に
+    `requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType)` を置き、ファイル系 4 種以外の
+    `DataType`（例 `LIST_MAP`）を渡すと `IllegalArgumentException` になるようにした
+    （それまでは `public static` の受け口が黙って `VARIABLE` を返していた。到達可能性を理由に残さない ——
+    ユーザー確定・2026-08-24）。担保は
+    `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない`。
+  - **`fileTypeOf(null)` の振る舞いが変わった（#30。非互換）** —— 変更前は黙って `VARIABLE` を
+    返していたが、変更後は `NullPointerException` になる（`EnumSet.contains(null)` が `false` を返し、
+    `requireDataTypeOf` のメッセージ組み立ての `dataType.getName()` で落ちる）。`null` 検査を足さない
+    判断（XLS-29 の番人を復活させない）の帰結である。**`fileTypeOf` は `public static` で、この成果物は
+    maven プラグインとして配布されるため、リポジトリ外の呼び出し側にとっては非互換**である。
+    リポジトリ内に該当する呼び出しは無い（呼び出しは `FileDataBlock#getFileType()` と
+    `XlsFormatReader#readFileBlocks` の 2 か所で、いずれも手前でファイル系 4 種に絞っている）。
+  - **寄せ残しが 2 か所ある（記録のみ・課題として立てない）** —— いずれも
+    `FileDataBlock.PERMITTED_TYPES` と同じ 4 種の分割を二重に持つ。
+    - `XlsFormatReader#isFileType(DataType)` —— 「ファイル系 4 種のいずれか」という述語。
+      #29 の範囲を広げてまで寄せることはしない判断である（ユーザー確定・2026-08-21）。`isFixed` のほうは
+      モデルの導出と同一だったため #29 で撤去し、`FileDataBlock#fileTypeOf` へ寄せた。
+    - `src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java` の
+      `readFiles(String, String, String, DataType)` —— `SETUP_FIXED` ／ `EXPECTED_FIXED` →
+      `FixedLengthFileParser`、`SETUP_VARIABLE` ／ `EXPECTED_VARIABLE` → `VariableLengthFileParser`、
+      `default` → `IllegalArgumentException` という**同じ分割**を `switch` で持つ（現物で確認）。
+      **寄せない** —— `nablarch.test.core.reader` は本体（`nablarch-testing`）へ相乗りするための
+      パッケージであり、`converter.model` に依存させると層が逆転するためである。
 - 担保テスト（#29 で追加）: `FileDataBlockTest#ファイル種別を4種のデータ種別から導出する`（導出そのもの）／
   `FileDataBlockTest#フィールド長がnullのフィールド定義は固定長系のデータ種別すべてで拒否される`（XLS-30 が
   `DataType` 起点で走ること）／ `XlsFormatWriterModelTest#writesLengthRowDecidedSolelyByDataType`（辺③）／

@@ -156,16 +156,25 @@ public abstract sealed class TestDataBlock
      * データ種別が、そのブロックのクラスの系統に属することを確かめる。
      *
      * <p>
-     * 具体ブロックのコンストラクタが {@code super(...)} の直後に呼ぶ。{@code dataType} が {@code null}
-     * ／ {@link DataType#DEFAULT} の場合は<b>ここへ届かない</b> —— どちらも
-     * {@link #TestDataBlock(DataType, String, String)} が先に拒否するため、その専用のメッセージが
+     * 具体ブロックのコンストラクタは {@code super(...)} の直後にこれを呼ぶ。その経路では
+     * {@code dataType} が {@code null} ／ {@link DataType#DEFAULT} の場合ここへ届かない ——
+     * どちらも {@link #TestDataBlock(DataType, String, String)} が先に拒否し、その専用のメッセージが
      * そのまま残る（{@code coverage/issues.md} <b>XLS-34</b>／<b>XLS-20</b>）。
+     * </p>
+     *
+     * <p>
+     * <b>ただしコンストラクタ以外（{@link FileDataBlock#fileTypeOf(DataType)}）からも直接呼ばれるため、
+     * {@code null} ／ {@link DataType#DEFAULT} がここへ届く経路がある。</b>
+     * その場合 {@link DataType#DEFAULT} は XLS-20 の専用メッセージにならず、このメソッドの
+     * {@code IllegalArgumentException}（XLS-36 のメッセージ）になる。{@code null} は下のメッセージ
+     * 組み立ての {@code dataType.getName()} で落ちるため、例外の種類は規定しない。
      * </p>
      *
      * @param blockClass 具体ブロックのクラス
      * @param permitted  そのクラスが取りうるデータ種別
-     * @param dataType   検査するデータ種別
-     * @throws IllegalArgumentException {@code dataType} が {@code permitted} に含まれない場合
+     * @param dataType   検査するデータ種別（{@code null} は検査しない。渡した場合の例外の種類は規定しない）
+     * @throws IllegalArgumentException {@code dataType} が非 {@code null} で、かつ {@code permitted} に
+     *                                  含まれない場合（{@link DataType#DEFAULT} を含む）
      */
     static void requireDataTypeOf(Class<? extends TestDataBlock> blockClass,
                                   Set<DataType> permitted, DataType dataType) {

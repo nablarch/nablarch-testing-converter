@@ -102,10 +102,22 @@ public final class FileDataBlock extends TestDataBlock {
      * {@code testdata_notation.rst:850}（{@code 30a8271} 時点）による。
      * </p>
      *
-     * @param dataType データ種別
-     * @return 固定長系なら {@link FileType#FIXED}、それ以外は {@link FileType#VARIABLE}
+     * <p>
+     * <b>導出の対応が定まっているのはこの 4 種だけであり、それ以外のデータ種別は受け口で拒否する</b>
+     * （{@code coverage/issues.md} <b>XLS-44</b>）。検査はコンストラクタと同じ
+     * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} による
+     * （コンストラクタ経由では二重に走るが、それでよい）。
+     * </p>
+     *
+     * @param dataType データ種別（{@code null} は検査しない。渡した場合の例外の種類は規定しない）
+     * @return 固定長系（SETUP_FIXED ／ EXPECTED_FIXED）なら {@link FileType#FIXED}、
+     *         可変長系（SETUP_VARIABLE ／ EXPECTED_VARIABLE）なら {@link FileType#VARIABLE}
+     * @throws IllegalArgumentException {@code dataType} が非 {@code null} で、かつ SETUP_FIXED ／
+     *                                  EXPECTED_FIXED ／ SETUP_VARIABLE ／ EXPECTED_VARIABLE の
+     *                                  いずれでもない場合
      */
     public static FileType fileTypeOf(DataType dataType) {
+        requireDataTypeOf(FileDataBlock.class, PERMITTED_TYPES, dataType);
         return dataType == DataType.SETUP_FIXED || dataType == DataType.EXPECTED_FIXED
                 ? FileType.FIXED : FileType.VARIABLE;
     }

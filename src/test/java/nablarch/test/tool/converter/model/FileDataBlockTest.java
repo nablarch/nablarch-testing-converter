@@ -6,9 +6,11 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
@@ -180,7 +182,59 @@ public class FileDataBlockTest {
         assertDerivedFileType(DataType.EXPECTED_VARIABLE, FileType.VARIABLE);
     }
 
+    /**
+     * XLS-44。導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
+     * <b>ファイル系 4 種以外のデータ種別を拒否する</b>。
+     * <p>
+     * 導出の対応が定まっているのは {@code SETUP_FIXED} ／ {@code EXPECTED_FIXED}（固定長）と
+     * {@code SETUP_VARIABLE} ／ {@code EXPECTED_VARIABLE}（可変長）の 4 種だけであり
+     * （本体スキーマ {@code $defs.file_data.properties.type} の description ／
+     * {@code testdata_notation.rst:850}（{@code 30a8271} 時点））、
+     * それ以外のデータ種別に対する固定長／可変長の別は<b>NTF 仕様に無い</b>。
+     * {@code public static} の受け口が黙って {@link FileType#VARIABLE} を返すと、
+     * 「不正な状態を型で表現できなくする」という XLS-44 の修正の趣旨が受け口の側で崩れる。
+     * 拒否は生成時と同じ検査（{@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)}）による。
+     * </p>
+     * <p>
+     * 主張は<b>ファイル系 4 種の補集合を回す</b>（{@code EnumSet.complementOf}）。1 種だけを代表として
+     * 渡すと、通してよい種別が増える向きの誤りを取り逃がす。補集合で回せば
+     * {@code DataType} に定数が増えても自動で追随する。ただし補集合が空になるとループが 0 回になり
+     * 無条件に緑になるため、<b>要素数そのものも主張する</b>。
+     * メッセージは XLS-36 の {@code requireDataTypeOf} のものであることまで主張する
+     * （{@code "が取りうるデータ種別="} は同メソッド固有の断片で、{@code fileTypeOf} が独自の
+     * メッセージで投げる実装に差し替わると落ちる）。
+     * </p>
+     */
+    @Test
+    public void ファイル系でないデータ種別からはファイル種別を導出できない() {
+        // Given: ファイル系 4 種を除いた残り全部（DataType 全 14 定数の補集合 ＝ 10 種）
+        Set<DataType> notFileTypes = EnumSet.complementOf(EnumSet.of(
+                DataType.SETUP_FIXED, DataType.EXPECTED_FIXED,
+                DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE));
+
+        // Then: 補集合が空だとループが 0 回になり無条件に緑になるため、要素数そのものを固定する
+        assertThat("ファイル系 4 種以外は 10 種であるべき", notFileTypes.size(), is(10));
+
+        // When / Then: どれを渡しても拒否され、メッセージにデータ種別名とブロック名が出る
+        for (DataType notFileType : notFileTypes) {
+            try {
+                FileDataBlock.fileTypeOf(notFileType);
+                fail("IllegalArgumentException が送出されるべき: " + notFileType);
+            } catch (IllegalArgumentException e) {
+                assertThat("データ種別名がメッセージに出るべき: " + notFileType,
+                        e.getMessage(), containsString(notFileType.getName()));
+                assertThat("ブロック名がメッセージに出るべき: " + notFileType,
+                        e.getMessage(), containsString("FileDataBlock"));
+                // 生成時と同じ検査（TestDataBlock#requireDataTypeOf）による拒否であること
+                assertThat("XLS-36 の検査によるメッセージであるべき: " + notFileType,
+                        e.getMessage(), containsString("が取りうるデータ種別="));
+            }
+        }
+    }
+
     private static void assertDerivedFileType(DataType dataType, FileType expected) {
+        // 静的受け口の受理側を直接主張する（コンストラクタ経由の間接担保に頼らない）
+        assertThat(FileDataBlock.fileTypeOf(dataType), is(expected));
         FileDataBlock sut = new FileDataBlock(
                 dataType, "", "f", new LinkedHashMap<>(), List.of());
         assertThat(sut.getDataType(), is(dataType));
