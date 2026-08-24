@@ -66,6 +66,9 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **順序を主張するテストは、フィクスチャを最初から定義順・辞書順とずらして作る**（#24 の教訓・ユーザー確定・2026-08-14）。#24 で 3 巡かけて出た生存変異 9 件は、共通原因が「順序を主張する入力が辞書順・定義順と一致していた」ことだった。一致していると、順序を壊す変異を入れてもテストが通ってしまい、アサートが順序を担保していない。これは辺②に固有の話ではないため、#25 以降でフィクスチャを作るときは書く時点でずらす。3 巡かけて見つけるより書くときに外すほうが安い
 - **State をプレースホルダへ戻すときに失われる記録は、戻す前に Steps か Rules へ移す**（ユーザー確定・2026-08-21。以後の既定）。`/rn:up` の State リセットで消えるのは「次に何をするか」だけであるべきで、制約（例: JaCoCo を再計測しない）や持ち越し事項が State にしか無い状態でリセットすると復元できない
 - **作業対象と無関係なファイルの変更は、独立した `chore:` コミットに分ける**（ユーザー確定・2026-08-14）。`.gitignore` への `.claude/worktrees/` 追加が `c15d531`（辺②のレビュー反映コミット）に相乗りしていた。履歴は書き換えないが、以降は分ける
+- **申し送りの束（XLS-27・XLS-39・XLS-40・XLS-42・XLS-45）はまだ出さない**（ユーザー指示・2026-08-24）。出す判断は調整側（ユーザー）でする。
+- **マージ可否の判断は出さない。完了報告に「要対応 0 件」と書かない**（ユーザー確定・2026-08-24）。**converter 側にもう 1 件、ユーザーから渡される予定の要対応がある**（内容は追って渡される）。したがって「残るはマージのみ」という書き方も現時点では事実に反する。
+- **逸脱の追認（2026-08-24）**: #30 で逸脱として報告した 2 件 —— (1) `inventory.md` の件数をコマンドから導き直した（Rules の #22 規定）／(2) `TestDataBlock` の Javadoc を訂正した —— は**いずれも Rules に従った結果であり、直さないほうが誤りだった**（ユーザー追認・2026-08-24）。同種の是正は以後も逸脱として上げなくてよい。
 - **移動・複製の照合をしたら、相手側の SHA を必ず記録する**（ユーザー確定・2026-08-21）。#2 の QA は「全 28 件を source ブランチと diff して全件ゼロ」とだけ記録し、**基準 SHA を残さなかった**（`checks/task-2.md`）。その後 upstream 側で同じブランチの履歴が作り直されたため、#28 で照合を再現しようとした時点で「ブランチ名」からは移動元へ辿り着けず、**別系統の `d5ec1d0` を相手に取って誤った差分を記録した**（`67a8780`）。ブランチ名・タグ名は動く。**動かないのは SHA だけである。**
 
 # Tasks
@@ -1522,11 +1525,27 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] QA expert review（subagent）／Craft expert review（subagent, coding）／Verification expert review（subagent, test） —— **2 巡実施し、3 巡目の途中で打ち切った**。**#30 以降はレビュア subagent を回さない**（ユーザー確定・2026-08-24。Rules 参照）。2 巡で出た指摘は triage 済みで、Valid 12 件を反映し 3 件を却下した（却下の主なものは「`fileTypeOf` の拒否メッセージが導出の文脈と合わない」——専用の例外を投げる案は「新しい仕組みは要らない」「既存メッセージと振る舞いは変えない」に反するため）
 - [x] **1 コミット**にまとめて push する（ユーザー確定・2026-08-24。#29 と同じ形）
 
+**追加ステップ（`fileTypeOf(null)` を閉じる。ユーザー確定・2026-08-24）** —— **#30 の承認は「`fileTypeOf(null)` を閉じるまで」を条件とする。**`34e78cc` はそのまま残し、続きを **1 コミット**で足す。`fileTypeOf(null)` が `NullPointerException` になる状態を残さない —— `TestDataBlock` のコンストラクタは同じ入力を「データ種別が null のデータブロックは作れません」で拒否しており、**判定は XLS-34 で確定済み**（データタイプの無いブロックはどちらの形式でも書けない）である。決まっている答えがあるのに受け口によって NPE と IAE に分かれるのは、#30 が閉じようとした穴の残りである。「`null` は検査しない。渡した場合の例外の種類は規定しない」を production の契約に書くのは、**決めていないことを契約にしたもの**であり暫定対応にあたる。
+
+- [ ] 【赤】`FileDataBlockTest` に、`FileDataBlock.fileTypeOf(null)` が `IllegalArgumentException` になることを主張するテストを **1 本**足す（現状は `NullPointerException`）
+- [ ] 【緑】`TestDataBlock#requireDataTypeOf` に `null` の分岐を足し、**XLS-34 と同じ趣旨のメッセージ**で `IllegalArgumentException` を投げる。**既存メッセージ本文は変えない**（`permitted.contains` 側の XLS-36 のメッセージは既存テストが文言を主張しているため無変更。`null` は**別の分岐**として足す）。**`fileTypeOf` に独自の例外メッセージを持たせない**（ユーザー確定・2026-08-24。`fileTypeOf(LIST_MAP)` のメッセージも XLS-36 のままでよい —— そこで拒否している事実は「そのデータ種別は `FileDataBlock` の系統ではない」でコンストラクタと同一であり、独自メッセージにすると `FileDataBlockTest#ファイル系でないデータ種別からはファイル種別を導出できない` が主張している「生成時と同じ検査による拒否」という担保が崩れる）
+- [ ] Javadoc から「`null` は検査しない。渡した場合の例外の種類は規定しない」を消し、`@throws` の「非 `null` で、かつ」の限定も外す（`FileDataBlock#fileTypeOf` ／ `TestDataBlock#requireDataTypeOf` の 2 か所）
+- [ ] `issues.md` XLS-44 の「`fileTypeOf(null)` は `VARIABLE` → `NullPointerException` に変わる」を書き直す。**あわせて非互換の記述を検証する** —— `fileTypeOf` は #29 で新設したメソッドであり、それ以前に外部から呼べた API ではない。「外部呼び出し側には非互換」と言えるのは #29 以降の版を誰かが使っている場合だけなので、その前提が立つか確かめ、**立たないなら非互換の記述は落とす**
+- [ ] `inventory.md` のテスト件数をコマンドから導き直す（Rules の #22 規定）
+- [ ] `checks/task-30.md` に追加分の self-check を追記する
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全 PASS を確認し、**1 コミット**にまとめて push する
+
+**やらないこと**（ユーザー確定・2026-08-24）: `requireDataTypeOf` の既存メッセージ本文を変えない／`fileTypeOf` に独自の例外メッセージを持たせない／辺③④のライタに番人や WARN を足さない／`nablarch-testing`・`nablarch-testing-yaml` に書き込まない。
+
 **Completion criteria**:
 
 - `FileDataBlock#fileTypeOf(DataType)` にファイル系 4 種以外の `DataType` を渡すと `IllegalArgumentException` になる
 - 4 種の `DataType` に対する戻り値（`FIXED`／`FIXED`／`VARIABLE`／`VARIABLE`）と、XLS-36 の例外メッセージが**変わっていない**
-- **`null` の検査を足していない**（XLS-29 の番人を復活させない —— ユーザー確定・2026-08-24）
+- **`FileDataBlock#fileTypeOf(null)` が `IllegalArgumentException` になる**（`NullPointerException` にならない）。メッセージの趣旨は XLS-34 と同じ（データタイプの無いブロックはどちらの形式でも書けない）。**【訂正・2026-08-24】この行はもともと「`null` の検査を足していない（XLS-29 の番人を復活させない）」だった。**復活ではない —— XLS-29 の番人は `fileType` ＝ `null` の拒否であり、そのフィールド自体が #29 で消えている。ここで足すのは `dataType` ＝ `null` の拒否（XLS-34）であって、コンストラクタが既に同じ入力を拒否している。**受け口によって NPE と IAE に分かれる状態を残さない**（ユーザー確定・2026-08-24）
+- **`FileDataBlock#fileTypeOf` と `TestDataBlock#requireDataTypeOf` の Javadoc から「例外の種類は規定しない」が消え、`@throws` の「非 `null` で、かつ」という限定も外れている**
+- **`fileTypeOf(LIST_MAP)` のメッセージが XLS-36 の `requireDataTypeOf` のまま変わっていない**（独自メッセージを持たせていない）
+- **既存の振る舞いが変わっていない** —— コンストラクタ経路では `super(...)` が先に `null` を落とすため `requireDataTypeOf` に `null` は届かない。変わるのは `fileTypeOf(null)` だけである
+- **`issues.md` XLS-44 の `fileTypeOf(null)` の記述が書き直され、非互換の記述はその前提を検証したうえで残す／落とすが決まっている**
 - **`fileTypeOf` の可視性を下げていない**（導出の唯一の置き場であるため `public static` のままでよい）
 - `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test -Djacoco.skip=true` が全テスト PASS する
 - `issues.md` の XLS-44 に受け口を締めた旨が 1 行記録され、新しい課題番号が立っていない
@@ -1541,8 +1560,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-24
-- **Last completed**: #30（`34e78cc`。push 済み）。**全 30 タスクが完了**（未チェックの Steps は 0 件）
-- **Next**: **#30 の `/rn:ty` 判定待ち。**承認されれば converter の要対応は 0 件で、残るのは**マージ**のみ。判定前に決めてほしい既知の残件が 1 件 —— `fileTypeOf` の拒否メッセージが XLS-36 のもの（「データブロックを FileDataBlock として作ることはできません」）で、何も生成しない導出ヘルパの文脈と合わない。専用メッセージで投げる案は「新しい仕組みは要らない」「既存メッセージと振る舞いは変えない」に反するため却下済み（現状維持でよければ #30 は完了）
-- **Notes**: branch `ntf-test-data-converter`（`34e78cc` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 601, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**#30 以降レビュア subagent は回さない**（Rules に記録済み。完了報告に `git diff --stat <前タスクの完了コミット>..HEAD -- src/` と `mvn clean test` の最終行を付ける）。**申し送りの束（XLS-27・XLS-39・XLS-40・XLS-42・XLS-45）はまだ出さない** —— 出す判断は調整側でする（ユーザー指示・2026-08-24）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
