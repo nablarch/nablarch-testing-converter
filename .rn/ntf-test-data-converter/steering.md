@@ -1535,6 +1535,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] `checks/task-30.md` に追加分の self-check を追記する
 - [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全 PASS を確認し、**1 コミット**にまとめて push する
 
+**判定 —— 承認された（`/rn:ty`・2026-08-24）。**条件だった「`fileTypeOf(null)` を閉じるまで」は続きの `ba84c2d` で満たされており、#30 は `34e78cc` ＋ `ba84c2d` の 2 コミットをもって確定とする。これで全 30 タスクが完了（未チェックの Steps 0 件）。
+
 **やらないこと**（ユーザー確定・2026-08-24）: `requireDataTypeOf` の既存メッセージ本文を変えない／`fileTypeOf` に独自の例外メッセージを持たせない／辺③④のライタに番人や WARN を足さない／`nablarch-testing`・`nablarch-testing-yaml` に書き込まない。
 
 **Completion criteria**:
@@ -1563,5 +1565,5 @@ so only a genuinely suspended session reads `paused`.)
 - **Status**: paused
 - **Date**: 2026-08-24
 - **Last completed**: #30（`34e78cc` ＋ 続きの `ba84c2d`。いずれも push 済み）。**全 30 タスクが完了**（未チェックの Steps は 0 件）
-- **Next**: **#30 の `/rn:ty` 判定待ち**（続きの `ba84c2d` を含めた判定）。承認されたら、ユーザーから渡される予定の要対応 1 件を受け取る（内容は未受領）。**マージ可否の判断は出さない**
+- **Next**: **#30 は承認済み（`/rn:ty`・2026-08-24。`34e78cc` ＋ `ba84c2d`）。全 30 タスク完了。**次は、ユーザーから渡される予定の要対応 1 件を受け取ること（内容は未受領）。**マージ可否の判断は出さない**
 - **Notes**: branch `ntf-test-data-converter`（`ba84c2d` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 602, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。持ち越しの制約は Rules に記録済み（レビュア subagent を回さない／申し送りの束は出さない／「要対応 0 件」と書かない）
