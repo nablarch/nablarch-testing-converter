@@ -70,6 +70,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **マージ可否の判断は出さない。完了報告に「要対応 0 件」と書かない**（ユーザー確定・2026-08-24。**#31 完了後も同じ**）。予定されていた要対応 1 件は **#31（XLS-45）として受領し、実施した**。判断は調整側（ユーザー）が出す。
 - **逸脱の追認（2026-08-24）**: #30 で逸脱として報告した 2 件 —— (1) `inventory.md` の件数をコマンドから導き直した（Rules の #22 規定）／(2) `TestDataBlock` の Javadoc を訂正した —— は**いずれも Rules に従った結果であり、直さないほうが誤りだった**（ユーザー追認・2026-08-24）。同種の是正は以後も逸脱として上げなくてよい。
 - **移動・複製の照合をしたら、相手側の SHA を必ず記録する**（ユーザー確定・2026-08-21）。#2 の QA は「全 28 件を source ブランチと diff して全件ゼロ」とだけ記録し、**基準 SHA を残さなかった**（`checks/task-2.md`）。その後 upstream 側で同じブランチの履歴が作り直されたため、#28 で照合を再現しようとした時点で「ブランチ名」からは移動元へ辿り着けず、**別系統の `d5ec1d0` を相手に取って誤った差分を記録した**（`67a8780`）。ブランチ名・タグ名は動く。**動かないのは SHA だけである。**
+- **他リポジトリの挙動に言及するときは、その rev の実物を開いて確かめた出典を必ず添える**（ユーザー確定・2026-08-24）。末端まで追わずに将来の挙動を断定しない。#31 で `YamlSchemaValidationException` を `IllegalArgumentException` 系と暗に置いて「スキーマ側の対応が入っても本テストは緑のまま」と書いたが、実物は `IllegalStateException` を継承していた（nablarch-testing-yaml の `src/main/java/nablarch/test/core/reader/yaml/YamlSchemaValidationException.java:12`（`a5cb6dd` 時点））。#30 でも同種のものがあった。**出典は「ファイル:行（rev 時点）」の形で書く。**
 
 # Tasks
 
@@ -1594,6 +1595,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
   - `inventory.md` —— テストメソッドを増やしたため、件数をコマンドから導き直して出典コマンドを併記する（Rules の #22 規定）
 - [x] self-check（OK/NG per completion criterion、`checks/task-31.md` に記録）
 - [x] **1 コミット**にまとめて push する（レビュア subagent は回さない —— Rules・ユーザー確定 2026-08-24）
+- [ ] **【差し戻し対応・2026-08-24】**`YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml` の Javadoc と `checks/task-31.md` 2 行目の Evidence を実物どおりへ直す —— 「今は converter の生成時に落ちる」／「スキーマ側の対応が入ると落ちる段が前へ動き、例外が `YamlSchemaValidationException`（`IllegalStateException` 系）へ変わるため本テストは落ちる」／「そのときは本テストをスキーマ違反を主張する形へ書き替える」の 3 点。**テスト本文・アサートは変えない**（現状の主張は正しい）／**`src/main` を触らない**／**ほかは直さない**。1 コミット
 
 **Completion criteria**:
 
@@ -1617,8 +1619,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-24
-- **Last completed**: #30（`34e78cc` ＋ `ba84c2d`。承認済み）。**#31 は成果コミット `96b5aea` を push 済みで、判定待ち**（未チェックの Steps は 0 件）
-- **Next**: **#31 の判定を受け取ること**（`/rn:ty` または `/rn:gm`）。**マージ可否の判断は出さない**（Rules。#31 完了後も同じ）
-- **Notes**: branch `ntf-test-data-converter`（`96b5aea` push 済み・作業ツリーはクリーン・未追跡パス無し）。ゲートは `Tests run: 605, Failures: 0, Errors: 0, Skipped: 2`・BUILD SUCCESS。**#31 で台帳の宣言値のずれを 7 か所導き直した。うち 2 件は出所が未確認**（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件）—— 旧値・実測値・理由は `checks/task-31.md`「台帳の宣言値のずれ」の表にある。持ち越しの制約は Rules に記録済み
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
