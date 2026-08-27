@@ -341,6 +341,22 @@ XLS-05（全カラムが空のデータ行が消える）は行が消えても�
   **上の「判断」（仕様として不適切）と食い違う。** 往復基準では確かに行が減るが、この欄が問うのは
   記法の明文に反するかであり、明文が読み飛ばしを定めている以上 converter の不具合ではない。
   WARN を出すべきという主張は記法への改善提案として残る（「判断」欄は取り消していない）。
+- **上の表の入力（`""`,`""`）についての原因の帰属は誤りであった。#33 で解消済み（2026-08-27）。**
+  `""`（半角ダブルクォート 2 文字）の行を落としていたのは本体 `PoiXlsReader#isBlankLine` ではなく
+  converter の `XlsFormatReader#isEmptyCell` であった。本体は空エントリの判定を**解釈前の生セル**で
+  行うため、`""` は空セルに当たらず行は残る（`nablarch-testing@3c4bd2a` の `PoiXlsReader.java:93` が
+  `:140`-`:147` の `isBlankLine` で生セルの行だけを捨てる。`TestDataParsingTemplate.java:180` の
+  空行判定も `:183` の `interpret` より前にある）。実測は
+  `XlsEmptyEntryTest#readsAsManyTableEntriesAsTheFrameworkDoes` ——
+  カラム行 `ID`,`NAME`／データ行 `1`,`山田`／`""`,`""`／空セル,空セル のブックに対し、
+  本体（`TestCoreReaderAdapter#readTables`）も converter も **2 件**を返す。
+  #33 は `isEmptyCell` を「生セルが `null` か空文字のときだけ空」へ改め、
+  書き出し側では全要素が空文字のエントリを空セルだけの行にしないようにした
+  （`XlsFormatWriter#entryCells` ／ `#appendRecord`）。
+- **本課題として残るのは「全セルが空セルの行」だけである**（`notation:1535`（`30a8271` 時点）／
+  `implementation/testdata_notation.rst:1500`（`5783b35` 時点）が明文で定める読み飛ばし。判定欄は
+  **対応不要**のまま）。上の「本タスクへの現れ方」の `KEY` 列の回避も、対象がこの空セルのケースで
+  あるため**引き続き必要**である（`XlsFormatReaderCellTypeTest` に `""` を使うケースは 0 件）。
 
 ### 前提: 本体リーダの但し書き（XLS-01 の前提）
 

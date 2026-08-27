@@ -646,22 +646,27 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * セルが空かを記法で判定する。
+     * セルが空かを記法で判定する。空セル（{@code null}／空文字）だけが空である。
      * <p>
-     * 空セル（{@code null}／空文字）のほか、引用符だけの記法（半角 {@code ""}／全角 {@code ””}）も
-     * 空文字を表す記法なので空とみなす。長さ 1 のセルは {@code QuotationTrimmer} の適用対象外として
-     * 空でないとみなす（{@code "} 1 文字に {@code QuotationTrimmer} を掛けると例外になるため、
-     * ここでは掛けない）。
+     * <b>引用符だけの記法（半角 {@code ""}／全角 {@code ””}）は空ではない。</b>これらは空文字を表す
+     * <b>記法</b>であって空セルではなく、{@code implementation/testdata_notation.rst:1500}
+     * （{@code 5783b35} 時点）の読み飛ばしは「行の全セルが空の場合」を対象とする。
+     * 本体も同じ扱いで、空エントリの判定を解釈前の生セルで行う
+     * （{@code nablarch-testing@3c4bd2a} の {@code PoiXlsReader.java:93} が {@code :140}-{@code :147} の
+     * {@code isBlankLine} で生セルの行を捨て、{@code TestDataParsingTemplate.java:180} の空行判定も
+     * {@code :183} の {@code interpret} より前にある）。
+     * </p>
+     * <p>
+     * 空文字を表す記法まで空とみなすと、{@code testdata_examples.rst:2231}（同）の
+     * 「全フィールドが空文字のレコードは、いずれか1つのフィールドに {@code ""} と記述する」で書かれた
+     * エントリが、本体には届くのに converter では消える。
      * </p>
      *
      * @param cell セルの文字列
      * @return 空なら {@code true}
      */
     private static boolean isEmptyCell(String cell) {
-        if (cell == null || cell.isEmpty()) {
-            return true;
-        }
-        return cell.length() > 1 && stripQuotes(cell).isEmpty();
+        return cell == null || cell.isEmpty();
     }
 
     /**

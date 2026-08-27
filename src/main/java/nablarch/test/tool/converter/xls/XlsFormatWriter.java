@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +75,18 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
     /** {@code null} を表す Excel 記法（本体 {@code NullInterpreter} が Java {@code null} へ解釈する表記）。 */
     private static final String NULL_LITERAL = "null";
+
+    /**
+     * 空文字を表す Excel 記法（半角ダブルクォート 2 文字。本体 {@code QuotationTrimmer} が空文字へ解釈する表記）。
+     *
+     * <p>
+     * 全要素が空文字のエントリを空セルだけの行として書くと、読み戻しで空エントリとして読み飛ばされる
+     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点））。解説書は
+     * {@code implementation/testdata_examples.rst:2231}（同）で
+     * 「全フィールドが空文字のレコードは、いずれか1つのフィールドに {@code ""} と記述する」と定める。
+     * </p>
+     */
+    private static final String EMPTY_STRING_NOTATION = "\"\"";
 
     /** Excel がシート名に許す最大文字数。 */
     private static final int MAX_SHEET_NAME_LENGTH = 31;
@@ -265,7 +278,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             }
         }
         for (List<String> row : block.getRows()) {
-            l.add(RowKind.DATA, literals(row));
+            l.add(RowKind.DATA, entryCells(row));
         }
         return l;
     }
@@ -431,11 +444,16 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
         int seq = 1;
         for (List<String> values : record.getRows()) {
-            List<String> dataRow = new ArrayList<>();
-            dataRow.add(sendSync ? String.valueOf(seq++) : "");
-            for (String value : values) {
-                dataRow.add(toCellNotation(value));
+            List<String> valueCells = literals(values);
+            // 全フィールドが空文字のデータ行は、先頭フィールドへ空文字記法を書く
+            // （testdata_examples.rst:2231「いずれか1つのフィールドに "" と記述する」）。
+            // 空セルだけの行にすると本体 PoiXlsReader#isBlankLine が行ごと捨てる。
+            if (!valueCells.isEmpty() && isAllBlank(valueCells)) {
+                valueCells.set(0, EMPTY_STRING_NOTATION);
             }
+            List<String> dataRow = new ArrayList<>(valueCells.size() + 1);
+            dataRow.add(sendSync ? String.valueOf(seq++) : "");
+            dataRow.addAll(valueCells);
             l.add(RowKind.DATA, dataRow);
         }
     }
@@ -574,6 +592,44 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             result.add(toCellNotation(value));
         }
         return result;
+    }
+
+    /**
+     * テーブル・{@code LIST_MAP} のエントリを版面用に写す。
+     *
+     * <p>
+     * <b>全要素が空文字のエントリは各セルへ空文字記法（{@code ""}）を書く。</b>空セルだけの行にすると、
+     * 読み戻しで空エントリとして読み飛ばされてエントリが 1 件消える
+     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点））。
+     * 一部の要素だけが空文字のエントリは空セルのまま書く（行として空にならないため）。
+     * </p>
+     *
+     * @param row エントリの値（{@code null} を含みうる）
+     * @return 版面用の文字列リスト
+     */
+    private static List<String> entryCells(List<String> row) {
+        List<String> cells = literals(row);
+        if (isAllBlank(cells)) {
+            Collections.fill(cells, EMPTY_STRING_NOTATION);
+        }
+        return cells;
+    }
+
+    /**
+     * 版面用のセル文字列がすべて空文字かを判定する。
+     *
+     * <p>要素を 1 つも持たないリストは真を返す。</p>
+     *
+     * @param cells 版面用のセル文字列
+     * @return すべて空文字なら真
+     */
+    private static boolean isAllBlank(List<String> cells) {
+        for (String cell : cells) {
+            if (!cell.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
