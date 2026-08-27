@@ -92,11 +92,24 @@ public class YamlTestCoreAdapter {
     }
 
     /**
-     * YAML ファイルが存在するかどうかを返す。
+     * テストデータの<b>入れ物</b>が存在するかどうかを返す。
+     *
+     * <p>
+     * YAML 形式の入れ物は {@code <path>/<入れ物名>} ディレクトリである
+     * （Excel 形式の {@code <path>/<入れ物名>.xls} に相当する）。入れ物名は {@code resource} の
+     * 最後の {@code "/"} より前の部分で、{@code "/"} を含まない場合は {@code resource} 全体を
+     * 入れ物名として扱う（{@code nablarch-testing-yaml@0b3015c} の {@code YamlLoader.java:165}-{@code :186}）。
+     * </p>
+     *
+     * <p>
+     * <b>読み込み単位（{@code <path>/<入れ物名>/<読み込み単位名>.yaml}）の存在は見ない。</b>
+     * 入れ物ディレクトリさえ在れば、実在しない読み込み単位名を渡しても {@code true} を返す。
+     * 読み込み単位の存在を判定するのは同 {@code :200}-{@code :202} の {@code isDataExisting} である。
+     * </p>
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @return 存在する場合 true
+     * @return 入れ物ディレクトリが存在する場合 true
      */
     public boolean isResourceExisting(String path, String resource) {
         return YamlLoader.isResourceExisting(path, resource);

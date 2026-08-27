@@ -1807,7 +1807,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
-| `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
+| `YamlFormatReaderScalarTest` | **28**（#36 で導き直した。空エントリの読み飛ばしを押さえる `skipsRowWhoseValuesAreAllEmpty` を 1 件追加した） | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
 | `YamlFormatReaderInvalidInputTest` | **32**（#35 で導き直した。宣言値 31 は `226d0f8` 時点の値で、その後 `d737815` ＋1・`b19a236` ＋1・`96b5aea`（#31）＋1 で 34 になり、**#35 の `@Ignore` 2 件削除で 32** になった） | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。**区間別は #35 で導き直して 8 ／ 2 ／ 22 である**（軸F 8 件／ローダの他の失敗経路 2 件／**スキーマを通る仕様内の入力の掃引 22 件**）。#31 の実測は 8 ／ 2 ／ 24 で、**#35 が掃引側から `@Ignore` 2 件を削除して 22 になった**。「軸F の 8 件」「ローダ 2 件」は #24 当時から変わっていない） |
 | `YamlFormatReaderRealFileTest` | 24 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
@@ -2177,7 +2177,7 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
 | D | §0.5 の 12 ケース（D2-01〜D2-12。#18 時点の定義では 10 ケース。うち D2-02／D2-03／D2-06／D2-07 は往復テスト経由の 🔺 があった。§0.8-8） | 要追加 | **担保済み（#24）** — `YamlFormatReaderScalarTest` 27 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` → **27**）。要素別の担保テストメソッドは §2.1-2 の軸D 表。27 件のうち 4 件は D2-06／D2-11 を LIST_MAP 経路・レコード断片経路で確認したもので、**軸要素としては別勘定にしない**（§2.1-2 の「別経路での確認」表） | 12 |
 | E | E-2(0 件) | 要追加 | **担保済み（#24）** — C-08／C-09 と同じ入力（`#readsEmptyColumnNamesAndRowsFromTableWithoutRows` ほか 1 件） | 1 |
 | E | E-4(複数) — `YamlFormatReader#read` が 1 リソース単位 API（§0.8-6） | 到達不能 | 到達不能（変更なし） | 1 |
-| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **31**。差の 23 件は、掃引の固定テスト 21 件（`issues.md` YML-04〜YML-08・YML-10・YML-11）と、ローダの他の失敗経路 2 件（ルートがマッピングでない／同一マッピング内のキー重複）であり、**いずれも軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件・2 件・21 件の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
+| F | F2-01 スキーマ違反／F2-02 不正 YAML／F2-04 必須構造欠落／F2-05 空ファイル（🔺 のみ） | 要追加 | **担保済み（#24）** — 軸F を担保するのは `YamlFormatReaderInvalidInputTest` の **8 件**である（同クラスの総数は `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` → **32**（#35 で導き直した。宣言の 31 は `226d0f8` 時点）。差の 24 件は、掃引の固定テスト 22 件（`issues.md` YML-04〜YML-08・YML-10・YML-11）と、ローダの他の失敗経路 2 件（ルートがマッピングでない／同一マッピング内のキー重複）であり、**いずれも軸F の要素ではない**。§2.1-2 の「開示」の掃引表を参照）。**8 件・2 件・22 件（#35 で導き直した実測。宣言の 21 は #24 時点）の導出コマンドは本表の下**。**内訳（本行の 4 ケース 7 件 ＋ F2-03 の 1 件）**: F2-01 が 2 件／F2-02 が 1 件／F2-04 が 3 件／F2-05 が 1 件／F2-03 が 1 件。F2-04 の 3 件のうち 2 件（`#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` ／ `#failsWithSchemaValidationExceptionWhenFieldTypeIsMissing`）は C-17／C-20 が到達不能である根拠を兼ねる（別勘定ではない）。F2-03 未知のキーは #18 時点で既に ✅（in-memory）だが実ファイル経路では結果が異なるため §2.1-2 の軸F 表に併記した | 4 |
 | **合計** | | **要追加 25 ／ 到達不能 3** | **要追加 0 ／ 担保済み 22 ／ 到達不能 6 ／ 対象外 0** | **28** |
 
 **軸F の 8 件・ローダ分岐 2 件・掃引 21 件の導出**（2026-08-14・3 巡目レビュー指摘で追加。総数 31 は
@@ -2197,7 +2197,9 @@ awk '/YML-04 先頭行のキー集合/,0' \
   | grep -c '^    @Test'
 ```
 
-出力は順に **8** ／ **2** ／ **24**（8 ＋ 2 ＋ 24 ＝ 34）。**2026-08-24 に #31 で導き直した** ——
+出力は順に **8** ／ **2** ／ **22**（8 ＋ 2 ＋ 22 ＝ 32）。**2026-08-28 に #35 で導き直した**
+（#35 が掃引の節から `@Ignore` つきテスト 2 件を削除したため、3 つ目の区間が 24 → 22 になった。
+1 つ目・2 つ目は変わっていない）。**以下は #31（2026-08-24）時点の記録である** ——
 宣言値は **8** ／ **2** ／ **21**（計 31）のまま取り残されており、3 件ずれていた。
 うち 1 件は #31 が末尾に足した
 `YamlFormatReaderInvalidInputTest#rejectsVariableFileFieldWithLengthFromRealYaml`

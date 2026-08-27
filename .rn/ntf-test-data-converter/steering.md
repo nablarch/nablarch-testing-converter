@@ -1783,16 +1783,18 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] **2-5** `YamlTestCoreAdapter:93`-`:100` の Javadoc を、入れ物（ディレクトリ）の存在を返す旨へ直す（委譲先は `YamlLoader#isResourceExisting`。`nablarch-testing-yaml@0b3015c` の `YamlLoader.java:184`-`:186`・`:165`-`:178`。読み込み単位の存在は `:200`-`:202` の `isDataExisting`）
-- [ ] **2-5** `YamlTestCoreAdapterTest:364`-`:371` を新仕様へ直し、メソッド名を「入れ物の存在を映す」ことが分かる名前へ変える。押さえるのは 3 点 ——（入れ物ディレクトリが在る → `true`。読み込み単位名が実在しない `noSuchFile` でも `true`）／（入れ物ディレクトリが無い → `false`）／（`/` を含まない `resourceName` は全体を入れ物名として扱う。`YamlLoader.java:171`-`:172`）
-- [ ] **2-6** `YamlFormatReaderScalarTest` の `readValueLine:159`-`:175` ／ `readListMapValue:184`-`:194` が組み立てる行に、空でない値を持つカラムを 1 つ足す（例: `K: "x"` を先に置き、検証対象は `V` に置く）。取り出す値は従来どおり `V` 列
-- [ ] **2-6** `readValue`・`readValueLine`・`readListMapValue`・`readBlockScalarValue` の呼び出し元を全走査し、`:172`・`:173`・`:191`・`:192` の期待値と取り出す列の位置（`:174`・`:193`）を漏れなく直す。**何件直したかを報告に書く**
-- [ ] **2-6** 「すべての値が空文字の行は読み飛ばされる」こと自体を押さえるテストを 1 件足す（`testdata_notation.rst:1500`。`{}` の行と、値が `""` だけの行の両方を含める）
-- [ ] **2-7** `YamlFormatReaderInvalidInputTest:601`・`:628` の期待値を、`{}` の行だけが読み飛ばされ 2 行目が残る形へ直す（テーブル経路は `columnNames` が `["A"]`・行が 1 件（`["1"]`）。**実際に走らせて観測した値で書く**）
-- [ ] **2-7** メソッド名（`dropsAllRowsWhen...` ／ `keepsRowCountButLosesValuesWhen...`）と Javadoc（`:582`-`:588`「最も損失が大きい形」「2 行目に書いたデータも消える」）を、欠陥の名前でないものへ直す
-- [ ] **2-7** `YML-04` を参照している箇所を全走査し、参照ごと整理する。`coverage/issues.md` は **YML-04 が解消済みであることを 1 行追記するに留める**（記録の書き換えはしない）
-- [ ] 赤 5 件それぞれについて、直したあとの期待値と、そう決めた根拠（解説書の `file:line` と実測値）を報告に書く
-- [ ] 直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認する
+- [x] **2-5** `YamlTestCoreAdapter:93`-`:100` の Javadoc を、入れ物（ディレクトリ）の存在を返す旨へ直す（委譲先は `YamlLoader#isResourceExisting`。`nablarch-testing-yaml@0b3015c` の `YamlLoader.java:184`-`:186`・`:165`-`:178`。読み込み単位の存在は `:200`-`:202` の `isDataExisting`）
+- [x] **2-5** `YamlTestCoreAdapterTest:364`-`:371` を新仕様へ直し、メソッド名を「入れ物の存在を映す」ことが分かる名前へ変える。押さえるのは 3 点 ——（入れ物ディレクトリが在る → `true`。読み込み単位名が実在しない `noSuchFile` でも `true`）／（入れ物ディレクトリが無い → `false`）／（`/` を含まない `resourceName` は全体を入れ物名として扱う。`YamlLoader.java:171`-`:172`）
+- [x] **2-6** `YamlFormatReaderScalarTest` の `readValueLine:159`-`:175` ／ `readListMapValue:184`-`:194` が組み立てる行に、空でない値を持つカラムを 1 つ足す（例: `K: "x"` を先に置き、検証対象は `V` に置く）。取り出す値は従来どおり `V` 列
+- [x] **2-6** `readValue`・`readValueLine`・`readListMapValue`・`readBlockScalarValue` の呼び出し元を全走査し、`:172`・`:173`・`:191`・`:192` の期待値と取り出す列の位置（`:174`・`:193`）を漏れなく直す。**何件直したかを報告に書く**
+- [x] **2-6** 「すべての値が空文字の行は読み飛ばされる」こと自体を押さえるテストを 1 件足す（`testdata_notation.rst:1500`。`{}` の行と、値が `""` だけの行の両方を含める）
+- [x] **2-7** `YamlFormatReaderInvalidInputTest:601`・`:628` の期待値を、`{}` の行だけが読み飛ばされ 2 行目が残る形へ直す（テーブル経路は `columnNames` が `["A"]`・行が 1 件（`["1"]`）。**実際に走らせて観測した値で書く**）
+- [x] **2-7** メソッド名（`dropsAllRowsWhen...` ／ `keepsRowCountButLosesValuesWhen...`）と Javadoc（`:582`-`:588`「最も損失が大きい形」「2 行目に書いたデータも消える」）を、欠陥の名前でないものへ直す
+- [x] **2-7** `YML-04` を参照している箇所を全走査し、参照ごと整理する。`coverage/issues.md` は **YML-04 が解消済みであることを 1 行追記するに留める**（記録の書き換えはしない）
+- [x] 赤 5 件それぞれについて、直したあとの期待値と、そう決めた根拠（解説書の `file:line` と実測値）を報告に書く
+- [x] 直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認する
+
+**#36 の実測による訂正（2026-08-28）**: **YML-04 は「解消済み」ではなく「一部だけ解消」である。**解消したのは先頭行が空マッピング `{}` の形だけで、本題（カラムが先頭行のキー集合だけで決まる）は残っている。根拠はその 3 件のテスト（`dropsColumnThatAppearsOnlyInSecondRowOfTable` ほか）が期待値を変えずに緑のままであること。`issues.md` にはその内容で追記した。
 
 **Completion criteria**:
 

@@ -361,13 +361,31 @@ public class YamlTestCoreAdapterTest {
         assertThat(firstRow.get("note"), is(nullValue()));
     }
 
+    /**
+     * Given: 入れ物ディレクトリ {@code YamlTestCoreAdapterTest} が在るパス。
+     * When : {@code isResourceExisting} を呼ぶ。
+     * Then : 入れ物ディレクトリの有無だけを映す（読み込み単位の有無は見ない）。
+     *
+     * <p>
+     * 委譲先は {@code nablarch-testing-yaml@0b3015c} の {@code YamlLoader#isResourceExisting}
+     * （{@code YamlLoader.java:184}-{@code :186}。{@code buildContainerPath} の結果が
+     * ディレクトリかどうかだけを見る）。入れ物名の決め方は同 {@code :97}-{@code :100}
+     * （最後の {@code "/"} より前。{@code "/"} が無ければ全体）。
+     * </p>
+     */
     @Test
-    public void isResourceExisting_reflectsFileExistence() {
-        // Given
-        // (no setup)
-        // When / Then
-        assertTrue(sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/tables"));
-        assertThat(sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/noSuchFile"), is(false));
+    public void isResourceExisting_reflectsContainerDirectoryExistence() {
+        // Given / When / Then
+        assertTrue("入れ物ディレクトリが在る",
+                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/tables"));
+        assertTrue("読み込み単位名が実在しなくても、入れ物が在れば true",
+                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/noSuchFile"));
+        assertThat("入れ物ディレクトリが無い",
+                sut.isResourceExisting(DIR, "noSuchContainer/tables"), is(false));
+        assertTrue("\"/\" を含まない resourceName は全体が入れ物名",
+                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest"));
+        assertThat("同上（入れ物ディレクトリが無い場合）",
+                sut.isResourceExisting(DIR, "noSuchContainer"), is(false));
     }
 
     // ------------------------------------------------------------------------

@@ -97,7 +97,12 @@ import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
  * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>
  * ただし <b>YML-08</b>（区切り文字ディレクティブの値が辺①と非対称になり、実制御文字のまま中間モデルへ
  * 入って本体が読み戻せない）は <b>#25.5 で修正済み</b>で、該当テストは現状の固定ではなく
- * <b>記法どおりの仕様</b>を書いている。YML-04〜YML-07・YML-10・YML-11 は未修正のため現状の固定のままである。
+ * <b>記法どおりの仕様</b>を書いている。<b>YML-04 は #36 で一部だけ解消した</b> —— 依存先
+ * {@code nablarch-testing-yaml} の Step 4 是正で空マッピング {@code {}} の行がカラム解決より前に
+ * 読み飛ばされるようになり、{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable} ／
+ * {@link #skipsEmptyObjectRowAndKeepsFollowingRowInListMap} の 2 件は記法どおりの仕様を書いている。
+ * <b>YML-04 の中心（カラムが先頭行のキー集合だけで決まる）は残っており</b>、
+ * YML-05〜YML-07・YML-10・YML-11 とともに現状の固定のままである。
  * </p>
  *
  * @author kiyobot
@@ -433,7 +438,8 @@ public class YamlFormatReaderInvalidInputTest {
     // スキーマ検証を通る（＝仕様内の）入力である。軸F の 5 ケースには属さない。
     // 課題は coverage/issues.md の YML-04〜YML-08・YML-10 に記録した。
     // このうち YML-08 は #25.5 で修正済みで、該当テストは現状の固定ではなく記法どおりの仕様を書いている。
-    // 残る YML-04〜YML-07・YML-10 は未修正のため現状の固定のままである。
+    // YML-04 は #36 で一部だけ解消した（空マッピング {} の行の読み飛ばし。中心は残っている）。
+    // 残る YML-05〜YML-07・YML-10 は未修正のため現状の固定のままである。
     // ==================================================================
 
     // ------------------------------------------------------------------ ローダの他の失敗経路（軸F の 5 ケース外）
@@ -581,12 +587,24 @@ public class YamlFormatReaderInvalidInputTest {
     /**
      * Given: 先頭行が空マッピング {@code {}} で、2 行目にデータを書いた {@code setup_tables}。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>例外にならず</b>、カラムも行も 0 件になる。2 行目に書いたデータも消える。
+     * Then : 空マッピングの行<b>だけ</b>が読み飛ばされ、2 行目はカラム名も値も保たれる。
      *
-     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト（最も損失が大きい形）。</p>
+     * <p>
+     * {@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）
+     * 「全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
+     * （{@code {}}）……の場合にスキップされる。」のとおりであり、カラム名は<b>読み飛ばしたあとの
+     * 先頭行</b>で決まる。実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}
+     * （2026-08-28）。
+     * </p>
+     *
+     * <p>
+     * <b>{@code coverage/issues.md} の YML-04 は解消済みである。</b>以前は先頭の {@code {}} が
+     * カラム名を空にしてしまい 2 行目のデータごと消えていた。依存先 {@code nablarch-testing-yaml} の
+     * Step 4 是正で直った（#36）。
+     * </p>
      */
     @Test
-    public void dropsAllRowsWhenFirstRowOfTableIsEmptyObject() {
+    public void skipsEmptyObjectRowAndKeepsFollowingRowInTable() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_tables:\n"
@@ -597,23 +615,25 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
-        assertThat("2 行目に書いた行ごと消えること", block.getRows(), is(Collections.emptyList()));
+        assertThat(block.getColumnNames(), is(Arrays.asList("A")));
+        assertThat(block.getRows(), is(Arrays.asList(Arrays.asList("1"))));
     }
 
     /**
      * Given: 先頭行が空マッピング {@code {}} で、2 行目にデータを書いた {@code list_maps}。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : LIST_MAP 経路では<b>行数は残る</b>が、値を 1 つも持たない行になる。
+     * Then : 空マッピングの行<b>だけ</b>が読み飛ばされ、2 行目はカラム名も値も保たれる。
      *
      * <p>
-     * {@code coverage/issues.md} <b>YML-04</b> の根拠テスト。同じ入力でもテーブル経路
-     * （{@link #dropsAllRowsWhenFirstRowOfTableIsEmptyObject}）は行ごと消えるのに対し、
-     * LIST_MAP 経路は行数だけが残る。
+     * <b>テーブル経路（{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable}）と同じ結果になる。</b>
+     * 以前は同じ入力でも経路によって結果が違い（テーブルは行ごと消える／LIST_MAP は値を持たない行が残る）、
+     * それが {@code coverage/issues.md} <b>YML-04</b> であった。依存先 {@code nablarch-testing-yaml} の
+     * Step 4 是正で両経路とも {@code testdata_notation.rst:1500} どおりになった（#36）。
+     * 実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}（2026-08-28）。
      * </p>
      */
     @Test
-    public void keepsRowCountButLosesValuesWhenFirstRowOfListMapIsEmptyObject() {
+    public void skipsEmptyObjectRowAndKeepsFollowingRowInListMap() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "list_maps:\n"
@@ -624,9 +644,8 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
-        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
-        assertThat(block.getRows(),
-                is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+        assertThat(block.getColumnNames(), is(Arrays.asList("A")));
+        assertThat(block.getRows(), is(Arrays.asList(Arrays.asList("1"))));
     }
 
     /**

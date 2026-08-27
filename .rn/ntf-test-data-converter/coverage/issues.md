@@ -1946,8 +1946,16 @@ YML-10・YML-11）を先に置き、loud に失敗するもの（YML-07）を最
 | `setup_tables`: `[{A: "1"}, {A: "2", B: "x"}]` | `columnNames=[A]`、`rows=[[1], [2]]`。**`B: "x"` が消える** | `dropsColumnThatAppearsOnlyInSecondRowOfTable` |
 | `list_maps`: 同上 | 同上（経路差なし） | `dropsColumnThatAppearsOnlyInSecondRowOfListMap` |
 | `setup_tables`: `[{A: "1", B: "x"}, {A: "2"}]`（逆向き＝後続行でキーが欠ける） | `columnNames=[A, B]`、`rows=[[1, x], [2, null]]`。欠けた側は `null` で救われる | `padsColumnMissingFromSecondRowWithNullInTable` |
-| `setup_tables`: `[{}, {A: "1"}]`（先頭行が空マッピング） | `columnNames=[]`、`rows=[]`。**2 行目に書いたデータごと消える**（行数まで変わる） | `dropsAllRowsWhenFirstRowOfTableIsEmptyObject` |
-| `list_maps`: `[{}, {A: "1"}]` | `columnNames=[]`、`rows=[[], []]`。行数は残るが値がすべて消える | `keepsRowCountButLosesValuesWhenFirstRowOfListMapIsEmptyObject` |
+| `setup_tables`: `[{}, {A: "1"}]`（先頭行が空マッピング） | **#36 前**: `columnNames=[]`、`rows=[]`（2 行目に書いたデータごと消える）／**#36 後**: `columnNames=[A]`、`rows=[[1]]` | `skipsEmptyObjectRowAndKeepsFollowingRowInTable`（**#36 で改称**。旧 `dropsAllRowsWhenFirstRowOfTableIsEmptyObject`） |
+| `list_maps`: `[{}, {A: "1"}]` | **#36 前**: `columnNames=[]`、`rows=[[], []]`（行数は残るが値がすべて消える）／**#36 後**: `columnNames=[A]`、`rows=[[1]]`（テーブル経路と同じ） | `skipsEmptyObjectRowAndKeepsFollowingRowInListMap`（**#36 で改称**。旧 `keepsRowCountButLosesValuesWhenFirstRowOfListMapIsEmptyObject`） |
+
+- **一部だけが解消した（2026-08-28・#36 の実測）。指示書の「YML-04 が解消済み」は言い過ぎである。**
+  依存先 `nablarch-testing-yaml` の Step 4 是正で**空マッピング `{}` の行がカラム解決より前に読み飛ばされる**
+  ようになり、上表の下 2 行（最も損失が大きい形）は解消した。テーブル経路と LIST_MAP 経路の非対称も消えた。
+  **本課題の中心（カラムが先頭行のキー集合だけで決まり、後続行にしかないカラムが黙って消える）は残っている** ——
+  `dropsColumnThatAppearsOnlyInSecondRowOfTable` ／ `dropsColumnThatAppearsOnlyInSecondRowOfListMap` ／
+  `padsColumnMissingFromSecondRowWithNullInTable` の 3 件は**期待値を変えずに緑のまま**である。
+  判定欄（対応不要）は変えない。
 
 - **この入力はスキーマ上の仕様内である。** `$defs.table_data.properties.rows.items` は
   `{"type": "object", "additionalProperties": {"type": ["string", "null"]}}` であり、

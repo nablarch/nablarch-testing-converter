@@ -99,7 +99,8 @@ public class YamlFormatReaderScalarTest {
      * ブロックスカラー（{@code |} ／ {@code >}）の場合は {@link #readBlockScalarValue} を使う。
      * </p>
      *
-     * @param value 検証対象スカラー。{@code "      - V: "} に続けて書かれる
+     * @param value 検証対象スカラー。{@code "        V: "} に続けて書かれる（行の先頭には
+     *              空でない値を持つカラム {@code K} が置かれる。{@link #readValueLine} 参照）
      * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
      */
     private String readValue(String value) {
@@ -113,7 +114,7 @@ public class YamlFormatReaderScalarTest {
      * <b>継続行のインデントは本メソッドが付ける</b>（半角空白 10 個）。呼び出し側は中身だけを渡す。
      * 必要なインデントは<b>半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1 で実測。8 個は
      * {@code ScannerException}、7 個は {@code ParserException}、6 個は {@code ScannerException} になる）。
-     * キー {@code V} が {@code "      - V:"}（空白 6 個＋{@code "- "}）の <b>9 桁目</b>から始まり、
+     * キー {@code V} が {@code "        V:"}（空白 8 個）の <b>9 桁目</b>から始まり、
      * YAML のブロックスカラーはそれより深いインデントを要求するためである。
      * </p>
      *
@@ -152,7 +153,15 @@ public class YamlFormatReaderScalarTest {
      * {@code "      - V:"} に続く文字列と後続行から実 {@code .yaml} を組み立てて読み、
      * 中間モデルへ入った値を返す。
      *
-     * @param firstLineTail  {@code "      - V:"} の直後に書く文字列（値なしのときは空文字）
+     * <p>
+     * <b>行の先頭に空でない値を持つカラム {@code K} を必ず置く。</b>検証対象が空文字のとき、
+     * 行の値がすべて空文字だと行ごと読み飛ばされてしまうためである
+     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）。
+     * この読み飛ばしそのものは {@link #skipsRowWhoseValuesAreAllEmpty} が押さえる）。
+     * 取り出す値は従来どおり {@code V} 列である。
+     * </p>
+     *
+     * @param firstLineTail  {@code "        V:"} の直後に書く文字列（値なしのときは空文字）
      * @param followingLines 後続行（ブロックスカラーの継続行。インデントも含む）
      * @return 中間モデル（{@link TableDataBlock}）の 1 行目 {@code V} 列の値
      */
@@ -161,7 +170,8 @@ public class YamlFormatReaderScalarTest {
                 .append("setup_tables:\n")
                 .append("  - table: \"T\"\n")
                 .append("    rows:\n")
-                .append("      - V:")
+                .append("      - K: \"x\"\n")
+                .append("        V:")
                 .append(firstLineTail)
                 .append('\n');
         for (String line : followingLines) {
@@ -169,14 +179,18 @@ public class YamlFormatReaderScalarTest {
         }
         TestDataContainer container = YamlFixture.read(dir(), yaml.toString());
         TableDataBlock table = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertThat(table.getColumnNames(), is(Arrays.asList("V")));
+        assertThat(table.getColumnNames(), is(Arrays.asList("K", "V")));
         assertThat(table.getRows().size(), is(1));
-        return table.getRows().get(0).get(0);
+        return table.getRows().get(0).get(1);
     }
 
     /**
      * 検証対象スカラー 1 個を {@code list_maps} の 1 行 1 カラム（{@code V}）に置いた実 {@code .yaml} を
      * 書き出し、中間モデルへ入った値を返す。{@link #readValue} と同じケースを LIST_MAP 経路で通す。
+     *
+     * <p>
+     * {@link #readValueLine} と同じ理由で、行の先頭に空でない値を持つカラム {@code K} を必ず置く。
+     * </p>
      *
      * @param value 検証対象スカラー（YAML 記法のまま）
      * @return 中間モデル（{@link ListMapBlock}）の 1 行目 {@code V} 列の値
@@ -186,11 +200,12 @@ public class YamlFormatReaderScalarTest {
                 + "list_maps:\n"
                 + "  - id: \"lm\"\n"
                 + "    rows:\n"
-                + "      - V: " + value + "\n");
+                + "      - K: \"x\"\n"
+                + "        V: " + value + "\n");
         ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
-        assertThat(block.getColumnNames(), is(Arrays.asList("V")));
+        assertThat(block.getColumnNames(), is(Arrays.asList("K", "V")));
         assertThat(block.getRows().size(), is(1));
-        return block.getRows().get(0).get(0);
+        return block.getRows().get(0).get(1);
     }
 
     /**
@@ -541,6 +556,45 @@ public class YamlFormatReaderScalarTest {
     @Test
     public void readsHashContainingStringAsIs() {
         assertThat(readValue("\"a #b\""), is("a #b"));
+    }
+
+    // ------------------------------------------------------------------ 空エントリの読み飛ばし
+
+    /**
+     * Given: 空マッピング {@code {}} の行と、すべての値が空文字 {@code ""} の行を含む {@code setup_tables}。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : その 2 行だけが読み飛ばされ、値を持つ行だけが残る。
+     *
+     * <p>
+     * {@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）
+     * 「全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
+     * （{@code {}}）またはすべての値が空文字の場合にスキップされる。」
+     * </p>
+     *
+     * <p>
+     * <b>この読み飛ばしがあるため、軸D の各ケースを測るヘルパ（{@link #readValueLine}・
+     * {@link #readListMapValue}）は行の先頭に空でない値を持つカラム {@code K} を置いている。</b>
+     * 本テストは、その回避が回避している当の規則そのものを押さえる。
+     * </p>
+     */
+    @Test
+    public void skipsRowWhoseValuesAreAllEmpty() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - K: \"x\"\n"
+                + "        V: \"1\"\n"
+                + "      - {}\n"
+                + "      - K: \"\"\n"
+                + "        V: \"\"\n");
+
+        // Then
+        TableDataBlock table = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat(table.getColumnNames(), is(Arrays.asList("K", "V")));
+        assertThat("空マッピングの行と全値が空文字の行の 2 行が読み飛ばされる",
+                table.getRows(), is(Arrays.asList(Arrays.asList("x", "1"))));
     }
 
     // ------------------------------------------------------------------ 経路差の確認（D2-06・D2-11 のみ）
