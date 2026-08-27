@@ -245,6 +245,12 @@ perl -0777 -ne 'while (/\bstatic\b[^;{()]*\brequireNoNulls\s*\(/g) {
 | `XlsFormatWriterTest` の `roundTrips` で始まるメソッド群 | 10 | 下記のとおり `inventory.md` §0.8-8 には無い |
 | `YamlFormatWriterTest` の `roundTrip_` で始まるメソッド群 | 5 | 同上 |
 
+**Step 4（#32〜#39）が新設した往復テスト 3 クラスは、この 3 群に加えていない**（2026-08-28・#37 で判断）——
+`XlsNotationSymmetryTest`（#32・8 件）／`XlsEmptyEntryTest`（#33・12 件）／
+`SpecialNotationRoundTripTest`（#37・20 件）。理由は `inventory.md` [§4.5](./inventory.md) に書いた
+（触れる軸要素は各辺の直接テストで既に✅であり、🔺 欄に足しても状態欄は動かない）。
+**本書の 🔺 欄と上の導出コマンドの結果は、この 3 クラスを含まない。**
+
 `RoundTripTest` の 29 は本書が引く数であり、同クラスの `@Test` は 30 件ある（下の表）。
 
 ```sh

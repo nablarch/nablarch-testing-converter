@@ -3294,6 +3294,30 @@ awk '/^\| 軸 \| 未担保要素 \| #18 の状態 \| #25 後の状態 \| 件数 
 
 <a id="s5"></a>
 
+<a id="s4-5"></a>
+
+## 4.5 Step 4（#32〜#39）が新設したテストクラス（2026-08-28 追記）
+
+**本節は #37 で新設した。**Step 4 は解説書の記述に対する担保を足すもので、軸A〜F の要素表とは
+切り口が違う。**3 クラスとも軸要素対応表（`axis-matrix.md`）へは載せない**——理由は下記。
+件数は導出コマンドの実測である。
+
+| テストクラス | 追加タスク | 件数 | 導出コマンド | 何を担保するか |
+|---|---|---:|---|---|
+| `xls/XlsNotationSymmetryTest` | #32 | 8 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsNotationSymmetryTest.java` | Excel 形式の読み書きが**記法⇄値の対称な写像**であること（原因側）。実 `.xlsx` 起点 |
+| `xls/XlsEmptyEntryTest` | #33 | 12 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsEmptyEntryTest.java` | 全要素が空文字のエントリが Excel 形式で失われないこと（**件数の保存**）。実 `.xlsx` 起点・本体 `PoiXlsReader` が読む件数と突き合わせ |
+| `xls/SpecialNotationRoundTripTest` | #37 | 20 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/SpecialNotationRoundTripTest.java` | 特殊記法の母集合（`testdata_notation.rst` の表 12 行 ＋ `testdata_examples.rst` の記載例 6 対）を**実ファイル起点・4 経路**で往復させ、解釈後の値が保たれること |
+
+**軸要素対応表へ載せない理由。** 3 クラスはいずれも**往復（4 経路）で値が保たれること**を測る。
+steering Rules（フェーズ2）は「各辺の担保を往復テストの追加で代替しない。既存の往復テストが通している
+軸要素は 🔺弱い担保として計上する」と定めており、**新設した往復テストを正式担保として数えると
+この規定に反する**。3 クラスが触れる軸要素（主に **D 値の表現**、次いで **C 中間モデル全フィールド**の
+`rows` ／ `columnNames`）は、いずれも各辺の直接テストで既に✅であり、**新しく埋まる穴は無い**。
+したがって「🔺弱い担保が増えた」という位置づけで本節に開示するに留める。
+
+**この 3 クラスが埋めているのは軸ではなく、解説書の記述に対する担保である。**
+母集合と経路ごとの合否は `checks/step4-report.md` に記録する。
+
 ## 5. 全体サマリ
 
 <a id="s5-1"></a>
