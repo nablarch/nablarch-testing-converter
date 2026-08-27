@@ -8,6 +8,9 @@
 
 構成は指示書「6. 報告」の 6 項に従う。**第1節のみ記入済み。第2節以降は未着手。**
 
+指示書は 2026-08-27 に `0d9a049` で 2-3 と表の行数が訂正された。第1節は
+その訂正とユーザー判定（同日）を反映済みである。
+
 ---
 
 ## 0. 着手前の実測（2026-08-27）
@@ -39,8 +42,14 @@ YamlFormatReaderScalarTest.readsEmptyStringAsIsInListMapPath:584->readListMapVal
 
 | 表 | ケース数 | 結果 |
 |---|---|---|
-| Excel 形式 `:1353`-`:1391` | 18 | 全件 OK |
-| YAML 形式 `:1405`-`:1443` | 16 | 全件 OK |
+| Excel 形式 データ行 12（`:1356`-`:1391`） | 18 | 全件 OK |
+| YAML 形式 データ行 12（`:1408`-`:1443`） | 16 | 全件 OK |
+
+表の行数は**実測 12 行**である（指示書の「13 行」は `0d9a049` で 12 行へ訂正済み）。
+ケース数が行数を上回るのは、備考欄の派生（`Null`／`"NULL"`／`"ab"c"`／セル内 LF／
+`\n`／全角 `”…”`）を別ケースとして数えたためである。
+
+**ユーザー判定（2026-08-27）**: 反例なしとして受理。実装へ進む。
 
 要点:
 
@@ -69,18 +78,18 @@ YamlFormatReaderScalarTest.readsEmptyStringAsIsInListMapPath:584->readListMapVal
 | 2 | `YamlFormatWriter.rawGroup:479`-`:487` | モデルから `[ ]` を推測剥がし | やめる |
 | 3 | `TestCoreReaderAdapter.markerGroupId:282`-`:286` | `TYPE` と `=` の間を切り出す（`[g1]` がそのまま出る） | ここで外す |
 | 4 | `XlsFormatWriter.marker:529`-`:531` | `TYPE + groupId + "=" + id` を連結 | ここで付ける |
-| 5 | `XlsFormatReader:108`-`:128`・`:145`-`:146`・`:205`-`:206`・`:212`・`:240`・`:267`-`:274` | `header.getGroupId()` を上流 Excel パーサへ渡す | **整形済みが要る**（(b)） |
-| 6 | `YamlTestCoreAdapter.readTables:120`・`readFiles:149` | 上流 YAML ビルダへ渡す | **整形済みが要る**（(b)） |
-| 7 | `TestCoreReaderAdapter.readBlockBodyLines:264`-`:266` ＋ `BodyLineCollector:453`-`:458` | `markerGroupId` の出力と equals 比較 | 両側が同表現なら生値で可 |
-| 8 | `YamlTestCoreAdapter.readSendSyncMessages:179`-`:187` | 生値で比較（上流 `YamlMessageBuilder:156`-`:157`） | 変更不要（既に生値） |
+| 5 | `XlsFormatReader:108`-`:128`・`:145`-`:146`・`:205`-`:206`・`:212`・`:240`・`:267`-`:274` | `header.getGroupId()` を上流 Excel パーサへ渡す | **変更不要**。生値をそのまま渡し、整形はアダプタ側で行う（(b)） |
+| 6 | `YamlTestCoreAdapter.readTables:120`・`readFiles:149` | 上流 YAML ビルダへ渡す | **生値で受け取り、上流へ渡す直前に整形する**（(b)） |
+| 7 | `TestCoreReaderAdapter.readBlockBodyLines:264`-`:266` ＋ `BodyLineCollector:453`-`:458` | `markerGroupId` の出力と equals 比較 | **整形しない**（両側とも生値になる） |
+| 8 | `YamlTestCoreAdapter.readSendSyncMessages:179`-`:187` | 生値で比較（上流 `YamlMessageBuilder:156`-`:157`） | **整形しない**（上流が生値で比較。既に生値） |
 | 9 | `YamlFormatReader.rawGroupsInOrder:427`・`entriesForRawGroup:466` | 送信系は既に生値で走査 | 変更不要。ただし `:299` のモデル格納は `formatGroup(entry)` なので生値へ |
 | 10 | `XlsFormatReader.batchKey:637`-`:638` | 内部の重複判定キー | 表現は問わない |
 | 11 | Javadoc: `XlsFormatWriter:524`／`TestDataBlock:77`／`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259` | 整形済み前提の記述 | 書き直し対象 |
 
-#### (b) 指示書の 1 文が上流の契約と両立しない
+#### (b) 指示書の 1 文が上流の契約と両立しなかった —— ユーザーが指示書を訂正（`0d9a049`）
 
-指示書 2-3 の「**`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする**」は、
-そのままでは実装できない。変更禁止の依存先 2 つが API 境界で `[case1]` 形式を要求する。
+旧版の指示書 2-3 の「**`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする**」は、
+そのままでは実装できなかった。変更禁止の依存先 2 つが API 境界で `[case1]` 形式を要求するためである。
 
 - **Excel 側** —— `nablarch-testing@3c4bd2a` の
   `GroupDataParsingTemplate.java:41`-`:42` が
@@ -98,15 +107,27 @@ YamlFormatReaderScalarTest.readsEmptyStringAsIsInListMapPath:584->readListMapVal
   「Excel 形式では ``データタイプ + グループID + '='`` による前方一致、YAML 形式では
   グループIDの完全一致で判定される」
 
-**提案（ユーザー未判断）**: 中間モデルは生値で持つ（2-3 の目的はこれ）。
-`[ ]` の付け外しは次の 3 境界だけに置き、モデルからは消す。
+**ユーザー判定（2026-08-27。指示書 `0d9a049` の 2-3）**: 指摘を受けて指示書を訂正。
+`[ ]` を知ってよいのは次の **2 層**だけとする。
 
-1. Excel 版面へ書く／から読む —— `XlsFormatWriter.marker`（付ける）・
-   `TestCoreReaderAdapter.markerGroupId`（外す）。指示どおり
-2. 上流 Excel パーサ呼び出し —— `XlsFormatReader` が生値→整形済みに変換して
-   `TestCoreReaderAdapter` へ渡す（`readBlockBodyLines` は生値のまま）
-3. 上流 YAML ビルダ呼び出し —— `YamlFormatReader` が生値→整形済みに変換して
-   `YamlTestCoreAdapter` へ渡す（送信系は現行どおり生値）
+| 層 | 何を知るか | どこ |
+|---|---|---|
+| A Excel 版面の読み書き | `[ ]` は Excel 形式の書式である | 付ける＝`XlsFormatWriter.marker`／外す＝`TestCoreReaderAdapter.markerGroupId` |
+| B 上流 API の境界 | 上流が整形済みグループ ID を要求する | `TestCoreReaderAdapter`・`YamlTestCoreAdapter` の各公開メソッドが**生値で受け取り、上流へ渡す直前に整形する** |
+
+**当方の提案（3 境界方式）とは置き場所が違う。** 整形は `XlsFormatReader`・
+`YamlFormatReader` ではなく**アダプタ 2 クラスの中**に置く。リーダー側に置くと
+`YamlFormatReader` が `[ ]` を組み立てるままになり、2-3 が消そうとしている依存が残るためである。
+`XlsFormatReader` は `[ ]` を扱わず、(a) の #5 に挙げた 7 つの行範囲は**変更不要**になる。
+
+整形の式は `groupId == null || groupId.isEmpty() ? "" : "[" + groupId + "]"` の 1 つに揃える。
+
+**整形しない例外 2 件**:
+
+- `TestCoreReaderAdapter.readBlockBodyLines` —— `markerGroupId` の出力との内部比較であり、
+  両側とも生値になるため
+- `YamlTestCoreAdapter.readSendSyncMessages` —— 上流 `YamlMessageBuilder.buildSendSyncBodies`
+  （`0b3015c:150`-`:163`）が**生値で**比較するため
 
 #### (c) 既存テストの期待値に整形済みグループ ID が現れる箇所 —— 全 44 件
 
@@ -128,19 +149,21 @@ YamlFormatReaderScalarTest.readsEmptyStringAsIsInListMapPath:584->readListMapVal
 | `YamlFormatWriterModelTest` | 459 | 1 |
 | `XlsReferenceFixtureTest` | 344 | 1 |
 
-- **変えない 2 件** —— `YamlTestCoreAdapterTest:74`・`:76`。
-  `YamlTestCoreAdapter.readTables` は上流 `groupMatches` の契約どおり
-  整形済みを受ける API のままである
+- `YamlTestCoreAdapterTest:74`・`:76` の 2 件は **生値へ変わる**。
+  ユーザー判定（`0d9a049`）で `YamlTestCoreAdapter` の公開メソッドが生値で受け取る
+  API になったためである。**「変えない 2 件」と書いた当初の判断は誤り**であった
 - `TestCoreReaderAdapterTest:602`・`:635`・`:664` は `readBlockBodyLines` の引数、
   `:738` は `BlockHeader.getGroupId()` の期待値なので、いずれも生値へ変わる
 
-#### (d) 付随して見つけた 1 点（追いかけない）
+#### (d) 生値化で観測できる出力の変化 1 件（追いかけない）
 
-生値表現にすると、`group_id: ""`（Excel の `TABLE[]=x`）とグループ ID 省略が
-どちらもモデル上 `""` になり区別できなくなる。現行の整形済み表現では `[]` と `""` で
-区別できていた。`5783b35` の `testdata_notation.rst:247`-`:269` に空文字グループ ID の
-記述はなく、`src/test` にも `"[]"` を期待する箇所は 0 件（実測）。
-**解説書に無い書き方**として追わない。
+生値表現にすると、`TABLE[]=x`（空のグループ ID）とグループ ID 省略がどちらも
+モデル上 `""` になる。**その結果、`TABLE[]=x` は往復後に `TABLE=x` になる。**
+これは内部表現の区別が消えるという話ではなく、**観測できる出力の変化**である。
+
+`5783b35` の `testdata_notation.rst:247`-`:269` に空文字グループ ID の記述はなく、
+`src/test` にも `"[]"` を期待する箇所は 0 件（実測）。
+**解説書に無い書き方**として追わない（ユーザー判定・2026-08-27。`0d9a049` の 2-3）。
 
 ---
 

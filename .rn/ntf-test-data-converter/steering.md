@@ -71,6 +71,8 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **逸脱の追認（2026-08-24）**: #30 で逸脱として報告した 2 件 —— (1) `inventory.md` の件数をコマンドから導き直した（Rules の #22 規定）／(2) `TestDataBlock` の Javadoc を訂正した —— は**いずれも Rules に従った結果であり、直さないほうが誤りだった**（ユーザー追認・2026-08-24）。同種の是正は以後も逸脱として上げなくてよい。
 - **移動・複製の照合をしたら、相手側の SHA を必ず記録する**（ユーザー確定・2026-08-21）。#2 の QA は「全 28 件を source ブランチと diff して全件ゼロ」とだけ記録し、**基準 SHA を残さなかった**（`checks/task-2.md`）。その後 upstream 側で同じブランチの履歴が作り直されたため、#28 で照合を再現しようとした時点で「ブランチ名」からは移動元へ辿り着けず、**別系統の `d5ec1d0` を相手に取って誤った差分を記録した**（`67a8780`）。ブランチ名・タグ名は動く。**動かないのは SHA だけである。**
 - **他リポジトリの挙動に言及するときは、その rev の実物を開いて確かめた出典を必ず添える**（ユーザー確定・2026-08-24）。末端まで追わずに将来の挙動を断定しない。#31 で `YamlSchemaValidationException` を `IllegalArgumentException` 系と暗に置いて「スキーマ側の対応が入っても本テストは緑のまま」と書いたが、実物は `IllegalStateException` を継承していた（nablarch-testing-yaml の `src/main/java/nablarch/test/core/reader/yaml/YamlSchemaValidationException.java:12`（`a5cb6dd` 時点））。#30 でも同種のものがあった。**出典は「ファイル:行（rev 時点）」の形で書く。**
+- **持ち越しの未決 2 件（#31 から。State をリセットしても消さない）** —— (1) `handover.md`（解説書・スキーマ担当宛の申し送り）の**提出タイミングは調整側（ユーザー）の判断**であり、こちらからは出さない。(2) **台帳の宣言値のずれ 2 件の出所が未確認**（`checks/task-31.md`「台帳の宣言値のずれ」）。どちらも Step 4（#32〜#39）の作業範囲外であり、Step 4 の完了条件にも入らない
+- **#34（2-3）の実装方針はユーザー判定済み（2026-08-27）** —— `[ ]` を知ってよいのは 2 層（A Excel 版面の読み書き／B 上流 API 境界）だけ。整形はリーダーではなく `TestCoreReaderAdapter`・`YamlTestCoreAdapter` の中に置く。正は指示書 `nablarch-document@0d9a049` の 2-3。判定の経緯は `checks/step4-report.md` §1-2 (b)
 
 # Tasks
 
@@ -1635,7 +1637,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Prerequisites**: なし（第2節の根本。#33 は本タスクと同じ原因を持つ）
 
-**着手前の検証**: **完了**。反例なし（NG=0）。結果は `checks/step4-report.md` §1-1。
+**着手前の検証**: **完了・ユーザー受理済み（2026-08-27）**。反例なし（NG=0）。結果は `checks/step4-report.md` §1-1。母集合は `notation.rst`（`5783b35`）の Excel 形式 12 行・YAML 形式 12 行（指示書の「13 行」は `0d9a049` で 12 行へ訂正済み）。
 
 **Steps**:
 
@@ -1685,27 +1687,35 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Prerequisites**: なし
 
-**着手前の検証**: **完了**。全走査の結果は `checks/step4-report.md` §1-2（`src/main` 11 箇所・既存テストの期待値 44 件）。
+**着手前の検証**: **完了・ユーザー判定済み（2026-08-27）**。全走査の結果は `checks/step4-report.md` §1-2（`src/main` 11 箇所・既存テストの期待値 44 件）。判定は下表のとおり。
 
-**未決（ユーザー判断待ち）**: 指示書 2-3 の「**`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする**」は、変更禁止の上流 2 つが API 境界で整形済み（`[g1]`）を要求するため、そのままでは実装できない（`nablarch-testing@3c4bd2a` の `GroupDataParsingTemplate.java:41`-`:42` ／ `nablarch-testing-yaml@0b3015c` の `YamlSection.groupMatches:281`-`:284`）。**3 境界方式**（Excel 版面／上流 Excel パーサ呼び出し／上流 YAML ビルダ呼び出し）を提案して報告済み。**ユーザーの答えが出るまで実装に入らない。**
+**指示書の訂正（2026-08-27）**: 旧版の「`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする」は誤りであり、ディレクターが実測で訂正した（`nablarch-document@0d9a049` の `.rn/20260724-ntf-yaml-support/ntf-step4-05-nablarch-testing-converter.md` 2-3）。**`[ ]` を知ってよいのは次の 2 層だけ**にする。
+
+| 層 | 何を知るか | どこ |
+|---|---|---|
+| A Excel 版面の読み書き | `[ ]` は Excel 形式の書式である | 付ける＝`XlsFormatWriter.marker`／外す＝`TestCoreReaderAdapter.markerGroupId` |
+| B 上流 API の境界 | 上流が整形済みグループ ID を要求する | `TestCoreReaderAdapter`・`YamlTestCoreAdapter` の各公開メソッドが**生値で受け取り、上流へ渡す直前に整形する** |
+
+層 B が要る理由は、変更禁止の上流 2 つが API 境界で整形済み（`[g1]`）を要求するため（`nablarch-testing@3c4bd2a` の `GroupDataParsingTemplate.java:41`-`:42` の前方一致 ／ `nablarch-testing-yaml@0b3015c` の `YamlSection.groupMatches:281`-`:284` の `equals` 比較）。整形は `XlsFormatReader`・`YamlFormatReader` には置かない（リーダー側に置くと `YamlFormatReader` が `[ ]` を組み立てるままになり、本タスクが消そうとしている依存が残るため）。
 
 **Steps**:
 
-- [ ] 3 境界方式でよいかのユーザー判断を得る
-- [ ] `YamlFormatReader.formatGroup:485`-`:488` の `[ ]` 付与をやめ、モデルへは生値を入れる（`:169`・`:203`・`:236`・`:299`）
+- [ ] `YamlFormatReader.formatGroup:485`-`:488` の `[ ]` 付与をやめ、モデルへは生値を入れる（`:169`・`:203`・`:236`・`:299`）。**上流呼び出しのためにも組み立てない**
 - [ ] `YamlFormatWriter.rawGroup:479`-`:487` の推測剥がしをやめ、生値をそのまま書く
-- [ ] `TestCoreReaderAdapter.markerGroupId:282`-`:286` で `[ ]` を外す
-- [ ] `XlsFormatWriter.marker:529`-`:531` で `[ ]` を付ける
-- [ ] 上流 API 境界（`XlsFormatReader` → `TestCoreReaderAdapter.readTables`／`readFiles`／`readSendSyncMessages`、`YamlFormatReader` → `YamlTestCoreAdapter.readTables`／`readFiles`）で生値→整形済みへ変換する
-- [ ] 整形済み前提の Javadoc を書き直す（`XlsFormatWriter:524`／`TestDataBlock:77`／`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259`）
-- [ ] 既存テストの期待値 44 件のうち、変えたもの・変えなかったものを件数つきで報告に書く（`YamlTestCoreAdapterTest:74`・`:76` の 2 件は上流契約どおり整形済みのままなので変えない）
+- [ ] `XlsFormatReader` は `[ ]` を扱わない。`header.getGroupId()`（生値）をそのまま各アダプタへ渡す（**#32 の着手前検証 (a) で挙げた 7 つの行範囲は変更不要**）
+- [ ] 層 A ——`TestCoreReaderAdapter.markerGroupId:282`-`:286` で `[ ]` を外す／`XlsFormatWriter.marker:529`-`:531` で `[ ]` を付ける
+- [ ] 層 B ——`TestCoreReaderAdapter`・`YamlTestCoreAdapter` の各公開メソッドが生値で受け取り、上流へ渡す直前に整形する。整形の式は `groupId == null || groupId.isEmpty() ? "" : "[" + groupId + "]"` の 1 つに揃える（生値の空文字は「グループ指定なし」）
+- [ ] **整形しない例外 2 件** ——`TestCoreReaderAdapter.readBlockBodyLines`（`markerGroupId` の出力との内部比較であり両側とも生値になるため）／`YamlTestCoreAdapter.readSendSyncMessages`（上流 `YamlMessageBuilder.buildSendSyncBodies`（`0b3015c:150`-`:163`）が**生値で**比較するため。同 `:140`-`:141` の Javadoc が明記）
+- [ ] 層 B を持つメソッドの Javadoc を、生値を受ける旨へ書き直す（`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259`／`XlsFormatWriter:524`／`TestDataBlock:77`）
+- [ ] 既存テストの期待値 44 件のうち、変えたもの・変えなかったものを件数つきで報告に書く（`YamlTestCoreAdapterTest:74`・`:76` の 2 件は**生値へ変わる**。旧版の「変えない 2 件」は誤り）
+- [ ] **`TABLE[]=x`（空のグループ ID）は追わない。** 生値化すると往復後に `TABLE=x` になる。この観測できる出力の変化を報告に 1 行書く
 - [ ] 期待値をわざと崩すと落ちることを 1 度確認する
 
 **Completion criteria**:
 
 - 中間モデルの `groupId` が生値である（`[ ]` を持たない）
 - 4 種のグループ ID（省略・単一・複数・送信系）で 4 経路の往復が壊れていない
-- `[ ]` の付け外しが 3 境界の中だけに閉じている
+- `[ ]` を知るのが層 A・層 B の 2 層だけに閉じており、`XlsFormatReader`・`YamlFormatReader` が `[ ]` を扱わない
 - 既存テストの期待値を変えた箇所・変えなかった箇所が全件・件数つきで挙がっている
 
 ---
@@ -1767,7 +1777,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Prerequisites**: #32・#33・#34
 
-**母集合**: `5783b35` の `implementation/testdata_notation.rst` の特殊記法の表（Excel 形式 `:1353`-`:1391` ／ YAML 形式 `:1405`-`:1443`）と、`implementation/testdata_examples.rst` の「null・空文字・改行など特殊な値を記述する」の各記載例。
+**母集合**: `5783b35` の `implementation/testdata_notation.rst` の特殊記法の表（Excel 形式 12 行 `:1356`-`:1391` ／ YAML 形式 12 行 `:1408`-`:1443`。指示書の「13 行」は `0d9a049` で 12 行へ訂正済み）と、`implementation/testdata_examples.rst` の「null・空文字・改行など特殊な値を記述する」の各記載例。
 
 **Steps**:
 
@@ -1846,8 +1856,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-27
-- **Last completed**: **Step 4 の着手前ゲート**（#32 と #34 の「着手前に検証すること」）。`mvn -o clean test` = `Tests run: 605, Failures: 5, Errors: 0, Skipped: 2` を実測し、赤 5 件が指示書の記載と一致すること・それ以外の赤が無いことを確認。2-1 の「戻す条件」は `notation.rst`（`5783b35`）の Excel 形式の表 18 ケース・YAML 形式の表 16 ケースで**反例なし（NG=0）**。2-3 の `[ ]` 依存箇所は `src/main` 11 箇所・既存テストの期待値 44 件を全走査。結果は `checks/step4-report.md` §1。**src/main・src/test は 1 行も変えていない。**
-- **Next**: **#34 の未決に対するユーザーの答えを得てから実装に入る。** 指示書 2-3 の「`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする」は、変更禁止の上流 2 つが API 境界で整形済み（`[g1]`）を要求するため実装できない（`nablarch-testing@3c4bd2a` の `GroupDataParsingTemplate.java:41`-`:42` ／ `nablarch-testing-yaml@0b3015c` の `YamlSection.groupMatches:281`-`:284`）。**3 境界方式**（Excel 版面／上流 Excel パーサ呼び出し／上流 YAML ビルダ呼び出し）を提案済み。答えが出るまでは #34 に触らず、独立している **#32 → #33 → #35 → #36** から進めてよい
-- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2–§6 未着手）。**未決 3 件** —— (1) #34 の 3 境界方式の可否（上記）／(2) `handover.md` の提出タイミング（提出は調整側の判断・#31 から持ち越し）／(3) 台帳の宣言値のずれ 2 件の出所が未確認（`checks/task-31.md`「台帳の宣言値のずれ」・#31 から持ち越し）。**マージ可否の判断は出さない**（Rules）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
