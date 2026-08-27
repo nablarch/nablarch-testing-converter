@@ -445,7 +445,7 @@ Excel 保存物）を含む同ブランチの `.xlsx` 6 ファイルを POI で�
 | 文字列 `007`（先頭ゼロ） | `"007"` | 妥当（文字列セルなら先頭ゼロは保たれる） |
 | 前後に空白を持つ文字列 `␣␣pad␣␣` | `"  pad  "` | 妥当（トリムされない） |
 | 改行を含む文字列 | 改行を含んだまま 1 値 | 妥当 |
-| リテラル文字列 `null` | `"null"` | 妥当（Excel 経路で `null` へ戻せないことは `XlsFormatWriter` の Javadoc に既記） |
+| リテラル文字列 `null` | **Java `null`**（**2026-08-27・#32 で変更**。それまでは `"null"`） | 妥当（`null` 記法は `NullInterpreter` が Java `null` へ解釈する。文字列としての `null` は `"null"` と囲んで区別する。`testdata_notation.rst:1359`・`:1362`） |
 
 ### 対象としない入力
 
@@ -557,6 +557,14 @@ XLS-02・XLS-03 は欠番である**（欠番はこの 2 件だけで、`XLS-01`
     **—— この 2 文は 2026-08-18 時点の記述であり、もう成り立たない（2026-08-19・§6-K）。**
     XLS-27 の辺③番人は撤去され、カラム名 0 件のブロックはマーカーカラム 1 列 `[EMPTY]` として
     書き出される（`notation:1515`）。**この形を含むブックも YAML → Excel 方向へ変換できる。**
+  - **解説書が逆の順序で明文化された（2026-08-27 に #32 で発見。記録のみ・未対応）。**
+    上の「解説書側へ『除外 → 空エントリ判定』で明文化するよう申し送る予定」は、実際には
+    **逆の順序**で書かれた。`nablarch-document@5783b35` の
+    `ja/development_tools/testing_framework/implementation/testdata_notation.rst:1500` は
+    「この判定はマーカーカラムを除外する前に行われる。そのため、マーカーカラムだけに値がある
+    エントリは読み飛ばされず、他のカラムがすべて空のエントリとして読み込まれる。」と述べている。
+    すなわち**現行の converter（`XlsFormatReader#dropEmptyEntries` による除外後の再判定）は
+    現行の解説書と食い違う。** #32 の作業範囲外のため直していない。判断は調整側に委ねる。
 
 ### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中・**#25.5 で修正済み**）
 
@@ -992,11 +1000,11 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
 `CRLF` で長さが 4 → 3 と減るのは 2 文字が 1 文字になるからであり、**単独の `CR` では長さが変わらない**。
 実測でも `a`＋`CR`＋`CR`＋`b`（4 文字）→ `a`＋`LF`＋`LF`＋`b`（4 文字）であり、`LF` がさらにまとめられることはない。
 
-| 入力（データ行の値） | 書き出されるセル | 担保テスト |
+| 入力（セルへ載る文字列。下の「到達経路が狭まった」も参照） | 書き出されるセル | 担保テスト |
 |---|---|---|
-| `a` ＋ `CR` ＋ `b`（3 文字。単独 `CR`） | 文字列セル。値は `a` ＋ **`LF`** ＋ `b`（**3 文字。長さが変わらない**） | `XlsFormatWriterCellTypeTest#replacesLoneCarriageReturnWithLineFeedInStringCell` |
-| `a` ＋ `CRLF` ＋ `b`（4 文字） | 文字列セル。値は `a` ＋ `LF` ＋ `b`（3 文字） | `#replacesCrLfWithSingleLineFeedInStringCell` |
-| `a` ＋ `LF` ＋ `b` | 文字列セル。値は原文のまま | `#writesLineFeedStringAsStringCell` |
+| `a` ＋ `CR` ＋ `b`（3 文字。単独 `CR`。**カラム名**） | 文字列セル。値は `a` ＋ **`LF`** ＋ `b`（**3 文字。長さが変わらない**） | `XlsFormatWriterCellTypeTest#replacesLoneCarriageReturnWithLineFeedInStringCell` |
+| `a` ＋ `CRLF` ＋ `b`（4 文字。**カラム名**） | 文字列セル。値は `a` ＋ `LF` ＋ `b`（3 文字） | `#replacesCrLfWithSingleLineFeedInStringCell` |
+| `a` ＋ `LF` ＋ `b`（データ行の値） | 文字列セル。値は原文のまま | `#writesLineFeedStringAsStringCell` |
 
 - 原因（推定）: XML の行末正規化（XML 1.0 は `CRLF` と単独 `CR` をいずれも `LF` 1 文字として読む）。
   POI 3.8 は `CR` を数値文字参照（`&#13;`）で退避しないため、書き出したファイルを読み直すと
@@ -1041,6 +1049,15 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
   扱われる。これはテスティングフレームワークとは関係のない Excel 自体の仕様」＝**Excel 形式のセルで表せる
   改行は LF である**ことを記法自身が明言している。CR が LF になるのはその帰結であり、converter の判断ではない。
   上の「判断」（記録に留める）と一致する。
+- **到達経路が狭まった（2026-08-27・#32）。** 辺③がデータ行の値を Excel 記法へ戻すようになり
+  （`XlsFormatWriter#toCellNotation` が `CR` を 2 文字の `\` ＋ `r` へ戻す）、**データ行の値の経路では
+  `CR` がセルへ載らなくなった**ため、本課題は起きない。新しい挙動の担保テストは
+  `XlsFormatWriterCellTypeTest#writesCarriageReturnInDataValueAsBackslashRNotation`。
+  記法への戻しを受けない経路（カラム名・ディレクティブ値・レコード種別・フィールド名・FW 制御ヘッダ値）
+  では引き続き起きるため、記録は残す。上表の担保テスト 3 件のうち
+  `#replacesLoneCarriageReturnWithLineFeedInStringCell`・`#replacesCrLfWithSingleLineFeedInStringCell`・
+  `#keepsCarriageReturnRawInSharedStringsXml` は、**入力をデータ行の値からカラム名へ移して**存続させた
+  （`#writesLineFeedStringAsStringCell` は `LF` のため戻しの対象外で、データ行の値のまま）。
 
 ### XLS-19 Excel のセル文字数上限（32767）を超える値がそのまま書き出される（影響度 低・記録のみ）
 
@@ -1066,7 +1083,7 @@ POI／xmlbeans の挙動が変われば**テストは全て緑のまま本書の
 | 観測 | 判断 |
 |---|---|
 | `"100"` ／ `"007"` ／ `"=1+1"` がいずれも文字列セル（`CELL_TYPE_STRING`）で書かれ、数値セル・数式セルにならない | 妥当（`XlsFormatWriter` はすべての値を `setCellValue(String)` で書く。記法をそのまま保つという Writer の設計どおり） |
-| `null` 値がリテラル `"null"` の文字列セルになる（空白セルにならない） | 妥当（Writer の Javadoc に明記された NTF の慣習。読み戻すと文字列 `"null"` になる非可逆は `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString` で固定済み） |
+| `null` 値がリテラル `"null"` の文字列セルになる（空白セルにならない） | 妥当（`null` を表す Excel 記法である）。**読み戻すと文字列 `"null"` になる非可逆は 2026-08-27・#32 で解消し、読み戻しも Java `null` になる**（`XlsFormatWriterTest#roundTripsNullCellAsJavaNull`） |
 | 空文字 `""` が長さ 0 の文字列セルになる（`CELL_TYPE_BLANK` へ退化しない） | 妥当（空文字と値なしを Excel 上で区別できる形で保つ） |
 | 出力先ディレクトリが存在しないとき、黙って作られて書き出しが成功する（F3-01） | 妥当（`Files.createDirectories` による意図した挙動。親に通常ファイルが居座り作れない場合は `UncheckedIOException` になることを `XlsFormatWriterTest#wrapsIoFailure` が固定済み） |
 | 書き込み権限が無いとき `UncheckedIOException: failed to write Excel: <パス>` ＋ 原因 `AccessDeniedException` になる（F3-03） | 妥当（どのファイルを書けなかったかがメッセージから分かる。XLS-14 の読み取り側と対照的に、書き出し側はパスを載せている） |

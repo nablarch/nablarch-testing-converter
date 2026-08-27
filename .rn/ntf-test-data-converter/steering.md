@@ -1641,14 +1641,14 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] Excel の読み込み（`XlsFormatReader` の値の入口 `:157`（TABLE）・`:188`（LIST_MAP）・`:425`（FILE／MESSAGE のデータ行））で `NullInterpreter` → `QuotationTrimmer` → `LineSeparatorInterpreter` をこの順に掛ける（`nablarch-testing@3c4bd2a` の `src/test/resources/unit-test.xml:29`-`:40` と同順）。`${...}` 系は掛けない（`tools/testdata_converter.rst:61`）
-- [ ] Excel の書き出し（`XlsFormatWriter.nullToLiteral:580`-`:582` ／ `literals:566`-`:572`）で逆写像を行う。Java null → `null` リテラル。`String` は i（CR → 2 文字の `\` ＋ `r`）→ ii（`equalsIgnoreCase("null")` なら半角ダブルクォートで囲む）→ iii（半角 `"` で始まり `"` で終わる、または全角 `”` で始まり `”` で終わるなら半角ダブルクォートで囲む）の順に判定する。**戻さないもの**: 値の途中のダブルクォート／2 文字の `\` ＋ `n`／LF
-- [ ] `RoundTripTest:652`-`:665` `nullCell_xlsConvertsToLiteralString_yamlPreservesNull` の期待値を `nullValue()` へ変え、メソッド名と Javadoc を直す（`:660` の `is("null")`）
-- [ ] `RoundTripTest` のクラス Javadoc `:47`-`:53`「可逆性の対象外」から null の非対称の記述（`:50`-`:52`）を落とす
-- [ ] `XlsFormatWriter` のクラス Javadoc `:56`-`:58`「読み戻しでは文字列 `null` として戻るため、`null`↔`null` は Excel 経路では復元されない」を落とす
-- [ ] `XlsFormatReader:528`-`:538` の `stripQuotes` の Javadoc を、掛けるインタープリタが 3 つになったことに合わせて書き直す
-- [ ] 直す前に落ちて直したあとに通るテストを用意し、テスト名を報告に書く
-- [ ] 足した／直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認し、崩した内容を報告に書く
+- [x] Excel の読み込み（`XlsFormatReader` の値の入口 `:157`（TABLE）・`:188`（LIST_MAP）・`:425`（FILE／MESSAGE のデータ行））で `NullInterpreter` → `QuotationTrimmer` → `LineSeparatorInterpreter` をこの順に掛ける（`nablarch-testing@3c4bd2a` の `src/test/resources/unit-test.xml:29`-`:40` と同順）。`${...}` 系は掛けない（`tools/testdata_converter.rst:61`）
+- [x] Excel の書き出し（`XlsFormatWriter.nullToLiteral:580`-`:582` ／ `literals:566`-`:572`）で逆写像を行う。Java null → `null` リテラル。`String` は i（CR → 2 文字の `\` ＋ `r`）→ ii（`equalsIgnoreCase("null")` なら半角ダブルクォートで囲む）→ iii（半角 `"` で始まり `"` で終わる、または全角 `”` で始まり `”` で終わるなら半角ダブルクォートで囲む）の順に判定する。**戻さないもの**: 値の途中のダブルクォート／2 文字の `\` ＋ `n`／LF
+- [x] `RoundTripTest:652`-`:665` `nullCell_xlsConvertsToLiteralString_yamlPreservesNull` の期待値を `nullValue()` へ変え、メソッド名と Javadoc を直す（`:660` の `is("null")`）
+- [x] `RoundTripTest` のクラス Javadoc `:47`-`:53`「可逆性の対象外」から null の非対称の記述（`:50`-`:52`）を落とす
+- [x] `XlsFormatWriter` のクラス Javadoc `:56`-`:58`「読み戻しでは文字列 `null` として戻るため、`null`↔`null` は Excel 経路では復元されない」を落とす
+- [x] `XlsFormatReader:528`-`:538` の `stripQuotes` の Javadoc を、掛けるインタープリタが 3 つになったことに合わせて書き直す
+- [x] 直す前に落ちて直したあとに通るテストを用意し、テスト名を報告に書く
+- [x] 足した／直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認し、崩した内容を報告に書く
 
 **Completion criteria**:
 

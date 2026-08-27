@@ -53,9 +53,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * </ul>
  *
  * <p>
- * 値は記法のまま書く（クォート付与・トリムはしない。本体読み込みは空インタープリタで原文を保つ）。
- * 明示的な {@code null} 値はセルに {@code null} リテラルを書く（NTF のテストデータ慣習。空インタープリタの
- * 読み戻しでは文字列 {@code "null"} として戻るため、{@code null}↔{@code null} は Excel 経路では復元されない）。
+ * データ行の値は<b>解釈後の値から Excel 記法へ戻して</b>書く（{@link #toCellNotation}）。中間モデルが持つのは
+ * テスティングフレームワークが解釈したあとの値（Java {@code null} または {@link String}）であり
+ * （{@code tools/testdata_converter.rst:14}）、読み（{@code XlsFormatReader}）で外した記法をここで戻すことで
+ * 記法⇄値の写像を対称にする。戻すのは {@code null} リテラル・{@code \r}（CR）・引用符記法の 3 つで、
+ * 値の途中のダブルクォート／2 文字の {@code \} ＋ {@code n}／LF は戻さない（記法側でも素通しのため）。
  * </p>
  *
  * <p>
@@ -69,6 +71,9 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
     /** 出力拡張子。 */
     private static final String EXTENSION = ".xlsx";
+
+    /** {@code null} を表す Excel 記法（本体 {@code NullInterpreter} が Java {@code null} へ解釈する表記）。 */
+    private static final String NULL_LITERAL = "null";
 
     /** Excel がシート名に許す最大文字数。 */
     private static final int MAX_SHEET_NAME_LENGTH = 31;
@@ -429,7 +434,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             List<String> dataRow = new ArrayList<>();
             dataRow.add(sendSync ? String.valueOf(seq++) : "");
             for (String value : values) {
-                dataRow.add(nullToLiteral(value));
+                dataRow.add(toCellNotation(value));
             }
             l.add(RowKind.DATA, dataRow);
         }
@@ -558,7 +563,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * データ行の値を版面用に写す（{@code null} はリテラル {@code null}、それ以外は記法のまま）。
+     * データ行の値を版面用に写す（{@link #toCellNotation} を各要素へ適用する）。
      *
      * @param row 値（{@code null} セルを含みうる）
      * @return 版面用の文字列リスト
@@ -566,19 +571,71 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     private static List<String> literals(List<String> row) {
         List<String> result = new ArrayList<>(row.size());
         for (String value : row) {
-            result.add(nullToLiteral(value));
+            result.add(toCellNotation(value));
         }
         return result;
     }
 
     /**
-     * {@code null} をリテラル {@code null} へ、それ以外は記法のまま返す（データ行の値用）。
+     * 解釈後の値（Java {@code null} または {@link String}）を Excel 記法のセル文字列へ戻す。
      *
-     * @param value 値
+     * <p>
+     * {@code XlsFormatReader} がデータ行のセルへ掛ける 3 つのインタープリタ（{@code NullInterpreter} →
+     * {@code QuotationTrimmer} → {@code LineSeparatorInterpreter}）の逆写像である。値ごとに次の順で判定する。
+     * </p>
+     * <ul>
+     *   <li>Java {@code null} —— {@code null} リテラルを書く（{@code NullInterpreter} が戻す）</li>
+     *   <li>i 値の中の CR —— 2 文字の {@code \} ＋ {@code r} へ戻す
+     *       （{@code LineSeparatorInterpreter} が戻す）</li>
+     *   <li>ii 半角 {@code null}（大文字小文字不問） —— 半角ダブルクォートで囲む。囲まないと読み戻しで
+     *       {@code NullInterpreter} が Java {@code null} にしてしまう
+     *       （{@code implementation/testdata_notation.rst:1362}）</li>
+     *   <li>iii 前後が同じダブルクォート（半角 {@code "} または全角 {@code ”}）で囲まれた値 ——
+     *       半角ダブルクォートでさらに囲む。囲まないと読み戻しで {@code QuotationTrimmer} が外側を外して
+     *       しまう（同 {@code :1374}・{@code :1377}）</li>
+     * </ul>
+     *
+     * <p>
+     * ii と iii は排他である（{@code null} は引用符で始まらない）。i は ii・iii の判定に影響しない
+     * （CR を {@code \} ＋ {@code r} へ置換しても値の先頭・末尾に引用符は生まれない）。
+     * </p>
+     *
+     * <p>
+     * <b>戻さないもの</b>: 値の途中のダブルクォート（{@code QuotationTrimmer} は外側 1 層しか外さない）／
+     * 2 文字の {@code \} ＋ {@code n}／LF（どちらも {@code LineSeparatorInterpreter} の既定パターンの
+     * 対象外。同 {@code :1391}）。いずれも記法側で素通しされるため、戻す必要が無い。
+     * </p>
+     *
+     * @param value 解釈後の値
      * @return セル文字列
      */
-    private static String nullToLiteral(String value) {
-        return value == null ? "null" : value;
+    private static String toCellNotation(String value) {
+        if (value == null) {
+            return NULL_LITERAL;
+        }
+        String notation = value.replace("\r", "\\r");
+        if (NULL_LITERAL.equalsIgnoreCase(notation) || isQuotationWrapped(notation)) {
+            return '"' + notation + '"';
+        }
+        return notation;
+    }
+
+    /**
+     * 値の前後が同じダブルクォート（半角 {@code "} または全角 {@code ”}）で囲まれているかを判定する。
+     *
+     * <p>
+     * 本体の {@code QuotationTrimmer} が外側 1 層を外す条件そのものである
+     * （{@code nablarch-testing} の {@code QuotationTrimmer.java:25}-{@code :27}）。1 文字の {@code "} も
+     * 「前後が {@code "}」に当たるため真になる（この 1 文字を囲まずに書くと、読み戻しで
+     * {@code substring(1, 0)} により例外になる）。
+     * </p>
+     *
+     * @param value 判定対象（{@code null} 不可）
+     * @return 囲まれていれば真
+     */
+    private static boolean isQuotationWrapped(String value) {
+        return (value.startsWith("\"") && value.endsWith("\""))
+                || (value.startsWith("”") && value.endsWith("”"));
     }
 
     /**

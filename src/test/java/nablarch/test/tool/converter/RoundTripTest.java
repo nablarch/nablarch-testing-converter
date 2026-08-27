@@ -47,9 +47,6 @@ import org.junit.rules.TemporaryFolder;
  * <p><b>可逆性の対象外:</b>
  * Excel の色・書式・結合セル・コメント、YAML のコメントはいずれも中間モデルに乗らない。
  * 往復後の Excel は {@link nablarch.test.tool.converter.xls.ExcelFormatConfig} デフォルト整形が付く。
- * また Excel 経路では {@code null}（中間モデルの null セル）をリテラル文字列 {@code "null"} として
- * 書き出すため、往復後は文字列 {@code "null"} として戻る（既知の非可逆・Writer Javadoc 記載・
- * YAML 経路は null が保持されるため非対称）。
  * </p>
  *
  * @author kiyobot
@@ -644,20 +641,25 @@ public class RoundTripTest {
     // ======================================================================
 
     /**
-     * Given: null セルを含むテーブル（XLS 経路）。
-     * When : XLS 経路往復。
-     * Then : null はリテラル文字列 {@code "null"} として戻る（Excel 経路の既知の非可逆）。
-     *        YAML 経路では null が保持されることを併せて確認する。
+     * Given: null セルを含むテーブル（XLS 経路・YAML 経路）。
+     * When : それぞれの経路で往復。
+     * Then : どちらの経路でも null が保持される。
+     *
+     * <p>
+     * XLS 経路は書きで {@code null} 記法のセルへ写し、読みで Java の {@code null} へ戻す
+     * （記法⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になり YAML 経路と非対称だったが、
+     * 読みに {@code NullInterpreter} を掛けたことで解消している。
+     * </p>
      */
     @Test
-    public void nullCell_xlsConvertsToLiteralString_yamlPreservesNull() {
+    public void nullCell_isPreservedInBothPaths() {
         // Given
         TableDataBlock original = table(DataType.SETUP_TABLE_DATA, "", "T",
                 cols("V"), rows(row((String) null)));
 
-        // When / Then: XLS: null → リテラル "null"（既知非可逆・Writer Javadoc 記載）
+        // When / Then: XLS: null → null 記法 → null
         TableDataBlock xlsBack = (TableDataBlock) xlsRoundTrip("xls_null", "s", original);
-        assertThat(xlsBack.getRows().get(0).get(0), is("null"));
+        assertThat(xlsBack.getRows().get(0).get(0), is(nullValue()));
 
         // When / Then: YAML: null は保持される
         TableDataBlock yamlBack = (TableDataBlock) yamlRoundTrip("yaml_null", original);

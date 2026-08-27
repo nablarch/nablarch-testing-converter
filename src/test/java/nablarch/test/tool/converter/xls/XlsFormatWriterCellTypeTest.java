@@ -116,6 +116,9 @@ public class XlsFormatWriterCellTypeTest {
     /** 検証対象セルの行番号（識別行 0 → カラム名行 1 → データ行 2）。 */
     private static final int DATA_ROW = 2;
 
+    /** カラム名行の行番号（識別行 0 → カラム名行 1）。 */
+    private static final int COLUMN_NAME_ROW = 1;
+
     /** 検証対象セルの列番号（{@code KEY} 列 0 → {@code V} 列 1）。 */
     private static final int VALUE_COLUMN = 1;
 
@@ -157,6 +160,28 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
+     * 検証対象の値 1 個を {@code SETUP_TABLE} の<b>カラム名</b>（{@code V} 列の位置）に持つコンテナを
+     * 組み立てる。
+     *
+     * <p>
+     * データ行の値は {@code XlsFormatWriter} が Excel 記法へ戻して書くため（{@code null} リテラル・
+     * {@code \r}・引用符記法）、「モデルの文字がそのままセルへ載る」ことを前提にする検査には使えない。
+     * カラム名は記法への戻しを受けず素のまま載るため、そのための入口として用意している。
+     * </p>
+     *
+     * @param columnName 検証対象のカラム名
+     * @return コンテナ
+     */
+    private static TestDataContainer containerWithColumnName(String columnName) {
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                Arrays.asList("KEY", columnName),
+                Collections.singletonList(Arrays.asList("k", "v")));
+        TestDataSection section = new TestDataSection(SHEET,
+                Collections.<TestDataBlock>singletonList(table));
+        return new TestDataContainer(BOOK, Collections.singletonList(section));
+    }
+
+    /**
      * 検証対象の値 1 個を {@code SETUP_TABLE} のデータ行に置いてメモリ上のブックを組み立て、
      * 検証対象セルの値を返す（ファイルへ直列化する前の値）。
      *
@@ -164,8 +189,19 @@ public class XlsFormatWriterCellTypeTest {
      * @return メモリ上のブックのセル値
      */
     private static String buildInMemory(String value) {
-        return new XlsFormatWriter().build(container(value))
-                .getSheet(SHEET).getRow(DATA_ROW).getCell(VALUE_COLUMN).getStringCellValue();
+        return buildInMemory(container(value), DATA_ROW);
+    }
+
+    /**
+     * 指定のコンテナからメモリ上のブックを組み立て、指定行の {@code V} 列のセル値を返す。
+     *
+     * @param container 対象コンテナ
+     * @param rowIndex  検証対象セルの行番号
+     * @return メモリ上のブックのセル値
+     */
+    private static String buildInMemory(TestDataContainer container, int rowIndex) {
+        return new XlsFormatWriter().build(container)
+                .getSheet(SHEET).getRow(rowIndex).getCell(VALUE_COLUMN).getStringCellValue();
     }
 
     /**
@@ -176,13 +212,24 @@ public class XlsFormatWriterCellTypeTest {
      * @return 書き出したファイルから読み直したセル
      */
     private Cell writeAndReopen(String value) {
-        new XlsFormatWriter().write(container(value), folder.getRoot().getAbsolutePath());
+        return writeAndReopen(container(value), DATA_ROW);
+    }
+
+    /**
+     * 指定のコンテナを実 {@code .xlsx} へ書き出し、POI で開き直して指定行の {@code V} 列のセルを返す。
+     *
+     * @param container 対象コンテナ
+     * @param rowIndex  検証対象セルの行番号
+     * @return 書き出したファイルから読み直したセル
+     */
+    private Cell writeAndReopen(TestDataContainer container, int rowIndex) {
+        new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
 
         Path file = folder.getRoot().toPath().resolve(BOOK + ".xlsx");
         Sheet sheet = XlsFixture.open(file).getSheet(SHEET);
         assertThat("書き出したブックに出力先シートがあること", sheet, is(notNullValue()));
-        Row row = sheet.getRow(DATA_ROW);
-        assertThat("データ行が書かれていること", row, is(notNullValue()));
+        Row row = sheet.getRow(rowIndex);
+        assertThat("検証対象の行が書かれていること", row, is(notNullValue()));
         Cell cell = row.getCell(VALUE_COLUMN);
         assertThat("検証対象セルが書かれていること", cell, is(notNullValue()));
         return cell;
@@ -202,7 +249,18 @@ public class XlsFormatWriterCellTypeTest {
      * @return {@code xl/sharedStrings.xml} の生バイト
      */
     private byte[] sharedStringsXml(String value) {
-        new XlsFormatWriter().write(container(value), folder.getRoot().getAbsolutePath());
+        return sharedStringsXml(container(value));
+    }
+
+    /**
+     * 指定のコンテナから実 {@code .xlsx} を書き出し、その ZIP エントリ
+     * {@code xl/sharedStrings.xml} の<b>生バイト</b>を返す。
+     *
+     * @param container 対象コンテナ
+     * @return {@code xl/sharedStrings.xml} の生バイト
+     */
+    private byte[] sharedStringsXml(TestDataContainer container) {
+        new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
 
         Path file = folder.getRoot().toPath().resolve(BOOK + ".xlsx");
         try (ZipFile zip = new ZipFile(file.toFile())) {
@@ -368,9 +426,9 @@ public class XlsFormatWriterCellTypeTest {
      *        空白セル（{@code CELL_TYPE_BLANK}）にはならない。
      *
      * <p>
-     * 担保する軸要素: D3-04。値の側（{@code "null"} と書かれること・読み戻すと文字列 {@code "null"} に
-     * なること）は {@code XlsFormatWriterTest#writesTableBlock} ／
-     * {@code #roundTripsNullCellAsLiteralNullString} が既に固定しており、本テストはセル型を足す。
+     * 担保する軸要素: D3-04。値の側（{@code "null"} と書かれること・読み戻すと Java の {@code null} へ
+     * 戻ること）は {@code XlsFormatWriterTest#writesTableBlock} ／
+     * {@code XlsFormatWriterTest#roundTripsNullCellAsJavaNull} が既に固定しており、本テストはセル型を足す。
      * </p>
      */
     @Test
@@ -425,7 +483,7 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * Given: {@code CRLF} 改行を含む文字列を持つデータ行。
+     * Given: {@code CRLF} 改行を含む<b>カラム名</b>。
      * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
      * Then : <b>文字列セル</b>になるが、{@code CRLF}（2 文字）が黙って {@code LF} 1 文字へ正規化される。
      *
@@ -440,12 +498,21 @@ public class XlsFormatWriterCellTypeTest {
      * （{@code CR} 単独では長さが変わらない。{@code #replacesLoneCarriageReturnWithLineFeedInStringCell}）。
      * 変換前後で値が変わるため {@code issues.md} の <b>XLS-18</b> に課題として記録した（修正はしない）。
      * </p>
+     *
+     * <p>
+     * <b>検査対象をデータ行の値からカラム名へ移した</b>（{@code null}・{@code \r}・引用符記法を
+     * 版面へ戻す是正に伴う。データ行の値は {@code XlsFormatWriter} が {@code CR} を 2 文字の
+     * {@code \} ＋ {@code r} へ戻して書くため、そもそも {@code CR} がセルへ載らない。
+     * その新しい挙動は {@code #writesCarriageReturnInDataValueAsBackslashRNotation} が押さえる）。
+     * XLS-18 はカラム名・ディレクティブ値・レコード種別など<b>記法への戻しを受けない経路</b>では
+     * 引き続き起きるため、記録も本メソッドも残す。
+     * </p>
      */
     @Test
     public void replacesCrLfWithSingleLineFeedInStringCell() {
         // When
-        String inMemory = buildInMemory("a\r\nb");
-        Cell cell = writeAndReopen("a\r\nb");
+        String inMemory = buildInMemory(containerWithColumnName("a\r\nb"), COLUMN_NAME_ROW);
+        Cell cell = writeAndReopen(containerWithColumnName("a\r\nb"), COLUMN_NAME_ROW);
 
         // Then
         assertThat("メモリ上のブックでは CRLF が保たれている（CR はファイルにも残る。変わるのは読み戻し区間）",
@@ -456,7 +523,32 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * Given: {@code LF} を伴わない単独の {@code CR} を含む文字列を持つデータ行。
+     * Given: {@code CR} を含むデータ行の値。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : セルには {@code CR} ではなく<b>2 文字の {@code \} ＋ {@code r}</b>（Excel 記法）が書かれる。
+     *        読み戻しの XML 正規化を受けないため、開き直した値も同じである。
+     *
+     * <p>
+     * 担保する軸要素: D3-06（改行の異表記）。中間モデルが持つのは解釈後の値であり、書きはそれを
+     * Excel 記法へ戻す（{@code implementation/testdata_notation.rst:1389}）。この戻しにより、
+     * データ行の値の経路では XLS-18（{@code CR} が読み戻しで {@code LF} になる）が起きなくなる。
+     * </p>
+     */
+    @Test
+    public void writesCarriageReturnInDataValueAsBackslashRNotation() {
+        // When
+        String inMemory = buildInMemory("a\rb");
+        Cell cell = writeAndReopen("a\rb");
+
+        // Then
+        assertThat("メモリ上のブックでも \\r 記法（CR は載らない）", inMemory, is("a\\rb"));
+        assertThat(cell.getCellType(), is(Cell.CELL_TYPE_STRING));
+        assertThat("読み戻しても \\r 記法のまま（XML 正規化の対象にならない）",
+                cell.getStringCellValue(), is("a\\rb"));
+    }
+
+    /**
+     * Given: {@code LF} を伴わない単独の {@code CR} を含む<b>カラム名</b>。
      * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
      * Then : <b>文字列セル</b>になるが、{@code CR} が黙って {@code LF} へ置き換わる。
      *        <b>文字数は 3 文字のまま変わらない。</b>
@@ -469,12 +561,17 @@ public class XlsFormatWriterCellTypeTest {
      * {@code CR} が生のまま入っており（{@code #keepsCarriageReturnRawInSharedStringsXml} が
      * 生バイトで検査している）、<b>変わるのは読み戻し（XML パース）区間</b>である。
      * </p>
+     *
+     * <p>
+     * <b>検査対象をデータ行の値からカラム名へ移した</b>理由は
+     * {@code #replacesCrLfWithSingleLineFeedInStringCell} の同じ注記のとおり。
+     * </p>
      */
     @Test
     public void replacesLoneCarriageReturnWithLineFeedInStringCell() {
         // When
-        String inMemory = buildInMemory("a\rb");
-        Cell cell = writeAndReopen("a\rb");
+        String inMemory = buildInMemory(containerWithColumnName("a\rb"), COLUMN_NAME_ROW);
+        Cell cell = writeAndReopen(containerWithColumnName("a\rb"), COLUMN_NAME_ROW);
 
         // Then
         assertThat("メモリ上のブックでは CR が保たれている（CR はファイルにも残る。変わるのは読み戻し区間）",
@@ -656,9 +753,9 @@ public class XlsFormatWriterCellTypeTest {
     }
 
     /**
-     * Given: 単独の {@code CR}（{@code U+000D}）を含む値を持つデータ行。
-     * When : 実 {@code .xlsx} へ {@code write} し、ZIP エントリ {@code xl/sharedStrings.xml} を
-     *        パースせず生バイトで読む。
+     * Given: 単独の {@code CR}（{@code U+000D}）を含む<b>カラム名</b>。
+     * When : {@code CR} を<b>カラム名</b>に持つコンテナを実 {@code .xlsx} へ {@code write} し、
+     *        ZIP エントリ {@code xl/sharedStrings.xml} をパースせず生バイトで読む。
      * Then : {@code <t>a}＋{@code 0x0D}＋{@code b</t>} が生バイトで存在する（{@code CR} が<b>生のまま残る</b>）。
      *        数値文字参照 {@code &#13;} への退避は無く、{@code ?} への置換も起きていない。
      *
@@ -679,7 +776,7 @@ public class XlsFormatWriterCellTypeTest {
     @Test
     public void keepsCarriageReturnRawInSharedStringsXml() {
         // When
-        byte[] xml = sharedStringsXml("a\rb");
+        byte[] xml = sharedStringsXml(containerWithColumnName("a\rb"));
 
         // Then
         byte[] rawCr = {'<', 't', '>', 'a', 0x0D, 'b', '<', '/', 't', '>'};

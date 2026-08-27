@@ -265,13 +265,21 @@ public class XlsFormatReaderCellTypeTest {
     }
 
     /**
-     * Given: リテラル文字列 {@code null} を持つ文字列セル。
+     * Given: {@code null} 記法（半角 {@code null}）を持つ文字列セルと、それを引用符で囲んだ
+     *        {@code "null"} を持つ文字列セル。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 文字列 {@code "null"} として入る（Java の {@code null} にはならない）。
+     * Then : 前者は Java の {@code null}、後者は文字列 {@code "null"} として入る。
+     *
+     * <p>
+     * 中間モデルが持つのはテスティングフレームワークが解釈したあとの値であり、{@code null} 記法は
+     * Java の {@code null} へ写る（{@code implementation/testdata_notation.rst:1359}）。文字列としての
+     * {@code null} は引用符で囲んで区別する（同 {@code :1362}）。
+     * </p>
      */
     @Test
-    public void readsLiteralNullStringAsString() {
-        assertThat(readValue(text("null")), is("null"));
+    public void readsNullNotationAsJavaNullAndQuotedNullAsString() {
+        assertThat("null 記法", readValue(text("null")), is(nullValue()));
+        assertThat("引用符で囲んだ null", readValue(text("\"null\"")), is("null"));
     }
 
     // ------------------------------------------------------------------ D1-17

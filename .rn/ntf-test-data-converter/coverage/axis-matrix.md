@@ -554,7 +554,7 @@ awk '/^## 1\. /,/^## 2\. /' axis-matrix.md | grep -E '^\| [A-F][0-9-]' \
 | D1-13 | 空文字 | ✅ | `XlsFormatReaderCellTypeTest#readsEmptyStringCellAsEmptyString` ／ `#readsBlankCellAsEmptyString` | `RoundTripTest#xls_setupTable_isPreserved` | 3 種とも `""` になり中間モデル上で区別できない（`issues.md` XLS-04） |
 | D1-14 | 前後空白 | ✅ | `XlsFormatReaderCellTypeTest#readsSurroundingWhitespacePreserved` | `RoundTripTest#leadingTrailingWhitespace_isPreservedInBothPaths` | — |
 | D1-15 | 改行 | ✅ | `XlsFormatReaderCellTypeTest#readsEmbeddedNewlinePreserved` | — | — |
-| D1-16 | リテラル `null` | ✅ | `XlsFormatReaderCellTypeTest#readsLiteralNullStringAsString` | `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` | — |
+| D1-16 | `null` 記法（Java `null` へ解釈。**#32 で `"null"` から変更**） | ✅ | `XlsFormatReaderCellTypeTest#readsNullNotationAsJavaNullAndQuotedNullAsString` | `RoundTripTest#nullCell_isPreservedInBothPaths` | — |
 | D1-17 | 表示形式 `@` の数値セル | ✅ | `XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString` | — | 値は `1.0` になる（`issues.md` XLS-01）。仕様外入力の実挙動の記録である |
 
 Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcelSavedWorkbookIntoIntermediateModel` ／ `XlsReferenceFixtureTest#poiGeneratedWorkbookReadsIdenticallyToExcelSavedWorkbook` が押さえる（軸要素そのものの担保ではない）。
@@ -719,7 +719,7 @@ unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
 | D2-03 | 引用符付き数値 | ✅ | `YamlFormatReaderScalarTest#readsQuotedNumberAsString` | `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | `"123"` → `"123"` |
 | D2-04 | 引用符付き末尾ゼロ小数 | ✅ | `YamlFormatReaderScalarTest#readsQuotedTrailingZeroDecimalAsString` | — | `"1.50"` → `"1.50"` |
 | D2-05 | 真偽値に見える文字列 | ✅ | `YamlFormatReaderScalarTest#readsQuotedTrueAsString` ／ `#readsUppercaseTrueAsString` ／ `#readsYesAsString` | — | `"true"` ／ `TRUE` ／ `yes` とも記法どおりの文字列 |
-| D2-06 | NULL | ✅ | `YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNull` ／ `#readsOmittedValueAsJavaNull` | `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` | 引用符なし `null` と値なしだけが Java `null` になる |
+| D2-06 | NULL | ✅ | `YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNull` ／ `#readsOmittedValueAsJavaNull` | `RoundTripTest#nullCell_isPreservedInBothPaths` | 引用符なし `null` と値なしだけが Java `null` になる |
 | D2-07 | NULL に見える文字列 | ✅ | `YamlFormatReaderScalarTest#readsQuotedNullAsString` ／ `#readsTildeAsString` ／ `#readsUppercaseNullAsString` | — | `"null"` ／ `~` ／ `NULL` はいずれも文字列（`issues.md` YML-01） |
 | D2-08 | 日付・日時風文字列 | ✅ | `YamlFormatReaderScalarTest#readsDateLikeStringAsIs` ／ `#readsDateTimeLikeStringAsIs` | — | — |
 | D2-09 | 複数行（リテラルブロック・折りたたみブロック） | ✅ | `YamlFormatReaderScalarTest#readsLiteralBlockScalarKeepingNewlines` ／ `#readsFoldedBlockScalarFoldingNewlinesIntoSpaces` | — | リテラルブロック記法は `"l1\nl2\n"`、折りたたみ記法 `>` は `"l1 l2\n"`（いずれも末尾に改行が付く） |
@@ -943,7 +943,7 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 | D3-01 | `"100"` | ✅ | `XlsFormatWriterCellTypeTest#writesNumericLookingStringAsStringCell` | — | 数値セルにならない（`getNumericCellValue()` が `IllegalStateException`） |
 | D3-02 | `"=1+1"` | ✅ | `XlsFormatWriterCellTypeTest#writesFormulaLookingStringAsStringCell` | — | 数式セルにならない |
 | D3-03 | `"007"` | ✅ | `XlsFormatWriterCellTypeTest#writesLeadingZeroStringAsStringCell` | — | 先頭ゼロが落ちない |
-| D3-04 | `null` | ✅ | `XlsFormatWriterCellTypeTest#writesNullValueAsLiteralNullStringCell` | `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` ／ `XlsFormatWriterTest#roundTripsNullCellAsLiteralNullString` | リテラル `"null"` になる（空白セルにならない） |
+| D3-04 | `null` | ✅ | `XlsFormatWriterCellTypeTest#writesNullValueAsLiteralNullStringCell` | `RoundTripTest#nullCell_isPreservedInBothPaths` ／ `XlsFormatWriterTest#roundTripsNullCellAsJavaNull` | リテラル `"null"` になる（空白セルにならない）。**#32 以降は読み戻しでも Java `null` へ戻る** |
 | D3-05 | `""` | ✅ | `XlsFormatWriterCellTypeTest#writesEmptyValueAsEmptyStringCell` | `XlsFormatWriterTest#roundTripsTable` | 長さ 0 の文字列セル（`CELL_TYPE_BLANK` へ退化しない） |
 | D3-06 | 改行含む文字列 | ✅ | `XlsFormatWriterCellTypeTest#writesLineFeedStringAsStringCell`（代表。全 4 件は下表） | — | `CR` は `LF` へ置換される（`issues.md` XLS-18）。変化が起きるのは読み戻し（XML パース）区間であることを、生バイトを読む 1 件が示す |
 | D3-07 | 32767 文字超 | ✅ | `XlsFormatWriterCellTypeTest#writesStringLongerThanExcelCellLimitAsStringCell` ／ `#writesStringOfExcelCellLimitLengthAsStringCell` | — | 切り詰め・例外なし（`issues.md` XLS-19） |
@@ -954,8 +954,9 @@ grep -c 'writeAndReopen(' "$C"          # 開き直し経路（定義 1 ＋ 呼�
 | 担保テストメソッド | 何を固定しているか |
 |---|---|
 | `XlsFormatWriterCellTypeTest#writesLineFeedStringAsStringCell` | `LF` を含む値が文字列セルとしてそのまま往復する |
-| `XlsFormatWriterCellTypeTest#replacesCrLfWithSingleLineFeedInStringCell` | `CRLF` が `LF` 1 文字になる |
-| `XlsFormatWriterCellTypeTest#replacesLoneCarriageReturnWithLineFeedInStringCell` | 単独の `CR` が `LF` になる |
+| `XlsFormatWriterCellTypeTest#replacesCrLfWithSingleLineFeedInStringCell` | `CRLF` が `LF` 1 文字になる（**#32 以降、入力は**<b>カラム名</b>） |
+| `XlsFormatWriterCellTypeTest#replacesLoneCarriageReturnWithLineFeedInStringCell` | 単独の `CR` が `LF` になる（**#32 以降、入力は**<b>カラム名</b>） |
+| `XlsFormatWriterCellTypeTest#writesCarriageReturnInDataValueAsBackslashRNotation` | **データ行の値**の `CR` は 2 文字の `\` ＋ `r`（Excel 記法）として書かれ、読み戻しでも変わらない（**#32 で追加**） |
 | `XlsFormatWriterCellTypeTest#keepsCarriageReturnRawInSharedStringsXml` | ファイルには `CR` が生のまま焼き込まれている（＝変化は読み戻し区間で起きる） |
 
 #### D3-08 を担保する 7 メソッド
@@ -1200,7 +1201,7 @@ grep -c "container.getName()" "$X"   # 辺③（対照）
 | D4-01 | `"100"` | ✅ | `YamlFormatWriterScalarTest#writesNumberLookingStringAsDoubleQuotedScalar`（記法）／ `#restoresNumberLookingStringThroughRealReader`（往復） | `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | `V: "100"` |
 | D4-02 | `"true"` | ✅ | `YamlFormatWriterScalarTest#writesBooleanLookingStringAsDoubleQuotedScalar` ／ `#restoresBooleanLookingStringThroughRealReader` | — | レコード断片経路と `emitMap` 経路にも埋め込んである（`YamlFormatWriterModelTest#quotesBooleanAndDateLookingValuesInFwHeader`） |
 | D4-03 | `"null"` | ✅ | `YamlFormatWriterTest#serialize_distinguishesNullFromNullString` | `YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader` | `V: "null"` |
-| D4-04 | `null`（Java `null`） | ✅ | `YamlFormatWriterTest#serialize_distinguishesNullFromNullString` ／ `#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `RoundTripTest#nullCell_xlsConvertsToLiteralString_yamlPreservesNull` | `V: null`（クォート無し）。Java `null` へ戻る |
+| D4-04 | `null`（Java `null`） | ✅ | `YamlFormatWriterTest#serialize_distinguishesNullFromNullString` ／ `#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `RoundTripTest#nullCell_isPreservedInBothPaths` | `V: null`（クォート無し）。Java `null` へ戻る |
 | D4-05 | `""` | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `YamlFormatWriterTest#roundTrip_table_isPreservedThroughRealReader` | `NAME: ""`。`null` と区別される |
 | D4-06 | `"007"` | ✅ | `YamlFormatWriterScalarTest#writesLeadingZeroNumberAsDoubleQuotedScalar` ／ `#restoresLeadingZeroNumberThroughRealReader` | — | — |
 | D4-07 | 改行含む | ✅ | `YamlFormatWriterScalarTest#writesNewlineContainingStringAsEscapedSingleLineScalar`（代表。全 5 件は下表） | — | ブロックスカラーにはならず 1 行の `"l1\nl2"`。80 桁を超えると行末 `\` で折り返す（折り返しても往復する） |

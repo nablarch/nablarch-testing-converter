@@ -1075,12 +1075,16 @@ public class XlsFormatWriterTest {
     /**
      * Given: null セルと空文字セルを持つテーブル。
      * When : 書き出し → 実 Reader で読み戻し。
-     * Then : null は文字列 {@code "null"} として戻り（リテラル null を書くため、空インタープリタの読み戻しで
-     *        文字列化される＝既知の非可逆。Writer Javadoc 記載）、空文字 {@code ""} は空文字のまま戻る。
-     *        この非可逆挙動をテストで固定し将来のリグレッションを検知する。
+     * Then : null は null のまま、空文字 {@code ""} は空文字のまま戻る。
+     *
+     * <p>
+     * 書きは Java の {@code null} を {@code null} 記法のセルへ写し、読みはそれを Java の {@code null} へ
+     * 戻す（記法⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になる非可逆があったが、
+     * 読みに {@code NullInterpreter} を掛けたことで解消している。
+     * </p>
      */
     @Test
-    public void roundTripsNullCellAsLiteralNullString() {
+    public void roundTripsNullCellAsJavaNull() {
         // Given
         TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
                 row("A", "B"), Collections.singletonList(row(null, "")));
@@ -1090,8 +1094,8 @@ public class XlsFormatWriterTest {
 
         // Then
         TableDataBlock actual = (TableDataBlock) read;
-        // null → リテラル "null" を書く → 読み戻しは文字列 "null"（null ↔ null は Excel 経路では復元不可）
-        assertThat(actual.getRows().get(0).get(0), is("null"));
+        // null → null 記法を書く → 読み戻しも Java の null
+        assertThat(actual.getRows().get(0).get(0), is(nullValue()));
         // "" は空文字のまま
         assertThat(actual.getRows().get(0).get(1), is(""));
     }

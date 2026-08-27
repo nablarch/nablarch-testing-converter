@@ -23,6 +23,8 @@ import nablarch.test.core.reader.BlockHeader;
 import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.core.util.interpreter.InterpretationContext;
+import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
+import nablarch.test.core.util.interpreter.NullInterpreter;
 import nablarch.test.core.util.interpreter.QuotationTrimmer;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
@@ -48,8 +50,11 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * </p>
  *
  * <p>
- * 器の中身は {@link TestCoreFileAdapter}（本体 {@code file} パッケージ相乗り）が読む。IN 値は
- * 記法のまま（未加工）で運ばれる（アダプタが空 interpreters で配線するため）。一方、本体の構造解析は
+ * 器の中身は {@link TestCoreFileAdapter}（本体 {@code file} パッケージ相乗り）が読む。器から出る IN 値は
+ * 記法のまま（未加工）である（アダプタが空 interpreters で配線するため）。本クラスは中間モデルへ入れる前に
+ * {@link #interpretValue} で本体と同じ 3 つのインタープリタを掛け、記法ではなく
+ * <b>テスティングフレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）にする
+ * （{@code tools/testdata_converter.rst:14}）。一方、本体の構造解析は
  * テスト実行に必要な正規化を器に施す（長さ省略 {@code -} の実バイト長化・型記法のフレームワーク表記化・
  * レコード種別の private 化）。作成者が記述した原文が要るため、これら正規化される箇所だけ
  * {@link TestCoreReaderAdapter#readBlockBodyLines(String, String, String, String, DataType) 生行}から
@@ -149,17 +154,17 @@ public class XlsFormatReader implements TestDataFormatReader {
             String[] columns = table.getColumnNames();
             List<String> columnNames = deduplicateColumnNames(
                     Arrays.asList(columns), resourceName, table.getTableName());
-            List<List<String>> rows = new ArrayList<>();
+            List<List<String>> cellRows = new ArrayList<>();
             for (int r = 0; r < table.size(); r++) {
-                List<String> row = new ArrayList<>(columnNames.size());
+                List<String> cells = new ArrayList<>(columnNames.size());
                 for (String column : columnNames) {
                     Object value = table.getValue(r, column);
-                    row.add(value == null ? null : stripQuotes(value.toString()));
+                    cells.add(value == null ? null : value.toString());
                 }
-                rows.add(row);
+                cellRows.add(cells);
             }
             result.add(new TableDataBlock(type, groupId, table.getTableName(), columnNames,
-                                          dropEmptyEntries(rows)));
+                                          interpretRows(dropEmptyEntries(cellRows))));
         }
         return result;
     }
@@ -180,17 +185,16 @@ public class XlsFormatReader implements TestDataFormatReader {
         List<String> columnNames = deduplicateColumnNames(rawColumnNames, resourceName, header.getIdentifier());
         // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
-        List<List<String>> rows = new ArrayList<>();
+        List<List<String>> cellRows = new ArrayList<>();
         for (Map<String, String> mapRow : mapRows) {
-            List<String> row = new ArrayList<>(columnNames.size());
+            List<String> cells = new ArrayList<>(columnNames.size());
             for (String column : columnNames) {
-                String value = mapRow.get(column);
-                row.add(value == null ? null : stripQuotes(value));
+                cells.add(mapRow.get(column));
             }
-            rows.add(row);
+            cellRows.add(cells);
         }
         return new ListMapBlock(header.getGroupId(), header.getIdentifier(), columnNames,
-                                dropEmptyEntries(rows));
+                                interpretRows(dropEmptyEntries(cellRows)));
     }
 
     /**
@@ -422,7 +426,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             List<String> row = new ArrayList<>(names.size());
             for (int i = 0; i < names.size(); i++) {
                 String cellValue = i < valueCells.size() ? valueCells.get(i) : "";
-                row.add(stripQuotes(cellValue));
+                row.add(interpretValue(cellValue));
             }
             rows.add(row);
         }
@@ -525,22 +529,67 @@ public class XlsFormatReader implements TestDataFormatReader {
     /** Excel 引用符記法を取り除くために使い回す {@link QuotationTrimmer} インスタンス */
     private static final QuotationTrimmer QUOTATION_TRIMMER = new QuotationTrimmer();
 
+    /** {@code null} 記法を Java {@code null} へ解釈するために使い回すインスタンス */
+    private static final NullInterpreter NULL_INTERPRETER = new NullInterpreter();
+
+    /** 改行記法（{@code \r}）を CR へ解釈するために使い回すインスタンス */
+    private static final LineSeparatorInterpreter LINE_SEPARATOR_INTERPRETER = new LineSeparatorInterpreter();
+
     /**
-     * Excel 引用符記法を取り除く（{@link QuotationTrimmer} に委譲）。
+     * データ行のセル値を、テスティングフレームワークが解釈したあとの値（Java {@code null} または
+     * {@link String}）へ写す。
+     *
      * <p>
-     * Excel のテストデータでは {@code “”} が空文字、{@code “値”} が {@code 値}（前後クォート除去）を
-     * 表す慣習がある。本体の {@code QuotationTrimmer} は Excel 経路のテスト実行時に適用されるが、
-     * Excel→YAML 変換経路ではインタープリタが空のため、変換器側で同等の処理を行う。
+     * 中間モデルが持つのは Excel 形式固有の記法ではなく解釈後の値である
+     * （{@code tools/testdata_converter.rst:14}・{@code :22}・{@code :34}-{@code :35}）。本体の Excel 実行経路は
+     * {@code readTestData} の {@code interpret} でインタープリタ列を適用するが、変換器はインタープリタが
+     * 空のまま本体パーサを呼ぶため、ここで同等の解釈を行う。
+     * </p>
+     *
+     * <p>
+     * 掛けるのは次の 3 つで、順序は本体の設定（{@code nablarch-testing} の
+     * {@code src/test/resources/unit-test.xml:29}-{@code :40}）と同じである。
+     * </p>
+     * <ol>
+     *   <li>{@link NullInterpreter} —— 半角 {@code null}（大文字小文字不問）を Java {@code null} にする。
+     *       ここで打ち切られるため以降は適用されない</li>
+     *   <li>{@link QuotationTrimmer} —— 前後を同じダブルクォート（半角／全角）で囲まれた値から
+     *       外側 1 層を外す</li>
+     *   <li>{@link LineSeparatorInterpreter} —— 2 文字の {@code \} ＋ {@code r} を CR にする。
+     *       {@code \} ＋ {@code n} とセル内 LF は対象外（{@code implementation/testdata_notation.rst:1391}）</li>
+     * </ol>
+     *
+     * <p>
+     * {@code ${systemTime}} などの {@code ${...}} 系は掛けない。変換器は記法のまま運ぶ
+     * （{@code tools/testdata_converter.rst:61}）。
      * </p>
      *
      * @param value セル値
-     * @return 前後ダブルクォートを除去した文字列（長さ1以下または非クォートはそのまま）
+     * @return 解釈後の値（{@code null} 記法および {@code null} セルは {@code null}）
      */
-    private static String stripQuotes(String value) {
+    private static String interpretValue(String value) {
         // toRecordLayouts の valueCells.get(i) は Excel の空白セルに対して null を返すため、このガードは必須。
         if (value == null) {
             return null;
         }
+        return new InterpretationContext(value, NULL_INTERPRETER, QUOTATION_TRIMMER, LINE_SEPARATOR_INTERPRETER)
+                .invokeNext();
+    }
+
+    /**
+     * Excel 引用符記法を取り除く（{@link QuotationTrimmer} に委譲）。<b>ディレクティブ値専用</b>である。
+     * <p>
+     * データ行の値は {@link #interpretValue} が 3 つのインタープリタで解釈する。ディレクティブ値を
+     * 分けているのは、{@link #normalizeDirectiveValue} が
+     * {@link #isQuotationWrapped 引用符記法のときだけ} 呼ぶ形で
+     * 「記法ではない生値（可変長の {@code quoting-delimiter} 既定値 {@code "} 1 文字など）」を素通しする
+     * 必要があり、{@code null} 記法・改行記法の解釈も掛からないためである。
+     * </p>
+     *
+     * @param value ディレクティブ値
+     * @return 前後ダブルクォートを除去した文字列
+     */
+    private static String stripQuotes(String value) {
         return new InterpretationContext(value, QUOTATION_TRIMMER).invokeNext();
     }
 
@@ -560,33 +609,77 @@ public class XlsFormatReader implements TestDataFormatReader {
      * {@code coverage/issues.md} の XLS-08 に記録している。
      * </p>
      *
-     * @param rows マーカーカラム除外後の行
+     * <p>
+     * <b>判定は解釈後の値ではなく記法（セルの文字列）で行う。</b>読み飛ばしの対象は
+     * {@code notation:1500}「Excel では行の全セルが空の場合」であって「解釈すると全要素が
+     * {@code null} になる行」ではない。{@code null} 記法を書いたセルは空セルではないため、
+     * 全セルが {@code null} 記法の行は読み飛ばさない。
+     * </p>
+     *
+     * @param cellRows マーカーカラム除外後の行（セルの文字列）
      * @return 空エントリを除いた行
      */
-    private static List<List<String>> dropEmptyEntries(List<List<String>> rows) {
-        List<List<String>> result = new ArrayList<>(rows.size());
-        for (List<String> row : rows) {
-            if (!isEmptyEntry(row)) {
-                result.add(row);
+    private static List<List<String>> dropEmptyEntries(List<List<String>> cellRows) {
+        List<List<String>> result = new ArrayList<>(cellRows.size());
+        for (List<String> cells : cellRows) {
+            if (!isEmptyEntry(cells)) {
+                result.add(cells);
             }
         }
         return result;
     }
 
     /**
-     * 行が空エントリ（全要素が {@code null} または空文字）かを判定する。
+     * 行が空エントリ（全セルが空）かを判定する。
      * <p>要素を 1 つも持たない行も空エントリとみなす。</p>
      *
-     * @param row 判定対象の行
+     * @param cells 判定対象の行（セルの文字列）
      * @return 空エントリなら {@code true}
      */
-    private static boolean isEmptyEntry(List<String> row) {
-        for (String value : row) {
-            if (value != null && !value.isEmpty()) {
+    private static boolean isEmptyEntry(List<String> cells) {
+        for (String cell : cells) {
+            if (!isEmptyCell(cell)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * セルが空かを記法で判定する。
+     * <p>
+     * 空セル（{@code null}／空文字）のほか、引用符だけの記法（半角 {@code ""}／全角 {@code ””}）も
+     * 空文字を表す記法なので空とみなす。長さ 1 のセルは {@code QuotationTrimmer} の適用対象外として
+     * 空でないとみなす（{@code "} 1 文字に {@code QuotationTrimmer} を掛けると例外になるため、
+     * ここでは掛けない）。
+     * </p>
+     *
+     * @param cell セルの文字列
+     * @return 空なら {@code true}
+     */
+    private static boolean isEmptyCell(String cell) {
+        if (cell == null || cell.isEmpty()) {
+            return true;
+        }
+        return cell.length() > 1 && stripQuotes(cell).isEmpty();
+    }
+
+    /**
+     * 行の各セルを {@link #interpretValue} で解釈後の値へ写す。
+     *
+     * @param cellRows セルの文字列の行
+     * @return 解釈後の値の行
+     */
+    private static List<List<String>> interpretRows(List<List<String>> cellRows) {
+        List<List<String>> result = new ArrayList<>(cellRows.size());
+        for (List<String> cells : cellRows) {
+            List<String> row = new ArrayList<>(cells.size());
+            for (String cell : cells) {
+                row.add(interpretValue(cell));
+            }
+            result.add(row);
+        }
+        return result;
     }
 
     /**

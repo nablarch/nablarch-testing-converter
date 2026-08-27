@@ -1459,7 +1459,7 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 | 25 | `yaml_expectedRequestBodyMessages_isPreserved` | YAML（辺④→辺②） | A-12 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
 | 26 | `yaml_responseHeaderMessages_isPreserved` | YAML（辺④→辺②） | A-13 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
 | 27 | `yaml_responseBodyMessages_isPreserved` | YAML（辺④→辺②） | A-14 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-15, C-16(省略=null), C-17〜C-21 | 辺② D2-02 |
-| 28 | `nullCell_xlsConvertsToLiteralString_yamlPreservesNull` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-16 リテラル `null`**／辺② D2-06／辺③ D3-04（値のみ）／辺④ D4-04 |
+| 28 | `nullCell_isPreservedInBothPaths`（**#32 で改称**。旧 `nullCell_xlsConvertsToLiteralString_yamlPreservesNull`） | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-16 `null` 記法**／辺② D2-06／辺③ D3-04（値のみ）／辺④ D4-04 |
 | 29 | `leadingTrailingWhitespace_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① **D1-14 前後空白**／辺② D2-02 |
 | 30 | `specialNotation_isPreservedInBothPaths` | XLS＋YAML（4 辺） | A-02 | B-1 | C-09（行のみアサート） | 辺① D1-01／辺② D2-02 |
 
@@ -2307,7 +2307,7 @@ C-16 の正規化を実 `.yaml` で確かめたもので、C-16 は #18 時点�
 | 31 | `writesSequenceNoForAllSendSyncTypes` | A-11, A-12, A-13, A-14 | B-4 | C-05, C-06(値あり) | — | E-3(1) | — |
 | 32 | `wrapsIoFailure` | A-02 | B-1 | — | — | — | 🔺**F3-01**（親に通常ファイルが居座り出力先を作れない）→ `UncheckedIOException` |
 | 33 | `roundTripsTable` | A-02 | B-1 | C-05, C-07, C-08, C-09 | ※実 `.xlsx` 往復（文字列・`${}`・空文字） | E-2(複数=2) | — |
-| 34 | `roundTripsNullCellAsLiteralNullString` | A-02 | B-1 | C-09 | 🔺D3-04 null→`"null"`（非可逆を固定）／🔺D3-05 `""` | E-2(1) | — |
+| 34 | `roundTripsNullCellAsJavaNull`（**#32 で改称**。旧 `roundTripsNullCellAsLiteralNullString`） | A-02 | B-1 | C-09 | 🔺D3-04 null→`null` 記法→Java null（**#32 で非可逆が解消**）／🔺D3-05 `""` | E-2(1) | — |
 | 35 | `roundTripsListMap` | A-05 | B-2 | C-07, C-08, C-09 | ※実 `.xlsx` 往復 | E-2(複数=2) | — |
 | 36 | `roundTripsFixedFile` | A-06 | B-3 | C-07, C-10(FIXED), C-16, C-18, C-20, C-21 | ※長さ記法 `-` の往復 | E-3(1) | — |
 | 37 | `roundTripsMultipleRecordLayouts` | A-06 | B-3 | C-12(2件), C-16, C-18 | — | E-3(複数=2) | — |
@@ -2369,7 +2369,7 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 
 **実ファイルを書く 12 件**: `roundTrip` ヘルパ経由の 10 件（`roundTripsTable` /
 `roundTripsZeroRowTableWithoutEatingNextBlock` / `roundTripsZeroRowListMapWithoutEatingNextBlock` /
-`roundTripsNullCellAsLiteralNullString` /
+`roundTripsNullCellAsJavaNull` /
 `roundTripsListMap` / `roundTripsFixedFile` / `roundTripsMultipleRecordLayouts` / `roundTripsVariableFile` /
 `roundTripsMessage` / `roundTripsSendSyncMessage`）と `writesWorkbookFileWithSheetPerSection` ／ `wrapsIoFailure`
 （**0 件テーブル・0 件 LIST_MAP の 2 件は §6-K の `839bf64` で足されたもので、上の宣言値と同じく
@@ -2388,7 +2388,7 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 
 | テストクラス | 追加タスク | 件数 | 検証対象 |
 |---|---|---|---|
-| `XlsFormatWriterCellTypeTest` | #22 | 18 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる（16 件）。加えて ZIP エントリ `xl/sharedStrings.xml` の**生バイト**を検査する（2 件） |
+| `XlsFormatWriterCellTypeTest` | #22（**#32 で 1 件追加**） | 19 | `XlsFormatWriter#write` が書いた実 `.xlsx` を POI で開き直し `Cell#getCellType()` と値を突き合わせる（**17 件**）。加えて ZIP エントリ `xl/sharedStrings.xml` の**生バイト**を検査する（2 件） |
 | `XlsFormatWriterInvalidOutputTest` | #22 | 16 | 出力先・シート名の異常系（例外型・メッセージ・ファイルの有無・書けてしまった結果） |
 
 件数は `grep -c "^    @Test" src/test/java/nablarch/test/tool/converter/xls/<クラス>.java` の実測。
@@ -2415,7 +2415,7 @@ awk '/^    @Test/{t=1;d=0;s=0;b="";next}
 | D3-03 `"007"` | ❌ | ✅ | `writesLeadingZeroStringAsStringCell` | `CELL_TYPE_STRING`・`"007"`（先頭ゼロが落ちない） |
 | D3-04 `null` | 🔺（値のみ） | ✅ | `writesNullValueAsLiteralNullStringCell` | `CELL_TYPE_STRING`・`"null"`（空白セルにならない） |
 | D3-05 `""` | 🔺（値のみ） | ✅ | `writesEmptyValueAsEmptyStringCell` | `CELL_TYPE_STRING`・長さ 0（`CELL_TYPE_BLANK` へ退化しない） |
-| D3-06 改行含む文字列 | ❌ | ✅ | `writesLineFeedStringAsStringCell`／`replacesCrLfWithSingleLineFeedInStringCell`／`replacesLoneCarriageReturnWithLineFeedInStringCell` | `LF` は原文のまま。`CR` は **`LF` へ置換**される（削除ではない）。`CRLF`（4 文字）は `LF` 1 文字にまとまって 3 文字になるが、単独 `CR`（`a`＋`CR`＋`b`）は 3 文字のまま長さが変わらない（`issues.md` **XLS-18**） |
+| D3-06 改行含む文字列 | ❌ | ✅ | `writesLineFeedStringAsStringCell`／`replacesCrLfWithSingleLineFeedInStringCell`／`replacesLoneCarriageReturnWithLineFeedInStringCell`／`writesCarriageReturnInDataValueAsBackslashRNotation`（**#32 で追加**） | `LF` は原文のまま。**データ行の値の `CR` は 2 文字の `\` ＋ `r`（Excel 記法）として書かれ、セルへ `CR` が載らない**（#32）。`CR` がセルへ載る経路（カラム名など）では **`LF` へ置換**される（削除ではない）。`CRLF`（4 文字）は `LF` 1 文字にまとまって 3 文字になるが、単独 `CR`（`a`＋`CR`＋`b`）は 3 文字のまま長さが変わらない（`issues.md` **XLS-18**）。**`CR` の 2 件は #32 で入力をデータ行の値からカラム名へ移した** |
 | D3-07 32767 文字超 | ❌ | ✅ | `writesStringLongerThanExcelCellLimitAsStringCell`／`writesStringOfExcelCellLimitLengthAsStringCell` | 32768 文字も 32767 文字も `CELL_TYPE_STRING` で内容ごとそのまま書かれる（切り詰め・例外なし。`issues.md` **XLS-19**） |
 | D3-08 制御文字含む | ❌ | ✅ | `replacesNulCharacterWithQuestionMark`／`replacesBellCharacterWithQuestionMark`／`replacesVerticalTabCharacterWithQuestionMark`／`replacesUnitSeparatorCharacterWithQuestionMark`／`writesTabCharacterAsIs`／`writesDeleteCharacterAsIs` | XML 1.0 で不正な `U+0000`／`U+0007`／`U+000B`／`U+001F` は `?` へ置換（`issues.md` **XLS-17**）。XML 1.0 で正当な `U+0009`／`U+007F` は原文のまま |
 
@@ -2813,7 +2813,7 @@ JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test 
 | A | **A-12 `EXPECTED_REQUEST_BODY_MESSAGES`／A-13 `RESPONSE_HEADER_MESSAGES`／A-14 `RESPONSE_BODY_MESSAGES`**（#18 は ✅ と誤判定。実際は 🔺 `RoundTripTest` の 3 件のみ） | （表に上がっていなかった） | （同左） | **担保済み（#23 レビュー対応）** — 順に `XlsFormatWriterModelTest#writesExpectedRequestBodyMessagesMarker`／`#writesResponseHeaderMessagesMarker`／`#writesResponseBodyMessagesMarker`（[§3.1-3](#s3-1-3-sendsync)）。変異で穴と歯の両方を実証済み | 3 |
 | B | （なし。ただし**辺③では B-1 `TableDataBlock` と B-2 `ListMapBlock` のコード経路が同一**であり、軸B は軸A から独立していない。テストを足しても通る `src/main` の経路は増えないため件数は 0 のままとする。`XlsFormatWriter#layout` が `ColumnRowDataBlock` ／ `FileDataBlock` ／ `MessageDataBlock` の 3 分岐しか持たず、`TableDataBlock` と `ListMapBlock` はどちらも `layoutColumnRow` を通るためである。版面上で両者を分けるのは `layoutColumnRow` が `getDataType()` から作る識別セルだけで、それは軸A そのものである） | — | — | — | 0 |
 | C | C-02 sections 空（writer 側は到達可能。§0.8-6）／C-04 blocks 空／C-08 columnNames 空／C-09 rows 空／C-12 FileDataBlock.records 空／**C-13 MessageDataBlock.directives 値あり**／C-15 MessageDataBlock.records 空／C-17 fields 空／C-18 RecordLayout.rows 空 | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — 順に `XlsFormatWriterModelTest#writesWorkbookWithoutSheetsWhenContainerHasNoSections`／`#writesEmptySheetWhenSectionHasNoBlocks`／`#writesEmptyHeaderRowWhenColumnNamesAreEmpty`（**#25.5 追補で削除。C-08 の担保は `XlsFormatWriterTest#rejectsTableBlockWithoutColumnNames` ／ `#rejectsListMapBlockWithoutColumnNames` へ移った** —— `issues.md` **XLS-27** の当面の対応で、カラム名 0 件のテーブル系ブロックは書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesTableWithoutDataRowsWhenRowsAreEmpty`／`#writesFileBlockWithDirectivesOnlyWhenRecordsAreEmpty`／`#writesDirectiveRowsBeforeFwHeaderRowsInMessage`／`#writesMessageBlockWithMetaRowsOnlyWhenRecordsAreEmpty`（**#25.5 追補で削除。C-15 の担保は `XlsFormatWriterTest#rejectsMessageBlockWithoutRecords` ／ `#rejectsSendSyncMessageBlockWithoutRecords` へ移った** —— `issues.md` **YML-12 2形目** を修正し、本文レコード 0 件の電文は書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesRecordWithoutFieldColumnsWhenFieldsAreEmpty`（**#25.5 追補で削除。C-17 の担保は `XlsFormatWriterTest#rejectsRecordWithoutFieldsInFileBlock` ／ `#rejectsRecordWithoutFieldsInMessageBlock` へ移った** —— `issues.md` **XLS-22** を修正し、空 `fields` は書き出さず `IllegalArgumentException` で落とすようになったため。判定 ✅ と件数 9 は変わらない）／`#writesRecordWithoutDataRowsWhenRecordRowsAreEmpty`（§3.1-3）。記録した課題は `issues.md` **XLS-21〜XLS-23**（**XLS-22 は #25.5 で修正済み**） | 9 |
-| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22）** — `XlsFormatWriterCellTypeTest` 18 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 18）。内訳は **8 ケース**＋改行の異表記 **2 件**・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋2＋1＋3＋2＋2 ＝ **18**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 担保済み（変更なし） | 8 |
+| D | D3-01〜D3-08 全 8 ケース（D3-04／D3-05 は値のみの 🔺。`getCellType()` をアサートするテストは全件ゼロ） | 要追加 | **担保済み（#22。#32 で 1 件追加）** — `XlsFormatWriterCellTypeTest` 19 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterCellTypeTest.java` → 19）。内訳は **8 ケース**＋改行の異表記 **3 件**（うち 1 件は #32 追加の `writesCarriageReturnInDataValueAsBackslashRNotation`）・上限ちょうど **1 件**・XML で表現できない制御文字を 1 文字 1 メソッドへ展開した増分 **3 件**・XML で正当な制御文字の対照 **2 件**（ここまで 16 件。読み戻したセル型と値を突き合わせる分）＋ `xl/sharedStrings.xml` の**生バイト**を検査する **2 件**（`burnsQuestionMarkIntoSharedStringsXmlForControlCharacter`／`keepsCarriageReturnRawInSharedStringsXml`。第 3 ラウンドで追加）＝ 8＋3＋1＋3＋2＋2 ＝ **19**。要素別の担保テストメソッドは §3.1-2 の軸D 表。記録した課題は `issues.md` **XLS-17〜XLS-19** | 担保済み（変更なし） | 8 |
 | E | E-1(0 件)／E-2(0 件)／E-3(0 件) | 要追加 | 要追加（#23。#22 の対象外） | **担保済み（#23）** — E-1(0) は C-04、E-2(0) は C-09／C-18、E-3(0) は C-12／C-15 と同じ入力（上の C 行のテストメソッド。§3.1-3 の軸E 表） | 3 |
 | F | F3-01 出力先不在（🔺 のみ）／F3-03 書き込み権限なし／F3-04 シート名制約違反 | 要追加 | **担保済み（#22）** — `XlsFormatWriterInvalidOutputTest` 16 件（`grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsFormatWriterInvalidOutputTest.java` → 16。**2026-08-19 実測**。#22 時点は 16 件、#25.5 のレビュー対応（B-2）で `rejectsNullSheetName` を 1 件足して 17 件になり、§1-F（`81cf234`）でその 1 件を削除して 16 件に戻った。`null` の担保は `TestDataContainerTest#名前がnullの読み込み単位は生成できない` へ移っている）。内訳は F3-01 **1 件**（`createsMissingOutputDirectoriesAndWritesWorkbook`）・F3-03 **1 件**（`wrapsAccessDeniedExceptionWhenOutputDirectoryIsNotWritable`）・F3-04 **14 件**（禁止文字を 1 文字 1 メソッドへ展開した **7 件**＋空文字 **1 件**＋31 文字ちょうど **1 件**＋31 文字超の拒否 **1 件**＋切り詰めと禁止文字検査の境界 **2 件**＋同名 2 枚の衝突 **1 件**＋大文字小文字だけが違う名前の衝突 **1 件**（`failsWhenSheetNamesDifferOnlyInCase`。第 3 ラウンドで追加）＝ 7＋1＋1＋1＋2＋1＋1 ＝ 14。メソッド名の全列挙は §3.1-2 の軸F 表）＝ 1＋1＋14 ＝ **16**（**`null` 1 件は §1-F で削除**）。要素別の担保テストメソッドは §3.1-2 の軸F 表。記録した課題は `issues.md` **XLS-16**（**#25.5 で修正済み**。31 文字超は黙って切り詰めるのをやめて拒否するようになり、上記 4 件を改名・書き直した。この改名で件数は増えていない） | 担保済み（変更なし） | 3 |
 | F | F3-02 `overwrite=false` 衝突 — `XlsFormatWriter` は `overwrite` を保持しない。衝突検査は上位層の `TestDataConverter#checkOverwrite` で完結する。上に挙げた既存テストが通すのは XLS→YAML の経路であり、**`.xlsx` を出力側とする衝突は未担保**（§0.8-5 の訂正） | 対象外（衝突検査は上位層） | 対象外（変更なし。#22 でも辺③に書かない） | 対象外（変更なし。#23 でも辺③に書かない） | 1 |
