@@ -68,6 +68,14 @@ YamlFormatReaderScalarTest.readsEmptyStringAsIsInListMapPath:584->readListMapVal
 根拠（すべて `3c4bd2a`）: `NullInterpreter.java:15`、
 `QuotationTrimmer.java:25`-`:27`、`LineSeparatorInterpreter.java:31`・`:34`・`:61`-`:64`。
 
+**#32 で観測できる出力が変わるもの 1 件（追いかけない）**: YAML 形式にしか書けない
+**2 文字の `\` ＋ `r`** は、#32 のあと **YAML→XLS→読み戻しで CR に変わる**
+（`56ffbe6` では 2 文字のままだった。実測・2026-08-27）。
+`XlsFormatWriter.toCellNotation:616` は CR を `\r` へ戻すだけで、値が既に 2 文字の
+`\` ＋ `r` であればそのままセルへ書くため、読み戻しで `LineSeparatorInterpreter` が
+CR へ解釈する。**Excel 記法にこの値を書く手段が無いことによる不可避の欠落**であり、
+本体が読めば以前から CR である。`TABLE[]=x`（§1-2 (d)）と同じ扱いとし、追いかけない。
+
 ### 1-2. 2-3「`[ ]` に依存している箇所」の全走査
 
 #### (a) `src/main`

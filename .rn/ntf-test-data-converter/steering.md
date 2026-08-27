@@ -1619,6 +1619,10 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **指示書**: `nablarch-document@origin/ntf-yaml-support` の `.rn/20260724-ntf-yaml-support/ntf-step4-05-nablarch-testing-converter.md`。**18 件（是正 7 件・テスト追加 11 件）が確定済みで、探索は不要。範囲を広げない。**
 
+**指示書の版**: **`a16be0a`**（2026-08-27。`docs(step4): converter 指示書 2-2 の除外理由を実測に合わせて訂正する`）。`0d9a049`（2-3 と表の行数の訂正）を含む。**2-2 の「テーブルと `LIST_MAP` は対象外」は誤りとして撤回され、両者が対象へ戻った**（詳細は #33）。
+
+**進め方（ユーザー確定・2026-08-27）**: **#33〜#39 は通しで実施し、タスクごとの `/rn:ty` 判定要求を挟まない。**Rules の「完了時の `/rn:ty` 判定要求」は Step 4 には掛からない。指示書がもともと求めているのは報告 1 本（`checks/step4-report.md`、第6節の 6 項目）であり、途中で止まる約束は「2-1・2-3 の着手前検証」（判定済み）と、**2-2 の着手前特定（実装より前に結果を報告する）**だけである。1 件 1 コミットと `checks/task-NN.md` の記録は従来どおり残す。
+
 **参照点（ピン）**: 解説書 `nablarch-document@5783b35`（`git show 5783b35:<path>`。作業ツリーの HEAD を読まない）／本モジュール `60d9a2d`／`nablarch-testing@3c4bd2a`（**変更しない**）／`nablarch-testing-yaml@0b3015c`（**変更しない**。`~/.m2` に install 済み）。
 
 **共通のやらないこと**: 解説書を直さない（誤りと判断したら根拠を添えて報告して止める）／`nablarch-testing`・`nablarch-testing-yaml` を直さない／解説書に無い書き方を追いかけない／形式間の対応表を作らない。
@@ -1666,17 +1670,26 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Prerequisites**: #32（原因は同じ）
 
+**指示書の訂正（2026-08-27・`a16be0a`）**: 旧版の「**テーブルと `LIST_MAP` は対象外**（全要素が空のエントリを記述する記法が無い）」は誤りであり、ディレクターが実測で訂正した。**Excel 形式では各セルに `""` と書けば表せる。**本体は空エントリの判定を**解釈前の生セル**で行うため（`nablarch-testing@3c4bd2a` の `PoiXlsReader.java:92`・`TestDataParsingTemplate.java:180`。どちらも `interpret` の前）、`""`（2 文字）は空セルに当たらず、エントリは読み飛ばされない。**テーブルと `LIST_MAP` も 2-2 の対象である。**
+
+ディレクターの実測（2026-08-27。POI で組んだ実 `.xlsx`。`SETUP_TABLE=T`／カラム行 `[no]`,`id`,`name`／データ行 3 件 = `1,U0001,yamada` ／ `(空),"",""` ／ `3,(空),(空)`）: 本体 `PoiXlsReader#readLine` は **3 件**返し、`XlsFormatReader#read` は **1 件**（`U0001,yamada` だけ）しか返さない。2 件目が消えるのは `XlsFormatReader:664` の `isEmptyCell` が `""`・`””` を空セル扱いするため。3 件目が消えるのはマーカーカラム除外後に判定しているため（**XLS-08。こちらは現状のままでよく、本タスクでは直さない**——ユーザー確定・2026-08-27。`tools/testdata_converter.rst:63` のとおり往復で消えることが解説書に明記されている）。
+
+**XLS→YAML 方向は表せない**（`testdata_notation.rst:1500`。YAML 形式では全値が空文字の要素はスキップされる）。**#37（完了条件3）で `@Ignore` ＋ 印つきの理由に記録する。**
+
 **Steps**:
 
+- [ ] **着手前に特定する（実装より前に結果を報告する）**——`isEmptyCell` の変更で期待値が変わる既存テストの全件（`""` を含むデータ行を持つテスト）。`XlsFormatReaderCellTypeTest` が置いている `KEY` 列の回避が不要になるかも見る。**変える／変えないの判断と件数を報告に書く**
+- [ ] `XlsFormatReader#isEmptyCell` が `""`・`””` を空セル扱いするのをやめる。本体と同じく、生セルが `null` か空文字のときだけ空とする（テーブル・`LIST_MAP` の両経路に効く）
 - [ ] ファイル・メッセージのデータ行を Excel 形式へ書き出すとき、全要素が空文字になる行は先頭要素を `""` と書く
-- [ ] **テーブルと `LIST_MAP` は対象外**（全要素が空のエントリは読み飛ばすのが記法。`testdata_notation.rst:1500`。`tools/testdata_converter.rst:63` に明記済み）であることをテストで固定する
+- [ ] テーブル・`LIST_MAP` のエントリを Excel 形式へ書き出すとき、全要素が空文字になるエントリは**各セルへ `""` と書く**
 - [ ] 直す前に落ちて直したあとに通るテストを用意する
 - [ ] 期待値をわざと崩すと落ちることを 1 度確認する
 
 **Completion criteria**:
 
 - `testdata_examples.rst:2237`-`:2260` の記載例を XLS→XLS・XLS→YAML→XLS で往復させて、テスティングフレームワークが読むレコードが 3 件のまま保たれる
-- テーブル・`LIST_MAP` の挙動を変えていない
+- `""` だけからなるテーブル・`LIST_MAP` のエントリが XLS→XLS で保たれる（本体 `PoiXlsReader` が読む件数と一致する）
+- `isEmptyCell` の変更で期待値が動いた既存テストが、変えた／変えなかったの判断つきで全件・件数つきで挙がっている
 - 直す前は落ちて直したあとは通るテストが挙がっている
 
 ---
@@ -1784,6 +1797,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [ ] 母集合の各行・各記載例について、**XLS→XLS・XLS→YAML→XLS・YAML→YAML・YAML→XLS→YAML の 4 経路**で、テスティングフレームワークが解釈したあとの値が往復前と一致することを、実ファイル起点のテストで押さえる
 - [ ] 一致しないものは `@Ignore` ＋ 印つきの理由で記録する（直さない）
 - [ ] 表の行ごと・記載例ごとに 4 経路それぞれの合否を報告に書く
+- [ ] #32 で新設した `XlsNotationSymmetryTest`（8 件）を `coverage/inventory.md` の軸要素対応表へ載せるかを、本タスクの母集合と重ね合わせて判断し、載せる場合は載せる（ユーザー指示・2026-08-27）
 - [ ] 期待値をわざと崩すと落ちることを 1 度確認する
 
 **Completion criteria**:
@@ -1856,8 +1870,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-27
-- **Last completed**: **#32（2-1 Excel 形式の読み書きを記法⇄値の対称な写像にする）**。`1d07d00` で push 済み。読みに `NullInterpreter` → `QuotationTrimmer` → `LineSeparatorInterpreter` を本体設定（`nablarch-testing@3c4bd2a` の `src/test/resources/unit-test.xml:29`-`:40`）と同順で掛け、書き（`XlsFormatWriter#toCellNotation`）にその逆写像を置いた。空エントリ判定は解釈後の値ではなく記法（セルの文字列）で行うよう直した。`mvn -o clean test` = `Tests run: 614, Failures: 5, Errors: 0, Skipped: 2`。**赤 5 件は着手前と同一（#36 の担当）で、#32 が落としたものは 0 件。** 記録は `checks/task-32.md`
-- **Next**: **#32 の `/rn:ty`（承認）／`/rn:gm`（差し戻し）判定を得る。** 承認後は #33（2-2 全フィールドが空文字のレコードを Excel 形式へ書き戻せるようにする。Prerequisites の #32 は済）へ進む。#34（2-3）はユーザー判定済みで着手可（`nablarch-document@0d9a049` の 2-3。層 A／層 B の 2 層方式）
-- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2–§6 未着手。§2 以降は #39 で埋める）。**判断待ち 3 件** —— (1) #32 の判定／(2) **XLS-08 が現行の解説書と食い違う**（`5783b35` の `testdata_notation.rst:1500` は「空エントリ判定はマーカーカラム除外の**前**」と明文化。converter は #25.5 で逆を採用。`issues.md` XLS-08 に追記済み・直していない）／(3) 新設 `XlsNotationSymmetryTest`（8 件）を `inventory.md` の軸要素対応表へ載せるか（Step 4 の Steps に台帳登録が無く、#37 の母集合と重なるため未実施）。持ち越しの未決 2 件（`handover.md` の提出タイミング／台帳の宣言値のずれ）は Rules に移済み。**マージ可否の判断は出さない**（Rules）
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
