@@ -1808,7 +1808,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | テストクラス | 件数 | 導出コマンド | 入力 |
 |---|---|---|---|
 | `YamlFormatReaderScalarTest` | 27 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderScalarTest.java` | `YamlFixture` が書き出した実 `.yaml` |
-| `YamlFormatReaderInvalidInputTest` | 31 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。残る 23 件は**スキーマを通る仕様内の入力**（掃引 21 件）と、ローダの他の失敗経路 2 件である） |
+| `YamlFormatReaderInvalidInputTest` | **32**（#35 で導き直した。宣言値 31 は `226d0f8` 時点の値で、その後 `d737815` ＋1・`b19a236` ＋1・`96b5aea`（#31）＋1 で 34 になり、**#35 の `@Ignore` 2 件削除で 32** になった） | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderInvalidInputTest.java` | 同上（軸F の 8 件のうち **7 件**は意図的にスキーマ違反・不正 YAML にした入力で、**1 件（F2-05 `readsEmptyFileAsContainerWithoutBlocks`）は空ファイル**＝スキーマ違反でも不正 YAML でもない。**区間別は #35 で導き直して 8 ／ 2 ／ 22 である**（軸F 8 件／ローダの他の失敗経路 2 件／**スキーマを通る仕様内の入力の掃引 22 件**）。#31 の実測は 8 ／ 2 ／ 24 で、**#35 が掃引側から `@Ignore` 2 件を削除して 22 になった**。「軸F の 8 件」「ローダ 2 件」は #24 当時から変わっていない） |
 | `YamlFormatReaderRealFileTest` | 24 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFormatReaderRealFileTest.java` | 同上 |
 
 **件数を更新した（2026-08-14・#24 のレビュー指摘の反映で 9 件追加）。** 内訳は

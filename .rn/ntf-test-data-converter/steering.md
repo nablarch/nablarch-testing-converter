@@ -71,7 +71,7 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 - **逸脱の追認（2026-08-24）**: #30 で逸脱として報告した 2 件 —— (1) `inventory.md` の件数をコマンドから導き直した（Rules の #22 規定）／(2) `TestDataBlock` の Javadoc を訂正した —— は**いずれも Rules に従った結果であり、直さないほうが誤りだった**（ユーザー追認・2026-08-24）。同種の是正は以後も逸脱として上げなくてよい。
 - **移動・複製の照合をしたら、相手側の SHA を必ず記録する**（ユーザー確定・2026-08-21）。#2 の QA は「全 28 件を source ブランチと diff して全件ゼロ」とだけ記録し、**基準 SHA を残さなかった**（`checks/task-2.md`）。その後 upstream 側で同じブランチの履歴が作り直されたため、#28 で照合を再現しようとした時点で「ブランチ名」からは移動元へ辿り着けず、**別系統の `d5ec1d0` を相手に取って誤った差分を記録した**（`67a8780`）。ブランチ名・タグ名は動く。**動かないのは SHA だけである。**
 - **他リポジトリの挙動に言及するときは、その rev の実物を開いて確かめた出典を必ず添える**（ユーザー確定・2026-08-24）。末端まで追わずに将来の挙動を断定しない。#31 で `YamlSchemaValidationException` を `IllegalArgumentException` 系と暗に置いて「スキーマ側の対応が入っても本テストは緑のまま」と書いたが、実物は `IllegalStateException` を継承していた（nablarch-testing-yaml の `src/main/java/nablarch/test/core/reader/yaml/YamlSchemaValidationException.java:12`（`a5cb6dd` 時点））。#30 でも同種のものがあった。**出典は「ファイル:行（rev 時点）」の形で書く。**
-- **持ち越しの未決 2 件（#31 から。State をリセットしても消さない）** —— (1) `handover.md`（解説書・スキーマ担当宛の申し送り）の**提出タイミングは調整側（ユーザー）の判断**であり、こちらからは出さない。(2) **台帳の宣言値のずれ 2 件の出所が未確認**（`checks/task-31.md`「台帳の宣言値のずれ」）。どちらも Step 4（#32〜#39）の作業範囲外であり、Step 4 の完了条件にも入らない
+- **持ち越しの未決 2 件（#31 から。State をリセットしても消さない）** —— (1) `handover.md`（解説書・スキーマ担当宛の申し送り）の**提出タイミングは調整側（ユーザー）の判断**であり、こちらからは出さない。(2) **台帳の宣言値のずれ 2 件の出所が未確認**（`checks/task-31.md`「台帳の宣言値のずれ」）。**うち 1 件は #35 で解けた（2026-08-28）** —— `inventory.md` §2.1-2 の `YamlFormatReaderInvalidInputTest` 区間別の「それ以前の 2 件」は `d737815`（XLS-40 のあるべき姿の `@Ignore`）と `b19a236`（YML-14 のあるべき姿の `@Ignore`）であり、**#35 が削除した 2 件そのもの**である（`git log --format=%h --reverse -- <ファイル>` で各コミットの `grep -c '^    @Test'` を追った実測）。**残る 1 件（`inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所）は未確認のまま**である。どちらも Step 4（#32〜#39）の作業範囲外であり、Step 4 の完了条件にも入らない
 - **#34（2-3）の実装方針はユーザー判定済み（2026-08-27）** —— `[ ]` を知ってよいのは 2 層（A Excel 版面の読み書き／B 上流 API 境界）だけ。整形はリーダーではなく `TestCoreReaderAdapter`・`YamlTestCoreAdapter` の中に置く。正は指示書 `nablarch-document@0d9a049` の 2-3。判定の経緯は `checks/step4-report.md` §1-2 (b)
 
 # Tasks
@@ -1759,10 +1759,12 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `YamlFormatReaderInvalidInputTest:740` `failsToReadRecordFragmentRowWithMoreValuesThanFields` を削除する（`5783b35` の `testdata_notation.rst:891` はパディングとバイナリデータの記述で、`@Ignore` の主張は無い。超過値を黙って捨てる挙動は論点4 として user 判断済み・現行どおりで仕様）
-- [ ] `YamlFormatReaderInvalidInputTest:1280` `keepsOriginalColumnCaseInTable` を削除する（`5783b35` の `ja/development_tools/testing_framework` 全走査でテーブルのカラム名の大小についての記述は 0 件）
-- [ ] 同ファイルの Javadoc や他のテストからこの 2 件を `{@link}` で参照している箇所を全走査し、参照ごと外す
-- [ ] **削除するのはこの 2 件だけ**であることを確認する
+- [x] `YamlFormatReaderInvalidInputTest:740` `failsToReadRecordFragmentRowWithMoreValuesThanFields` を削除する（`5783b35` の `testdata_notation.rst:891` はパディングとバイナリデータの記述で、`@Ignore` の主張は無い。超過値を黙って捨てる挙動は論点4 として user 判断済み・現行どおりで仕様）
+- [x] `YamlFormatReaderInvalidInputTest:1280` `keepsOriginalColumnCaseInTable` を削除する（`5783b35` の `ja/development_tools/testing_framework` 全走査でテーブルのカラム名の大小についての記述は 0 件）
+- [x] 同ファイルの Javadoc や他のテストからこの 2 件を `{@link}` で参照している箇所を全走査し、参照ごと外す
+- [x] **削除するのはこの 2 件だけ**であることを確認する
+
+**#35 の実測（2026-08-28）**: 1 件目の理由づけは行の一致だけでは足りないため `要素数` の全文検索まで行い、記述時エラー一覧が `5783b35` に存在しないことを確かめた。残る唯一の明文 `tools/testdata_converter.rst:47` は `YamlTestDataValidator` の検査項目であり、同 `:55` が「変換の処理経路には組み込まれておらず、変換の実行時に自動では呼び出されない」と明記している。**参照は `src/main`（`ColumnRowDataBlock` の Javadoc）にも 1 件あった。**
 
 **Completion criteria**:
 

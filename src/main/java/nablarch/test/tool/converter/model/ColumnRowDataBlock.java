@@ -54,10 +54,10 @@ import java.util.List;
  *
  * <p>
  * <b>帰属は converter の外（nablarch-testing の {@code TableData}）である。</b>
- * あるべき姿は「値が黙って消えないこと」であり、それを主張するテストを
- * {@code YamlFormatReaderInvalidInputTest#keepsOriginalColumnCaseInTable} に
- * {@code @Ignore} 付きで置いてある。<b>フィールド名称側（{@link RecordLayout}）は明文があるため
- * 拒否している</b>（{@code testdata_notation.rst:887}（{@code 30a8271} 時点））。
+ * 解説書はテーブル系のカラム名の大小の扱いにいっさい触れていないため、
+ * <b>あるべき姿を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
+ * （解説書に無い書き方は追わない。#35・2026-08-28）。<b>フィールド名称側（{@link RecordLayout}）は
+ * 明文があるため拒否している</b>（{@code testdata_notation.rst:887}（{@code 30a8271} 時点））。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>

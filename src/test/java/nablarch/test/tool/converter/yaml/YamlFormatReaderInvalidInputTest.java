@@ -30,7 +30,6 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import com.networknt.schema.ValidationMessage;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -666,11 +665,13 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : <b>例外にならず</b>、フィールド数を超える値が黙って捨てられる。
      *
      * <p>
-     * <b>本テストは他責の現状を記録したものであり、あるべき姿ではない。あるべき姿は
-     * {@link #failsToReadRecordFragmentRowWithMoreValuesThanFields} 側（{@code @Ignore}）に書いてある。</b>
-     * 記法は {@code testdata_notation.rst:891}（{@code 30a8271} 時点）の記述時エラー一覧に
-     * 「データ要素数が不正である」を挙げており、<b>明文は「エラーにする」しか定めていない</b>。
-     * 黙って捨てる現状はその明文に反する。
+     * <b>本テストは他責の現状を記録したものである。</b>解説書は<b>読み込みでエラーにすることを定めていない</b>
+     * —— {@code 5783b35} の {@code implementation/testdata_notation.rst} に記述時エラー一覧は無く、
+     * フィールド数と要素数の一致に触れるのは {@code tools/testdata_converter.rst:47} の
+     * {@code YamlTestDataValidator} の検査 7 項目だけで、同 {@code :55} が
+     * 「検証は変換の処理経路には組み込まれておらず、変換の実行時に自動では呼び出されない」と明記している。
+     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
+     * （解説書に無い書き方は追わない）。
      * </p>
      *
      * <p>
@@ -703,54 +704,6 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("2 個目以降の値が消える", record.getRows(),
                 is(Arrays.asList(Arrays.asList("a"))));
         assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
-    }
-
-    /**
-     * Given: フィールド 1 件に対して値を 3 個書いたレコード断片（{@code rows: - ["a", "b", "c"]}）。
-     * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>あるべき姿</b>として、反映されない値がある入力は読み込みが<b>エラーになる</b>。
-     *
-     * <p>
-     * <b>現状は FAIL する</b>（例外にならず {@code rows=[[a]]} が返り、{@code "b"}・{@code "c"} は
-     * 警告も例外もなく消える。{@link #dropsRecordFragmentValuesBeyondFieldCount} が現状を記録している）。
-     * </p>
-     *
-     * <p>
-     * <b>あるべき姿をこう定めた根拠は明文である。</b>{@code testdata_notation.rst:891}
-     * （{@code 30a8271} 時点）はファイルデータの<b>記述時エラー</b>一覧に「データ要素数が不正である」を挙げる。
-     * 明文が定めているのは「エラーにする」ことだけであり、黙って捨てることは定めていない。
-     * 読むコマンドは次のとおり。
-     * </p>
-     *
-     * <pre>
-     * git -C ~/work/nablarch/nablarch-document show \
-     *     30a8271:ja/development_tools/testing_framework/implementation/testdata_notation.rst | sed -n '891p'
-     * </pre>
-     *
-     * <p>
-     * <b>他責先は本体パーサ（nablarch-testing の {@code DataFileFragment#addValue}）である。</b>
-     * 余った要素は converter に届く前に器が捨てるため、converter 側では検知できない。
-     * {@code src/main} は無変更とし、番人も WARN も置かない（ユーザー確定・2026-08-19）。
-     * 明文化の依頼は {@code coverage/issues.md} <b>XLS-42</b> の申し送りに含めてある。
-     * </p>
-     *
-     * <p>担保する軸要素: なし（YML-14 のあるべき姿。他責先の修正待ち）。</p>
-     */
-    @Test
-    @Ignore("YML-14: 反映されない値がある入力はエラーになるべき（testdata_notation.rst:891）。"
-            + "他責先は本体パーサ nablarch-testing の DataFileFragment#addValue（余りを捨てる）")
-    public void failsToReadRecordFragmentRowWithMoreValuesThanFields() {
-        // Given / When / Then
-        assertThrows("反映されない値がある入力は読み込みがエラーになる", RuntimeException.class,
-                () -> YamlFixture.read(dir(), ""
-                        + "setup_files:\n"
-                        + "  - path: \"f.dat\"\n"
-                        + "    type: \"fixed\"\n"
-                        + "    records:\n"
-                        + "      - fields:\n"
-                        + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
-                        + "        rows:\n"
-                        + "          - [\"a\", \"b\", \"c\"]\n"));
     }
 
     // ------------------------------------------------------------------ YML-05 フィールド数より値が少ない行（不足が空文字で埋まる）
@@ -1216,11 +1169,12 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      *
      * <p>
-     * <b>本テストは他責の現状を固定したものである。あるべき姿は
-     * {@link #keepsOriginalColumnCaseInTable} 側（{@code @Ignore}）に書いてある。</b>
-     * 記法はテーブル系のカラム名の大小の扱いにいっさい触れておらず、明文どおりに読めば
-     * {@code id} と {@code ID} は別カラムで両方の値が残る。converter に大文字化を止める権限が無い
-     * ため現状を記録に留めている（{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
+     * <b>本テストは他責の現状を固定したものである。</b>解説書はテーブル系のカラム名の大小の扱いに
+     * いっさい触れていない（{@code 5783b35} の {@code ja/development_tools/testing_framework} 全走査で
+     * 「大文字」は 14 箇所あるが、テーブルのカラム名に触れるものは 0 件）。converter に大文字化を
+     * 止める権限も無いため、現状を記録に留めている（{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
+     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
+     * （解説書に無い書き方は追わない）。
      * </p>
      *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-10 の根拠テスト）。</p>
@@ -1245,55 +1199,6 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("大文字化により列名が重複する", block.getColumnNames(), is(Arrays.asList("ID", "ID")));
         assertThat("後勝ちの値だけが残り、同じ値が 2 回並ぶ", block.getRows(),
                 is(Arrays.asList(Arrays.asList("2", "2"), Arrays.asList("4", "4"))));
-    }
-
-    /**
-     * Given: テーブル系の {@code rows} に、大小だけが違う 2 つのキー {@code id} と {@code ID} を書いた YAML。
-     * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>あるべき姿</b>として、カラム名は原文の大小のまま {@code [id, ID]} になり、
-     *        {@code id} に書いた値も {@code ID} に書いた値も両方が残る。
-     *
-     * <p>
-     * <b>現状は FAIL する。帰属は converter ではなく nablarch-testing の
-     * {@code nablarch/test/core/db/TableData.java} である</b>（{@code convert-testdata-excel-to-text} の
-     * {@code 65911f5} で {@code :97} {@code name.trim().toUpperCase()}／{@code :492}
-     * {@code columnNames[i].toUpperCase()}／{@code :530}
-     * {@code map.put(columnNames[i].toUpperCase(), value)}）。converter に大文字化を止める権限は無いため、
-     * {@code src/main} に番人も WARN も入れず、あるべき姿をこのテストで残して {@code @Ignore} にしてある
-     * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>XLS-40</b> のカラム名側と <b>YML-10</b>）。
-     * </p>
-     *
-     * <p>
-     * <b>あるべき姿をこう定めた根拠は明文である。</b>記法はテーブル系のカラム名の大小の扱いに
-     * いっさい触れていない —— {@code testdata_notation.rst:819}（{@code 30a8271} 時点）はカラム名を
-     * 「最初の行（{@code rows:} の先頭要素）のキーで決まる」とだけ定め、解説書に「大文字」と出るのは
-     * {@code :768}／{@code :1323}／{@code :1393} の 3 箇所だけで、いずれも値の {@code null} 表記
-     * （「大文字小文字不問」）の話である。本体スキーマが大文字変換に触れているのも
-     * {@code $defs.table_data.properties.table.description} だけで、カラム名には触れていない。
-     * 明文どおりに読めば {@code id} と {@code ID} は別カラムである。同じ記法を使う LIST_MAP は
-     * 実際にそう振る舞う（{@link #keepsOriginalColumnCaseInListMap}）。
-     * </p>
-     *
-     * <p>担保する軸要素: なし（XLS-40 のカラム名側のあるべき姿。他責先の修正待ち）。</p>
-     */
-    @Test
-    @Ignore("XLS-40: カラム名の大小を保つあるべき姿。他責先は nablarch-testing の TableData（カラム名を大文字化する）")
-    public void keepsOriginalColumnCaseInTable() {
-        // Given / When
-        TestDataContainer container = YamlFixture.read(dir(), ""
-                + "setup_tables:\n"
-                + "  - table: \"my_table\"\n"
-                + "    rows:\n"
-                + "      - id: \"1\"\n"
-                + "        ID: \"2\"\n"
-                + "      - id: \"3\"\n"
-                + "        ID: \"4\"\n");
-
-        // Then
-        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertThat("原文の大小がそのまま残る", block.getColumnNames(), is(Arrays.asList("id", "ID")));
-        assertThat("どちらの値も失われない", block.getRows(),
-                is(Arrays.asList(Arrays.asList("1", "2"), Arrays.asList("3", "4"))));
     }
 
     /**

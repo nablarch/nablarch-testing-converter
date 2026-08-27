@@ -3911,13 +3911,20 @@ git -C ~/work/nablarch/nablarch-testing show 65911f5:src/main/java/nablarch/test
 - 明文どおりに読めば `id` と `ID` は**別カラム**であり、両方の値が残る。
   **同じ記法を使う LIST_MAP は実際にそう振る舞う**（`keepsOriginalColumnCaseInListMap`。
   `columnNames` ＝ `[id, ID]` で値も両方残る）。テーブル系との非対称は `TableData` 経由かどうかだけである。
+- **あるべき姿を主張していた `@Ignore` つきテストは #35 で削除した（2026-08-28）。**
+  ピン `5783b35` の `ja/development_tools/testing_framework` を全走査しても、テーブル系のカラム名の
+  大小の扱いに触れる記述は 0 件である（`git grep -n '大文字' 5783b35 -- 'ja/development_tools/testing_framework'`
+  → 14 箇所。うち `testdata_notation.rst:767`・`:1360` は値の `null` 表記が大文字小文字不問である話、
+  残りは Bean Validation の文字列長・HTML チェックツールのタグ名で、いずれもカラム名の話ではない）。
+  **「明文が無いこと」を根拠にあるべき姿を主張していたのが誤りであり、解説書に無い書き方は追わない**
+  （ユーザー確定・2026-08-27）。**本課題の判定は変えていない。**
 
 **converter 側の対応（`src/main` に番人・WARN は入れていない）**
 
 | 何を置いたか | どこ |
 |---|---|
-| **あるべき姿**を主張するテスト。現状 FAIL するため `@Ignore`（理由＋他責先を明記） | `YamlFormatReaderInvalidInputTest#keepsOriginalColumnCaseInTable` |
-| **他責の現状**の記録。Javadoc に「あるべき姿は `@Ignore` 側」と明記 | `YamlFormatReaderInvalidInputTest#dropsValueWhenTableColumnNamesDifferOnlyByCase` |
+| **あるべき姿**を主張するテスト。現状 FAIL するため `@Ignore`（理由＋他責先を明記） | `YamlFormatReaderInvalidInputTest#keepsOriginalColumnCaseInTable`。**#35 で削除した（2026-08-28）** |
+| **他責の現状**の記録 | `YamlFormatReaderInvalidInputTest#dropsValueWhenTableColumnNamesDifferOnlyByCase`（#35 で Javadoc から `@Ignore` 側への参照を外した） |
 | カラム名の重複を拒否しない理由と帰属先の Javadoc | `ColumnRowDataBlock` ／ `ModelPreconditions#requireNoDuplicates` |
 
 `@Ignore` を外して実行したときの FAIL は次のとおり（2026-08-19 実測）。
@@ -4105,7 +4112,7 @@ YML-05 は少ない側（不足を `""` で補完する挙動）に限定して�
 | 入力 | 中間モデルへ入る結果 | 担保テスト（`YamlFormatReaderInvalidInputTest#`） |
 |---|---|---|
 | `fields=[f1]` に `rows: [["a", "b", "c"]]` | `rows=[[a]]`。**`b`・`c` はどこにも残らず、例外にも警告にもならない** | `dropsRecordFragmentValuesBeyondFieldCount`（他責の現状の記録） |
-| 同上（**あるべき姿**） | 読み込みが**エラーになる** | `failsToReadRecordFragmentRowWithMoreValuesThanFields`（`@Ignore`。他責先の修正待ち） |
+| 同上（**あるべき姿**） | 読み込みが**エラーになる** | `failsToReadRecordFragmentRowWithMoreValuesThanFields`（`@Ignore`）。**#35 で削除した（2026-08-28）** |
 
 - **この入力はスキーマ上は通る**（`$defs.record_fragment.properties.rows.items` は要素数を `fields` の
   件数と紐づけていない。YML-05 と同じ再現コマンドで確かめられる）。
@@ -4150,8 +4157,8 @@ YML-05 は少ない側（不足を `""` で補完する挙動）に限定して�
 
 | 何を置いたか | どこ |
 |---|---|
-| **あるべき姿**を主張するテスト。現状 FAIL するため `@Ignore`（理由＋他責先＝本体パーサ、出典 `notation:891` を明記） | `YamlFormatReaderInvalidInputTest#failsToReadRecordFragmentRowWithMoreValuesThanFields` |
-| **他責の現状**の記録。Javadoc に「あるべき姿は `@Ignore` 側」と明記 | `YamlFormatReaderInvalidInputTest#dropsRecordFragmentValuesBeyondFieldCount` |
+| **あるべき姿**を主張するテスト。現状 FAIL するため `@Ignore`（理由＋他責先＝本体パーサ、出典 `notation:891` を明記） | `YamlFormatReaderInvalidInputTest#failsToReadRecordFragmentRowWithMoreValuesThanFields`。**#35 で削除した（2026-08-28）** |
+| **他責の現状**の記録 | `YamlFormatReaderInvalidInputTest#dropsRecordFragmentValuesBeyondFieldCount`（#35 で Javadoc から `@Ignore` 側への参照を外した） |
 
 `@Ignore` を外して実行したときの FAIL は次のとおり（2026-08-19 実測）。
 
@@ -4160,6 +4167,15 @@ java.lang.AssertionError: 反映されない値がある入力は読み込みが
 	at nablarch.test.tool.converter.yaml.YamlFormatReaderInvalidInputTest.failsToReadRecordFragmentRowWithMoreValuesThanFields(YamlFormatReaderInvalidInputTest.java:742)
 ```
 
+- **あるべき姿を主張していた `@Ignore` つきテストは #35 で削除した（2026-08-28）。** 根拠にしていた
+  `testdata_notation.rst:891`（`30a8271` 時点）の**記述時エラー一覧は、ピン `5783b35` の解説書に存在しない**
+  （同 `:891` はパディングとバイナリデータの記述。`git grep -n '要素数' 5783b35 -- 'ja/development_tools/testing_framework'`
+  → `tools/testdata_converter.rst:47` の 1 件のみ）。残った唯一の明文は
+  `tools/testdata_converter.rst:47`「レコード定義のフィールド数と、各データ行の要素数が一致すること」だが、
+  これは `YamlTestDataValidator` の検査 7 項目の 1 つであり、**同 `:55` が「検証は変換の処理経路には
+  組み込まれておらず、変換の実行時に自動では呼び出されない」と明記している**。
+  すなわち**読み込みでエラーにすることを定めた明文は無い**。解説書に無い書き方は追わない
+  （ユーザー確定・2026-08-27）。**本課題の判定（対応不要・帰属が converter の外）は変えていない。**
 - **申し送りは新規に立てない。** 「多い側をエラーにするのか、黙って捨てるのが正なのか」の明文化依頼は
   **XLS-42 の申し送り**（「フィールド数より値が少ない行」の扱いの明文化。解説書担当・本体スキーマ担当宛）
   の中に既に含めてある。本課題はその段落を出典として参照する。

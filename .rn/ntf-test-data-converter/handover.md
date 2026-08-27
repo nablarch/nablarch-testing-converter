@@ -63,7 +63,7 @@
 - 「大小を区別する」と定まる場合 → 本体 `TableData` の大文字化が不具合になる（修正先は `nablarch-testing`）。converterは `@Ignore` を外すだけでよい。
 - 「大文字化する」と定まる場合 → さらに2の決着が要る。重複をエラーとするなら大文字化を行う本体側で検出するのが筋（converterは中間モデルの生成時に拒否できる）。後勝ちとするなら値が消えることが仕様になり、converter側の対応は不要（XLS-40のカラム名側は「対応不要」へ倒れる）。
 
-**converter側の現状**: 番人もWARNも置いていない。あるべき姿のテストを `@Ignore` で残してある（`YamlFormatReaderInvalidInputTest#keepsOriginalColumnCaseInTable`）。
+**converter側の現状**: 番人もWARNも置いていない。**あるべき姿を主張する `@Ignore` つきテストは2026-08-28に削除した**（解説書に無い書き方は追わないため。#35）。現状を固定するテスト `YamlFormatReaderInvalidInputTest#dropsValueWhenTableColumnNamesDifferOnlyByCase` は残っている。決着すれば、そのテストの期待値を書き換えることになる。
 
 ---
 
@@ -81,7 +81,7 @@
 
 **converter側の現状**:
 - 少ない側（XLS-42）: `notation:883` 側に立ち、少ない側を通す暫定の立ち位置（判定は保留。スキーマ側で決着した場合は担保テスト `RecordLayoutTest#フィールド定義の件数より要素数が少ないデータ行は保持できる` が赤になる）。
-- 多い側（YML-14）: 帰属はconverterの外（本体パーサが余りを捨てる）。判定は「対応不要＝帰属がconverterの外」。あるべき姿のテストを `@Ignore` で残してある（`YamlFormatReaderInvalidInputTest#failsToReadRecordFragmentRowWithMoreValuesThanFields`）。
+- 多い側（YML-14）: 帰属はconverterの外（本体パーサが余りを捨てる）。判定は「対応不要＝帰属がconverterの外」。**あるべき姿を主張する `@Ignore` つきテストは2026-08-28に削除した**（#35）。根拠にしていた `notation:891` の記述時エラー一覧は、現行の解説書（`5783b35`）に存在しない。現状を固定するテスト `YamlFormatReaderInvalidInputTest#dropsRecordFragmentValuesBeyondFieldCount` は残っている。
 
 ---
 
