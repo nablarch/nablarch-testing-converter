@@ -1856,8 +1856,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-27
+- **Last completed**: **#32（2-1 Excel 形式の読み書きを記法⇄値の対称な写像にする）**。`1d07d00` で push 済み。読みに `NullInterpreter` → `QuotationTrimmer` → `LineSeparatorInterpreter` を本体設定（`nablarch-testing@3c4bd2a` の `src/test/resources/unit-test.xml:29`-`:40`）と同順で掛け、書き（`XlsFormatWriter#toCellNotation`）にその逆写像を置いた。空エントリ判定は解釈後の値ではなく記法（セルの文字列）で行うよう直した。`mvn -o clean test` = `Tests run: 614, Failures: 5, Errors: 0, Skipped: 2`。**赤 5 件は着手前と同一（#36 の担当）で、#32 が落としたものは 0 件。** 記録は `checks/task-32.md`
+- **Next**: **#32 の `/rn:ty`（承認）／`/rn:gm`（差し戻し）判定を得る。** 承認後は #33（2-2 全フィールドが空文字のレコードを Excel 形式へ書き戻せるようにする。Prerequisites の #32 は済）へ進む。#34（2-3）はユーザー判定済みで着手可（`nablarch-document@0d9a049` の 2-3。層 A／層 B の 2 層方式）
+- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2–§6 未着手。§2 以降は #39 で埋める）。**判断待ち 3 件** —— (1) #32 の判定／(2) **XLS-08 が現行の解説書と食い違う**（`5783b35` の `testdata_notation.rst:1500` は「空エントリ判定はマーカーカラム除外の**前**」と明文化。converter は #25.5 で逆を採用。`issues.md` XLS-08 に追記済み・直していない）／(3) 新設 `XlsNotationSymmetryTest`（8 件）を `inventory.md` の軸要素対応表へ載せるか（Step 4 の Steps に台帳登録が無く、#37 の母集合と重なるため未実施）。持ち越しの未決 2 件（`handover.md` の提出タイミング／台帳の宣言値のずれ）は Rules に移済み。**マージ可否の判断は出さない**（Rules）
