@@ -1613,6 +1613,233 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+## Step 4 共通の前提（#32〜#39）
+
+**指示書**: `nablarch-document@origin/ntf-yaml-support` の `.rn/20260724-ntf-yaml-support/ntf-step4-05-nablarch-testing-converter.md`。**18 件（是正 7 件・テスト追加 11 件）が確定済みで、探索は不要。範囲を広げない。**
+
+**参照点（ピン）**: 解説書 `nablarch-document@5783b35`（`git show 5783b35:<path>`。作業ツリーの HEAD を読まない）／本モジュール `60d9a2d`／`nablarch-testing@3c4bd2a`（**変更しない**）／`nablarch-testing-yaml@0b3015c`（**変更しない**。`~/.m2` に install 済み）。
+
+**共通のやらないこと**: 解説書を直さない（誤りと判断したら根拠を添えて報告して止める）／`nablarch-testing`・`nablarch-testing-yaml` を直さない／解説書に無い書き方を追いかけない／形式間の対応表を作らない。
+
+**落ちたときの扱い**: 第2節（#32〜#36）の是正は直す。**第3節（#38）と完了条件3（#37）で落ちたものは直さず `@Ignore` にし、機械的に集められる印つきの理由を付ける**（例: `@Ignore("NTF-DOC: tools/testdata_converter.rst:287 — 期待 X / 実際 Y")`）。**何を直すかはディレクターが全モジュール分を集めてから判断する。範囲の判断を持たない。**
+
+**ビルド**: `mvn -o clean test`（`clean` 必須。`target/classes` が jacoco 計装済みで残っていると `Cannot process instrumented class` で落ちる）。`mvn install` を打つ場合は `JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64` を付ける。
+
+**報告の置き場**: `.rn/ntf-test-data-converter/checks/step4-report.md`（指示書「6. 報告」の 6 項構成。第1節は記入済み）。
+
+---
+
+### #32: 2-1 —— Excel 形式の読み書きを記法⇄値の対称な写像にする
+
+**Purpose**: 中間モデルが持つのは「テスティングフレームワークが解釈したあとの値」（Java null または `String`）であって Excel 形式固有の記法ではない（`5783b35` の `tools/testdata_converter.rst:14`・`:22`・`:34`-`:35`）。読みで外した記法を書きで戻さないため写像が非対称になっている症状 4 件（`null`／`"null"` の潰れ・`"""` の再読込例外・`\r` の 2 文字化）を、この 1 つの原因で断つ。
+
+**Prerequisites**: なし（第2節の根本。#33 は本タスクと同じ原因を持つ）
+
+**着手前の検証**: **完了**。反例なし（NG=0）。結果は `checks/step4-report.md` §1-1。
+
+**Steps**:
+
+- [ ] Excel の読み込み（`XlsFormatReader` の値の入口 `:157`（TABLE）・`:188`（LIST_MAP）・`:425`（FILE／MESSAGE のデータ行））で `NullInterpreter` → `QuotationTrimmer` → `LineSeparatorInterpreter` をこの順に掛ける（`nablarch-testing@3c4bd2a` の `src/test/resources/unit-test.xml:29`-`:40` と同順）。`${...}` 系は掛けない（`tools/testdata_converter.rst:61`）
+- [ ] Excel の書き出し（`XlsFormatWriter.nullToLiteral:580`-`:582` ／ `literals:566`-`:572`）で逆写像を行う。Java null → `null` リテラル。`String` は i（CR → 2 文字の `\` ＋ `r`）→ ii（`equalsIgnoreCase("null")` なら半角ダブルクォートで囲む）→ iii（半角 `"` で始まり `"` で終わる、または全角 `”` で始まり `”` で終わるなら半角ダブルクォートで囲む）の順に判定する。**戻さないもの**: 値の途中のダブルクォート／2 文字の `\` ＋ `n`／LF
+- [ ] `RoundTripTest:652`-`:665` `nullCell_xlsConvertsToLiteralString_yamlPreservesNull` の期待値を `nullValue()` へ変え、メソッド名と Javadoc を直す（`:660` の `is("null")`）
+- [ ] `RoundTripTest` のクラス Javadoc `:47`-`:53`「可逆性の対象外」から null の非対称の記述（`:50`-`:52`）を落とす
+- [ ] `XlsFormatWriter` のクラス Javadoc `:56`-`:58`「読み戻しでは文字列 `null` として戻るため、`null`↔`null` は Excel 経路では復元されない」を落とす
+- [ ] `XlsFormatReader:528`-`:538` の `stripQuotes` の Javadoc を、掛けるインタープリタが 3 つになったことに合わせて書き直す
+- [ ] 直す前に落ちて直したあとに通るテストを用意し、テスト名を報告に書く
+- [ ] 足した／直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認し、崩した内容を報告に書く
+
+**Completion criteria**:
+
+- 中間モデルに入る Excel 由来の値が、テスティングフレームワークが解釈したあとの値（Java null または `String`）になっている
+- 症状 4 件（`null` → 文字列 `null` ／ `"null"` → Java null ／ `"""` の再読込例外 ／ `\r` の 2 文字化）が、いずれも実ファイル起点で再現しなくなっている
+- `${systemTime}` 等が記法のまま保たれている（解決していない）
+- 直す前は落ちて直したあとは通るテストが挙がっている
+- 期待値をわざと崩すと落ちることを確認した記録が報告にある
+
+---
+
+### #33: 2-2 —— 全フィールドが空文字のレコードを Excel 形式へ書き戻せるようにする
+
+**Purpose**: `5783b35` の `implementation/testdata_examples.rst:2231`「全フィールドが空文字のレコードは、いずれか1つのフィールドに ``""`` と記述する。全セルを空にした行は読み飛ばされ、レコードにならないためである。」記載例（同 `:2237`-`:2260`）を往復させるとレコードが 1 件消える（原本 3 件・XLS→XLS 後 2 件・XLS→YAML→XLS 後 2 件）。
+
+**Prerequisites**: #32（原因は同じ）
+
+**Steps**:
+
+- [ ] ファイル・メッセージのデータ行を Excel 形式へ書き出すとき、全要素が空文字になる行は先頭要素を `""` と書く
+- [ ] **テーブルと `LIST_MAP` は対象外**（全要素が空のエントリは読み飛ばすのが記法。`testdata_notation.rst:1500`。`tools/testdata_converter.rst:63` に明記済み）であることをテストで固定する
+- [ ] 直す前に落ちて直したあとに通るテストを用意する
+- [ ] 期待値をわざと崩すと落ちることを 1 度確認する
+
+**Completion criteria**:
+
+- `testdata_examples.rst:2237`-`:2260` の記載例を XLS→XLS・XLS→YAML→XLS で往復させて、テスティングフレームワークが読むレコードが 3 件のまま保たれる
+- テーブル・`LIST_MAP` の挙動を変えていない
+- 直す前は落ちて直したあとは通るテストが挙がっている
+
+---
+
+### #34: 2-3 —— 中間モデルから Excel 形式の書式（`[ ]`）を外す
+
+**Purpose**: 中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」（`tools/testdata_converter.rst:14`）。グループ ID を囲む半角角括弧は Excel 形式の書式であって値ではない。現状は壊れていないが、モデルの持ち方が正しくない。
+
+**Prerequisites**: なし
+
+**着手前の検証**: **完了**。全走査の結果は `checks/step4-report.md` §1-2（`src/main` 11 箇所・既存テストの期待値 44 件）。
+
+**未決（ユーザー判断待ち）**: 指示書 2-3 の「**`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする**」は、変更禁止の上流 2 つが API 境界で整形済み（`[g1]`）を要求するため、そのままでは実装できない（`nablarch-testing@3c4bd2a` の `GroupDataParsingTemplate.java:41`-`:42` ／ `nablarch-testing-yaml@0b3015c` の `YamlSection.groupMatches:281`-`:284`）。**3 境界方式**（Excel 版面／上流 Excel パーサ呼び出し／上流 YAML ビルダ呼び出し）を提案して報告済み。**ユーザーの答えが出るまで実装に入らない。**
+
+**Steps**:
+
+- [ ] 3 境界方式でよいかのユーザー判断を得る
+- [ ] `YamlFormatReader.formatGroup:485`-`:488` の `[ ]` 付与をやめ、モデルへは生値を入れる（`:169`・`:203`・`:236`・`:299`）
+- [ ] `YamlFormatWriter.rawGroup:479`-`:487` の推測剥がしをやめ、生値をそのまま書く
+- [ ] `TestCoreReaderAdapter.markerGroupId:282`-`:286` で `[ ]` を外す
+- [ ] `XlsFormatWriter.marker:529`-`:531` で `[ ]` を付ける
+- [ ] 上流 API 境界（`XlsFormatReader` → `TestCoreReaderAdapter.readTables`／`readFiles`／`readSendSyncMessages`、`YamlFormatReader` → `YamlTestCoreAdapter.readTables`／`readFiles`）で生値→整形済みへ変換する
+- [ ] 整形済み前提の Javadoc を書き直す（`XlsFormatWriter:524`／`TestDataBlock:77`／`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259`）
+- [ ] 既存テストの期待値 44 件のうち、変えたもの・変えなかったものを件数つきで報告に書く（`YamlTestCoreAdapterTest:74`・`:76` の 2 件は上流契約どおり整形済みのままなので変えない）
+- [ ] 期待値をわざと崩すと落ちることを 1 度確認する
+
+**Completion criteria**:
+
+- 中間モデルの `groupId` が生値である（`[ ]` を持たない）
+- 4 種のグループ ID（省略・単一・複数・送信系）で 4 経路の往復が壊れていない
+- `[ ]` の付け外しが 3 境界の中だけに閉じている
+- 既存テストの期待値を変えた箇所・変えなかった箇所が全件・件数つきで挙がっている
+
+---
+
+### #35: 2-4 —— 解説書に記述の無い「あるべき姿」を追う `@Ignore` 2 件を削除する
+
+**Purpose**: どちらも `解説書に無い書き方は直さない・テストしない` に反する。他責先がリリース済みの `nablarch-testing` で直す予定も無いため、置いておくと永久に赤いままの宿題になる。
+
+**Prerequisites**: なし
+
+**Steps**:
+
+- [ ] `YamlFormatReaderInvalidInputTest:740` `failsToReadRecordFragmentRowWithMoreValuesThanFields` を削除する（`5783b35` の `testdata_notation.rst:891` はパディングとバイナリデータの記述で、`@Ignore` の主張は無い。超過値を黙って捨てる挙動は論点4 として user 判断済み・現行どおりで仕様）
+- [ ] `YamlFormatReaderInvalidInputTest:1280` `keepsOriginalColumnCaseInTable` を削除する（`5783b35` の `ja/development_tools/testing_framework` 全走査でテーブルのカラム名の大小についての記述は 0 件）
+- [ ] 同ファイルの Javadoc や他のテストからこの 2 件を `{@link}` で参照している箇所を全走査し、参照ごと外す
+- [ ] **削除するのはこの 2 件だけ**であることを確認する
+
+**Completion criteria**:
+
+- 2 件のテストメソッドと、その `{@link}` 参照が残っていない
+- 他の `@Ignore` を消していない
+
+---
+
+### #36: 2-5〜2-7 —— 依存先 `nablarch-testing-yaml` の Step 4 是正に追随する（着手時点の赤 5 件）
+
+**Purpose**: 着手時点で赤い 5 件はいずれも「converter 側のテストが、解説書に反する旧挙動を期待値に書いている」ものであり、`src/main` の欠陥ではない。5 件とも解説書どおりの期待値へ直す。
+
+**Prerequisites**: なし
+
+**やらないこと**: `nablarch-testing-yaml` の是正を評価し直さない／`YamlTestCoreAdapter` の未使用メソッドを整理しない／`YamlTestCoreAdapter#isResourceExisting` そのものは消さない。
+
+**Steps**:
+
+- [ ] **2-5** `YamlTestCoreAdapter:93`-`:100` の Javadoc を、入れ物（ディレクトリ）の存在を返す旨へ直す（委譲先は `YamlLoader#isResourceExisting`。`nablarch-testing-yaml@0b3015c` の `YamlLoader.java:184`-`:186`・`:165`-`:178`。読み込み単位の存在は `:200`-`:202` の `isDataExisting`）
+- [ ] **2-5** `YamlTestCoreAdapterTest:364`-`:371` を新仕様へ直し、メソッド名を「入れ物の存在を映す」ことが分かる名前へ変える。押さえるのは 3 点 ——（入れ物ディレクトリが在る → `true`。読み込み単位名が実在しない `noSuchFile` でも `true`）／（入れ物ディレクトリが無い → `false`）／（`/` を含まない `resourceName` は全体を入れ物名として扱う。`YamlLoader.java:171`-`:172`）
+- [ ] **2-6** `YamlFormatReaderScalarTest` の `readValueLine:159`-`:175` ／ `readListMapValue:184`-`:194` が組み立てる行に、空でない値を持つカラムを 1 つ足す（例: `K: "x"` を先に置き、検証対象は `V` に置く）。取り出す値は従来どおり `V` 列
+- [ ] **2-6** `readValue`・`readValueLine`・`readListMapValue`・`readBlockScalarValue` の呼び出し元を全走査し、`:172`・`:173`・`:191`・`:192` の期待値と取り出す列の位置（`:174`・`:193`）を漏れなく直す。**何件直したかを報告に書く**
+- [ ] **2-6** 「すべての値が空文字の行は読み飛ばされる」こと自体を押さえるテストを 1 件足す（`testdata_notation.rst:1500`。`{}` の行と、値が `""` だけの行の両方を含める）
+- [ ] **2-7** `YamlFormatReaderInvalidInputTest:601`・`:628` の期待値を、`{}` の行だけが読み飛ばされ 2 行目が残る形へ直す（テーブル経路は `columnNames` が `["A"]`・行が 1 件（`["1"]`）。**実際に走らせて観測した値で書く**）
+- [ ] **2-7** メソッド名（`dropsAllRowsWhen...` ／ `keepsRowCountButLosesValuesWhen...`）と Javadoc（`:582`-`:588`「最も損失が大きい形」「2 行目に書いたデータも消える」）を、欠陥の名前でないものへ直す
+- [ ] **2-7** `YML-04` を参照している箇所を全走査し、参照ごと整理する。`coverage/issues.md` は **YML-04 が解消済みであることを 1 行追記するに留める**（記録の書き換えはしない）
+- [ ] 赤 5 件それぞれについて、直したあとの期待値と、そう決めた根拠（解説書の `file:line` と実測値）を報告に書く
+- [ ] 直したテストそれぞれについて、期待値をわざと崩すと落ちることを 1 度確認する
+
+**Completion criteria**:
+
+- 着手時点の赤 5 件がすべて通る
+- 5 件それぞれの新しい期待値に、解説書の `file:line` と実測値の根拠が付いている
+- 2-6 のヘルパー修正で期待値が動いた呼び出し元が、件数つきで全件挙がっている
+- 「すべての値が空文字の行は読み飛ばされる」正のテストが 1 件ある
+- `coverage/issues.md` の YML-04 に解消済みの 1 行が入っている（書き換えていない）
+
+---
+
+### #37: 完了条件3 —— 母集合が 4 経路で保たれることを実ファイル起点で押さえる
+
+**Purpose**: `RoundTripTest` は中間モデルを起点に中間モデルへ戻すため（クラス Javadoc `:43`）、記法⇄値の写像が非対称でも書きと読みが同じ非対称なら緑になる。**この確認の代わりにならない。** 実ファイルを起点にし、テスティングフレームワークが解釈したあとの値で比べる。
+
+**Prerequisites**: #32・#33・#34
+
+**母集合**: `5783b35` の `implementation/testdata_notation.rst` の特殊記法の表（Excel 形式 `:1353`-`:1391` ／ YAML 形式 `:1405`-`:1443`）と、`implementation/testdata_examples.rst` の「null・空文字・改行など特殊な値を記述する」の各記載例。
+
+**Steps**:
+
+- [ ] 母集合の各行・各記載例について、**XLS→XLS・XLS→YAML→XLS・YAML→YAML・YAML→XLS→YAML の 4 経路**で、テスティングフレームワークが解釈したあとの値が往復前と一致することを、実ファイル起点のテストで押さえる
+- [ ] 一致しないものは `@Ignore` ＋ 印つきの理由で記録する（直さない）
+- [ ] 表の行ごと・記載例ごとに 4 経路それぞれの合否を報告に書く
+- [ ] 期待値をわざと崩すと落ちることを 1 度確認する
+
+**Completion criteria**:
+
+- 4 経路それぞれの合否が、表の行ごと・記載例ごとに全件挙がっている
+- 起点が実ファイルであり、比較がテスティングフレームワークの解釈後の値である（セルの見た目ではない）
+- 一致しないものが `@Ignore` ＋ 印つきの理由で記録されている
+
+---
+
+### #38: 第3節 —— テスト追加 11 件
+
+**Purpose**: いずれも解説書に記述があり、既存テスト 605 メソッドが押さえていないもの（`60d9a2d` 実測）。既に押さえているものを二重に書かない。
+
+**Prerequisites**: なし（#32〜#34 と独立に書けるが、実行は是正後）
+
+**Steps**（解説書は `5783b35` の `tools/testdata_converter.rst`）:
+
+- [ ] **3-1** `:53`-`:55` —— 3-2〜3-5 で `YamlTestDataValidator` が報告する種類の不正な YAML を変換元にしても、`TestDataConverter.convert` が検証を理由に失敗しない
+- [ ] **3-2** `:59` —— セルの背景色・書式・結合セルを設定した Excel を xls→xls で往復させると、往復後のセルにその色・書式・結合が無い（**負のテスト**）
+- [ ] **3-3** `:59` —— コメント行を含む YAML を yaml→yaml で往復させると、往復後にコメントが無い（**負のテスト**）
+- [ ] **3-4** `:176` —— 変換元が YAML 形式のとき `excludeSheets` を指定しても、変換件数と出力内容が指定しないときと一致する（エラーにもならない）（**負のテスト**）
+- [ ] **3-5** `:233` —— 直下とサブディレクトリの両方に不正な YAML を置いて `validate` すると、返る `ValidationError` は直下のぶんだけになる。直下に `.yaml` を持たない上位ディレクトリを指定すると空リストが返る
+- [ ] **3-6** `:251`-`:254` —— `withTestShotsHeaderColor(x)` で識別子 `testShots` の `LIST_MAP` のヘッダ行の背景色が `x` になる
+- [ ] **3-7** `:259`-`:262` —— `withExpectedHeaderColor(x)` で `EXPECTED_` 始まりと `RESPONSE_` 始まりのヘッダ行の背景色が**どちらも** `x` になる
+- [ ] **3-8** `:263`-`:266` —— `withOtherHeaderColor(x)` で `MESSAGE` と `testShots` 以外の `LIST_MAP` のヘッダ行の背景色が `x` になり、`testShots` の `LIST_MAP` は変わらない
+- [ ] **3-9** `:275`-`:278` —— `withMaxColumnWidthChars(n)` が効く。**上限文字数が実際に列幅を打ち切ること**（既定 20 に対し 30 文字の値を持つ列が 20 文字相当で頭打ちになること）も押さえる
+- [ ] **3-10** `:287`-`:290` —— `withDisplayGridlines(true)` で**出力したシートのグリッド線表示がオンになる**。既定（`false`）ではオフになる
+- [ ] **3-11** `:239` —— `ExcelFormatConfig` を設定した `ConversionRequest` で `to=yaml` の変換を実行しても、出力 YAML の中身が設定なしの場合と一致する（**負のテスト**）
+- [ ] 落ちたものは直さず `@Ignore` ＋ 印つきの理由にする。理由の文言をそのまま報告に載せる
+- [ ] **3-2・3-3・3-4・3-11 の 4 件（負のテスト）は特に念入りに**、期待値をわざと崩すと落ちることを確認する
+
+**Completion criteria**:
+
+- 11 件すべてについてテストが存在する
+- 通ったもの・`@Ignore` にしたものの内訳が挙がっている
+- `@Ignore` の理由が印つき（`NTF-DOC:` ＋ 解説書の `file:line` ＋ 期待／実際）である
+- 負のテスト 4 件について、崩すと落ちることを確認した記録がある
+
+---
+
+### #39: 完了条件の締め —— 全件緑・カバレッジ計測・報告のまとめ・push
+
+**Purpose**: 指示書「4. 完了条件」の残り（7・8・9・10）と「6. 報告」を締める。
+
+**Prerequisites**: #32〜#38
+
+**Steps**:
+
+- [ ] `mvn -o clean test` が緑であること（`@Ignore` を除く）を確認する
+- [ ] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
+- [ ] `checks/step4-report.md` の §2〜§6 を埋める（指示書「6. 報告」の 6 項構成）
+- [ ] 既存テストの期待値を変えた箇所を、どれを変えどれを変えなかったかも含めて件数つきで全件挙げる
+- [ ] `git status --short` が空になることを確認する（一時ファイル・作業用スクリプト・ログを残さない。`jacoco.exec` と `target/` は `.gitignore:1`・`:3`）
+- [ ] 変更を push する
+
+**Completion criteria**:
+
+- `mvn -o clean test` が緑（`@Ignore` を除く）
+- カバレッジ C0/C1 の計測結果が報告にあり、下がった箇所が挙がっている
+- 報告の 6 項がすべて埋まっている
+- `git status --short` が空
+- push 済み
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
@@ -1620,7 +1847,7 @@ session is suspended — the signal /rn:up and /rn:dn search for — and resets 
 so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
-- **Date**: 2026-08-25
-- **Last completed**: **申し送りの束を専用ファイルへ集約**（是正なし・steering.md へのタスク番号追加なし・ユーザー指示によるドキュメント作業）。`coverage/issues.md` に散在していた解説書担当・本体スキーマ担当宛の申し送り 4 件（XLS-27・XLS-39・XLS-40・XLS-42/YML-14）を `.rn/ntf-test-data-converter/handover.md` へ転記・出典行番号を併記。XLS-45（束から外れた経緯）も注記。**まだ未提出**（提出判断は調整側）。
-- **Next**: 2 つの独立した未決事項が残る。(1) **上流 yaml 振る舞い変更（6cbc4e1）への対応方針をユーザーが判断してから指示を受ける** —— 候補は (a) 失敗9件のテストを新挙動へ改定（TDD）するか、(b) `issues.md` YML-04 の判定・掲載を 6cbc4e1 の変化に合わせて改訂するか。（実測記録: `nablarch-testing-yaml` `dd8f313` install 済み・`mvn -o clean test -Djacoco.skip=true` → Tests run: 605, Failures: 8, Errors: 1, Skipped: 2。詳細は git log の当該セッション、または `issues.md` YML-04）。(2) **`handover.md` の提出タイミングをユーザーが判断する**（束は converter 完了後にまとめて出す方針・`issues.md`「申し送りの束」節）。**このセッションではどちらも実施しない**
-- **Notes**: branch `ntf-test-data-converter`。**未決 2 件（#31 から持ち越し、未解消）** —— (1) 台帳の宣言値のずれ 2 件の出所が未確認（`XlsFormatWriterTest` の `build` ＋3 ／ `YamlFormatReaderInvalidInputTest` 3 区間目の ＋2 のうち #31 以外の 2 件。表は `checks/task-31.md`「台帳の宣言値のずれ」）／(2) 申し送りの束は `handover.md`（`.rn/ntf-test-data-converter/handover.md`）へ集約したが**未提出**（提出は調整側の判断）。**マージ可否の判断は出さない**（Rules）
+- **Date**: 2026-08-27
+- **Last completed**: **Step 4 の着手前ゲート**（#32 と #34 の「着手前に検証すること」）。`mvn -o clean test` = `Tests run: 605, Failures: 5, Errors: 0, Skipped: 2` を実測し、赤 5 件が指示書の記載と一致すること・それ以外の赤が無いことを確認。2-1 の「戻す条件」は `notation.rst`（`5783b35`）の Excel 形式の表 18 ケース・YAML 形式の表 16 ケースで**反例なし（NG=0）**。2-3 の `[ ]` 依存箇所は `src/main` 11 箇所・既存テストの期待値 44 件を全走査。結果は `checks/step4-report.md` §1。**src/main・src/test は 1 行も変えていない。**
+- **Next**: **#34 の未決に対するユーザーの答えを得てから実装に入る。** 指示書 2-3 の「`[ ]` を付けるのは `XlsFormatWriter.marker` の中だけにする」は、変更禁止の上流 2 つが API 境界で整形済み（`[g1]`）を要求するため実装できない（`nablarch-testing@3c4bd2a` の `GroupDataParsingTemplate.java:41`-`:42` ／ `nablarch-testing-yaml@0b3015c` の `YamlSection.groupMatches:281`-`:284`）。**3 境界方式**（Excel 版面／上流 Excel パーサ呼び出し／上流 YAML ビルダ呼び出し）を提案済み。答えが出るまでは #34 に触らず、独立している **#32 → #33 → #35 → #36** から進めてよい
+- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2–§6 未着手）。**未決 3 件** —— (1) #34 の 3 境界方式の可否（上記）／(2) `handover.md` の提出タイミング（提出は調整側の判断・#31 から持ち越し）／(3) 台帳の宣言値のずれ 2 件の出所が未確認（`checks/task-31.md`「台帳の宣言値のずれ」・#31 から持ち越し）。**マージ可否の判断は出さない**（Rules）
