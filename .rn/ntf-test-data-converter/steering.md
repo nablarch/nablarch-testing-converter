@@ -1840,19 +1840,21 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**（解説書は `5783b35` の `tools/testdata_converter.rst`）:
 
-- [ ] **3-1** `:53`-`:55` —— 3-2〜3-5 で `YamlTestDataValidator` が報告する種類の不正な YAML を変換元にしても、`TestDataConverter.convert` が検証を理由に失敗しない
-- [ ] **3-2** `:59` —— セルの背景色・書式・結合セルを設定した Excel を xls→xls で往復させると、往復後のセルにその色・書式・結合が無い（**負のテスト**）
-- [ ] **3-3** `:59` —— コメント行を含む YAML を yaml→yaml で往復させると、往復後にコメントが無い（**負のテスト**）
-- [ ] **3-4** `:176` —— 変換元が YAML 形式のとき `excludeSheets` を指定しても、変換件数と出力内容が指定しないときと一致する（エラーにもならない）（**負のテスト**）
-- [ ] **3-5** `:233` —— 直下とサブディレクトリの両方に不正な YAML を置いて `validate` すると、返る `ValidationError` は直下のぶんだけになる。直下に `.yaml` を持たない上位ディレクトリを指定すると空リストが返る
-- [ ] **3-6** `:251`-`:254` —— `withTestShotsHeaderColor(x)` で識別子 `testShots` の `LIST_MAP` のヘッダ行の背景色が `x` になる
-- [ ] **3-7** `:259`-`:262` —— `withExpectedHeaderColor(x)` で `EXPECTED_` 始まりと `RESPONSE_` 始まりのヘッダ行の背景色が**どちらも** `x` になる
-- [ ] **3-8** `:263`-`:266` —— `withOtherHeaderColor(x)` で `MESSAGE` と `testShots` 以外の `LIST_MAP` のヘッダ行の背景色が `x` になり、`testShots` の `LIST_MAP` は変わらない
-- [ ] **3-9** `:275`-`:278` —— `withMaxColumnWidthChars(n)` が効く。**上限文字数が実際に列幅を打ち切ること**（既定 20 に対し 30 文字の値を持つ列が 20 文字相当で頭打ちになること）も押さえる
-- [ ] **3-10** `:287`-`:290` —— `withDisplayGridlines(true)` で**出力したシートのグリッド線表示がオンになる**。既定（`false`）ではオフになる
-- [ ] **3-11** `:239` —— `ExcelFormatConfig` を設定した `ConversionRequest` で `to=yaml` の変換を実行しても、出力 YAML の中身が設定なしの場合と一致する（**負のテスト**）
-- [ ] 落ちたものは直さず `@Ignore` ＋ 印つきの理由にする。理由の文言をそのまま報告に載せる
-- [ ] **3-2・3-3・3-4・3-11 の 4 件（負のテスト）は特に念入りに**、期待値をわざと崩すと落ちることを確認する
+- [x] **3-1** `:53`-`:55` —— 3-2〜3-5 で `YamlTestDataValidator` が報告する種類の不正な YAML を変換元にしても、`TestDataConverter.convert` が検証を理由に失敗しない
+- [x] **3-2** `:59` —— セルの背景色・書式・結合セルを設定した Excel を xls→xls で往復させると、往復後のセルにその色・書式・結合が無い（**負のテスト**）
+- [x] **3-3** `:59` —— コメント行を含む YAML を yaml→yaml で往復させると、往復後にコメントが無い（**負のテスト**）
+- [x] **3-4** `:176` —— 変換元が YAML 形式のとき `excludeSheets` を指定しても、変換件数と出力内容が指定しないときと一致する（エラーにもならない）（**負のテスト**）
+- [x] **3-5** `:233` —— 直下とサブディレクトリの両方に不正な YAML を置いて `validate` すると、返る `ValidationError` は直下のぶんだけになる。直下に `.yaml` を持たない上位ディレクトリを指定すると空リストが返る
+- [x] **3-6** `:251`-`:254` —— `withTestShotsHeaderColor(x)` で識別子 `testShots` の `LIST_MAP` のヘッダ行の背景色が `x` になる
+- [x] **3-7** `:259`-`:262` —— `withExpectedHeaderColor(x)` で `EXPECTED_` 始まりと `RESPONSE_` 始まりのヘッダ行の背景色が**どちらも** `x` になる
+- [x] **3-8** `:263`-`:266` —— `withOtherHeaderColor(x)` で `MESSAGE` と `testShots` 以外の `LIST_MAP` のヘッダ行の背景色が `x` になり、`testShots` の `LIST_MAP` は変わらない
+- [x] **3-9** `:275`-`:278` —— `withMaxColumnWidthChars(n)` が効く。**上限文字数が実際に列幅を打ち切ること**（既定 20 に対し 30 文字の値を持つ列が 20 文字相当で頭打ちになること）も押さえる
+- [x] **3-10** `:287`-`:290` —— `withDisplayGridlines(true)` で**出力したシートのグリッド線表示がオンになる**。既定（`false`）ではオフになる
+- [x] **3-11** `:239` —— `ExcelFormatConfig` を設定した `ConversionRequest` で `to=yaml` の変換を実行しても、出力 YAML の中身が設定なしの場合と一致する（**負のテスト**）
+- [x] 落ちたものは直さず `@Ignore` ＋ 印つきの理由にする。理由の文言をそのまま報告に載せる
+- [x] **3-2・3-3・3-4・3-11 の 4 件（負のテスト）は特に念入りに**、期待値をわざと崩すと落ちることを確認する
+
+**#38 の実測（2026-08-28）**: **11 件すべて緑・`@Ignore` は 0 件。**担保は新規 2 クラス（`xls/ExcelOutputDocumentedBehaviorTest` 6 件／`ConverterDocumentedBehaviorTest` 5 件）。**3-1 は V-COL 1 項目で押さえた** —— `YamlTestDataValidator` の 7 項目のうち V-DKEY（上流ローダのスキーマ検証）と V-FNAME（本体のレコード解析）は変換自体が落ちるため。止めているのはどちらも `YamlTestDataValidator` ではないので `:53`-`:55` と矛盾しない。詳細は `checks/task-38.md`。
 
 **Completion criteria**:
 

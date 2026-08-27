@@ -247,7 +247,9 @@ perl -0777 -ne 'while (/\bstatic\b[^;{()]*\brequireNoNulls\s*\(/g) {
 
 **Step 4（#32〜#39）が新設した往復テスト 3 クラスは、この 3 群に加えていない**（2026-08-28・#37 で判断）——
 `XlsNotationSymmetryTest`（#32・8 件）／`XlsEmptyEntryTest`（#33・12 件）／
-`SpecialNotationRoundTripTest`（#37・20 件）。理由は `inventory.md` [§4.5](./inventory.md) に書いた
+`SpecialNotationRoundTripTest`（#37・20 件）。**#38 が足した 2 クラス**
+（`ExcelOutputDocumentedBehaviorTest` 6 件／`ConverterDocumentedBehaviorTest` 5 件）は
+往復テストですらなく、変換ツールの入口の振る舞いを測るものなので同じく含まない。理由は `inventory.md` [§4.5](./inventory.md) に書いた
 （触れる軸要素は各辺の直接テストで既に✅であり、🔺 欄に足しても状態欄は動かない）。
 **本書の 🔺 欄と上の導出コマンドの結果は、この 3 クラスを含まない。**
 
