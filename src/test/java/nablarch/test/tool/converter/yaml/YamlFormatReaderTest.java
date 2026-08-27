@@ -72,7 +72,7 @@ public class YamlFormatReaderTest {
     }
 
     @Test
-    public void readTable_expectedWithGroup_formatsGroupIdAndCreatesBlockPerGroup() {
+    public void readTable_expectedWithGroup_keepsRawGroupIdAndCreatesBlockPerGroup() {
         // Given: 同一セクションに 2 グループ（記述順）
         Map<String, Object> yaml = map(
                 "expected_tables", list(
@@ -84,13 +84,13 @@ public class YamlFormatReaderTest {
         // When
         TestDataContainer container = reader(yaml).read(DIR, RESOURCE);
 
-        // Then: グループごとに 1 ブロック・整形済みグループ ID
+        // Then: グループごとに 1 ブロック・生値のグループ ID
         List<TestDataBlock> blocks = blocks(container);
         assertThat(blocks.size(), is(2));
         assertThat(blocks.get(0).getDataType(), is(DataType.EXPECTED_TABLE_DATA));
-        assertThat(blocks.get(0).getGroupId(), is("[case01]"));
+        assertThat(blocks.get(0).getGroupId(), is("case01"));
         assertThat(((TableDataBlock) blocks.get(0)).getRows().get(0), is(Arrays.asList("10")));
-        assertThat(blocks.get(1).getGroupId(), is("[case02]"));
+        assertThat(blocks.get(1).getGroupId(), is("case02"));
         assertThat(((TableDataBlock) blocks.get(1)).getRows().get(0), is(Arrays.asList("20")));
     }
 
@@ -268,11 +268,11 @@ public class YamlFormatReaderTest {
         for (TestDataBlock block : blocks) {
             assertThat(block.getDataType(), is(DataType.EXPECTED_FIXED));
         }
-        assertThat(blocks.get(0).getGroupId(), is("[g1]"));
+        assertThat(blocks.get(0).getGroupId(), is("g1"));
         assertThat(((FileDataBlock) blocks.get(0)).getIdentifier(), is("a.dat"));
-        assertThat(blocks.get(1).getGroupId(), is("[g1]"));
+        assertThat(blocks.get(1).getGroupId(), is("g1"));
         assertThat(((FileDataBlock) blocks.get(1)).getIdentifier(), is("b.dat"));
-        assertThat(blocks.get(2).getGroupId(), is("[g2]"));
+        assertThat(blocks.get(2).getGroupId(), is("g2"));
         assertThat(((FileDataBlock) blocks.get(2)).getIdentifier(), is("c.dat"));
     }
 
@@ -436,7 +436,7 @@ public class YamlFormatReaderTest {
     // ------------------------------------------------------------------------
 
     @Test
-    public void readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField() {
+    public void readSendSync_groupsByRawValueKeepsRawGroupIdAndNoField() {
         // Given: 同一グループ case1 に 2 件・別グループ case2 に 1 件。"no" フィールドも原文どおり保持。
         Map<String, Object> yaml = map(
                 "expected_request_header_messages", list(
@@ -453,20 +453,20 @@ public class YamlFormatReaderTest {
         // When
         TestDataContainer container = reader(yaml).read(DIR, RESOURCE);
 
-        // Then: 記述順 MSG1/MSG2（[case1]）・MSG3（[case2]）、送信系種別、FW ヘッダ空、"no" 保持
+        // Then: 記述順 MSG1/MSG2（case1）・MSG3（case2）、送信系種別、FW ヘッダ空、"no" 保持
         List<TestDataBlock> blocks = blocks(container);
         assertThat(blocks.size(), is(3));
         MessageDataBlock msg1 = (MessageDataBlock) blocks.get(0);
         assertThat(msg1.getDataType(), is(DataType.EXPECTED_REQUEST_HEADER_MESSAGES));
-        assertThat(msg1.getGroupId(), is("[case1]"));
+        assertThat(msg1.getGroupId(), is("case1"));
         assertThat(msg1.getIdentifier(), is("MSG1"));
         assertTrue(msg1.getFwHeaderFields().isEmpty());
         assertFieldDef(msg1.getRecords().get(0).getFields().get(0), "no", "半角英字", "1");
         assertThat(msg1.getRecords().get(0).getRows().get(0), is(Arrays.asList("1", "${z}")));
         assertThat(((MessageDataBlock) blocks.get(1)).getIdentifier(), is("MSG2"));
-        assertThat(((MessageDataBlock) blocks.get(1)).getGroupId(), is("[case1]"));
+        assertThat(((MessageDataBlock) blocks.get(1)).getGroupId(), is("case1"));
         assertThat(((MessageDataBlock) blocks.get(2)).getIdentifier(), is("MSG3"));
-        assertThat(((MessageDataBlock) blocks.get(2)).getGroupId(), is("[case2]"));
+        assertThat(((MessageDataBlock) blocks.get(2)).getGroupId(), is("case2"));
     }
 
     @Test
@@ -509,11 +509,11 @@ public class YamlFormatReaderTest {
         // When
         List<TestDataBlock> blocks = blocks(reader(yaml).read(DIR, RESOURCE));
 
-        // Then: group_id 無しエントリもデフォルトグループ（整形済みグループ ID は空文字）として残る。
+        // Then: group_id 無しエントリもデフォルトグループ（グループ ID は空文字）として残る。
         //       並びはグループの初出順（g1 が先、デフォルトが後）
         assertThat(blocks.size(), is(2));
         assertThat(((MessageDataBlock) blocks.get(0)).getIdentifier(), is("KEEP"));
-        assertThat(((MessageDataBlock) blocks.get(0)).getGroupId(), is("[g1]"));
+        assertThat(((MessageDataBlock) blocks.get(0)).getGroupId(), is("g1"));
         assertThat(((MessageDataBlock) blocks.get(0)).getRecords().get(0).getRows(),
                 is(Arrays.asList(Arrays.asList("v"))));
         assertThat(((MessageDataBlock) blocks.get(1)).getIdentifier(), is("DEFAULT"));

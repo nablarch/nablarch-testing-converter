@@ -92,7 +92,7 @@ public class RoundTripTest {
     @Test
     public void xls_expectedTable_withGroupId_isPreserved() {
         // Given
-        TableDataBlock original = table(DataType.EXPECTED_TABLE_DATA, "[case1]", "ORDERS",
+        TableDataBlock original = table(DataType.EXPECTED_TABLE_DATA, "case1", "ORDERS",
                 cols("OID", "STATUS"), rows(row("10", "OK")));
 
         // When
@@ -263,7 +263,7 @@ public class RoundTripTest {
                 fields(field("requestId", "半角英字", "20")),
                 rows(row("RM01")));
         MessageDataBlock original = message(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "RM01", directives(), fwHeader(),
+                "case1", "RM01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -285,7 +285,7 @@ public class RoundTripTest {
                 fields(field("body", "半角英字", "10")),
                 rows(row("${body}")));
         MessageDataBlock original = message(DataType.EXPECTED_REQUEST_BODY_MESSAGES,
-                "[case1]", "RM01", directives(), fwHeader(),
+                "case1", "RM01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -307,7 +307,7 @@ public class RoundTripTest {
                 fields(field("responseId", "半角英字", "20")),
                 rows(row("RES01")));
         MessageDataBlock original = message(DataType.RESPONSE_HEADER_MESSAGES,
-                "[case1]", "RES01", directives(), fwHeader(),
+                "case1", "RES01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -329,7 +329,7 @@ public class RoundTripTest {
                 fields(field("resBody", "半角英字", "5")),
                 rows(row("${rb}")));
         MessageDataBlock original = message(DataType.RESPONSE_BODY_MESSAGES,
-                "[case1]", "RES01", directives(), fwHeader(),
+                "case1", "RES01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -370,7 +370,7 @@ public class RoundTripTest {
     @Test
     public void yaml_expectedTable_withGroupId_isPreserved() {
         // Given
-        TableDataBlock original = table(DataType.EXPECTED_TABLE_DATA, "[case1]", "ORDERS",
+        TableDataBlock original = table(DataType.EXPECTED_TABLE_DATA, "case1", "ORDERS",
                 cols("OID", "STATUS"), rows(row("10", "OK")));
 
         // When
@@ -560,7 +560,7 @@ public class RoundTripTest {
                 fields(field("requestId", "半角英字", "20")),
                 rows(row("RM01")));
         MessageDataBlock original = message(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "RM01", directives(), fwHeader(),
+                "case1", "RM01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -582,7 +582,7 @@ public class RoundTripTest {
                 fields(field("body", "半角英字", "10")),
                 rows(row("${body}")));
         MessageDataBlock original = message(DataType.EXPECTED_REQUEST_BODY_MESSAGES,
-                "[case1]", "RM01", directives(), fwHeader(),
+                "case1", "RM01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -604,7 +604,7 @@ public class RoundTripTest {
                 fields(field("responseId", "半角英字", "20")),
                 rows(row("RES01")));
         MessageDataBlock original = message(DataType.RESPONSE_HEADER_MESSAGES,
-                "[case1]", "RES01", directives(), fwHeader(),
+                "case1", "RES01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When
@@ -626,7 +626,7 @@ public class RoundTripTest {
                 fields(field("resBody", "半角英字", "5")),
                 rows(row("${rb}")));
         MessageDataBlock original = message(DataType.RESPONSE_BODY_MESSAGES,
-                "[case1]", "RES01", directives(), fwHeader(),
+                "case1", "RES01", directives(), fwHeader(),
                 Collections.singletonList(rec));
 
         // When

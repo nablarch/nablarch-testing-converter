@@ -85,10 +85,10 @@ public class YamlFormatWriterTest {
 
     @Test
     public void serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId() {
-        // Given: 同一 expected_tables に 2 グループ（整形済み [case01]/[case02]）
-        TableDataBlock g1 = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "[case01]", "ORDERS",
+        // Given: 同一 expected_tables に 2 グループ（生値 case01／case02）
+        TableDataBlock g1 = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "case01", "ORDERS",
                 list("OID"), rows(row("10")));
-        TableDataBlock g2 = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "[case02]", "ORDERS",
+        TableDataBlock g2 = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "case02", "ORDERS",
                 list("OID"), rows(row("20")));
 
         // When / Then: 1 セクション配下に 2 エントリ・group_id は生値
@@ -253,7 +253,7 @@ public class YamlFormatWriterTest {
                 list(field("no", "半角英字", "1"), field("s1", "半角英字", "2")),
                 rows(row("1", "${z}")));
         MessageDataBlock block = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "MSG1", directives(), fwHeader(), Collections.singletonList(record));
+                "case1", "MSG1", directives(), fwHeader(), Collections.singletonList(record));
 
         // When / Then
         assertThat(serialize(block), is(""
@@ -496,8 +496,8 @@ public class YamlFormatWriterTest {
     }
 
     @Test
-    public void serialize_unbracketedGroupId_isUsedAsRawValue() {
-        // Given: 整形されていない素のグループ ID（防御的経路）
+    public void serialize_groupId_isWrittenVerbatim() {
+        // Given: 生値のグループ ID（#34 以降、中間モデルが持つのは生値。書き出し側は推測で加工しない）
         TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "raw", "T",
                 list("C"), rows(row("1")));
 
@@ -623,14 +623,14 @@ public class YamlFormatWriterTest {
         RecordLayout record = new RecordLayout(null,
                 list(field("no", "半角英字", "1"), field("s1", "半角英字", "2")), rows(row("1", "${z}")));
         MessageDataBlock original = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "MSG1", directives(), fwHeader(), Collections.singletonList(record));
+                "case1", "MSG1", directives(), fwHeader(), Collections.singletonList(record));
 
         // When
         MessageDataBlock back = (MessageDataBlock) roundTrip(original);
 
         // Then
         assertThat(back.getDataType(), is(DataType.EXPECTED_REQUEST_HEADER_MESSAGES));
-        assertThat(back.getGroupId(), is("[case1]"));
+        assertThat(back.getGroupId(), is("case1"));
         assertThat(back.getIdentifier(), is("MSG1"));
         assertTrue(back.getFwHeaderFields().isEmpty());
         assertFieldDef(back.getRecords().get(0).getFields().get(0), "no", "半角英字", "1");
@@ -737,7 +737,7 @@ public class YamlFormatWriterTest {
             + "          - [\"v\"]\n";
 
     private static MessageDataBlock sendSync(DataType type) {
-        return new MessageDataBlock(type, "[g]", "ID", directives(), fwHeader(),
+        return new MessageDataBlock(type, "g", "ID", directives(), fwHeader(),
                 Collections.singletonList(new RecordLayout(null, list(field("f", "半角英字", "1")), rows(row("v")))));
     }
 

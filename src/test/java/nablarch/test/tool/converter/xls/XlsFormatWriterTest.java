@@ -194,7 +194,7 @@ public class XlsFormatWriterTest {
     @Test
     public void writesTableMarkerWithGroupId() {
         // Given
-        TableDataBlock table = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "[g1]", "USERS",
+        TableDataBlock table = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "g1", "USERS",
                 row("USER_NAME"), Collections.singletonList(row("${u}")));
 
         // When
@@ -527,7 +527,7 @@ public class XlsFormatWriterTest {
                 Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
                 Arrays.asList(row("RM21AA0104_01", "0"), row("RM21AA0104_02", "1")));
         MessageDataBlock message = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
+                "case1", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
 
         // When
         Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
@@ -947,7 +947,7 @@ public class XlsFormatWriterTest {
             RecordLayout record = new RecordLayout("no",
                     Collections.singletonList(new FieldDef("f", "半角", "5")),
                     Collections.singletonList(row("v")));
-            MessageDataBlock message = new MessageDataBlock(type, "[g]", "id", map(), map(),
+            MessageDataBlock message = new MessageDataBlock(type, "g", "id", map(), map(),
                     Collections.singletonList(record));
             Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
             // 識別行 → 名前(1) → 型(2) → 長さ(3) → データ(4)。データ行の列 0 は連番 "1"
@@ -1245,7 +1245,7 @@ public class XlsFormatWriterTest {
                 Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
                 Collections.singletonList(row("RM21AA0104_01", "0")));
         MessageDataBlock message = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
-                "[case1]", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
+                "case1", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
 
         // When
         TestDataBlock read = roundTrip("rt_sendsync", "s", message).getSections().get(0).getBlocks().get(0);
@@ -1253,7 +1253,7 @@ public class XlsFormatWriterTest {
         // Then
         MessageDataBlock actual = (MessageDataBlock) read;
         assertThat(actual.getDataType(), is(DataType.EXPECTED_REQUEST_HEADER_MESSAGES));
-        assertThat(actual.getGroupId(), is("[case1]"));
+        assertThat(actual.getGroupId(), is("case1"));
         assertThat(actual.getIdentifier(), is("RM21AA0104_01"));
         assertTrue(actual.getFwHeaderFields().isEmpty());
         RecordLayout rec = actual.getRecords().get(0);

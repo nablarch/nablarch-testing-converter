@@ -493,20 +493,26 @@ public class XlsFormatReaderInvalidInputTest {
     /**
      * Given: 既知のデータタイプ名で始まる未知の名前のマーカー（{@code SETUP_TABLEX=T}）を持つ実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 例外にはならず、{@code SETUP_TABLE} ブロックとして読まれる。データタイプ名の直後から
-     *        {@code =} までの文字列（{@code X}）が<b>グループ ID として</b>切り出される。
+     * Then : 例外にはならず、<b>ブロックが 1 つも作られない</b>（黙って消える）。
      *
      * <p>
-     * 担保する軸要素: F1-03（既知タイプ名を接頭辞に持つ未知の名前）。正しいグループ ID の記法は
-     * {@code SETUP_TABLE[g1]=T} のように角括弧付きだが、切り出しを行う
+     * 担保する軸要素: F1-03（既知タイプ名を接頭辞に持つ未知の名前）。
+     * </p>
+     *
+     * <p>
+     * <b>#34（2-3）で観測できる挙動が変わった。</b>切り出しを行う
      * {@code TestCoreReaderAdapter#markerGroupId}（<b>本リポジトリの
      * {@code src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java}</b>。
-     * {@code nablarch-testing} 側ではない）は角括弧の有無を検証しない。
-     * {@code issues.md} の <b>XLS-11</b> に記録した（修正はしない）。
+     * {@code nablarch-testing} 側ではない）は角括弧の有無を検証せず、データタイプ名の直後から
+     * {@code =} までの文字列（{@code X}）を生値のグループ ID として切り出す。#34 以降、上流へ渡すときに
+     * {@code [X]} へ整形するため、版面の {@code SETUP_TABLEX=} とは前方一致せず 0 件になる。
+     * #34 より前は生値をそのまま渡していたため、{@code groupId} ＝ {@code "X"} のテーブルブロックとして
+     * 読まれていた。正しいグループ ID の記法は {@code SETUP_TABLE[g1]=T} であり、
+     * 角括弧の無い形は解説書に無い。{@code issues.md} の <b>XLS-11</b> に記録した（修正はしない）。
      * </p>
      */
     @Test
-    public void readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook() {
+    public void dropsMarkerWhoseGroupIdIsNotBracketedInRealBook() {
         // Given: SETUP_TABLE の綴り誤り（末尾に X）
         book("typoType").row(text("SETUP_TABLEX=T"))
                 .row(text("A"))
@@ -514,15 +520,11 @@ public class XlsFormatReaderInvalidInputTest {
                 .writeTo(dir());
 
         // When
-        TableDataBlock table = onlyBlock("typoType", TableDataBlock.class);
+        List<TestDataBlock> blocks = blocksOf(read("typoType"));
 
         // Then
-        assertThat(table.getDataType(), is(DataType.SETUP_TABLE_DATA));
-        assertThat("角括弧が無くてもグループ ID として扱われる（issues.md XLS-11）",
-                table.getGroupId(), is("X"));
-        assertThat(table.getIdentifier(), is("T"));
-        assertThat(table.getColumnNames(), is(Arrays.asList("A")));
-        assertThat(table.getRows(), is(Arrays.asList(Arrays.asList("a1"))));
+        assertThat("角括弧の無いグループ ID は上流と前方一致せず、ブロックが作られない（issues.md XLS-11）",
+                blocks, is(Collections.<TestDataBlock>emptyList()));
     }
 
     // ------------------------------------------------------------------ F1-04 マーカーカラム欠落

@@ -70,10 +70,10 @@ public class YamlTestCoreAdapterTest {
     @Test
     public void readTables_expectedWithGroup_filtersByGroupId() {
         // Given: expected_tables の orders（group_id=case01）
-        // When: 整形済みグループ ID で取得
-        List<TableData> match = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "[case01]",
+        // When: 生値のグループ ID で取得（上流へ渡す直前にアダプタが整形する）
+        List<TableData> match = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "case01",
                 DataType.EXPECTED_TABLE_DATA);
-        List<TableData> noMatch = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "[other]",
+        List<TableData> noMatch = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "other",
                 DataType.EXPECTED_TABLE_DATA);
 
         // Then

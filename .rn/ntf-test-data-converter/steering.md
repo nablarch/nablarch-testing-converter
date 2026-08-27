@@ -1729,16 +1729,18 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `YamlFormatReader.formatGroup:485`-`:488` の `[ ]` 付与をやめ、モデルへは生値を入れる（`:169`・`:203`・`:236`・`:299`）。**上流呼び出しのためにも組み立てない**
-- [ ] `YamlFormatWriter.rawGroup:479`-`:487` の推測剥がしをやめ、生値をそのまま書く
-- [ ] `XlsFormatReader` は `[ ]` を扱わない。`header.getGroupId()`（生値）をそのまま各アダプタへ渡す（**#32 の着手前検証 (a) で挙げた 7 つの行範囲は変更不要**）
-- [ ] 層 A ——`TestCoreReaderAdapter.markerGroupId:282`-`:286` で `[ ]` を外す／`XlsFormatWriter.marker:529`-`:531` で `[ ]` を付ける
-- [ ] 層 B ——`TestCoreReaderAdapter`・`YamlTestCoreAdapter` の各公開メソッドが生値で受け取り、上流へ渡す直前に整形する。整形の式は `groupId == null || groupId.isEmpty() ? "" : "[" + groupId + "]"` の 1 つに揃える（生値の空文字は「グループ指定なし」）
-- [ ] **整形しない例外 2 件** ——`TestCoreReaderAdapter.readBlockBodyLines`（`markerGroupId` の出力との内部比較であり両側とも生値になるため）／`YamlTestCoreAdapter.readSendSyncMessages`（上流 `YamlMessageBuilder.buildSendSyncBodies`（`0b3015c:150`-`:163`）が**生値で**比較するため。同 `:140`-`:141` の Javadoc が明記）
-- [ ] 層 B を持つメソッドの Javadoc を、生値を受ける旨へ書き直す（`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259`／`XlsFormatWriter:524`／`TestDataBlock:77`）
-- [ ] 既存テストの期待値 44 件のうち、変えたもの・変えなかったものを件数つきで報告に書く（`YamlTestCoreAdapterTest:74`・`:76` の 2 件は**生値へ変わる**。旧版の「変えない 2 件」は誤り）
-- [ ] **`TABLE[]=x`（空のグループ ID）は追わない。** 生値化すると往復後に `TABLE=x` になる。この観測できる出力の変化を報告に 1 行書く
-- [ ] 期待値をわざと崩すと落ちることを 1 度確認する
+- [x] `YamlFormatReader.formatGroup:485`-`:488` の `[ ]` 付与をやめ、モデルへは生値を入れる（`:169`・`:203`・`:236`・`:299`）。**上流呼び出しのためにも組み立てない**
+- [x] `YamlFormatWriter.rawGroup:479`-`:487` の推測剥がしをやめ、生値をそのまま書く
+- [x] `XlsFormatReader` は `[ ]` を扱わない。`header.getGroupId()`（生値）をそのまま各アダプタへ渡す（**#32 の着手前検証 (a) で挙げた 7 つの行範囲は変更不要**）
+- [x] 層 A ——`TestCoreReaderAdapter.markerGroupId:282`-`:286` で `[ ]` を外す／`XlsFormatWriter.marker:529`-`:531` で `[ ]` を付ける
+- [x] 層 B ——`TestCoreReaderAdapter`・`YamlTestCoreAdapter` の各公開メソッドが生値で受け取り、上流へ渡す直前に整形する。整形の式は `groupId == null || groupId.isEmpty() ? "" : "[" + groupId + "]"` の 1 つに揃える（生値の空文字は「グループ指定なし」）
+- [x] **整形しない例外 2 件** ——`TestCoreReaderAdapter.readBlockBodyLines`（`markerGroupId` の出力との内部比較であり両側とも生値になるため）／`YamlTestCoreAdapter.readSendSyncMessages`（上流 `YamlMessageBuilder.buildSendSyncBodies`（`0b3015c:150`-`:163`）が**生値で**比較するため。同 `:140`-`:141` の Javadoc が明記）
+- [x] 層 B を持つメソッドの Javadoc を、生値を受ける旨へ書き直す（`YamlTestCoreAdapter:114`・`:143`／`TestCoreReaderAdapter:212`・`:230`-`:231`・`:259`／`XlsFormatWriter:524`／`TestDataBlock:77`）
+- [x] 既存テストの期待値 44 件のうち、変えたもの・変えなかったものを件数つきで報告に書く（`YamlTestCoreAdapterTest:74`・`:76` の 2 件は**生値へ変わる**。旧版の「変えない 2 件」は誤り）
+- [x] **`TABLE[]=x`（空のグループ ID）は追わない。** 生値化すると往復後に `TABLE=x` になる。この観測できる出力の変化を報告に 1 行書く
+- [x] 期待値をわざと崩すと落ちることを 1 度確認する
+
+**#34 の実測による訂正（2026-08-28）**: (1) 既存テストの期待値は **44 件でなく 62 箇所（56 行・12 ファイル）**である。指示書 §1-2 (c) の表の内訳（`10+9+6+6+6+5+4+4+2+2+1+1`）は 56 行であり、合計欄の数だけが違う。導出は `grep -ro '"\[[A-Za-z0-9_]*\]"' src/test --include=*.java | grep -v '\[no\]\|\[NOTE\]\|\[MARK\]\|\[EMPTY\]\|\[COL\]\|\[ignore\]\|\[data\]' | wc -l` → 62。(2) **観測できる出力の変化は `TABLE[]=x` のほかにもう 1 件ある** —— 角括弧の無いグループ ID を持つマーカー（`SETUP_TABLEX=T`）のブロックが黙って消える。どちらも解説書に無い書き方として追いかけない。詳細は `checks/task-34.md`。
 
 **Completion criteria**:
 

@@ -512,7 +512,7 @@ awk '/^## 1\. /,/^## 2\. /' axis-matrix.md | grep -E '^\| [A-F][0-9-]' \
 | C-04(非空) | `TestDataSection.blocks` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsFourBlockImplementationsFromOneRealSheet` | — | — |
 | C-04(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyBlockListFromRealSheetWithoutMarkers` | — | マーカー行の無いシート |
 | C-05 | `TestDataBlock.dataType` | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | `getDataType()` を直接アサート。`null` は `TestDataBlock` が拒否する（`TestDataBlockTest#データ種別がnullのデータブロックは生成できない`） |
-| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `XlsFormatReaderRealFileTest#readsExpectedTableBlockWithGroupIdFromRealBook` | `RoundTripTest#xls_expectedTable_withGroupId_isPreserved` | `[g1]` が角括弧つきのまま入る |
+| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `XlsFormatReaderRealFileTest#readsExpectedTableBlockWithGroupIdFromRealBook` | `RoundTripTest#xls_expectedTable_withGroupId_isPreserved` | 版面の `[g1]` が**生値** `g1` で入る（**#34**。角括弧は `TestCoreReaderAdapter#markerGroupId` が外す） |
 | C-06(省略) | 同 省略（`""`） | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` ／ `#readsListMapBlockFromRealBook` ／ `#readsMessageBlockFromRealBook` | `RoundTripTest#xls_setupTable_isPreserved` | `null` ではなく `""`。`null` は `TestDataBlock` が拒否する |
 | C-07 | `TestDataBlock.identifier` | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
@@ -581,7 +581,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 |---|---|---|---|---|---|
 | F1-01 | シート不在 | ✅ | `XlsFormatReaderInvalidInputTest#failsWithSheetNotFoundWhenSheetIsAbsentFromRealBook` | — | `IllegalArgumentException: sheet not found.`（原因例外なし） |
 | F1-02 | ブック破損 | ✅ | `XlsFormatReaderInvalidInputTest#failsWithGenericRuntimeExceptionWhenWorkbookIsBroken` | — | 汎用 `RuntimeException: test data file open failed.`。ファイル名はどのメッセージにも出ない（`issues.md` XLS-14） |
-| F1-03 | 未知のデータタイプ名 | ✅ | `XlsFormatReaderInvalidInputTest#ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook` ／ `#readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` | — | 例外にならず継続する。未知名はブロックごと消え（`issues.md` XLS-10）、既知名＋余分な文字はグループ ID になる（XLS-11） |
+| F1-03 | 未知のデータタイプ名 | ✅ | `XlsFormatReaderInvalidInputTest#ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook` ／ `#dropsMarkerWhoseGroupIdIsNotBracketedInRealBook`（**#34 で改称**） | — | 例外にならず継続する。未知名はブロックごと消え（`issues.md` XLS-10）、既知名＋余分な文字も **#34 以降は消える**（XLS-11。角括弧の無いグループ ID は上流と前方一致しない） |
 | F1-04 | マーカーカラム欠落 | ✅ | `XlsFormatReaderInvalidInputTest#readsMarkerColumnWithoutBracketsAsOrdinaryDataColumnInRealBook` ／ `#dropsFirstFieldWhenSendSyncMetaColumnIsMissingInRealBook` | — | 送信同期のメタ列欠落は先頭フィールドと値を落とす（`issues.md` XLS-13） |
 | F1-05 | カラム名重複 | ✅ | `XlsFormatReaderInvalidInputTest#deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook` ／ `#deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook` | — | 後勝ちで除去し WARN ログ 1 件。メッセージに含むことをアサートする項目はメソッドごとに違う（下表） |
 | F1-06 | 行と列の数の不一致 | ✅ | `XlsFormatReaderInvalidInputTest#padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook`（代表。全 7 件は下表） | — | 値行の不足は空文字埋め・超過は切り捨てで例外にならない（`issues.md` XLS-12）。名前行・型行・長さ行の不整合は本体パーサが例外で弾く |
@@ -663,7 +663,7 @@ Excel 保存物と POI 生成物の一致は `XlsReferenceFixtureTest#readsExcel
 | C-04(非空) | `TestDataSection.blocks` 非空 | ✅ | `YamlFormatReaderRealFileTest#readsFourBlockImplementationsFromOneRealYaml` | — | — |
 | C-04(空) | 同 空 | ✅ | `YamlFormatReaderRealFileTest#namesContainerAndSectionByResourceNameWithoutBlocks` | — | `setup_tables: []` で到達する |
 | C-05 | `TestDataBlock.dataType` | ✅ | `YamlFormatReaderRealFileTest#readsAllThirteenDataTypesFromRealYaml` | — | 13 種を記述順でアサートする |
-| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `group_id: "g"` が `[g]` へ整形されて入る |
+| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `YamlFormatReaderRealFileTest#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `group_id: "g"` が**生値** `g` のまま入る（**#34**。整形しない） |
 | C-06(省略) | 同 省略（`""`） | ✅ | `YamlFormatReaderRealFileTest#readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml` ／ `#readsEmptyColumnNamesAndRowsFromTableWithoutRows` | `RoundTripTest#yaml_setupTable_isPreserved` | 省略時は空文字（デフォルトグループ。`issues.md` YML-02 の修正後） |
 | C-07 | `TestDataBlock.identifier` | ✅ | `YamlFormatReaderRealFileTest#readsFourBlockImplementationsFromOneRealYaml` | — | 4 実装とも識別子を突き合わせる |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `YamlFormatReaderRealFileTest#preservesListMapColumnOrderAndExcludesMarkerFromRealYaml` | — | 辞書順ではなく原文の記述順であることまで固定する |
@@ -830,7 +830,7 @@ grep -c 'writeAndReopen' "$M"             # 定義 2 ＋ 内部呼び出し 1 �
 | C-04(非空) | `TestDataSection.blocks` 非空 | ✅ | `XlsFormatWriterTest#writesTableBlock` | — | — |
 | C-04(空) | 同 空 | ✅ | `XlsFormatWriterModelTest#writesEmptySheetWhenSectionHasNoBlocks` | — | シートは作られるが行が 1 行も無い |
 | C-05 | `TestDataBlock.dataType` | ✅ | `XlsFormatWriterTest#writesExpectedCompleteTableMarker` | — | 識別セルの文字列がデータタイプから組まれる |
-| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `XlsFormatWriterTest#writesTableMarkerWithGroupId` | `RoundTripTest#xls_expectedTable_withGroupId_isPreserved` | `[g1]` が識別セルに現れる |
+| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `XlsFormatWriterTest#writesTableMarkerWithGroupId` | `RoundTripTest#xls_expectedTable_withGroupId_isPreserved` | 生値 `g1` が識別セルへ `[g1]` として現れる（**#34**。角括弧は `XlsFormatWriter#marker` が付ける） |
 | C-06(省略) | 同 省略（`""`） | ✅ | `XlsFormatWriterTest#writesTableBlock` | `RoundTripTest#xls_setupTable_isPreserved` | 識別セルに角括弧が出ない |
 | C-07 | `TestDataBlock.identifier` | ✅ | `XlsFormatWriterTest#writesTableBlock` | — | — |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `XlsFormatWriterTest#writesTableBlock` | — | — |
@@ -1147,7 +1147,7 @@ SETUP ／ EXPECTED の情報が要るため一意でない（4 対 2 の写像�
 | C-04(非空) | `TestDataSection.blocks` 非空 | ✅ | `YamlFormatWriterTest#serialize_multipleSections_separatedByBlankLineInEncounterOrder` | — | — |
 | C-04(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptySection_isEmptyString` | — | 空文字列になる |
 | C-05 | `TestDataBlock.dataType` | ✅ | `YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` | — | セクションキーがデータタイプから決まる |
-| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | `[case01]` → `group_id: "case01"`（角括弧が外れる）。角括弧で囲まれていない値の防御的経路は `YamlFormatWriterTest#serialize_unbracketedGroupId_isUsedAsRawValue` |
+| C-06(値あり) | `TestDataBlock.groupId` 値あり | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | `RoundTripTest#yaml_expectedTable_withGroupId_isPreserved` | 生値 `case01` → `group_id: "case01"`（**#34**。加工しない）。書き出しが加工しないことの番人は `YamlFormatWriterTest#serialize_groupId_isWrittenVerbatim`（**#34 で改称**） |
 | C-06(省略) | 同 省略（`""`） | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `RoundTripTest#yaml_setupTable_isPreserved` | `group_id:` キーごと出ない |
 | C-07 | `TestDataBlock.identifier` | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | `table: "USERS"` |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | カラム名が `rows:` の各要素のキーになる |

@@ -153,8 +153,8 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     private void addTableBlocks(String basePath, String resourceName, Map<String, Object> yaml,
                                String sectionKey, DataType type, List<TestDataBlock> blocks) {
-        for (String formattedGroup : formattedGroupsInOrder(yaml, sectionKey)) {
-            List<TableData> tables = adapter.readTables(basePath, resourceName, formattedGroup, type);
+        for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
+            List<TableData> tables = adapter.readTables(basePath, resourceName, groupId, type);
             for (TableData table : tables) {
                 String[] columns = table.getColumnNames();
                 List<List<String>> rows = new ArrayList<>(table.size());
@@ -166,7 +166,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                     }
                     rows.add(row);
                 }
-                blocks.add(new TableDataBlock(type, formattedGroup, table.getTableName(),
+                blocks.add(new TableDataBlock(type, groupId, table.getTableName(),
                         Arrays.asList(columns), rows));
             }
         }
@@ -200,7 +200,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 }
                 rows.add(row);
             }
-            blocks.add(new ListMapBlock(formatGroup(entry), id, orderedColumns, rows));
+            blocks.add(new ListMapBlock(rawGroupId(entry), id, orderedColumns, rows));
         }
     }
 
@@ -223,17 +223,17 @@ public class YamlFormatReader implements TestDataFormatReader {
                               String sectionKey, boolean setup, List<TestDataBlock> blocks) {
         // 代表データタイプはセクション解決（固定長／可変長で同一セクション）にのみ用いる。
         DataType representativeType = setup ? DataType.SETUP_FIXED : DataType.EXPECTED_FIXED;
-        for (String formattedGroup : formattedGroupsInOrder(yaml, sectionKey)) {
-            List<DataFile> files = adapter.readFiles(basePath, resourceName, formattedGroup, representativeType);
-            List<Map<String, Object>> entries = entriesForFormattedGroup(yaml, sectionKey, formattedGroup);
-            requireSameSize(files.size(), entries.size(), sectionKey, formattedGroup);
+        for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
+            List<DataFile> files = adapter.readFiles(basePath, resourceName, groupId, representativeType);
+            List<Map<String, Object>> entries = entriesForGroupId(yaml, sectionKey, groupId);
+            requireSameSize(files.size(), entries.size(), sectionKey, groupId);
             for (int i = 0; i < files.size(); i++) {
                 DataFile file = files.get(i);
                 Map<String, Object> entry = entries.get(i);
                 FileView view = TestCoreFileAdapter.read(file);
                 FileDataBlock.FileType fileType = file instanceof FixedLengthFile
                         ? FileDataBlock.FileType.FIXED : FileDataBlock.FileType.VARIABLE;
-                blocks.add(new FileDataBlock(fileDataType(setup, fileType), formattedGroup, view.getPath(),
+                blocks.add(new FileDataBlock(fileDataType(setup, fileType), groupId, view.getPath(),
                         toStringDirectives(view.getDirectives()),
                         toRecordLayouts(view, records(entry))));
             }
@@ -296,7 +296,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 FixedLengthFile body = bodies.get(i);
                 Map<String, Object> entry = entries.get(i);
                 FileView view = TestCoreFileAdapter.read(body);
-                blocks.add(new MessageDataBlock(type, formatGroup(entry), body.getPath(),
+                blocks.add(new MessageDataBlock(type, rawGroupId(entry), body.getPath(),
                         toStringDirectives(view.getDirectives()),
                         new LinkedHashMap<>(),
                         toRecordLayouts(view, records(entry))));
@@ -398,16 +398,16 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * セクション内エントリの整形済みグループ ID を初出順で列挙する（重複排除）。
+     * セクション内エントリの生値のグループ ID を初出順で列挙する（重複排除）。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @return 整形済みグループ ID のリスト
+     * @return 生値のグループ ID のリスト（省略時は空文字）
      */
-    private static List<String> formattedGroupsInOrder(Map<String, Object> yaml, String sectionKey) {
+    private static List<String> groupIdsInOrder(Map<String, Object> yaml, String sectionKey) {
         List<String> groups = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
-            String group = formatGroup(YamlSection.castMap(entryObj));
+            String group = rawGroupId(YamlSection.castMap(entryObj));
             if (!groups.contains(group)) {
                 groups.add(group);
             }
@@ -436,19 +436,19 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 指定の整形済みグループに属するエントリを記述順で集める。器（同一グループ絞り込み済み）と 1:1 同順で対応する。
+     * 指定のグループに属するエントリを記述順で集める。器（同一グループ絞り込み済み）と 1:1 同順で対応する。
      *
-     * @param yaml           トップレベル Map
-     * @param sectionKey     セクションキー
-     * @param formattedGroup 整形済みグループ ID
+     * @param yaml       トップレベル Map
+     * @param sectionKey セクションキー
+     * @param groupId    生値のグループ ID（省略時は空文字）
      * @return エントリ Map のリスト
      */
-    private static List<Map<String, Object>> entriesForFormattedGroup(Map<String, Object> yaml, String sectionKey,
-                                                                      String formattedGroup) {
+    private static List<Map<String, Object>> entriesForGroupId(Map<String, Object> yaml, String sectionKey,
+                                                               String groupId) {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Object entryObj : YamlSection.getList(yaml, sectionKey)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
-            if (formatGroup(entry).equals(formattedGroup)) {
+            if (rawGroupId(entry).equals(groupId)) {
                 result.add(entry);
             }
         }
@@ -476,15 +476,19 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリの {@code group_id} を整形済みグループ ID（{@code "[xxx]"}／省略時は空文字）へ変換する。
-     * 本体ビルダの {@code groupMatches} と同一規則。
+     * エントリの {@code group_id} を<b>生値の</b>グループ ID（省略時は空文字）として取り出す。
+     * <p>
+     * 中間モデルが持つのはテスティングフレームワークの仕様上の意味だけであり、半角角括弧は
+     * Excel 形式の書式であって値ではない（{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。
+     * 上流 API が要求する整形は {@code YamlTestCoreAdapter} が渡す直前に行う。
+     * </p>
      *
      * @param entry エントリ Map
-     * @return 整形済みグループ ID
+     * @return 生値のグループ ID（省略時は空文字）
      */
-    private static String formatGroup(Map<String, Object> entry) {
+    private static String rawGroupId(Map<String, Object> entry) {
         String groupId = YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID));
-        return groupId != null ? "[" + groupId + "]" : "";
+        return groupId != null ? groupId : "";
     }
 
     /**

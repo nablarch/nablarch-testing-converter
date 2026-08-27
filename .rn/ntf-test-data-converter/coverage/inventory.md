@@ -1629,7 +1629,7 @@ steering Rules（フェーズ2）に従い、これらが通す軸要素は **�
 |---|---|---|---|
 | F1-01 シート不在 | ✅（**#21**） | `failsWithSheetNotFoundWhenSheetIsAbsentFromRealBook` | `IllegalArgumentException: sheet not found. path=[...] sheet=[...]`（原因例外なし） |
 | F1-02 ブック破損 | ✅（**#21**） | `failsWithGenericRuntimeExceptionWhenWorkbookIsBroken` | `java.lang.RuntimeException: test data file open failed.` ＋ POI の `IllegalArgumentException`。ファイル名はどのメッセージにも出ない（`issues.md` **XLS-14**） |
-| F1-03 未知のデータタイプ名 | ✅（**#21**。#18 は 🔺） | `ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook`／`readsSuffixAfterKnownDataTypeNameAsGroupIdInRealBook` | 例外にならず継続。未知名はブロックごと消える（**XLS-10**）。既知名＋余分な文字はグループ ID になる（**XLS-11**） |
+| F1-03 未知のデータタイプ名 | ✅（**#21**。#18 は 🔺） | `ignoresBlockWhoseMarkerHasUnknownDataTypeNameInRealBook`／`dropsMarkerWhoseGroupIdIsNotBracketedInRealBook`（**#34 で改称**） | 例外にならず継続。未知名はブロックごと消える（**XLS-10**）。既知名＋余分な文字も **#34 以降は消える**（**XLS-11**） |
 | F1-04 マーカーカラム欠落 | ✅（**#21**） | `readsMarkerColumnWithoutBracketsAsOrdinaryDataColumnInRealBook`／`dropsFirstFieldWhenSendSyncMetaColumnIsMissingInRealBook` | 例外にならず継続。角括弧なしの列はデータ列になる。送信同期のメタ列欠落は先頭フィールドと値を落とす（**XLS-13**） |
 | F1-05 カラム名重複 | ✅（**#21** で実 `.xlsx` 経路も） | `deduplicatesDuplicateColumnNamesWithWarningInListMapFromRealBook`／`deduplicatesDuplicateColumnNamesWithWarningInTableFromRealBook`（**#21**）。#16 の `XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins` ほか 3 件は **Fake リーダ経路** | 後勝ちで除去＋WARN ログ 1 件（ブック名・シート名・ブロック識別子・カラム名・採用列番号を含む）。実 `.xlsx` 経路でも Fake 経路と同じ結果になることを実測 |
 | F1-06 行と列の数の不一致 | ✅（**#21**） | `padsShortDataRowAndDropsCellsBeyondColumnRowInRealBook`／`padsShortValueRowAndDropsCellsBeyondNameRowInFixedFileInRealBook`／`failsWhenLengthRowIsShorterThanNameRowInRealBook`／`failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook`／`failsWhenTypeRowIsShorterThanNameRowInRealBook`／`failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook` | **値行**の不足は空文字埋め・超過は切り捨て（例外にならない。**XLS-12**）。**名前行・型行・長さ行**の不整合は本体パーサが例外で弾く |
@@ -1778,7 +1778,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | # | テストメソッド | 軸A | 軸B | 軸C | 軸D | 軸E | 軸F |
 |---|---|---|---|---|---|---|---|
 | 1 | `readTable_setup_mapsUppercaseNameAndColumnsWithRawValues` | A-02 | B-1 | C-05, C-06(省略=`""`), C-07, C-08, C-09 | — ※Map 値レベルで `${}`／null／`""` | E-1(1), E-2(複数=2) | — |
-| 2 | `readTable_expectedWithGroup_formatsGroupIdAndCreatesBlockPerGroup` | A-03 | B-1 | C-05, C-06(値あり), C-09 | — | E-1(複数=2) | — |
+| 2 | `readTable_expectedWithGroup_keepsRawGroupIdAndCreatesBlockPerGroup`（**#34 で改称**） | A-03 | B-1 | C-05, C-06(値あり), C-09 | — | E-1(複数=2) | — |
 | 3 | `readTable_completed_mapsExpectedCompletedType` | A-04 | B-1 | C-05, C-07 | — | E-1(1) | — |
 | 4 | `readListMap_preservesYamlColumnOrderExcludesMarkersAndKeepsNull` | A-05 | B-2 | C-05, C-07, C-08(YAML 順), C-09 | — ※マーカーカラム `[ignore]` 除外・null 保持 | E-2(複数=2) | — |
 | 5 | `readFile_fixed_mapsRawFieldDefsAndValues` | A-06 | B-3 | C-05, C-07, C-10(FIXED), C-11(値あり), C-12, C-16(値あり), C-17, C-18, C-19, C-20, C-21(値あり＋省略) | — ※`${}`／`""` | E-3(複数=2), E-2(複数=2) | — |
@@ -1790,7 +1790,7 @@ E-1(0/1/複数)・E-2(1/複数)・E-3(1)・E-4(1) は `XlsFormatReaderRealFileTe
 | 11 | `readMessage_mapsRawFwHeaderAndKeepsFwHeaderNamedRecord`<br>（**2026-08-18・YML-03 の解消で改名**。旧名 `#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord`。担保する軸要素は不変） | A-10 | B-4 | C-05, C-06(省略), C-07, C-14(値あり), C-15, C-16, C-17, C-18, C-19, C-20, C-21 | — ※`${}` | E-3(1) | — |
 | 12 | `readMessage_emptyBody_isStillMapped` | A-10 | B-4 | C-07, **C-14(空)**, **C-15(空)** | — | **E-3(0)** ✅ | — |
 | 13 | `readMessage_nullContent_isSkipped` | — | — | C-04(空) | — | E-1(0) | ※器が null を返す場合のスキップ |
-| 14 | `readSendSync_groupsByRawValueFormatsGroupIdAndKeepsNoField` | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | — ※`${}`・`no` フィールド保持 | E-1(複数=3) | — |
+| 14 | `readSendSync_groupsByRawValueKeepsRawGroupIdAndNoField`（**#34 で改称**） | A-11 | B-4 | C-05, C-06(値あり), C-07, C-14(空), C-17, C-18, C-19, C-20, C-21 | — ※`${}`・`no` フィールド保持 | E-1(複数=3) | — |
 | 15 | `readSendSync_allFourTypesAreRecognized` | A-11, A-12, A-13, A-14 | B-4 | C-05 | — | E-1(複数=4) | — |
 | 16 | `readSendSync_entryWithoutGroupId_isReadAsDefaultGroup`（#25.5 で `readSendSync_entryWithoutGroupId_isDropped` から改名） | A-14 | B-4 | C-07 | — | E-1(1) | —（軸F の要素ではない。**スキーマは送信系に `group_id` を要求していない**ため「必須構造の欠落」ではない。#25.5 までは「仕様内の入力が黙って drop される現状挙動の固定」だったが、**#25.5 でデフォルトグループとして読むよう直した**ため、現在はデフォルトグループの担保である。`issues.md` **YML-02**・36e94a4） |
 | 17 | `read_mixedSections_keepsDescriptionOrderAndIgnoresUnknownKeys` | A-02, A-10 | B-1, B-4 | C-04 | — | E-1(複数=2) | **F2-03** ✅（未知キー無視） |
@@ -2892,7 +2892,7 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | 21 | `serialize_rowShorterThanColumns_fillsMissingWithNull` | A-02 | B-1 | C-08, C-09 | D4-04 `null`（補完） | — | ✅ 行と列の数の不一致（行が短い → null 補完） |
 | 22 | `serialize_fieldWithNullType_omitsType` | A-09 | B-3 | **C-20(省略)** ✅ | — | E-3(1) | — |
 | 23 | `serialize_keyStartingWithIndicator_isQuoted` | A-10 | B-4 | C-13(値あり) | ※**キー**先頭の YAML インジケータ `-`（D4-09 の値側ではない） | — | — |
-| 24 | `serialize_unbracketedGroupId_isUsedAsRawValue` | A-02 | B-1 | C-06(非整形値 `raw`) | — | — | ※防御的経路（`[]` で囲まれていない groupId） |
+| 24 | `serialize_groupId_isWrittenVerbatim`（**#34 で改称**。旧 `serialize_unbracketedGroupId_isUsedAsRawValue`） | A-02 | B-1 | C-06(生値 `raw`) | — | — | ※書き出しが groupId を加工しないことの番人（**#34 以降、中間モデルは生値を持つ**。旧「防御的経路」は `rawGroup` の削除で消えた） |
 | 25 | `serialize_unsupportedDataType_throws` | **A-01 `DEFAULT`** ✅ | B-1 | C-05 | — | — | ✅ 未サポート `DataType` → `IllegalArgumentException` |
 | 26 | `write_ioError_throwsUncheckedIOException` | A-02 | B-1 | — | — | — | 🔺**F4-01**（親に通常ファイルが居座り出力先を作れない）→ `UncheckedIOException` |
 | 27 | `write_writesEachSectionAsYamlFileWithSerializedContent` | A-02 | B-1 | C-01, C-02(1件), C-03 | — | E-4(1) | — |

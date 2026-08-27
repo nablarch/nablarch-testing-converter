@@ -456,7 +456,7 @@ public class YamlFormatWriterModelTest {
      * @return ブロック
      */
     private static MessageDataBlock sendSync(DataType type) {
-        return new MessageDataBlock(type, "[case1]", "MSG1", map(), map(),
+        return new MessageDataBlock(type, "case1", "MSG1", map(), map(),
                 Collections.singletonList(record()));
     }
 

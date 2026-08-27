@@ -66,7 +66,8 @@ public class TestCoreReaderAdapter {
      *
      * @param path     取得元パス
      * @param resource 取得元リソース名
-     * @param id       グループID（グループ指定が無い場合は空文字）
+     * @param id       <b>生値の</b>グループID（グループ指定が無い場合は空文字）。上流へ渡す直前に
+     *                 {@link GroupIdNotation#format} で整形する
      * @param type     データタイプ（{@link DataType#SETUP_TABLE_DATA}／
      *                 {@link DataType#EXPECTED_TABLE_DATA}／{@link DataType#EXPECTED_COMPLETED}）
      * @return テーブルデータ一覧
@@ -83,7 +84,8 @@ public class TestCoreReaderAdapter {
                         "unsupported data type for readTables. type=[" + type + "]");
         }
         TableDataParser parser = new TableDataParser(reader, EMPTY_INTERPRETERS, dbInfo, defaultValues, type);
-        parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        parser.parse(path, resource, GroupIdNotation.format(id), false);
         return parser.getResult();
     }
 
@@ -134,7 +136,8 @@ public class TestCoreReaderAdapter {
      *
      * @param path     取得元パス
      * @param resource 取得元リソース名
-     * @param id       グループID（グループ指定が無い場合は空文字）
+     * @param id       <b>生値の</b>グループID（グループ指定が無い場合は空文字）。上流へ渡す直前に
+     *                 {@link GroupIdNotation#format} で整形する
      * @param type     データタイプ（{@link DataType#SETUP_FIXED}／{@link DataType#EXPECTED_FIXED}／
      *                 {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE}）
      * @return ファイル一覧
@@ -155,7 +158,8 @@ public class TestCoreReaderAdapter {
                 throw new IllegalArgumentException(
                         "unsupported data type for readFiles. type=[" + type + "]");
         }
-        parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        parser.parse(path, resource, GroupIdNotation.format(id), false);
         return parser.getResult();
     }
 
@@ -209,13 +213,15 @@ public class TestCoreReaderAdapter {
      *
      * @param path     取得元パス
      * @param resource 取得元リソース名
-     * @param groupId  グループ ID（{@code [case1]} 等。マーカーの {@code TYPE} と {@code =} の間の文字列）
+     * @param groupId  <b>生値の</b>グループ ID（{@code case1} 等。グループ指定が無い場合は空文字）。
+     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
      * @param type     データタイプ（送信系 4 種のいずれか）
      * @return 指定グループに属する本文（固定長ファイル）一覧（記述順。対象が無ければ空）
      */
     public List<FixedLengthFile> readSendSyncMessages(String path, String resource, String groupId, DataType type) {
         SendSyncBodyCollector collector = new SendSyncBodyCollector(reader, type);
-        collector.parse(path, resource, groupId, false); // 変換器経路: 本体静的キャッシュを汚染しない
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        collector.parse(path, resource, GroupIdNotation.format(groupId), false);
         return collector.getResult();
     }
 
@@ -256,7 +262,9 @@ public class TestCoreReaderAdapter {
      *
      * @param path       取得元パス
      * @param resource   取得元リソース名
-     * @param groupId    グループ ID（{@code [g1]} 等。無指定は空文字）
+     * @param groupId    <b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）。本メソッドは
+     *                   {@link #markerGroupId} の出力と内部で比較するだけで上流の API 境界を越えないため、
+     *                   <b>整形しない</b>（両側とも生値）
      * @param identifier 識別子（ファイルパス／メッセージ ID 等）
      * @param type       データタイプ
      * @return 生のボディ行（記述順。マーカー行は含まない。対象ブロックが無ければ空）
@@ -269,7 +277,12 @@ public class TestCoreReaderAdapter {
     }
 
     /**
-     * マーカー行の先頭セルからグループ ID（{@code [g1]} 等。無指定は空文字）を切り出す。
+     * マーカー行の先頭セルから<b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）を切り出す。
+     * <p>
+     * 半角角括弧は Excel 形式の書式であって値ではないため、ここで外す
+     * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。付けるのは
+     * {@code XlsFormatWriter#marker} であり、この 2 か所が Excel 版面の書式を知る層である。
+     * </p>
      * <p>
      * 先頭セルがデータタイプ名で始まっていても {@code =} を含まない場合（不完全マーカー・
      * 偶然データタイプ名で始まるデータ行等）はマーカー行でないとみなし {@code null} を返す。
@@ -277,12 +290,20 @@ public class TestCoreReaderAdapter {
      *
      * @param type      先頭セルから判定済みのデータタイプ（{@link DataType#DEFAULT} 以外）
      * @param firstCell マーカー行の先頭セル
-     * @return グループ ID。マーカー行でなければ {@code null}
+     * @return 生値のグループ ID（無指定は空文字）。マーカー行でなければ {@code null}
      */
     private static String markerGroupId(DataType type, String firstCell) {
         String afterName = firstCell.substring(type.getName().length());
         int eq = afterName.indexOf('=');
-        return eq < 0 ? null : afterName.substring(0, eq);
+        if (eq < 0) {
+            return null;
+        }
+        String marker = afterName.substring(0, eq);
+        int last = marker.length() - 1;
+        if (last > 0 && marker.charAt(0) == '[' && marker.charAt(last) == ']') {
+            return marker.substring(1, last);
+        }
+        return marker;
     }
 
     /**

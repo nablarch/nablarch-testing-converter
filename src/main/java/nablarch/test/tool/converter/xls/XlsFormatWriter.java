@@ -544,13 +544,30 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
 
     /**
      * ブロックの識別セル文字列（{@code TYPE[group]=identifier}）を生成する。
-     * グループ ID は中間モデルが整形済み（{@code [g1]} もしくは空文字）で保持するためそのまま連結する。
+     *
+     * <p>
+     * 中間モデルの {@code groupId} は<b>生値</b>（{@code g1}、省略時は空文字）である。半角角括弧は
+     * Excel 形式の書式であって値ではないため、ここで付ける
+     * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。外すのは
+     * {@code TestCoreReaderAdapter#markerGroupId} であり、この 2 か所が Excel 版面の書式を知る層である。
+     * </p>
      *
      * @param block ブロック
      * @return 識別セル文字列
      */
     private static String marker(TestDataBlock block) {
-        return block.getDataType().getName() + block.getGroupId() + "=" + block.getIdentifier();
+        return block.getDataType().getName() + markerGroupId(block.getGroupId())
+                + "=" + block.getIdentifier();
+    }
+
+    /**
+     * 生値のグループ ID を Excel 版面の書式（半角角括弧で囲む）へ写す。
+     *
+     * @param groupId 生値のグループ ID（非 null。省略時は空文字）
+     * @return 版面用のグループ ID（{@code [g1]}／省略時は空文字）
+     */
+    private static String markerGroupId(String groupId) {
+        return groupId.isEmpty() ? "" : "[" + groupId + "]";
     }
 
     /**

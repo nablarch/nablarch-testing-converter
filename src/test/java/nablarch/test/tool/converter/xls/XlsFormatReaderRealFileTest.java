@@ -269,9 +269,9 @@ public class XlsFormatReaderRealFileTest {
     }
 
     /**
-     * Given: グループ ID {@code [g1]} を持つ {@code EXPECTED_TABLE} ブロックを含む実 {@code .xlsx}。
+     * Given: 版面のグループ ID {@code [g1]} を持つ {@code EXPECTED_TABLE} ブロックを含む実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : データタイプが {@code EXPECTED_TABLE_DATA}、グループ ID が角括弧付きのまま入る。
+     * Then : データタイプが {@code EXPECTED_TABLE_DATA}、グループ ID が<b>生値</b>（角括弧を外した {@code g1}）で入る。
      *
      * <p>担保する軸要素: A-03／C-06（値あり）。</p>
      */
@@ -288,7 +288,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat(table.getDataType(), is(DataType.EXPECTED_TABLE_DATA));
-        assertThat(table.getGroupId(), is("[g1]"));
+        assertThat(table.getGroupId(), is("g1"));
         assertThat(table.getIdentifier(), is("ROLES"));
         assertThat(table.getRows(), is(Arrays.asList(Arrays.asList("admin"))));
     }
@@ -588,7 +588,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat(file.getDataType(), is(DataType.EXPECTED_VARIABLE));
-        assertThat(file.getGroupId(), is("[g2]"));
+        assertThat(file.getGroupId(), is("g2"));
         assertThat(file.getIdentifier(), is("out.csv"));
         assertThat(file.getFileType(), is(FileDataBlock.FileType.VARIABLE));
         assertThat(file.getDirectives().get("record-separator"), is("CRLF"));
@@ -721,10 +721,10 @@ public class XlsFormatReaderRealFileTest {
         }
         assertThat("4 種すべてが揃うこと", byType.size(), is(4));
 
-        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), "[case1]", "RM01");
-        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), "[case1]", "RM02");
-        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_HEADER_MESSAGES), "[res_case1]", "RM03");
-        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_BODY_MESSAGES), "[res_case1]", "RM04");
+        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES), "case1", "RM01");
+        assertGroupIdAndIdentifier(byType.get(DataType.EXPECTED_REQUEST_BODY_MESSAGES), "case1", "RM02");
+        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_HEADER_MESSAGES), "res_case1", "RM03");
+        assertGroupIdAndIdentifier(byType.get(DataType.RESPONSE_BODY_MESSAGES), "res_case1", "RM04");
 
         // 要求ヘッダ 1 種は MESSAGE と同水準（レコード種別／フィールド／値行）まで固定する。
         MessageDataBlock requestHeader = byType.get(DataType.EXPECTED_REQUEST_HEADER_MESSAGES);

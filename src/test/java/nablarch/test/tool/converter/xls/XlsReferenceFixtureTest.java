@@ -341,7 +341,7 @@ public class XlsReferenceFixtureTest {
      * @return 期待ブロック
      */
     private static TestDataBlock expectedProject() {
-        return new TableDataBlock(DataType.SETUP_TABLE_DATA, "[1]", "PROJECT",
+        return new TableDataBlock(DataType.SETUP_TABLE_DATA, "1", "PROJECT",
                 PROJECT_COLUMNS,
                 Arrays.asList(Arrays.asList("10000", "プロジェクト００１", "development", "s", "20150101",
                         "20161231", "1", "テストマネージャー", "テストリーダー", "105", "テスト備考",

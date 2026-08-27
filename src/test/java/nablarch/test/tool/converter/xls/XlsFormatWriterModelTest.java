@@ -301,7 +301,7 @@ public class XlsFormatWriterModelTest {
         RecordLayout record = new RecordLayout("data",
                 Collections.singletonList(new FieldDef("f1", "半角英字", null)),
                 Collections.singletonList(row("abcde")));
-        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_VARIABLE, "[g2]", "exp.csv", map(),
+        FileDataBlock file = new FileDataBlock(DataType.EXPECTED_VARIABLE, "g2", "exp.csv", map(),
                 Collections.singletonList(record));
 
         // When
@@ -411,7 +411,7 @@ public class XlsFormatWriterModelTest {
         RecordLayout record = new RecordLayout("no",
                 Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
                 Arrays.asList(row("RM21AA0104_01", "0"), row("RM21AA0104_02", "1")));
-        return new MessageDataBlock(type, "[case1]", "RM21AA0104_01",
+        return new MessageDataBlock(type, "case1", "RM21AA0104_01",
                 map(), map(), Collections.singletonList(record));
     }
 

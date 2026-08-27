@@ -14,6 +14,15 @@ import java.util.Set;
  * </p>
  *
  * <p>
+ * <b>{@code groupId} は生値である</b>（{@code g1}。半角角括弧は付けない）。角括弧は Excel 形式の書式であって
+ * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である
+ * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。書式を知ってよいのは
+ * Excel 版面の読み書き（付ける＝{@code XlsFormatWriter#marker}／外す＝
+ * {@code TestCoreReaderAdapter#markerGroupId}）と、整形済みを要求する上流 API の境界
+ * （{@code TestCoreReaderAdapter}・{@code YamlTestCoreAdapter} が渡す直前）の 2 層だけである。
+ * </p>
+ *
+ * <p>
  * <b>{@code groupId} は {@code null} であってはならない。省略は空文字で表す。生成時点で拒否する。</b>
  * Excel 記法・YAML 記法のいずれも {@code null} と空文字を区別できないためである
  * （Excel は {@code testdata_notation.rst:198}（{@code 30a8271} 時点）の {@code データタイプ=識別子の値} と

@@ -111,7 +111,8 @@ public class YamlTestCoreAdapter {
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  整形済みグループ ID（例: {@code "[case01]"} または {@code ""}）
+     * @param groupId  <b>生値の</b>グループ ID（例: {@code "case01"} または {@code ""}）。
+     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
      * @param type     データタイプ（{@link DataType#SETUP_TABLE_DATA}／
      *                 {@link DataType#EXPECTED_TABLE_DATA}／{@link DataType#EXPECTED_COMPLETED}）
      * @return テーブルデータ一覧
@@ -119,7 +120,8 @@ public class YamlTestCoreAdapter {
      */
     public List<TableData> readTables(String path, String resource, String groupId, DataType type) {
         Map<String, Object> yaml = loadRawMap(path, resource);
-        return tableBuilder.buildTableDataList(yaml, tableSectionKey(type), groupId, false, path);
+        return tableBuilder.buildTableDataList(
+                yaml, tableSectionKey(type), GroupIdNotation.format(groupId), false, path);
     }
 
     /**
@@ -140,7 +142,8 @@ public class YamlTestCoreAdapter {
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  整形済みグループ ID（例: {@code "[case01]"} または {@code ""}）
+     * @param groupId  <b>生値の</b>グループ ID（例: {@code "case01"} または {@code ""}）。
+     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
      * @param type     データタイプ（{@link DataType#SETUP_FIXED}／{@link DataType#EXPECTED_FIXED}／
      *                 {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE}）
      * @return ファイル一覧
@@ -148,7 +151,8 @@ public class YamlTestCoreAdapter {
      */
     public List<DataFile> readFiles(String path, String resource, String groupId, DataType type) {
         Map<String, Object> yaml = loadRawMap(path, resource);
-        return fileBuilder.buildDataFileList(yaml, fileSectionKey(type), groupId, path);
+        return fileBuilder.buildDataFileList(
+                yaml, fileSectionKey(type), GroupIdNotation.format(groupId), path);
     }
 
     /**
@@ -170,8 +174,10 @@ public class YamlTestCoreAdapter {
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  グループ ID（{@code group_id} と生値で一致比較する）。{@code null} を渡すと
-     *                 {@code group_id} を省略したエントリ（デフォルトグループ）を対象にする
+     * @param groupId  <b>生値の</b>グループ ID（{@code group_id} と生値で一致比較する）。{@code null} を渡すと
+     *                 {@code group_id} を省略したエントリ（デフォルトグループ）を対象にする。
+     *                 上流 {@code YamlMessageBuilder#buildSendSyncBodies}（{@code 0b3015c:150}-{@code :163}）が
+     *                 生値で比較するため、<b>整形しない</b>
      * @param type     データタイプ（送信系 4 種のいずれか）
      * @return 本文（固定長ファイルの器）一覧（記述順。対象が無ければ空）
      * @throws IllegalArgumentException データタイプが送信系でない場合

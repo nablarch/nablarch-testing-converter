@@ -219,7 +219,7 @@ public class YamlFormatReaderRealFileTest {
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(block.getDataType(), is(DataType.SETUP_TABLE_DATA));
         assertThat(block.getIdentifier(), is("T"));
-        assertThat("C-06 省略時は整形済みグループ ID が空文字になる", block.getGroupId(), is(""));
+        assertThat("C-06 省略時はグループ ID が空文字になる", block.getGroupId(), is(""));
         assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
         assertThat("rows が空であること", block.getRows(), is(Collections.emptyList()));
     }
@@ -913,7 +913,7 @@ public class YamlFormatReaderRealFileTest {
     /**
      * Given: {@code group_id} を書かない送信系エントリ 1 件と、書いたエントリ 1 件。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : {@code group_id} 無しのエントリも<b>デフォルトグループ（整形済みグループ ID は空文字）</b>の
+     * Then : {@code group_id} 無しのエントリも<b>デフォルトグループ（グループ ID は空文字）</b>の
      *        ブロックとして読み込まれ、記述順どおり 2 ブロックになる。
      *
      * <p>
@@ -962,7 +962,7 @@ public class YamlFormatReaderRealFileTest {
         MessageDataBlock namedGroup = (MessageDataBlock) blocks.get(1);
         assertThat(namedGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
         assertThat(namedGroup.getIdentifier(), is("KEEP"));
-        assertThat(namedGroup.getGroupId(), is("[g]"));
+        assertThat(namedGroup.getGroupId(), is("g"));
         assertThat(namedGroup.getRecords().get(0).getFields().get(0).getName(), is("k1"));
         assertThat(namedGroup.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("y"))));
     }
@@ -1126,9 +1126,9 @@ public class YamlFormatReaderRealFileTest {
                 "a.dat", "c.dat", "b.dat",
                 "M1", "M3", "M2")));
         assertThat(groupIds, is(Arrays.asList(
-                "[g1]", "[g1]", "[g2]",
-                "[g1]", "[g1]", "[g2]",
-                "[g1]", "[g1]", "[g2]")));
+                "g1", "g1", "g2",
+                "g1", "g1", "g2",
+                "g1", "g1", "g2")));
         // 値そのものは失われない（入れ替わるのは並びだけ）
         List<TestDataBlock> blocks = YamlFixture.blocks(container);
         assertThat("2 番目に来た T3 の値", ((TableDataBlock) blocks.get(1)).getRows(),

@@ -232,15 +232,19 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     // ------------------------------------------------------------------------
 
     /**
-     * グループ ID を出力する（整形済み {@code [xxx]} を生値へ戻す。空なら出力しない）。
+     * グループ ID を出力する。
+     * <p>
+     * 中間モデルの {@code groupId} は<b>生値</b>（省略時は空文字）であり、そのまま書く。
+     * 空文字（グループ省略）は本体スキーマが {@code group_id} に {@code minLength: 1} を課すため
+     * キーごと出力しない（{@code TestDataBlock} のクラス Javadoc）。
+     * </p>
      *
      * @param entry   エントリ
-     * @param groupId 整形済みグループ ID
+     * @param groupId 生値のグループ ID（非 null。省略時は空文字）
      */
     private static void emitGroupId(YamlSeq entry, String groupId) {
-        String raw = rawGroup(groupId);
-        if (raw != null) {
-            entry.prop("group_id", raw);
+        if (!groupId.isEmpty()) {
+            entry.prop("group_id", groupId);
         }
     }
 
@@ -467,24 +471,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             b.append("  ");
         }
         return b.toString();
-    }
-
-    /**
-     * 整形済みグループ ID（{@code [xxx]}）を生値へ戻す。空文字（グループ省略）は出力対象外として {@code null} を返す。
-     * 中間モデルの契約上 {@code groupId} は非 null（省略時は空文字）。
-     *
-     * @param groupId 整形済みグループ ID（非 null）
-     * @return 生グループ値（出力不要なら {@code null}）
-     */
-    private static String rawGroup(String groupId) {
-        if (groupId.isEmpty()) {
-            return null;
-        }
-        int last = groupId.length() - 1;
-        if (groupId.charAt(0) == '[' && groupId.charAt(last) == ']') {
-            return groupId.substring(1, last);
-        }
-        return groupId;
     }
 
     /**

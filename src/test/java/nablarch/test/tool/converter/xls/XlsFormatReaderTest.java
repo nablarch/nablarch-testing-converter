@@ -277,7 +277,7 @@ public class XlsFormatReaderTest {
 
         // Then
         TableDataBlock table = (TableDataBlock) container.getSections().get(0).getBlocks().get(0);
-        assertThat(table.getGroupId(), is("[g1]"));
+        assertThat(table.getGroupId(), is("g1"));
         assertThat(table.getDataType(), is(nablarch.test.core.reader.DataType.EXPECTED_TABLE_DATA));
         assertThat(table.getRows().get(0).get(0), is("${u}"));
     }
@@ -555,7 +555,7 @@ public class XlsFormatReaderTest {
      * Given: {@code no} 列＋本文フィールドを持つ EXPECTED_REQUEST_HEADER_MESSAGES ブロック
      *        （{@code TYPE[group]=id} 形式マーカー）。
      * When : {@code read}。
-     * Then : MessageDataBlock に写される。グループ ID は {@code [case1]}、識別子は {@code =} 以降。
+     * Then : MessageDataBlock に写される。グループ ID は生値の {@code case1}、識別子は {@code =} 以降。
      *        {@code no} 列はメタ情報のため脱落し、本文フィールド・値は記法のまま。FW ヘッダは空。
      */
     @Test
@@ -576,7 +576,7 @@ public class XlsFormatReaderTest {
         // Then
         MessageDataBlock message = (MessageDataBlock) container.getSections().get(0).getBlocks().get(0);
         assertThat(message.getDataType(), is(nablarch.test.core.reader.DataType.EXPECTED_REQUEST_HEADER_MESSAGES));
-        assertThat(message.getGroupId(), is("[case1]"));
+        assertThat(message.getGroupId(), is("case1"));
         assertThat(message.getIdentifier(), is("RM21AA0104_01"));
         // 送信系に FW 制御ヘッダは無い（常に空）
         assertTrue(message.getFwHeaderFields().isEmpty());
@@ -641,10 +641,10 @@ public class XlsFormatReaderTest {
             typeToGroup.put(m.getDataType(), m.getGroupId());
         }
         assertThat(blocks.size(), is(4));
-        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.EXPECTED_REQUEST_HEADER_MESSAGES), is("[case1]"));
-        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.EXPECTED_REQUEST_BODY_MESSAGES), is("[case1]"));
-        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.RESPONSE_HEADER_MESSAGES), is("[res_case1]"));
-        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.RESPONSE_BODY_MESSAGES), is("[res_case1]"));
+        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.EXPECTED_REQUEST_HEADER_MESSAGES), is("case1"));
+        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.EXPECTED_REQUEST_BODY_MESSAGES), is("case1"));
+        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.RESPONSE_HEADER_MESSAGES), is("res_case1"));
+        assertThat(typeToGroup.get(nablarch.test.core.reader.DataType.RESPONSE_BODY_MESSAGES), is("res_case1"));
     }
 
     /**

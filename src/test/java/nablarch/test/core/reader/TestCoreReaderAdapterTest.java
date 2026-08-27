@@ -599,7 +599,7 @@ public class TestCoreReaderAdapterTest {
 
         // When
         List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
-                DIR, resource, "[case1]", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+                DIR, resource, "case1", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
         assertThat(bodies.size(), is(1));
@@ -632,7 +632,7 @@ public class TestCoreReaderAdapterTest {
 
         // When
         List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
-                DIR, resource, "[case1]", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+                DIR, resource, "case1", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
         assertThat(bodies.size(), is(2));
@@ -661,7 +661,7 @@ public class TestCoreReaderAdapterTest {
 
         // When
         List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
-                DIR, resource, "[other]", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
+                DIR, resource, "other", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
         assertTrue(bodies.isEmpty());
@@ -715,7 +715,8 @@ public class TestCoreReaderAdapterTest {
     /**
      * Given: グループ ID 付きマーカー（{@code SETUP_TABLE[g1]=USERS}）。
      * When : {@code readHeaders} を呼ぶ。
-     * Then : グループ ID が {@code [g1]}、識別子が {@code USERS} として切り出される。
+     * Then : グループ ID が<b>生値の</b> {@code g1}、識別子が {@code USERS} として切り出される
+     *        （半角角括弧は Excel 形式の書式であり、{@code markerGroupId} が外す）。
      */
     @Test
     public void readHeadersExtractsGroupId() {
@@ -735,7 +736,7 @@ public class TestCoreReaderAdapterTest {
         // Then
         assertThat(headers.size(), is(1));
         assertThat(headers.get(0).getType(), is(DataType.SETUP_TABLE_DATA));
-        assertThat(headers.get(0).getGroupId(), is("[g1]"));
+        assertThat(headers.get(0).getGroupId(), is("g1"));
         assertThat(headers.get(0).getIdentifier(), is("USERS"));
     }
 
