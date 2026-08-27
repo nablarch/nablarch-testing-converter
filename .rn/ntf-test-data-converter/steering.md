@@ -1676,9 +1676,17 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **XLS→YAML 方向は表せない**（`testdata_notation.rst:1500`。YAML 形式では全値が空文字の要素はスキップされる）。**#37（完了条件3）で `@Ignore` ＋ 印つきの理由に記録する。**
 
+**#33 着手前特定の結果（2026-08-27。ユーザーへ報告済み）**: **期待値を変える既存テストは 0 件。**
+
+- `isEmptyCell` を「生セルが `null` か空文字のときだけ空」へ変え、他を触らずに `mvn -o clean test` を実行した結果は `Tests run: 614, Failures: 5, Errors: 0, Skipped: 2` で、**赤 5 件は着手前と同一**（同じメソッド・同じ差分メッセージ）だった。変更は実行後に revert 済み
+- **変えない 3 件**（`""` を含むデータ行を持つ既存テストの全件）—— `XlsFormatReaderTest#readTableNormalizesExcelQuotationNotation:171`（`""`, `"abc"`, `${expr}`）／`#readListMapNormalizesExcelQuotationNotation:196`（`""`, `"val"`）／`#readFixedFileNormalizesExcelQuotationNotation:222`（`(空)`, `""`, `"x"`）。いずれも同じ行に空でないセルがあり、現在も空エントリと判定されていない
+- `isEmptyCell` が真を返す引用符記法は**ちょうど 2 文字の `""`・`””` だけ**である（`stripQuotes(cell).isEmpty()` が真になるのはこの 2 形のみ）。`XlsNotationSymmetryTest:185`・`:239`・`:293` の `"""` は 3 文字で対象外。参照フィクスチャ `ProjectActionRequestTest.xlsx` の `sharedStrings.xml` にも `""`・`””` のセルは 0 件
+- **指示書の想定と食い違った点 1 件** —— `XlsFormatReaderCellTypeTest` の `KEY` 列は**外せない**。置いている理由は converter の `isEmptyCell` ではなく本体側で、`nablarch-testing@3c4bd2a` の `PoiXlsReader.java:93` が `isBlankLine`（同 `:140`-`:147`。`e.isEmpty()` で生セルを判定）に当たる行を捨てるため、空セルのケースは converter へ届く前に落ちる。同クラスに `""` を使うケースは 0 件
+- **書き出し側の波及先も 0 件** —— 全要素が空文字のエントリをモデルに持つ既存テストは xls 側に存在しない（`src/test/.../xls/` と `RoundTripTest` に対する `asList("")`・`singletonList("")`・`List.of("")` の grep が 0 件）。`[""]` を持つのは YAML 側の 3 箇所（`YamlFormatWriterTest:597`／`YamlFormatReaderTest:177`／`YamlFormatReaderInvalidInputTest:825`）だけで、いずれも `XlsFormatWriter` を通らない
+
 **Steps**:
 
-- [ ] **着手前に特定する（実装より前に結果を報告する）**——`isEmptyCell` の変更で期待値が変わる既存テストの全件（`""` を含むデータ行を持つテスト）。`XlsFormatReaderCellTypeTest` が置いている `KEY` 列の回避が不要になるかも見る。**変える／変えないの判断と件数を報告に書く**
+- [x] **着手前に特定する（実装より前に結果を報告する）**——`isEmptyCell` の変更で期待値が変わる既存テストの全件（`""` を含むデータ行を持つテスト）。`XlsFormatReaderCellTypeTest` が置いている `KEY` 列の回避が不要になるかも見る。**変える／変えないの判断と件数を報告に書く**（**完了・2026-08-27。変える 0 件／変えない 3 件。`KEY` 列の回避は維持**。詳細は下の「#33 着手前特定の結果」）
 - [ ] `XlsFormatReader#isEmptyCell` が `""`・`””` を空セル扱いするのをやめる。本体と同じく、生セルが `null` か空文字のときだけ空とする（テーブル・`LIST_MAP` の両経路に効く）
 - [ ] ファイル・メッセージのデータ行を Excel 形式へ書き出すとき、全要素が空文字になる行は先頭要素を `""` と書く
 - [ ] テーブル・`LIST_MAP` のエントリを Excel 形式へ書き出すとき、全要素が空文字になるエントリは**各セルへ `""` と書く**
@@ -1870,8 +1878,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-27
+- **Last completed**: **#32（2-1）はユーザー承認済み（`/rn:ty`・2026-08-27）。**続けて `9af81ef` で、指示書 `a16be0a` の 2-2 訂正（テーブルと `LIST_MAP` を対象へ戻す・`isEmptyCell` の是正を追加）を #33 へ取り込み、`issues.md` の XLS-08 を「往復の結果としては解説書と食い違わない」へ訂正し、`step4-report.md` §1-1 へ 2 文字の `\` ＋ `r` が CR になる件を 1 行追記した。**#33 の着手前特定（Steps の 1 つ目）は完了・報告済み**（変える既存テスト 0 件／変えない 3 件／`KEY` 列の回避は維持。結果は #33 の本文に記録）
+- **Next**: **#33（2-2）の実装から。** `XlsFormatReader#isEmptyCell` の是正と、全要素が空文字のエントリを Excel 形式へ `""` で書き出す 2 点。**着手前特定は済んでいるので、報告のための停止は不要。** 以降 **#34 → #39 を通しで実施し、タスクごとの `/rn:ty` 判定要求は挟まない**（ユーザー確定・2026-08-27。Step 4 共通の前提を参照）。#34（2-3）はユーザー判定済みで着手可
+- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2〜§6 は #39 で埋める）。**判断待ちは 0 件**（#32 の判定・XLS-08・`XlsNotationSymmetryTest` の台帳登録の 3 件はいずれも決着。台帳登録は #37 の中で判断する）。持ち越しの未決 2 件（`handover.md` の提出タイミング／台帳の宣言値のずれ）は Rules に記載
