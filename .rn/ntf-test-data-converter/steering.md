@@ -1674,7 +1674,13 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ディレクターの実測（2026-08-27。POI で組んだ実 `.xlsx`。`SETUP_TABLE=T`／カラム行 `[no]`,`id`,`name`／データ行 3 件 = `1,U0001,yamada` ／ `(空),"",""` ／ `3,(空),(空)`）: 本体 `PoiXlsReader#readLine` は **3 件**返し、`XlsFormatReader#read` は **1 件**（`U0001,yamada` だけ）しか返さない。2 件目が消えるのは `XlsFormatReader:664` の `isEmptyCell` が `""`・`””` を空セル扱いするため。3 件目が消えるのはマーカーカラム除外後に判定しているため（**XLS-08。こちらは現状のままでよく、本タスクでは直さない**——ユーザー確定・2026-08-27。`tools/testdata_converter.rst:63` のとおり往復で消えることが解説書に明記されている）。
 
-**XLS→YAML 方向は表せない**（`testdata_notation.rst:1500`。YAML 形式では全値が空文字の要素はスキップされる）。**#37（完了条件3）で `@Ignore` ＋ 印つきの理由に記録する。**
+**XLS→YAML 方向は現状の解説書では欠落する**（`testdata_notation.rst:1500`。YAML 形式では全値が空文字の要素はスキップされる）。**#37（完了条件3）で `@Ignore` ＋ 印つきの理由に記録する。**
+
+**`@Ignore` の理由文の訂正（ユーザー確定・2026-08-27）**: この欠落を「YAML 形式では表せない」と書かない。**解説書の中の矛盾であり、是正の対象である。**`tools/testdata_converter.rst:14` は「両者の間に、テスティングフレームワークの仕様上の意味だけを持つ中間モデルを置く。Excel 形式と YAML 形式は、その意味をそれぞれの記法で表したものとして扱う」、同 `:22` は「往復したとき……仕様上の意味は変わらない」と定めている。同じ意味を表す 2 つの記法である以上、読み飛ばしの規則が形式で違ってよい理由がない。**ディレクターが `implementation/testdata_notation.rst:1500` を Excel 側へ揃える方向で直す**（記法として空のエントリだけを読み飛ばす。Excel は全セルが空セル、YAML は空マッピング `{}`。`""` と書かれた空文字は値として残す）。**解説書と `nablarch-testing-yaml` はディレクターが直す。converter 側からは触らない。**したがって #37 の理由文は次の書式にする。
+
+    @Ignore("NTF-DOC: implementation/testdata_notation.rst:1500 — 空エントリ規則が Excel と YAML で不一致。Excel 側へ揃える是正待ち。期待 X / 実際 Y")
+
+**KEY 列の扱い（ユーザー確定・2026-08-27）**: 指示書の「この回避が不要になる可能性がある」は誤りとして落ちた。**`XlsFormatReaderCellTypeTest` の `KEY` 列は残す。**理由は上の着手前特定のとおり本体 `PoiXlsReader#isBlankLine` にあり、converter の `isEmptyCell` を直しても不要にならない。
 
 **#33 着手前特定の結果（2026-08-27。ユーザーへ報告済み）**: **期待値を変える既存テストは 0 件。**
 
@@ -1803,7 +1809,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 **Steps**:
 
 - [ ] 母集合の各行・各記載例について、**XLS→XLS・XLS→YAML→XLS・YAML→YAML・YAML→XLS→YAML の 4 経路**で、テスティングフレームワークが解釈したあとの値が往復前と一致することを、実ファイル起点のテストで押さえる
-- [ ] 一致しないものは `@Ignore` ＋ 印つきの理由で記録する（直さない）
+- [ ] 一致しないものは `@Ignore` ＋ 印つきの理由で記録する（直さない）。**全要素が空文字のエントリが XLS→YAML で落ちる件の理由文は #33 の「`@Ignore` の理由文の訂正」に従う**（「YAML 形式では表せない」と書かない）
 - [ ] 表の行ごと・記載例ごとに 4 経路それぞれの合否を報告に書く
 - [ ] #32 で新設した `XlsNotationSymmetryTest`（8 件）を `coverage/inventory.md` の軸要素対応表へ載せるかを、本タスクの母集合と重ね合わせて判断し、載せる場合は載せる（ユーザー指示・2026-08-27）
 - [ ] 期待値をわざと崩すと落ちることを 1 度確認する
@@ -1878,8 +1884,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-27
-- **Last completed**: **#32（2-1）はユーザー承認済み（`/rn:ty`・2026-08-27）。**続けて `9af81ef` で、指示書 `a16be0a` の 2-2 訂正（テーブルと `LIST_MAP` を対象へ戻す・`isEmptyCell` の是正を追加）を #33 へ取り込み、`issues.md` の XLS-08 を「往復の結果としては解説書と食い違わない」へ訂正し、`step4-report.md` §1-1 へ 2 文字の `\` ＋ `r` が CR になる件を 1 行追記した。**#33 の着手前特定（Steps の 1 つ目）は完了・報告済み**（変える既存テスト 0 件／変えない 3 件／`KEY` 列の回避は維持。結果は #33 の本文に記録）
-- **Next**: **#33（2-2）の実装から。** `XlsFormatReader#isEmptyCell` の是正と、全要素が空文字のエントリを Excel 形式へ `""` で書き出す 2 点。**着手前特定は済んでいるので、報告のための停止は不要。** 以降 **#34 → #39 を通しで実施し、タスクごとの `/rn:ty` 判定要求は挟まない**（ユーザー確定・2026-08-27。Step 4 共通の前提を参照）。#34（2-3）はユーザー判定済みで着手可
-- **Notes**: branch `ntf-test-data-converter`。報告は `checks/step4-report.md`（§1 記入済み・§2〜§6 は #39 で埋める）。**判断待ちは 0 件**（#32 の判定・XLS-08・`XlsNotationSymmetryTest` の台帳登録の 3 件はいずれも決着。台帳登録は #37 の中で判断する）。持ち越しの未決 2 件（`handover.md` の提出タイミング／台帳の宣言値のずれ）は Rules に記載
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
