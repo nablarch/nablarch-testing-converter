@@ -1873,12 +1873,12 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `mvn -o clean test` が緑であること（`@Ignore` を除く）を確認する
-- [ ] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
-- [ ] `checks/step4-report.md` の §2〜§6 を埋める（指示書「6. 報告」の 6 項構成）
-- [ ] 既存テストの期待値を変えた箇所を、どれを変えどれを変えなかったかも含めて件数つきで全件挙げる
-- [ ] `git status --short` が空になることを確認する（一時ファイル・作業用スクリプト・ログを残さない。`jacoco.exec` と `target/` は `.gitignore:1`・`:3`）
-- [ ] 変更を push する
+- [x] `mvn -o clean test` が緑であること（`@Ignore` を除く）を確認する
+- [x] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
+- [x] `checks/step4-report.md` の §2〜§6 を埋める（指示書「6. 報告」の 6 項構成）
+- [x] 既存テストの期待値を変えた箇所を、どれを変えどれを変えなかったかも含めて件数つきで全件挙げる
+- [x] `git status --short` が空になることを確認する（一時ファイル・作業用スクリプト・ログを残さない。`jacoco.exec` と `target/` は `.gitignore:1`・`:3`）
+- [x] 変更を push する
 
 **Completion criteria**:
 
@@ -1896,8 +1896,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-28
+- **Last completed**: **#33〜#39 を通しで完了**（`548ca59`／`8774d0a`／`8258390`／`4ffdf81`／`1ba9dfc`／`b5f5063`／本コミット）。**Step 4 の全 8 タスク（#32〜#39）が完了し、Tasks に未チェックは 0 件。** `mvn -o clean test` は `Tests run: 656, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`（`@Ignore` は 0 件）。報告は `checks/step4-report.md` の全 6 項が記入済み
+- **Next**: **調整側（ユーザー）の判定待ち。**こちらから進めるものは無い。判断を仰ぐ 5 件は `checks/task-39.md`「報告に載せた『調整側の判断を仰ぐもの』」に一覧がある（指示書との食い違い 3 件／観測できる出力の変化 2 件／XLS-39 を申し送りの束に残すか／母集合から外した記載例 1 件／残課題の未到達分岐 2 件）
+- **Notes**: branch `ntf-test-data-converter`（push 済み）。**マージ可否の判断は出さない**（Rules）。持ち越しの未決は 2 件から 1 件へ減った —— `handover.md` の提出タイミング（調整側の判断）と、`inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所（未確認）。もう 1 件（§2.1-2 の区間別のずれ）は #35 で出所が特定できた
