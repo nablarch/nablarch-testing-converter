@@ -151,7 +151,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             List<String> columnNames = deduplicateColumnNames(
                     Arrays.asList(columns), resourceName, table.getTableName());
             List<List<String>> cellRows = new ArrayList<>();
-            for (int r = 0; r < table.size(); r++) {
+            for (int r = 0; r < rowCount(columnNames, table.size()); r++) {
                 List<String> cells = new ArrayList<>(columnNames.size());
                 for (String column : columnNames) {
                     Object value = table.getValue(r, column);
@@ -182,7 +182,8 @@ public class XlsFormatReader implements TestDataFormatReader {
         // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> cellRows = new ArrayList<>();
-        for (Map<String, String> mapRow : mapRows) {
+        for (int r = 0; r < rowCount(columnNames, mapRows.size()); r++) {
+            Map<String, String> mapRow = mapRows.get(r);
             List<String> cells = new ArrayList<>(columnNames.size());
             for (String column : columnNames) {
                 cells.add(mapRow.get(column));
@@ -500,6 +501,29 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private static List<String> tail(List<String> list) {
         return list.isEmpty() ? list : list.subList(1, list.size());
+    }
+
+    /**
+     * ブロックが持つデータ行の数を返す。
+     *
+     * <p>
+     * カラム名が 1 つも無いブロック（カラム名の行がマーカーカラムだけで構成されているブロック）は、
+     * データ行を持たない。値が何であっても、フィールドを 1 つも持たないエントリは記法として意味を持たない。
+     * </p>
+     *
+     * <p>
+     * 判定はカラム名の数だけで行い、<b>値は見ない</b>。値で落とすと、全セルに {@code null} 記法を書いた行や
+     * 全セルを空文字記法で書いた行のように、フレームワークには届く行まで消えてしまう。
+     * フレームワークは全セルが空の行を読み込みの入口で落としており、変換器へ届く時点で
+     * 「本当に空の行」は存在しない。
+     * </p>
+     *
+     * @param columnNames マーカーカラムを除いたカラム名
+     * @param rowCount    フレームワークが返した行数
+     * @return データ行の数（カラム名が空なら 0）
+     */
+    private static int rowCount(List<String> columnNames, int rowCount) {
+        return columnNames.isEmpty() ? 0 : rowCount;
     }
 
     /**

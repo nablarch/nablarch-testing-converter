@@ -1150,6 +1150,32 @@ git ls-files 'src/test/**/*.java' | xargs grep -c '^    @Test' | awk -F: '{s+=$2
 フィクスチャがセルに Java `null` を入れていた点も直した（実 `PoiXlsReader` は空セルを空文字で返すため、
 その入力は実在しない）。
 
+**追補その 14（2026-08-29 実測。#41 で 2-2（マーカーカラムだけに値があるエントリを残す）を実施したぶん）**
+
+追補その 13（追跡対象 661 件）から、#41 で足した 2 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+追跡対象だけを数える式は追補その 13 に併記したものを使う。
+
+```
+① 672   ← 作業ツリー。追跡していない測定用の一時テスト 9 件を含む
+③ 8c327d0: 536
+   HEAD: 661   ← #41 のコミットが載る前の値
+```
+
+追跡対象は **663** 件（661 ＋ 2）。
+
+**661 → 663（差 ＋2）の内訳** —— 追加 2 件のみ。削除は無い。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `xls/XlsMarkerOnlyEntryTest#keepsMarkerOnlyEntryInTableAsFrameworkDoes` | マーカーカラムだけに値があるエントリが、**本体が読むのと同じ 3 件**残ること（テーブル系） |
+| ＋ | `xls/XlsMarkerOnlyEntryTest#keepsMarkerOnlyEntryInListMapAsFrameworkDoes` | 同上（`LIST_MAP` 経路。経路が別なので個別に固定する） |
+
+**#41 は既存テスト 3 件の期待値を変えていない。** カラム名がマーカーカラムだけのブロックの結果（行 0 件）は
+変わらないためである（`issues.md` XLS-08 の【2026-08-29・#41】）。
+`XlsFormatReaderRealFileTest` 2 件と `XlsReferenceFixtureTest` 1 件について、
+assert メッセージ・Javadoc の「全要素が空のエントリになるため読み飛ばされる（XLS-08）」を
+「カラム名を 1 つも持たないブロックはデータ行を持たない」へ書き直した（**主張は同じ、理由の説明が変わった**）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -3369,6 +3395,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 | テストクラス | 追加タスク | 件数 | 導出コマンド | 何を担保するか |
 |---|---|---:|---|---|
 | `xls/XlsTrailingNullTest` | #40 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsTrailingNullTest.java` | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。実 `.xlsx` 起点 |
+| `xls/XlsMarkerOnlyEntryTest` | #41 | 2 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsMarkerOnlyEntryTest.java` | マーカーカラムだけに値があるエントリが、**本体が読むのと同じ件数**残ること（テーブル系・`LIST_MAP`）。実 `.xlsx` 起点 |
 
 **期待値の出どころを本体に移した（#40）。** 上記クラスは期待値を自分で書かず、
 `core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。

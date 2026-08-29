@@ -350,8 +350,7 @@ public class XlsFormatReaderRealFileTest {
      * Given: マーカー列 {@code [no]} だけを持つ（データ列が 1 つも無い）{@code SETUP_TABLE} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : マーカー列は本体 {@code HeaderLine#getEffectiveColumnNames()} が除外するため列名は 0 件になり、
-     *        <b>行も 0 件になる</b>。マーカー列を除外したあとの行は全要素が空であり、
-     *        {@code notation:1535}（全要素が null または空文字のエントリは読み飛ばされる）に当たるためである。
+     *        <b>行も 0 件になる</b>。カラム名を 1 つも持たないブロックはデータ行を持たないためである。
      *
      * <p>
      * 担保する軸要素: C-08（空）。本タスクの当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが、
@@ -360,11 +359,12 @@ public class XlsFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>以前は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに固定していた（XLS-08）。</b>
-     * 空エントリ判定をマーカー列の除外より<b>あとに</b>行うよう辺①を直したため、期待値を置き換えた。
-     * 記法はこの順序を定めていないが（{@code notation:1535} の空エントリと {@code notation:1550} の
-     * マーカーカラム除外は前後関係が書かれていない）、「除外 → 空エントリ判定」を前提とする
-     * （ユーザー確定・2026-08-18。解説書側へ明文化を申し送る）。
+     * <b>行が 0 件になる仕組みは 2 度変わったが、期待値は変わっていない。</b>
+     * 最初は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに固定していた。
+     * 次に「マーカーカラムを除いたあとに全要素が空のエントリを落とす」という判定で 0 件にした。
+     * 現在は<b>カラム名の数だけ</b>で決めており、値は見ない。
+     * 値で落とす判定は、フレームワークには届く行（全セルが {@code null} 記法の行・
+     * 全セルが空文字記法の行）まで消してしまうため外した。
      * </p>
      */
     @Test
@@ -381,7 +381,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat("マーカー列は有効カラム名から除外される", table.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("除外後は全要素が空のエントリになるため読み飛ばされる（XLS-08）",
+        assertThat("カラム名を 1 つも持たないブロックはデータ行を持たない",
                 table.getRows(), is(Collections.<List<String>>emptyList()));
     }
 
@@ -405,7 +405,7 @@ public class XlsFormatReaderRealFileTest {
 
         // Then
         assertThat("マーカー列は有効カラム名から除外される", listMap.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("除外後は全要素が空のエントリになるため読み飛ばされる（XLS-08）",
+        assertThat("カラム名を 1 つも持たないブロックはデータ行を持たない",
                 listMap.getRows(), is(Collections.<List<String>>emptyList()));
     }
 
