@@ -101,6 +101,7 @@ public class XlsFormatReader implements TestDataFormatReader {
     @Override
     public TestDataContainer read(String basePath, String resourceName) {
         List<BlockHeader> headers = adapter.readHeaders(basePath, resourceName);
+        warnInterleavedBlocks(headers, resourceName);
         List<TestDataBlock> blocks = new ArrayList<>();
         Set<String> processed = new HashSet<>();
         for (BlockHeader header : headers) {
@@ -501,6 +502,100 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private static List<String> tail(List<String> list) {
         return list.isEmpty() ? list : list.subList(1, list.size());
+    }
+
+    /**
+     * 同じキー（データタイプ ＋ グループ ID）のデータブロックの間に別のデータブロックが挟まっているシートを
+     * 検出し、フレームワークが読まないデータブロックについて警告を出す。
+     *
+     * <p>
+     * 収集方式が「グループ」のデータタイプ（テーブル・ファイル・グループ ID 付きの電文）では、
+     * フレームワークは対象のブロックを読み始めたあと、別のキーのマーカー行に当たった時点で収集を打ち切る。
+     * そのため、間に別のブロックを挟んだあとに再び現れた同じキーのブロックは読まれない。
+     * YAML 形式にはこれに相当する記法が無く、そのまま変換すると読まれなかったブロックが有効になって
+     * 意味が変わってしまうため、警告を出す。
+     * </p>
+     *
+     * <p>
+     * <b>出力から外すのは本クラスではない。</b>フレームワークが打ち切った結果、
+     * 読まれなかったブロックはそもそも器に入ってこない。本メソッドは検出と警告だけを行う。
+     * </p>
+     *
+     * <p>
+     * 識別子で 1 件を引くデータタイプ（{@code LIST_MAP} ／ {@code MESSAGE}）は収集方式が
+     * 「グループ」ではないため対象外である。
+     * </p>
+     *
+     * @param headers      記述順のブロックヘッダ一覧
+     * @param resourceName リソース名（{@code "ブック名/シート名"} 形式）
+     */
+    private static void warnInterleavedBlocks(List<BlockHeader> headers, String resourceName) {
+        Set<String> warned = new HashSet<>();
+        for (int start = 0; start < headers.size(); start++) {
+            BlockHeader header = headers.get(start);
+            if (!isGroupCollected(header.getType())) {
+                continue;
+            }
+            String key = batchKey(header.getType(), header.getGroupId());
+            if (!warned.add(key)) {
+                continue;
+            }
+            List<String> unread = unreadIdentifiersAfter(headers, start, key);
+            if (unread.isEmpty()) {
+                continue;
+            }
+            LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
+                    + "\" では、データタイプ \"" + header.getType().getName()
+                    + "\"・グループID \"" + header.getGroupId()
+                    + "\" のデータブロックの間に別のデータブロックが挟まっています。"
+                    + "テスティングフレームワークは Excel 形式では後ろのデータブロックを読まないため、"
+                    + "次のデータブロックを出力しません: " + unread);
+        }
+    }
+
+    /**
+     * 指定位置から始まるブロック群のうち、フレームワークが読まないブロックの識別子を返す。
+     *
+     * <p>
+     * 打ち切りが起きるのは、開始位置より後ろで最初に別のキーのヘッダが現れた位置である。
+     * それより後ろに同じキーのヘッダがあれば、それらは読まれない。
+     * </p>
+     *
+     * @param headers 記述順のブロックヘッダ一覧
+     * @param start   対象キーが最初に現れた位置
+     * @param key     対象キー
+     * @return 読まれないブロックの識別子（記述順。無ければ空）
+     */
+    private static List<String> unreadIdentifiersAfter(List<BlockHeader> headers, int start, String key) {
+        int broken = -1;
+        for (int i = start + 1; i < headers.size(); i++) {
+            BlockHeader header = headers.get(i);
+            if (!batchKey(header.getType(), header.getGroupId()).equals(key)) {
+                broken = i;
+                break;
+            }
+        }
+        List<String> unread = new ArrayList<>();
+        if (broken < 0) {
+            return unread;
+        }
+        for (int i = broken + 1; i < headers.size(); i++) {
+            BlockHeader header = headers.get(i);
+            if (batchKey(header.getType(), header.getGroupId()).equals(key)) {
+                unread.add(header.getIdentifier());
+            }
+        }
+        return unread;
+    }
+
+    /**
+     * データタイプの収集方式が「グループ」であるかを返す。
+     *
+     * @param type データタイプ
+     * @return グループ単位で収集するデータタイプなら真
+     */
+    private static boolean isGroupCollected(DataType type) {
+        return isTableType(type) || isFileType(type) || XlsDataTypeUtil.isSendSyncType(type);
     }
 
     /**

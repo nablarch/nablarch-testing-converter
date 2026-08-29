@@ -1176,6 +1176,26 @@ git ls-files 'src/test/**/*.java' | xargs grep -c '^    @Test' | awk -F: '{s+=$2
 assert メッセージ・Javadoc の「全要素が空のエントリになるため読み飛ばされる（XLS-08）」を
 「カラム名を 1 つも持たないブロックはデータ行を持たない」へ書き直した（**主張は同じ、理由の説明が変わった**）。
 
+**追補その 15（2026-08-29 実測。#42 で 2-3（交互記述のシートで警告を出す）を実施したぶん）**
+
+追補その 14（追跡対象 663 件）から、#42 で足した 3 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 675   ← 作業ツリー。追跡していない測定用の一時テスト 9 件を含む
+③ 8c327d0: 536
+   HEAD: 663   ← #42 のコミットが載る前の値
+```
+
+追跡対象は **666** 件（663 ＋ 3）。
+
+**663 → 666（差 ＋3）の内訳** —— 追加 3 件のみ。削除は無い。既存テストの期待値は変えていない。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `xls/XlsInterleavedBlockTest#warnsAndDropsBlockAfterInterleavedGroupId` | グループ ID が交互のシートで (i) 警告 1 件・(ii) 出力に読まれないブロックが無い・(iii) 出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致する |
+| ＋ | `xls/XlsInterleavedBlockTest#warnsAndDropsBlockAfterInterleavedDataType` | データタイプが交互のシートで同じことを固定する |
+| ＋ | `xls/XlsInterleavedBlockTest#doesNotWarnForDataTypesFetchedByIdentifier` | 識別子で 1 件を引くデータタイプ（`MESSAGE` ／ `LIST_MAP`）は対象外で、警告を出さない（**負のテスト**） |
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -3396,6 +3416,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 |---|---|---:|---|---|
 | `xls/XlsTrailingNullTest` | #40 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsTrailingNullTest.java` | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。実 `.xlsx` 起点 |
 | `xls/XlsMarkerOnlyEntryTest` | #41 | 2 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsMarkerOnlyEntryTest.java` | マーカーカラムだけに値があるエントリが、**本体が読むのと同じ件数**残ること（テーブル系・`LIST_MAP`）。実 `.xlsx` 起点 |
+| `xls/XlsInterleavedBlockTest` | #42 | 3 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsInterleavedBlockTest.java` | 交互記述のシートで警告が 1 件出て、読まれないブロックが出力に無く、出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致すること。実 `.xlsx` 起点 |
 
 **期待値の出どころを本体に移した（#40）。** 上記クラスは期待値を自分で書かず、
 `core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。
@@ -3403,13 +3424,14 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 （変換ツール自身の 2 つのリーダを突き合わせていた `SpecialNotationRoundTripTest` で実際に起きた）。
 本体の値そのものも各テストで明示し、本体側が黙って変わったときに気づけるようにしている。
 
-**テスト専用の相乗りクラス 3 本（#40）。** いずれも `src/main` からは使わない。
+**テスト専用の相乗りクラス（#40 で 3 本・#42 で 1 本）。** いずれも `src/main` からは使わない。
 
 | クラス | 置いたパッケージ | 越えた壁 |
 |---|---|---|
 | `core/reader/FrameworkOracle` | `nablarch.test.core.reader` | 本体パーサの `getResult()` ／ `MessageParser#getDelegate()`（パッケージプライベート） |
 | `core/file/DataFileInspector` | `nablarch.test.core.file` | `DataFileFragment` の `names` ／ `values`（protected）。`DataFile#toDataRecords()` は固定長レコードとしての型変換を伴い空文字が `null` へ変わるため、値の突き合わせには使えない |
 | `core/messaging/MessagePoolInspector` | `nablarch.test.core.messaging` | `MessagePool#getSource()`（protected） |
+| `core/reader/YamlFrameworkOracle` | `nablarch.test.core.reader` | （壁は無い。`YamlTestDataParser` は public）。**#42 で追加。** YAML 側の正解を取る口を Excel 側と同じ場所に置くために同居させている |
 
 ## 5. 全体サマリ
 
