@@ -1890,14 +1890,156 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+## 第2回（指示書 `ntf-step4-07-nablarch-testing-converter-2.md`。2026-08-29 着手）
+
+### #40: 2-1 —— Excel 読みの値処理を本体と同じ順序にする（本体に解釈させる）
+
+**Purpose**: 末尾に連続する `null` が `""` にならない差を消す。解説書 `implementation/testdata_notation.rst:889`・`:1155`（末尾の `null` は形式によらず `""`）。
+
+**Prerequisites**: none
+
+**Steps**:
+
+- [ ] (a)〜(e)「着手前に特定すること」の結果を `checks/step4-2-report.md` §1 にまとめ、実装前に報告する
+- [ ] `TestCoreReaderAdapter` の本体パーサ 6 種へ `NullInterpreter`→`QuotationTrimmer`→`LineSeparatorInterpreter` を渡す（`HeaderCollector`・`BodyLineCollector` は空のまま）
+- [ ] `XlsFormatReader.readDataRows` の値を `FragmentView.getValues` から取り、`interpretValue`／`interpretRows` を消す
+- [ ] (a) `normalizeDirectiveValue` の `QuotationTrimmer` 二重適用を外す
+- [ ] (a)(b) `XlsFormatWriter.appendKeyValueRows` を `toCellNotation` 経由にする
+- [ ] 本体を正解にしたテスト（実 `.xlsx` 起点。2-1 実測表 F1・F4・F6・M1・S2）を足す
+- [ ] 足したテスト・直したテストの期待値をわざと崩すと落ちることを1度確認する
+
+**Completion criteria**:
+
+- 直す前は落ちて直したあとは通るテストがある
+- (a)〜(e) の表が報告に載っている
+- 末尾 `null` の値が本体と一致する
+
+### #41: 2-2 —— マーカーカラムだけに値があるエントリを残す
+
+**Purpose**: 解説書 `tools/testdata_converter.rst:63`・`implementation/testdata_notation.rst:1502` に合わせる。
+
+**Prerequisites**: #40
+
+**Steps**:
+
+- [ ] `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell` を削除する
+- [ ] 既存テスト 3 件（`XlsFormatReaderRealFileTest` 2 件・`XlsReferenceFixtureTest` 1 件）の期待値を解説書どおりに直す
+- [ ] 本体が読む件数と一致することを実 `.xlsx` 起点で押さえるテストを足す
+- [ ] 期待値をわざと崩すと落ちることを1度確認する
+
+**Completion criteria**:
+
+- マーカーカラムだけに値があるエントリが本体と同じ件数で残る
+- 直す前は落ちて直したあとは通るテストがある
+
+### #42: 2-3 —— 交互記述のシートで警告を出す
+
+**Purpose**: 解説書 `tools/testdata_converter.rst:69`（読まなかったデータブロックを出力せずに変換を続け、警告を出す）。
+
+**Prerequisites**: none
+
+**Steps**:
+
+- [ ] (ii) が現状で成り立つかの実測結果を報告する（実装前）
+- [ ] 先に落ちるテストを書く（(i) 警告1件・(ii) 出力に無い・(iii) 本体が読む結果が一致）
+- [ ] (i) で落ちることを確認する
+- [ ] `readHeaders` の並びから再出現を検出して `LOGGER.warning` を出す（`LIST_MAP`・`MESSAGE` は対象外）
+- [ ] 期待値をわざと崩すと落ちることを1度確認する
+
+**Completion criteria**:
+
+- 警告が1件出る（ブック名・シート名・データタイプ・グループID・読まれなかったブロックの識別子を含む）
+- converter が自前で選別していない（本体の `break` に任せている）
+
+### #43: 2-4 —— `nablarch-testing-yaml` 第2回の是正への追随
+
+**Purpose**: 着手時点の赤 4 件を解説書どおりに直し、yaml 第2回の 5 項目をテストで押さえる。
+
+**Prerequisites**: none
+
+**Steps**:
+
+- [ ] 赤 4 件の期待値を解説書に合わせて直す
+- [ ] yaml 第2回 2-1〜2-5 の 5 項目を押さえるテストを足す（2-2 の電文 `records:` は 1 つ／2-3 `fw_header:` のキー／2-5 2文字 `\r`）
+- [ ] 期待値をわざと崩すと落ちることを1度確認する
+
+**Completion criteria**:
+
+- 着手時点の赤 4 件が緑
+- 5 項目それぞれにテストがある
+
+### #44: 2-5 —— 4経路テストの正解を本体にし、母集合を足す
+
+**Purpose**: converter 自身の reader を正解にしていたため、両 reader が同じ誤りを持つ欠陥を検知できなかった。
+
+**Prerequisites**: #40, #41, #43
+
+**Steps**:
+
+- [ ] `SpecialNotationRoundTripTest` の正解を本体（`PoiXlsReader` ＋ インタープリタ3本）と yaml の `YamlTestDataParser` に差し替える
+- [ ] 母集合へ 4 種を足す（末尾 `null`／全値 `""` のテーブル・`LIST_MAP` エントリ／マーカーカラムだけのエントリ／`testdata_examples.rst:2423`-`:2461` のアップロードファイル）
+- [ ] 末尾 `null` の1件以上が #40 の前は落ちることを確認する
+- [ ] 期待値をわざと崩すと落ちることを1度確認する
+
+**Completion criteria**:
+
+- 正解が本体であることがテストから分かる
+- 母集合に 4 種が入っている
+- 全経路が緑
+
+### #45: 2-6 —— ソースから解説書への参照をすべて取り除く（単独コミット）
+
+**Purpose**: リリース済みモジュールと揃える（`nablarch-testing`・`-rest`・`-junit5` の `src/` は 0 件）。
+
+**Prerequisites**: #40, #41, #42, #43, #44
+
+**Steps**:
+
+- [ ] 取り除く行の全件を機械抽出し、件数を報告する
+- [ ] `.rst` パス・`nablarch-document`・「解説書」「出典」・節見出し・逐語引用を取り除く
+- [ ] 他リポジトリのソースを `path:line` で指す 11 行はクラス名だけ残す
+- [ ] テストの動作・期待値は変えない（コメント・Javadoc・assert メッセージの文字列だけ）
+- [ ] 単独のコミットにする
+
+**Completion criteria**:
+
+- `git grep -nE '\.rst|nablarch-document|解説書|出典|根拠:' -- src/` が 0 件
+- `git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src` が 0 件
+- 2-6 が単独のコミットになっている
+
+### #46: 完了条件の締め —— 全件緑・カバレッジ計測・報告のまとめ・push
+
+**Purpose**: 指示書「4. 完了条件」の残りと「6. 報告」を締める。
+
+**Prerequisites**: #40〜#45
+
+**Steps**:
+
+- [ ] `mvn -o clean test` が緑（`@Ignore` 0 件）であることを確認する
+- [ ] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
+- [ ] `checks/step4-2-report.md` の §2〜§7 を埋める
+- [ ] 既存テストの期待値を変えた箇所を件数つきで全件挙げる
+- [ ] 一時ファイル（`ZzProbeTest`・`ZzOracleProbeTest`）を削除し `git status --short` が空になることを確認する
+- [ ] 変更を push する
+
+**Completion criteria**:
+
+- `mvn -o clean test` が緑・`@Ignore` 0 件
+- カバレッジ C0/C1 の計測結果が報告にある
+- 報告の 7 項がすべて埋まっている
+- `git status --short` が空
+- push 済み
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-28
-- **Last completed**: **#33〜#39 を通しで完了**（`548ca59`／`8774d0a`／`8258390`／`4ffdf81`／`1ba9dfc`／`b5f5063`／本コミット）。**Step 4 の全 8 タスク（#32〜#39）が完了し、Tasks に未チェックは 0 件。** `mvn -o clean test` は `Tests run: 656, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`（`@Ignore` は 0 件）。報告は `checks/step4-report.md` の全 6 項が記入済み
-- **Next**: **調整側（ユーザー）の判定待ち。**こちらから進めるものは無い。判断を仰ぐ 5 件は `checks/task-39.md`「報告に載せた『調整側の判断を仰ぐもの』」に一覧がある（指示書との食い違い 3 件／観測できる出力の変化 2 件／XLS-39 を申し送りの束に残すか／母集合から外した記載例 1 件／残課題の未到達分岐 2 件）
-- **Notes**: branch `ntf-test-data-converter`（push 済み）。**マージ可否の判断は出さない**（Rules）。持ち越しの未決は 2 件から 1 件へ減った —— `handover.md` の提出タイミング（調整側の判断）と、`inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所（未確認）。もう 1 件（§2.1-2 の区間別のずれ）は #35 で出所が特定できた
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
