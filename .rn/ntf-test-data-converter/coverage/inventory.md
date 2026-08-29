@@ -1229,6 +1229,34 @@ assert メッセージ・Javadoc の「全要素が空のエントリになる�
 | `yaml/YamlFormatReaderScalarTest#skipsRowWhoseValuesAreAllEmpty` | 期待に全値が空文字の行を戻した。読み飛ばされるのは空マッピング `{}` の行だけである |
 | `yaml/YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` | フィクスチャの `records:` を 2 件 → 1 件へ。電文のレコードレイアウトは 1 つであり、2 件はスキーマ検証で落ちる。テストの主題（`FW_HEADER` という名前のレコードが落とされないこと）は変えていない |
 
+**追補その 17（2026-08-29 実測。#44 で 2-5（4 経路テストの正解を本体にし、母集合を足す）を実施したぶん）**
+
+追補その 16（追跡対象 672 件）から、#44 で足した 6 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 687   ← 作業ツリー。追跡していない測定用の一時テスト 9 件を含む
+③ 8c327d0: 536
+   HEAD: 672   ← #44 のコミットが載る前の値
+```
+
+追跡対象は **678** 件（672 ＋ 6）。
+
+**672 → 678（差 ＋6）の内訳** —— 追加 6 件のみ。削除は無い。すべて `xls/SpecialNotationRoundTripTest`。
+
+| 増減 | テスト | 母集合の追加 |
+|---|---|---|
+| ＋ | `#trailingNullInFixedFile` | ファイルの末尾に連続して `null` を書いた形（2-1 実測表の F1・F4・F6） |
+| ＋ | `#trailingNullInMessage` | 電文の末尾に連続して `null` を書いた形（同 M1） |
+| ＋ | `#allEmptyStringEntryInTable` | 全カラムの値が空文字のテーブルエントリ |
+| ＋ | `#allEmptyStringEntryInListMap` | 全カラムの値が空文字の `LIST_MAP` エントリ |
+| ＋ | `#markerOnlyEntryInListMap` | マーカーカラムだけに値があるエントリ |
+| ＋ | `#exampleUploadFile` | アップロードファイルの記載例（`LIST_MAP` ＋ `[no]` ＋ `${attach:パス}`） |
+
+**#44 は既存 20 件の期待値のうち 1 件を変えた。** `#binaryFileNotation` の期待を
+`"${binaryFile:testdata.bin}"` → `"010203"` へ。正解の読み手をフレームワークにしたことで、
+この記法は取得元パス起点で解決されファイル内容の 16 進文字列になるためである。
+残る 19 件の期待値は変えていない。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -3422,7 +3450,7 @@ awk '/^\| 軸 \| 未担保要素 \| #18 の状態 \| #25 後の状態 \| 件数 
 |---|---|---:|---|---|
 | `xls/XlsNotationSymmetryTest` | #32 | 8 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsNotationSymmetryTest.java` | Excel 形式の読み書きが**記法⇄値の対称な写像**であること（原因側）。実 `.xlsx` 起点 |
 | `xls/XlsEmptyEntryTest` | #33 | 12 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsEmptyEntryTest.java` | 全要素が空文字のエントリが Excel 形式で失われないこと（**件数の保存**）。実 `.xlsx` 起点・本体 `PoiXlsReader` が読む件数と突き合わせ |
-| `xls/SpecialNotationRoundTripTest` | #37 | 20 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/SpecialNotationRoundTripTest.java` | 特殊記法の母集合（`testdata_notation.rst` の表 12 行 ＋ `testdata_examples.rst` の記載例 6 対）を**実ファイル起点・4 経路**で往復させ、解釈後の値が保たれること |
+| `xls/SpecialNotationRoundTripTest` | #37・#44 | 26 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/SpecialNotationRoundTripTest.java` | 特殊記法の母集合を**実ファイル起点・4 経路**で往復させ、解釈後の値が保たれること。**#44 で正解をフレームワークに差し替え、母集合へ 4 種（末尾 `null`／全値空文字のエントリ／マーカーカラムだけに値があるエントリ／アップロードファイルの記載例）を足した** |
 | `xls/ExcelOutputDocumentedBehaviorTest` | #38 | 6 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/ExcelOutputDocumentedBehaviorTest.java` | `tools/testdata_converter.rst` が述べる Excel 出力の振る舞い（3-2・3-6〜3-10）。**設定した整形が効くこと**と、**色・書式・結合セルが往復で落ちること**（負のテスト） |
 | `ConverterDocumentedBehaviorTest` | #38 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/ConverterDocumentedBehaviorTest.java` | 同上・変換ツールの入口（3-1・3-3・3-4・3-5・3-11）。検証が変換経路に無いこと／YAML コメントが落ちること／YAML 変換で `excludeSheets` と `ExcelFormatConfig` が効かないこと／`validate` が直下だけを見ること |
 
@@ -3452,7 +3480,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 | `xls/XlsInterleavedBlockTest` | #42 | 3 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsInterleavedBlockTest.java` | 交互記述のシートで警告が 1 件出て、読まれないブロックが出力に無く、出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致すること。実 `.xlsx` 起点 |
 | `yaml/YamlFrameworkAlignmentTest` | #43 | 6 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFrameworkAlignmentTest.java` | 変換ツールの YAML 読み込みが、フレームワークの YAML 読み込みと同じ意味を持つこと（末尾の `null`／電文の `records:` は 1 つ／`fw_header:` のキー／空エントリは `{}` だけ／2 文字の `\r` はエラー）。実 `.yaml` 起点 |
 
-**期待値の出どころを本体に移した（#40）。** 上記クラスは期待値を自分で書かず、
+**期待値の出どころを本体に移した（#40 で新設クラス、#44 で既存の 4 経路テスト）。** 上記クラスは期待値を自分で書かず、
 `core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。
 変換ツールと期待値が同じ写し間違いを持つと検知できないためである
 （変換ツール自身の 2 つのリーダを突き合わせていた `SpecialNotationRoundTripTest` で実際に起きた）。

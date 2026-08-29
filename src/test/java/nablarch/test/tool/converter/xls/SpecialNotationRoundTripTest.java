@@ -9,10 +9,22 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
+import nablarch.test.core.db.TableData;
+import nablarch.test.core.file.DataFile;
+import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.FrameworkOracle;
+import nablarch.test.core.reader.YamlFrameworkOracle;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.ListMapBlock;
+import nablarch.test.tool.converter.model.MessageDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -82,11 +94,38 @@ public class SpecialNotationRoundTripTest {
     /** 行が空エントリにならないよう先頭へ置く、空でない値を持つカラムの値。 */
     private static final String GUARD = "g";
 
+    /** 電文の識別子。 */
+    private static final String MESSAGE_ID = "M1";
+
+    /** {@code LIST_MAP} の識別子。 */
+    private static final String LIST_MAP_ID = "requestParams";
+
     /** LF。 */
     private static final String LF = "\n";
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
+
+    /**
+     * 各段のディレクトリへ、{@code ${binaryFile:testdata.bin}} が指すファイルを同じ内容で置く。
+     *
+     * <p>
+     * フレームワークは読み込みのたびに取得元パス起点で {@code ${binaryFile:相対パス}} を解決し、
+     * ファイルの内容を 16 進文字列へ写す。往復の前後で同じ値になるためには、どの段のディレクトリにも
+     * 同じ内容のファイルが要る。
+     * </p>
+     */
+    @org.junit.Before
+    public void placeBinaryFixture() {
+        for (int step = 1; step <= 8; step++) {
+            try {
+                Files.createDirectories(dir(step));
+                Files.write(dir(step).resolve("testdata.bin"), new byte[] {0x01, 0x02, 0x03});
+            } catch (IOException e) {
+                throw new UncheckedIOException("failed to write binary fixture", e);
+            }
+        }
+    }
 
     // ------------------------------------------------------------------ 経路の実行
 
@@ -145,39 +184,242 @@ public class SpecialNotationRoundTripTest {
         }
     }
 
+    // ------------------------------------------------------------------ 正解の読み手（フレームワーク本体）
+
+    /*
+     * 往復の正解は変換ツールのリーダではなく、テスティングフレームワークが読んだ値である。
+     * Excel 形式はフレームワーク本体（PoiXlsReader ＋ 単体テストと同順のインタープリタ 3 本）、
+     * YAML 形式は nablarch-testing-yaml の YamlTestDataParser に読ませる。
+     * 変換ツール自身の 2 つのリーダを突き合わせていると、両方が同じ写し間違いを持つ欠陥
+     * （末尾の null が空文字にならない等）を検知できない。
+     */
+
+    /** {@code SETUP_TABLE} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_SETUP_TABLES =
+            d -> dumpTables(FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_TABLE_DATA));
+
+    /** {@code setup_tables} を YAML 読み込みに読ませる。 */
+    private static final Function<Path, String> YAML_SETUP_TABLES =
+            d -> dumpTables(YamlFrameworkOracle.setupTables(d.toAbsolutePath().toString(), SHEET));
+
+    /** {@code EXPECTED_TABLE} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_EXPECTED_TABLES =
+            d -> dumpTables(FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "",
+                    DataType.EXPECTED_TABLE_DATA));
+
+    /** {@code expected_tables} を YAML 読み込みに読ませる。 */
+    private static final Function<Path, String> YAML_EXPECTED_TABLES =
+            d -> dumpTables(YamlFrameworkOracle.expectedTables(d.toAbsolutePath().toString(), SHEET));
+
+    /** {@code SETUP_VARIABLE} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_SETUP_VARIABLE =
+            d -> dumpFiles(FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_VARIABLE));
+
+    /** {@code setup_files}（可変長）を YAML 読み込みに読ませる。 */
+    private static final Function<Path, String> YAML_SETUP_FILES =
+            d -> dumpFiles(YamlFrameworkOracle.setupFiles(d.toAbsolutePath().toString(), SHEET));
+
+    /** {@code SETUP_FIXED} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_SETUP_FIXED =
+            d -> dumpFiles(FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_FIXED));
+
+    /** {@code MESSAGE} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_MESSAGE =
+            d -> dumpFiles(FrameworkOracle.messageBodies(d.toString(), BOOK + "/" + SHEET, MESSAGE_ID));
+
+    /** {@code messages} を YAML 読み込みに読ませる。 */
+    private static final Function<Path, String> YAML_MESSAGE =
+            d -> dumpFiles(Collections.singletonList(
+                    YamlFrameworkOracle.messageBody(d.toAbsolutePath().toString(), SHEET, MESSAGE_ID)));
+
+    /** {@code LIST_MAP} を本体に読ませる。 */
+    private static final Function<Path, String> XLS_LIST_MAP =
+            d -> dumpListMap(FrameworkOracle.listMap(d.toString(), BOOK + "/" + SHEET, LIST_MAP_ID));
+
+    /** {@code list_maps} を YAML 読み込みに読ませる。 */
+    private static final Function<Path, String> YAML_LIST_MAP =
+            d -> dumpListMap(YamlFrameworkOracle.listMap(d.toAbsolutePath().toString(), SHEET, LIST_MAP_ID));
+
     /**
-     * 指定ディレクトリの実 {@code .xlsx} を読み、{@code V} 列の解釈後の値を返す。
+     * テーブル器の一覧を、突き合わせ用の文字列へ写す。
+     *
+     * @param tables テーブル器の一覧
+     * @return 表現
+     */
+    private static String dumpTables(List<TableData> tables) {
+        StringBuilder sb = new StringBuilder();
+        for (TableData table : tables) {
+            sb.append(table.getTableName())
+                    .append(' ').append(java.util.Arrays.asList(table.getColumnNames()))
+                    .append(' ').append(YamlFrameworkOracle.rowsOf(table)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * ファイル器の一覧を、突き合わせ用の文字列へ写す。
+     *
+     * @param files ファイル器の一覧
+     * @return 表現
+     */
+    private static String dumpFiles(List<? extends DataFile> files) {
+        StringBuilder sb = new StringBuilder();
+        for (DataFile file : files) {
+            sb.append(file.getPath())
+                    .append(' ').append(nablarch.test.core.file.DataFileInspector.fieldNames(file))
+                    .append(' ').append(nablarch.test.core.file.DataFileInspector.values(file)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /**
+     * {@code LIST_MAP} の行一覧を、突き合わせ用の文字列へ写す。
+     *
+     * @param rows 行一覧
+     * @return 表現
+     */
+    private static String dumpListMap(List<Map<String, String>> rows) {
+        List<String> dump = new ArrayList<>();
+        for (Map<String, String> row : rows) {
+            dump.add(new java.util.TreeMap<>(row).toString());
+        }
+        return dump.toString();
+    }
+
+    // ------------------------------------------------------------------ 変換ツールが読んだ値（突き合わせ対象）
+
+    /**
+     * 変換ツールが読んだ中間モデルを、正解の読み手と同じ形の文字列へ写す。
+     *
+     * <p>
+     * 正解（フレームワークが読んだ値）とそのまま突き合わせるためのものである。
+     * ブロックの種別ごとに、上の {@code dumpTables} ／ {@code dumpListMap} ／ {@code dumpFiles} と
+     * 同じ並べ方をする。
+     * </p>
+     *
+     * @param container 中間モデル
+     * @return 表現
+     */
+    private static String converterDump(TestDataContainer container) {
+        List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
+        assertThat("ブロック数", blocks.size(), is(1));
+        TestDataBlock block = blocks.get(0);
+        if (block instanceof ListMapBlock) {
+            ListMapBlock listMap =
+                    (ListMapBlock) block;
+            List<Map<String, String>> rows = new ArrayList<>();
+            for (List<String> row : listMap.getRows()) {
+                Map<String, String> map = new java.util.LinkedHashMap<>();
+                for (int i = 0; i < listMap.getColumnNames().size(); i++) {
+                    map.put(listMap.getColumnNames().get(i), row.get(i));
+                }
+                rows.add(map);
+            }
+            return dumpListMap(rows);
+        }
+        if (block instanceof TableDataBlock) {
+            TableDataBlock table = (TableDataBlock) block;
+            return table.getIdentifier() + ' ' + table.getColumnNames() + ' ' + table.getRows() + '\n';
+        }
+        List<List<String>> fieldNames = new ArrayList<>();
+        List<List<String>> values = new ArrayList<>();
+        for (RecordLayout record : recordsOf(block)) {
+            List<String> names = new ArrayList<>();
+            for (FieldDef field : record.getFields()) {
+                names.add(field.getName());
+            }
+            fieldNames.add(names);
+            values.addAll(record.getRows());
+        }
+        return block.getIdentifier() + ' ' + fieldNames + ' ' + values + '\n';
+    }
+
+    /**
+     * ファイル系・電文系ブロックのレコードレイアウトを取り出す。
+     *
+     * @param block ブロック
+     * @return レコードレイアウト一覧
+     */
+    private static List<RecordLayout> recordsOf(TestDataBlock block) {
+        if (block instanceof FileDataBlock) {
+            return ((FileDataBlock) block).getRecords();
+        }
+        return ((MessageDataBlock) block).getRecords();
+    }
+
+    /**
+     * 変換ツールが読んだ中間モデルから、{@code V} 列の値を取り出す。
+     *
+     * @param dir ディレクトリ
+     * @param xls Excel 形式なら真、YAML 形式なら偽
+     * @return {@code V} 列の値
+     */
+    private static String converterValue(Path dir, boolean xls) {
+        TestDataContainer container = xls
+                ? new XlsFormatReader().read(dir.toString(), BOOK + "/" + SHEET)
+                : new YamlFormatReader().read(dir.toAbsolutePath().toString(), SHEET);
+        List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
+        assertThat("ブロック数", blocks.size(), is(1));
+        TableDataBlock table = (TableDataBlock) blocks.get(0);
+        int index = table.getColumnNames().indexOf("V");
+        assertThat("V 列があること", index >= 0, is(true));
+        assertThat("エントリ数", table.getRows().size(), is(1));
+        return table.getRows().get(0).get(index);
+    }
+
+    /**
+     * 変換ツールが実 {@code .xlsx} を読んだ結果を、正解と同じ形の文字列で返す。
+     *
+     * @param dir ディレクトリ
+     * @return 表現
+     */
+    private static String converterReadXls(Path dir) {
+        return converterDump(new XlsFormatReader().read(dir.toString(), BOOK + "/" + SHEET));
+    }
+
+    /**
+     * 変換ツールが実 {@code .yaml} を読んだ結果を、正解と同じ形の文字列で返す。
+     *
+     * @param dir ディレクトリ
+     * @return 表現
+     */
+    private static String converterReadYaml(Path dir) {
+        return converterDump(new YamlFormatReader().read(dir.toAbsolutePath().toString(), SHEET));
+    }
+
+    /**
+     * 指定ディレクトリの実 {@code .xlsx} を本体に読ませ、{@code V} 列の解釈後の値を返す。
      *
      * @param dir ディレクトリ
      * @return 解釈後の値
      */
     private static String readXls(Path dir) {
-        return valueOf(new XlsFormatReader().read(dir.toString(), BOOK + "/" + SHEET));
+        return onlyValue(FrameworkOracle.tables(dir.toString(), BOOK + "/" + SHEET, "",
+                DataType.SETUP_TABLE_DATA));
     }
 
     /**
-     * 指定ディレクトリの実 {@code .yaml} を読み、{@code V} 列の解釈後の値を返す。
+     * 指定ディレクトリの実 {@code .yaml} を YAML 読み込みに読ませ、{@code V} 列の解釈後の値を返す。
      *
      * @param dir ディレクトリ
      * @return 解釈後の値
      */
     private static String readYaml(Path dir) {
-        return valueOf(new YamlFormatReader().read(dir.toAbsolutePath().toString(), SHEET));
+        return onlyValue(YamlFrameworkOracle.setupTables(dir.toAbsolutePath().toString(), SHEET));
     }
 
     /**
-     * 中間モデルから {@code V} 列の値を取り出す。
+     * 唯一のテーブルの唯一の行から {@code V} 列の値を取り出す。
      *
-     * @param container 中間モデル
+     * @param tables テーブル器の一覧
      * @return {@code V} 列の値
      */
-    private static String valueOf(TestDataContainer container) {
-        List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
-        assertThat("ブロック数", blocks.size(), is(1));
-        TableDataBlock table = (TableDataBlock) blocks.get(0);
-        assertThat("カラム名", table.getColumnNames(), is(Arrays.asList("K", "V")));
-        assertThat("エントリ数", table.getRows().size(), is(1));
-        return table.getRows().get(0).get(1);
+    private static String onlyValue(List<TableData> tables) {
+        assertThat("テーブル数", tables.size(), is(1));
+        TableData table = tables.get(0);
+        assertThat("エントリ数", table.size(), is(1));
+        Object value = table.getValue(0, "V");
+        return value == null ? null : value.toString();
     }
 
     /**
@@ -201,10 +443,27 @@ public class SpecialNotationRoundTripTest {
      * @param expected   解説書が定める<b>解釈後の値</b>
      */
     private void assertFourRoutes(String excelCell, String yamlScalar, String expected) {
+        assertFourRoutes(excelCell, yamlScalar, expected, true);
+    }
+
+    /**
+     * 表の 1 行を 4 経路で往復させる。
+     *
+     * @param excelCell            Excel 形式の記法
+     * @param yamlScalar           YAML 形式の記法
+     * @param expected             フレームワークが読む値
+     * @param compareConverterRead 変換ツールが読んだ値を正解と突き合わせるか
+     *                             （{@code ${binaryFile:パス}} の行では偽にする）
+     */
+    private void assertFourRoutes(String excelCell, String yamlScalar, String expected,
+                                  boolean compareConverterRead) {
         // 経路 1: XLS → XLS
         writeXls(dir(1), excelCell);
         String fromXls = readXls(dir(1));
         assertThat("Excel 記法の解釈後の値", fromXls, is(expected));
+        if (compareConverterRead) {
+            assertThat("変換ツールの Excel 読みが本体と一致する", converterValue(dir(1), true), is(fromXls));
+        }
         new XlsFormatWriter().write(rewrap(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET)),
                 dir(2).toString());
         assertThat("XLS→XLS", readXls(dir(2)), is(fromXls));
@@ -220,6 +479,9 @@ public class SpecialNotationRoundTripTest {
         writeYaml(dir(5), yamlScalar);
         String fromYaml = readYaml(dir(5));
         assertThat("YAML 記法の解釈後の値", fromYaml, is(expected));
+        if (compareConverterRead) {
+            assertThat("変換ツールの YAML 読みが本体と一致する", converterValue(dir(5), false), is(fromYaml));
+        }
         new YamlFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(6).toString());
         assertThat("YAML→YAML", readYaml(dir(6)), is(fromYaml));
@@ -291,10 +553,19 @@ public class SpecialNotationRoundTripTest {
         assertFourRoutes("${systemTime}", "\"${systemTime}\"", "${systemTime}");
     }
 
-    /** 表 10 行目 —— {@code ${binaryFile:パス}}（{@code :1383}-{@code :1385} ／ {@code :1435}-{@code :1437}）。 */
+    /**
+     * 表 10 行目 —— {@code ${binaryFile:パス}}（{@code :1383}-{@code :1385} ／ {@code :1435}-{@code :1437}）。
+     *
+     * <p>
+     * 正解の読み手はフレームワークであり、フレームワークはこの記法を取得元パス起点で解決して
+     * ファイルの内容の 16 進文字列にする。{@link #placeBinaryFixture} が置いた 3 バイトが
+     * {@code "010203"} になる。変換ツールが記法をそのまま運べていれば、往復の前後で同じ値になる。
+     * </p>
+     */
     @Test
     public void binaryFileNotation() {
-        assertFourRoutes("${binaryFile:testdata.bin}", "\"${binaryFile:testdata.bin}\"", "${binaryFile:testdata.bin}");
+        // 変換ツールはこの記法を解決せず記法のまま運ぶため、読んだ値の突き合わせは行わない。
+        assertFourRoutes("${binaryFile:testdata.bin}", "\"${binaryFile:testdata.bin}\"", "010203", false);
     }
 
     /** 表 11 行目 —— {@code ${文字種,文字数}}（{@code :1386}-{@code :1388} ／ {@code :1438}-{@code :1440}）。 */
@@ -360,7 +631,7 @@ public class SpecialNotationRoundTripTest {
                 + "        CREATED_AT: \"${setUpTime}\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_EXPECTED_TABLES, YAML_EXPECTED_TABLES);
     }
 
     /**
@@ -388,7 +659,7 @@ public class SpecialNotationRoundTripTest {
                 + "        BODY: \"\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_EXPECTED_TABLES, YAML_EXPECTED_TABLES);
     }
 
     /**
@@ -412,7 +683,7 @@ public class SpecialNotationRoundTripTest {
                 + "        BODY: \"1行目\\n2行目\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_EXPECTED_TABLES, YAML_EXPECTED_TABLES);
     }
 
     /**
@@ -436,7 +707,7 @@ public class SpecialNotationRoundTripTest {
                 + "        MEMO: \"\\\"\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_EXPECTED_TABLES, YAML_EXPECTED_TABLES);
     }
 
     /**
@@ -462,7 +733,8 @@ public class SpecialNotationRoundTripTest {
                 + "        FILE_DATA: \"${binaryFile:testdata.bin}\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        // ${binaryFile:パス} を含むため、変換ツールが読んだ値との突き合わせは行わない（上の Javadoc 参照）。
+        assertExampleFourRoutes(XLS_SETUP_TABLES, YAML_SETUP_TABLES, false);
     }
 
     /**
@@ -488,7 +760,7 @@ public class SpecialNotationRoundTripTest {
                 + "        ZIP_CODE: \"${半角数字,3}-${半角数字,4}\"\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_SETUP_TABLES, YAML_SETUP_TABLES);
     }
 
     /**
@@ -524,7 +796,202 @@ public class SpecialNotationRoundTripTest {
                 + "          - [\"\", \"\", \"\"]\n");
 
         // When / Then
-        assertExampleFourRoutes();
+        assertExampleFourRoutes(XLS_SETUP_VARIABLE, YAML_SETUP_FILES);
+    }
+
+    // ------------------------------------------------------------------ #44 で足した母集合（4 種）
+
+    /**
+     * 母集合の追加 1 —— ファイルの末尾に連続して {@code null} を書いた形。
+     *
+     * <p>
+     * 3 行はそれぞれ {@code x,null,null} ／ {@code null,null,null} ／ {@code x,"",null} で、
+     * 2-1 の実測表の F1・F4・F6 に対応する。末尾のフィールドの {@code null} は形式によらず空文字になる。
+     * </p>
+     */
+    @Test
+    public void trailingNullInFixedFile() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("SETUP_FIXED=f.dat"))
+                .row(text("text-encoding"), text("UTF-8"))
+                .row(text("data"), text("f1"), text("f2"), text("f3"))
+                .row(text(""), text("半角英字"), text("半角英字"), text("半角英字"))
+                .row(text(""), text("5"), text("5"), text("5"))
+                .row(text(""), text("x"), text("null"), text("null"))
+                .row(text(""), text("null"), text("null"), text("null"))
+                .row(text(""), text("x"), text("\"\""), text("null"))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"UTF-8\"\n"
+                + "    records:\n"
+                + "      - record_type: data\n"
+                + "        fields:\n"
+                + "          - {name: f1, type: 半角英字, length: \"5\"}\n"
+                + "          - {name: f2, type: 半角英字, length: \"5\"}\n"
+                + "          - {name: f3, type: 半角英字, length: \"5\"}\n"
+                + "        rows:\n"
+                + "          - [\"x\", null, null]\n"
+                + "          - [null, null, null]\n"
+                + "          - [\"x\", \"\", null]\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_SETUP_FIXED, YAML_SETUP_FILES);
+    }
+
+    /**
+     * 母集合の追加 1（続き） —— 電文の末尾に連続して {@code null} を書いた形（2-1 の実測表 M1）。
+     */
+    @Test
+    public void trailingNullInMessage() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("MESSAGE=" + MESSAGE_ID))
+                .row(text("text-encoding"), text("UTF-8"))
+                .row(text("requestId"), text("R1"))
+                .row(text("no"), text("f1"), text("f2"), text("f3"))
+                .row(text(""), text("半角英字"), text("半角英字"), text("半角英字"))
+                .row(text(""), text("5"), text("5"), text("5"))
+                .row(text("1"), text("x"), text("null"), text("null"))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "messages:\n"
+                + "  - id: \"" + MESSAGE_ID + "\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"UTF-8\"\n"
+                + "    fw_header:\n"
+                + "      requestId: \"R1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: f1, type: 半角英字, length: \"5\"}\n"
+                + "          - {name: f2, type: 半角英字, length: \"5\"}\n"
+                + "          - {name: f3, type: 半角英字, length: \"5\"}\n"
+                + "        rows:\n"
+                + "          - [\"x\", null, null]\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_MESSAGE, YAML_MESSAGE);
+    }
+
+    /**
+     * 母集合の追加 2 —— 全カラムの値が空文字のテーブルエントリ。
+     *
+     * <p>
+     * 第1回の 20 件は行が読み飛ばされないよう先頭にガードのカラムを置いていたため、この形が
+     * 母集合に無かった。読み飛ばされる「記法として空のエントリ」は Excel 形式では全セルが空セルの行、
+     * YAML 形式では空マッピングの行だけであり、{@code ""} と書いた空文字は値である。
+     * </p>
+     */
+    @Test
+    public void allEmptyStringEntryInTable() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("SETUP_TABLE=" + TABLE))
+                .row(text("K"), text("V"))
+                .row(text("x"), text("1"))
+                .row(text("\"\""), text("\"\""))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "setup_tables:\n"
+                + "  - table: \"" + TABLE + "\"\n"
+                + "    rows:\n"
+                + "      - K: \"x\"\n"
+                + "        V: \"1\"\n"
+                + "      - K: \"\"\n"
+                + "        V: \"\"\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_SETUP_TABLES, YAML_SETUP_TABLES);
+    }
+
+    /**
+     * 母集合の追加 2（続き） —— 全カラムの値が空文字の {@code LIST_MAP} エントリ。
+     */
+    @Test
+    public void allEmptyStringEntryInListMap() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("LIST_MAP=" + LIST_MAP_ID))
+                .row(text("K"), text("V"))
+                .row(text("x"), text("1"))
+                .row(text("\"\""), text("\"\""))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "list_maps:\n"
+                + "  - id: \"" + LIST_MAP_ID + "\"\n"
+                + "    rows:\n"
+                + "      - K: \"x\"\n"
+                + "        V: \"1\"\n"
+                + "      - K: \"\"\n"
+                + "        V: \"\"\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_LIST_MAP, YAML_LIST_MAP);
+    }
+
+    /**
+     * 母集合の追加 3 —— マーカーカラムだけに値があるエントリ。
+     *
+     * <p>
+     * マーカーカラムはエントリを読み飛ばす判断に使われないため、この形のエントリは残り、
+     * 他のカラムは空文字として読み込まれる。消えるのはマーカーカラムの値だけである。
+     * </p>
+     */
+    @Test
+    public void markerOnlyEntryInListMap() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("LIST_MAP=" + LIST_MAP_ID))
+                .row(text("[no]"), text("K"), text("V"))
+                .row(text("1"), text("x"), text("1"))
+                .row(text("2"), text(""), text(""))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "list_maps:\n"
+                + "  - id: \"" + LIST_MAP_ID + "\"\n"
+                + "    rows:\n"
+                + "      - \"[no]\": \"1\"\n"
+                + "        K: \"x\"\n"
+                + "        V: \"1\"\n"
+                + "      - \"[no]\": \"2\"\n"
+                + "        K: \"\"\n"
+                + "        V: \"\"\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_LIST_MAP, YAML_LIST_MAP);
+    }
+
+    /**
+     * 母集合の追加 4 —— アップロードファイルを指定する記載例
+     * （{@code LIST_MAP} ＋ マーカーカラム {@code [no]} ＋ {@code ${attach:パス}}）。
+     *
+     * <p>
+     * 第1回は特殊記法の記載例の節に含まれていたが母集合から外していた。
+     * </p>
+     */
+    @Test
+    public void exampleUploadFile() {
+        // Given
+        XlsFixture.book(BOOK).sheet(SHEET)
+                .row(text("LIST_MAP=" + LIST_MAP_ID))
+                .row(text("[no]"), text("memberId"), text("uploadFile"))
+                .row(text("1"), text("0000000101"),
+                        text("${attach:src/test/resources/upload/member_photo.png}"))
+                .writeTo(dir(1));
+        write(dir(5), ""
+                + "list_maps:\n"
+                + "  - id: \"" + LIST_MAP_ID + "\"\n"
+                + "    rows:\n"
+                + "      - \"[no]\": \"1\"\n"
+                + "        memberId: \"0000000101\"\n"
+                + "        uploadFile: \"${attach:src/test/resources/upload/member_photo.png}\"\n");
+
+        // When / Then
+        assertExampleFourRoutes(XLS_LIST_MAP, YAML_LIST_MAP);
     }
 
     /**
@@ -535,88 +1002,56 @@ public class SpecialNotationRoundTripTest {
      * {@code dir(5)} へ書き出しておくこと。
      * </p>
      */
-    private void assertExampleFourRoutes() {
-        TestDataBlock fromXls = blockOf(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET));
-        TestDataBlock fromYaml = blockOf(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET));
+    private void assertExampleFourRoutes(Function<Path, String> xlsOracle, Function<Path, String> yamlOracle) {
+        assertExampleFourRoutes(xlsOracle, yamlOracle, true);
+    }
 
-        // 2 つの記載例が同じ意味を表していること（tools/testdata_converter.rst:14）
-        assertThat("Excel 形式の例と YAML 形式の例が同じ値を表す", describe(fromXls), is(describe(fromYaml)));
+    /**
+     * 記載例を 4 経路で往復させる。
+     *
+     * @param xlsOracle            Excel 形式を本体に読ませる関数
+     * @param yamlOracle           YAML 形式を YAML 読み込みに読ませる関数
+     * @param compareConverterRead 変換ツールが読んだ値を正解と突き合わせるか。
+     *                             {@code ${binaryFile:パス}} を含む母集合では偽にする ——
+     *                             変換ツールはこの記法を解決せず記法のまま運ぶ仕様であり、
+     *                             フレームワークが解決した値とは一致しないためである（往復の担保は残る）
+     */
+    private void assertExampleFourRoutes(Function<Path, String> xlsOracle, Function<Path, String> yamlOracle,
+                                         boolean compareConverterRead) {
+        String fromXls = xlsOracle.apply(dir(1));
+        String fromYaml = yamlOracle.apply(dir(5));
+
+        // 2 つの記載例が同じ意味を表していること
+        assertThat("Excel 形式の例と YAML 形式の例が同じ値を表す", fromXls, is(fromYaml));
+
+        // 変換ツールが読んだ値が、フレームワークが読んだ値と一致すること（正解は本体である）
+        if (compareConverterRead) {
+            assertThat("変換ツールの Excel 読みが本体と一致する", converterReadXls(dir(1)), is(fromXls));
+            assertThat("変換ツールの YAML 読みが本体と一致する", converterReadYaml(dir(5)), is(fromYaml));
+        }
 
         // 経路 1: XLS → XLS
         new XlsFormatWriter().write(rewrap(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET)),
                 dir(2).toString());
-        assertBlock("XLS→XLS", blockOf(new XlsFormatReader().read(dir(2).toString(), BOOK + "/" + SHEET)), fromXls);
+        assertThat("XLS→XLS", xlsOracle.apply(dir(2)), is(fromXls));
 
         // 経路 2: XLS → YAML → XLS
         new YamlFormatWriter().write(rewrap(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET)),
                 dir(3).toString());
         new XlsFormatWriter().write(rewrap(new YamlFormatReader().read(dir(3).toAbsolutePath().toString(), SHEET)),
                 dir(4).toString());
-        assertBlock("XLS→YAML→XLS", blockOf(new XlsFormatReader().read(dir(4).toString(), BOOK + "/" + SHEET)),
-                fromXls);
+        assertThat("XLS→YAML→XLS", xlsOracle.apply(dir(4)), is(fromXls));
 
         // 経路 3: YAML → YAML
         new YamlFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(6).toString());
-        assertBlock("YAML→YAML", blockOf(new YamlFormatReader().read(dir(6).toAbsolutePath().toString(), SHEET)),
-                fromYaml);
+        assertThat("YAML→YAML", yamlOracle.apply(dir(6)), is(fromYaml));
 
         // 経路 4: YAML → XLS → YAML
         new XlsFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(7).toString());
         new YamlFormatWriter().write(rewrap(new XlsFormatReader().read(dir(7).toString(), BOOK + "/" + SHEET)),
                 dir(8).toString());
-        assertBlock("YAML→XLS→YAML", blockOf(new YamlFormatReader().read(dir(8).toAbsolutePath().toString(), SHEET)),
-                fromYaml);
-    }
-
-    /**
-     * コンテナから唯一のブロックを取り出す。
-     *
-     * @param container 中間モデル
-     * @return 唯一のブロック
-     */
-    private static TestDataBlock blockOf(TestDataContainer container) {
-        List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
-        assertThat("ブロック数", blocks.size(), is(1));
-        return blocks.get(0);
-    }
-
-    /**
-     * 2 つのブロックの<b>解釈後の値</b>が等しいことを確かめる。
-     *
-     * @param label    経路の名前（失敗メッセージ用）
-     * @param actual   往復後のブロック
-     * @param expected 往復前のブロック
-     */
-    private static void assertBlock(String label, TestDataBlock actual, TestDataBlock expected) {
-        assertThat(label + ": データタイプ", actual.getDataType(), is(expected.getDataType()));
-        assertThat(label + ": 識別子", actual.getIdentifier(), is(expected.getIdentifier()));
-        assertThat(label + ": 値", describe(actual), is(describe(expected)));
-    }
-
-    /**
-     * ブロックの値だけを文字列へ写す（失敗時に差分が読めるようにする）。
-     *
-     * @param block ブロック
-     * @return 値の表現
-     */
-    private static String describe(TestDataBlock block) {
-        if (block instanceof nablarch.test.tool.converter.model.ColumnRowDataBlock) {
-            nablarch.test.tool.converter.model.ColumnRowDataBlock b =
-                    (nablarch.test.tool.converter.model.ColumnRowDataBlock) block;
-            return b.getColumnNames() + " " + b.getRows();
-        }
-        nablarch.test.tool.converter.model.FileDataBlock b =
-                (nablarch.test.tool.converter.model.FileDataBlock) block;
-        StringBuilder sb = new StringBuilder();
-        for (nablarch.test.tool.converter.model.RecordLayout record : b.getRecords()) {
-            sb.append(record.getRecordType()).append(' ');
-            for (nablarch.test.tool.converter.model.FieldDef field : record.getFields()) {
-                sb.append(field.getName()).append(':').append(field.getType()).append(' ');
-            }
-            sb.append(record.getRows()).append('\n');
-        }
-        return sb.toString();
+        assertThat("YAML→XLS→YAML", yamlOracle.apply(dir(8)), is(fromYaml));
     }
 }

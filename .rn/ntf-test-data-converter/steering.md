@@ -1981,10 +1981,10 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `SpecialNotationRoundTripTest` の正解を本体（`PoiXlsReader` ＋ インタープリタ3本）と yaml の `YamlTestDataParser` に差し替える
-- [ ] 母集合へ 4 種を足す（末尾 `null`／全値 `""` のテーブル・`LIST_MAP` エントリ／マーカーカラムだけのエントリ／`testdata_examples.rst:2423`-`:2461` のアップロードファイル）
-- [ ] 末尾 `null` の1件以上が #40 の前は落ちることを確認する
-- [ ] 期待値をわざと崩すと落ちることを1度確認する
+- [x] `SpecialNotationRoundTripTest` の正解を本体（`PoiXlsReader` ＋ インタープリタ3本）と yaml の `YamlTestDataParser` に差し替える
+- [x] 母集合へ 4 種を足す（末尾 `null`／全値 `""` のテーブル・`LIST_MAP` エントリ／マーカーカラムだけのエントリ／`testdata_examples.rst:2423`-`:2461` のアップロードファイル）
+- [x] 末尾 `null` の1件以上が #40 の前は落ちることを確認する
+- [x] 期待値をわざと崩すと落ちることを1度確認する
 
 **Completion criteria**:
 

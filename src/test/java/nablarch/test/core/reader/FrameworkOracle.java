@@ -13,6 +13,7 @@ import nablarch.test.core.file.DataFileInspector;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.messaging.MessagePool;
 import nablarch.test.core.messaging.MessagePoolInspector;
+import nablarch.test.core.util.interpreter.BinaryFileInterpreter;
 import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
 import nablarch.test.core.util.interpreter.NullInterpreter;
 import nablarch.test.core.util.interpreter.QuotationTrimmer;
@@ -57,6 +58,24 @@ public final class FrameworkOracle {
     }
 
     /**
+     * 取得元パスに対するインタープリタ列を組み立てる。
+     *
+     * <p>
+     * フレームワークは読み込みのたびに、取得元パスを起点に {@code ${binaryFile:相対パス}} を解決する
+     * {@link BinaryFileInterpreter} を先頭へ積む。正解の読み手として同じ形にする。
+     * </p>
+     *
+     * @param dir 取得元パス
+     * @return インタープリタ列
+     */
+    private static List<TestDataInterpreter> interpreters(String dir) {
+        List<TestDataInterpreter> result = new ArrayList<TestDataInterpreter>();
+        result.add(new BinaryFileInterpreter(dir));
+        result.addAll(INTERPRETERS);
+        return result;
+    }
+
+    /**
      * テーブル系ブロックを本体に読ませる。
      *
      * @param dir      ディレクトリ
@@ -67,7 +86,7 @@ public final class FrameworkOracle {
      */
     public static List<TableData> tables(String dir, String resource, String groupId, DataType type) {
         TableDataParser parser = new TableDataParser(
-                new PoiXlsReader(), INTERPRETERS, new StubDbInfo(), new BasicDefaultValues(), type);
+                new PoiXlsReader(), interpreters(dir), new StubDbInfo(), new BasicDefaultValues(), type);
         parser.parse(dir, resource, groupId, false);
         return parser.getResult();
     }
@@ -110,7 +129,7 @@ public final class FrameworkOracle {
      * @return 行ごとのマップ（キーはカラム名）
      */
     public static List<Map<String, String>> listMap(String dir, String resource, String id) {
-        ListMapParser parser = new ListMapParser(new PoiXlsReader(), INTERPRETERS);
+        ListMapParser parser = new ListMapParser(new PoiXlsReader(), interpreters(dir));
         parser.parse(dir, resource, id, false);
         return parser.getResult();
     }
@@ -129,11 +148,11 @@ public final class FrameworkOracle {
         switch (type) {
             case SETUP_FIXED:
             case EXPECTED_FIXED:
-                parser = new FixedLengthFileParser(new PoiXlsReader(), INTERPRETERS, type);
+                parser = new FixedLengthFileParser(new PoiXlsReader(), interpreters(dir), type);
                 break;
             case SETUP_VARIABLE:
             case EXPECTED_VARIABLE:
-                parser = new VariableLengthFileParser(new PoiXlsReader(), INTERPRETERS, type);
+                parser = new VariableLengthFileParser(new PoiXlsReader(), interpreters(dir), type);
                 break;
             default:
                 throw new IllegalArgumentException("unsupported data type. type=[" + type + "]");
@@ -151,7 +170,7 @@ public final class FrameworkOracle {
      * @return 本文の固定長ファイル一覧
      */
     public static List<FixedLengthFile> messageBodies(String dir, String resource, String id) {
-        MessageParser parser = new MessageParser(new PoiXlsReader(), INTERPRETERS, DataType.MESSAGE);
+        MessageParser parser = new MessageParser(new PoiXlsReader(), interpreters(dir), DataType.MESSAGE);
         parser.parse(dir, resource, id, false);
         return parser.getDelegate().getResult();
     }
@@ -165,7 +184,7 @@ public final class FrameworkOracle {
      * @return FW 制御ヘッダ
      */
     public static Map<String, String> messageFwHeader(String dir, String resource, String id) {
-        MessageParser parser = new MessageParser(new PoiXlsReader(), INTERPRETERS, DataType.MESSAGE);
+        MessageParser parser = new MessageParser(new PoiXlsReader(), interpreters(dir), DataType.MESSAGE);
         parser.parse(dir, resource, id, false);
         return parser.getFwHeader();
     }
@@ -180,7 +199,7 @@ public final class FrameworkOracle {
      * @return 本文の固定長ファイル一覧（記述順）
      */
     public static List<FixedLengthFile> sendSyncBodies(String dir, String resource, String groupId, DataType type) {
-        GroupMessageParser parser = new GroupMessageParser(new PoiXlsReader(), INTERPRETERS, type);
+        GroupMessageParser parser = new GroupMessageParser(new PoiXlsReader(), interpreters(dir), type);
         parser.parse(dir, resource, groupId, false);
         List<FixedLengthFile> bodies = new ArrayList<FixedLengthFile>();
         for (MessagePool pool : parser.getResult()) {
