@@ -149,14 +149,13 @@ public final class ConverterFileFilter {
      * 変換対象ブックと同じディレクトリに、拡張子違いの同名ブックが居ないことを検証する。
      *
      * <p>
-     * 記法は「同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応し、
-     * 1 シートが読み込み単位に対応する」と定めており（{@code notation:44}。基準コミットは
-     * {@code nablarch-document} の {@code 30a8271}）、同名同居は想定されていない。
+     * 記法は同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応し、
+     * 1 シートが読み込み単位に対応すると定めており、同名同居は想定されていない。
      * </p>
      *
      * <p>
      * 同居を通すと、本体 {@code PoiXlsReader#open}（{@code nablarch-testing} の
-     * {@code PoiXlsReader.java:62-65}）が {@code <名前>.xls} を先に解決するため、{@code .xlsx} を
+     * {@code PoiXlsReader}）が {@code <名前>.xls} を先に解決するため、{@code .xlsx} を
      * 対象にした読み取りでも中身は {@code .xls} から読まれ、{@code .xlsx} の内容は失われる。
      * 上書き禁止（既定）でも「出力先が既に在る」としか分からず、出力先を消してやり直しても同じ結果になる。
      * </p>

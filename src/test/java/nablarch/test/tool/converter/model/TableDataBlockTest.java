@@ -75,7 +75,7 @@ public class TableDataBlockTest {
 
     @Test
     public void 行そのものがnullのブロックは生成できない() {
-        // Given: 行の「セル」の null は記法にある（notation:767-772・:829-834）が、
+        // Given: 行の「セル」の null は記法にある（記法）が、
         //        行そのものの null に当たる書き方は無い
         try {
             new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp", List.of("id"),
@@ -113,8 +113,8 @@ public class TableDataBlockTest {
 
     /**
      * カラム名 0 件かつ行 0 件は<b>正当な形</b>である。YAML の 0 件テーブル
-     * （{@code testdata_notation.rst:836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」。
-     * {@code 30a8271} 時点）はカラム名を書く場所を持たないため（{@code :819}）、
+     * （記法は0 件のデータは、{@code rows:} に空配列 {@code []} を記載する。
+     * {@code 30a8271} 時点）はカラム名を書く場所を持たないため、
      * 辺②が仕様適合入力からこの形を作る（{@code coverage/issues.md} <b>XLS-27</b>）。
      */
     @Test
@@ -130,10 +130,10 @@ public class TableDataBlockTest {
 
     /**
      * XLS-21。<b>カラム名 0 件で「セルを持つ行」を抱えるブロックは生成できない。</b>
-     * {@code testdata_notation.rst:652}（{@code 30a8271} 時点）はテーブル系データを
+     * 記法はテーブル系データを
      * 「データタイプと識別子の値・カラム名・データ行という共通の構成を持つ」と定め、
-     * YAML はカラム名を {@code rows:} の先頭要素のキーで決める（{@code :819}）ため、
-     * 行があってカラム名が無い形は書けない。Excel も {@code :802} によりカラム名の行を省略できず、
+     * YAML はカラム名を {@code rows:} の先頭要素のキーで決めるため、
+     * 行があってカラム名が無い形は書けない。Excel も 記法によりカラム名の行を省略できず、
      * カラム名 0 件で行だけを書くと<b>データ行がカラム名へ昇格して値が消える</b>。
      */
     @Test
@@ -151,7 +151,7 @@ public class TableDataBlockTest {
 
     /**
      * XLS-08 ／ YML-04。<b>カラム名 0 件でセルを 1 つも持たない行は拒否しない。</b>
-     * マーカーカラムだけのブロックが {@code testdata_notation.rst:1550}（{@code 30a8271} 時点）の
+     * マーカーカラムだけのブロックが 記法の
      * 除外を受けるとこの形になり、辺①・辺②が仕様適合入力から実際に作る。値を持たないため
      * 値の消失は起きない。
      */

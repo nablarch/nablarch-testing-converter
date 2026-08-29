@@ -395,8 +395,8 @@ public class TestDataConverterTest {
      * Then : ConverterException で止まり、出力を 1 本も作らない。
      *
      * <p>
-     * 記法は「同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応」と
-     * 定めており（{@code notation:44}）、同居は入口で止める。
+     * 記法は同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応と
+     * 定めており、同居は入口で止める。
      * </p>
      *
      * <p>

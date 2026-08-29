@@ -27,10 +27,10 @@ import java.util.Set;
  * 4 種のデータ種別それぞれに固定長／可変長のどちらか一方を一意に割り当てている —— 本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.file_data.properties.type} の
  * description が「fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
- * （SETUP_VARIABLE / EXPECTED_VARIABLE）」と定め、{@code testdata_notation.rst:850}
- * （{@code 30a8271} 時点）も「固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
+ * （SETUP_VARIABLE / EXPECTED_VARIABLE）」と定め、記法
+ * も固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
  * SETUP_FIXED・EXPECTED_FIXED（固定長）、SETUP_VARIABLE・EXPECTED_VARIABLE（可変長）の
- * いずれかのデータタイプで記述する。」と、データタイプそのものに固定長／可変長の別を割り当てている。
+ * いずれかのデータタイプで記述する。と、データタイプそのものに固定長／可変長の別を割り当てている。
  * <b>したがってデータ種別が決まればファイル種別は決まる</b>（逆向きは SETUP／EXPECTED の情報が要るため
  * 定まらない。4 対 2 の写像であって全単射ではない）。
  * </p>
@@ -45,16 +45,15 @@ import java.util.Set;
  * <b>{@link FileType} と {@link #getFileType()} は残す</b> —— 消えたのは概念ではなく二つ目の真実の
  * 置き場であり、NTF 仕様はファイル種別を名前つきの 2 値として持つ（YAML スキーマの {@code type} は
  * {@code required} かつ {@code enum} ＝ {@code ["fixed", "variable"]}、Excel は
- * {@code testdata_notation.rst:883} が記法を固定長ファイルと可変長ファイルの 2 種類に尽くしている）。
+ * 記法が記法を固定長ファイルと可変長ファイルの 2 種類に尽くしている）。
  * </p>
  *
  * <p>
  * <b>可変長ファイルではフィールド定義がフィールド長を持てない。生成時点で拒否する</b>
  * （{@code coverage/issues.md} <b>XLS-45</b>。ユーザー確定・2026-08-24）。
- * Excel 記法に可変長のフィールド長行が無いためである（{@code testdata_notation.rst:1076}
- * （{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
- * 点のみである。」／{@code :883}「可変長ファイルでは、フィールド名称・データ型の2リストが
- * 同サイズで必須であり、フィールド長は不要である。」）。
+ * Excel 記法に可変長のフィールド長行が無いためである（固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
+ * 点のみである。／可変長ファイルでは、フィールド名称・データ型の2リストが
+ * 同サイズで必須であり、フィールド長は不要である。）。
  * <b>保持できると辺③（中間モデル → Excel）で例外にも警告にもならずに落ちる</b>ため、
  * 書き出し側に番人を置くのではなく、そもそも作れなくする
  * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
@@ -74,7 +73,7 @@ public final class FileDataBlock extends TestDataBlock {
     /**
      * 取りうるデータ種別。YAML のトップレベルキー {@code setup_files} ／ {@code expected_files}
      * （いずれも {@code $defs.file_data}）に対応する 4 種
-     * （{@code testdata_notation.rst:222-225}（{@code 30a8271} 時点））。
+     * 。
      */
     private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
             DataType.SETUP_FIXED, DataType.EXPECTED_FIXED,
@@ -124,7 +123,7 @@ public final class FileDataBlock extends TestDataBlock {
      * <p>
      * 対応は本体スキーマ {@code $defs.file_data.properties.type} の description
      * （fixed ＝ SETUP_FIXED ／ EXPECTED_FIXED、variable ＝ SETUP_VARIABLE ／ EXPECTED_VARIABLE）と
-     * {@code testdata_notation.rst:850}（{@code 30a8271} 時点）による。
+     * 記法による。
      * </p>
      *
      * <p>

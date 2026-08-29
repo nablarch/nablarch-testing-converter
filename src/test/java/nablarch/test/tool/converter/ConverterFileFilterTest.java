@@ -140,9 +140,9 @@ public class ConverterFileFilterTest {
      * Then : ConverterException で止まり、メッセージに両方のファイル名が出る。
      *
      * <p>
-     * 記法は「同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応」と
-     * 定めている（{@code notation:44}）。同居を通すと本体 {@code PoiXlsReader#open}
-     * （{@code PoiXlsReader.java:62-65}。{@code .xls} を先に解決する）により
+     * 記法は同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応と
+     * 定めている。同居を通すと本体 {@code PoiXlsReader#open}
+     * （{@code PoiXlsReader}。{@code .xls} を先に解決する）により
      * {@code .xlsx} の中身が読まれないまま {@code .xls} の中身が書き出される。
      * </p>
      */

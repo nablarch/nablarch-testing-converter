@@ -28,8 +28,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 解説書 {@code tools/testdata_converter.rst}（{@code 5783b35}）が述べている
- * <b>変換ツールの入口の振る舞い</b>を押さえるテスト（指示書 第3節のうち 3-1・3-3・3-4・3-5・3-11）。
+ * <b>変換ツールの入口の振る舞い</b>を押さえるテスト。
  *
  * <p>
  * 4 件（3-1・3-3・3-4・3-11）は<b>負のテスト</b>である。すなわち「起こらないこと」「効かないこと」を
@@ -121,9 +120,9 @@ public class ConverterDocumentedBehaviorTest {
      * Then : <b>検証を理由に失敗しない</b>（例外にならず、コンテナ 1 件を変換する）（<b>負のテスト</b>）。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:53}-{@code :55}
-     * 「検証は変換の処理経路には組み込まれておらず、変換の実行時に自動では呼び出されない。
-     * 検査したい場合は明示的に呼び出す。」
+     * 変換ツールの仕様
+     * 検証は変換の処理経路には組み込まれておらず、変換の実行時に自動では呼び出されない。
+     * 検査したい場合は明示的に呼び出す。
      * </p>
      *
      * <p>
@@ -133,7 +132,7 @@ public class ConverterDocumentedBehaviorTest {
      *
      * <p>
      * <b>検証の 7 項目すべてが変換を通るわけではない（2026-08-28 実測）。</b>ただし止めているのは
-     * いずれも {@code YamlTestDataValidator} ではなく<b>上流</b>であり、{@code :53}-{@code :55} と
+     * いずれも {@code YamlTestDataValidator} ではなく<b>上流</b>であり、記法と
      * 矛盾しない。
      * </p>
      * <ul>
@@ -198,9 +197,9 @@ public class ConverterDocumentedBehaviorTest {
      * Then : 往復後の YAML に<b>コメントが無い</b>（<b>負のテスト</b>）。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:59}「形式に固有で、テスティングフレームワークの仕様上の意味を
+     * 変換ツールの仕様形式に固有で、テスティングフレームワークの仕様上の意味を
      * 持たない情報は中間モデルに保持されないため、往復しても再現されない。……YAML 形式のコメントが
-     * これにあたる」。
+     * これにあたる。
      * </p>
      */
     @Test
@@ -237,8 +236,8 @@ public class ConverterDocumentedBehaviorTest {
      * Then : 変換件数と出力内容が一致し、エラーにもならない（<b>負のテスト</b>）。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:176}
-     * 「変換元が YAML 形式のときはシートの概念がないため無視される」。
+     * 変換ツールの仕様
+     * 変換元が YAML 形式のときはシートの概念がないため無視される。
      * </p>
      */
     @Test
@@ -276,9 +275,9 @@ public class ConverterDocumentedBehaviorTest {
      * Then : 前者は<b>直下のぶんだけ</b>を返し、後者は空リストを返す。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:233}
-     * 「指定したディレクトリの直下にある {@code .yaml} ファイルだけを検査し、サブディレクトリはたどらない。
-     * ……上位のディレクトリを指定すると、1 件も検査しないまま空のリストが返る。」
+     * 変換ツールの仕様
+     * 指定したディレクトリの直下にある {@code .yaml} ファイルだけを検査し、サブディレクトリはたどらない。
+     * ……上位のディレクトリを指定すると、1 件も検査しないまま空のリストが返る。
      * </p>
      */
     @Test
@@ -318,8 +317,8 @@ public class ConverterDocumentedBehaviorTest {
      * Then : 出力 YAML の中身が設定なしの場合と一致する（<b>負のテスト</b>）。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:239}
-     * 「YAML 形式へ書き出す場合、本ツールは記法どおりに書くだけで、整形の設定を持たない」。
+     * 変換ツールの仕様
+     * YAML 形式へ書き出す場合、本ツールは記法どおりに書くだけで、整形の設定を持たない。
      * </p>
      */
     @Test

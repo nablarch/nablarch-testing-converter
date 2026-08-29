@@ -12,8 +12,8 @@ import java.util.List;
  *
  * <p>
  * <b>名前は必須である（{@code null} 不可）。</b>読み込み単位の名前は呼び出し側がデータを引き当てる
- * ためのキーであり（{@code testdata_notation.rst:590}「読み込み単位の名前（Excel 形式ではシート名、
- * YAML 形式ではファイル名）と ID を指定して List 形式または Map 形式でデータを取得できる」）、
+ * ためのキーであり（記法は読み込み単位の名前（Excel 形式ではシート名、
+ * YAML 形式ではファイル名）と ID を指定して List 形式または Map 形式でデータを取得できる）、
  * {@code null} では引けない。生成時点で拒否する（{@code issues.md} <b>XLS-33</b>）。
  * </p>
  *

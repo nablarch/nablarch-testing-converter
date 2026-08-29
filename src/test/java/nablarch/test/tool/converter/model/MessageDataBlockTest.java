@@ -70,7 +70,7 @@ public class MessageDataBlockTest {
 
     /**
      * XLS-43。ディレクティブのキー・値が {@code null} の電文ブロックは生成できない。
-     * 根拠は {@code testdata_notation.rst:906}・{@code :892} と本体スキーマ {@code $defs.directives}。
+     * 根拠は 記法・記法と本体スキーマ {@code $defs.directives}。
      */
     @Test
     public void ディレクティブのキーまたは値がnullの電文ブロックは生成できない() {
@@ -98,7 +98,7 @@ public class MessageDataBlockTest {
     }
 
     /**
-     * XLS-43。FW 制御ヘッダも同じ「名前・値」形式で記述するため（{@code testdata_notation.rst:1267}）、
+     * XLS-43。FW 制御ヘッダも同じ「名前・値」形式で記述するため、
      * キー・値の {@code null} を同様に拒否する。
      */
     @Test
@@ -192,7 +192,7 @@ public class MessageDataBlockTest {
     /**
      * YML-12 の 2 形目。本文レコードを 1 件も持たない電文ブロックは生成できない。
      * 記法に電文のレコード 0 件を表す書き方が無く、電文が存在しない場合は
-     * {@code testdata_notation.rst:1257} のとおり<b>データブロックごと省略する</b>。
+     * 記法のとおり<b>データブロックごと省略する</b>。
      * 本体スキーマの電文系 3 定義（{@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）も
      * {@code records} を必須かつ {@code minItems} ＝ 1 とする。
@@ -215,10 +215,10 @@ public class MessageDataBlockTest {
 
     /**
      * XLS-30。フィールド長が {@code null} の電文ブロックは生成できない。
-     * {@code testdata_notation.rst:1158}（{@code 30a8271} 時点）「フレームワーク制御ヘッダ以降の
+     * 記法はフレームワーク制御ヘッダ以降の
      * メッセージボディは、フィールド名称・データ型・フィールド長・データという、前述のファイルデータと
-     * 同じ構成を持つ」により、電文は固定長ファイルと同じ 3 リスト同サイズの制約に掛かる
-     * （{@code :883}・{@code :889}）。ファイルと違い<b>可変長の逃げ道が無い</b>ため常に必須である。
+     * 同じ構成を持つにより、電文は固定長ファイルと同じ 3 リスト同サイズの制約に掛かる
+     * 。ファイルと違い<b>可変長の逃げ道が無い</b>ため常に必須である。
      */
     @Test
     public void フィールド長がnullの電文ブロックは生成できない() {

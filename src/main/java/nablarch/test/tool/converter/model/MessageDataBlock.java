@@ -33,18 +33,17 @@ import java.util.Set;
  * {@code $defs.group_message_data} がいずれも {@code required} ＝ {@code ["id", "records"]} かつ
  * {@code records.minItems} ＝ 1 であり、{@code records:} を省いても {@code records: []} と書いても通らない。
  * Excel も同じで、記法に電文のレコード 0 件を表す書き方の明文が無い。電文が存在しない場合は
- * {@code testdata_notation.rst:1257}（{@code 30a8271} 時点）
- * 「応答不要メッセージ受信では…{@code expectedMessages} のデータブロックを記述する必要はない」のとおり、
+ * 記法
+ * 応答不要メッセージ受信では…{@code expectedMessages} のデータブロックを記述する必要はないのとおり、
  * <b>データブロックごと省略する</b>のが記法である。
  * </p>
  *
  * <p>
  * <b>0 バイトの空ファイル特例（{@code records: []}）は電文には及ばない。</b>同特例は
- * {@code testdata_notation.rst:881}（「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして
- * 表現する」）／{@code :1109}／{@code :1146}（「…0バイトの空ファイルを表現するには、{@code records:} に
- * 空配列 {@code []} を記載する」）と、いずれも<b>ファイル</b>に限って書かれている
- * （{@code 30a8271} 時点）。{@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、
- * フィールド名称・データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つ」は
+ * 記法では、0 バイトの空ファイルはレコード定義を持たないファイルデータブロックとして表現し、 * YAML 形式では {@code records:} に
+ * 空配列 {@code []} を記載する）と、いずれも<b>ファイル</b>に限って書かれている
+ * 。メッセージボディは
+ * フィールド名称・データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つは
  * <b>カラム構成が同じ</b>と言っているだけで、空ファイル特例まで及ぶ読み方はしない。
  * スキーマ側も {@code $defs.file_data} だけが {@code records.minItems} ＝ 0 であり、電文系 3 定義と
  * 非対称である。{@link FileDataBlock#getRecords()} の 0 件は合法だが、本クラスの 0 件は違う。
@@ -67,7 +66,7 @@ public final class MessageDataBlock extends TestDataBlock {
      * 取りうるデータ種別。YAML のトップレベルキー {@code messages} ／
      * {@code expected_request_header_messages} ／ {@code expected_request_body_messages} ／
      * {@code response_header_messages} ／ {@code response_body_messages} に対応する 5 種
-     * （{@code testdata_notation.rst:226-235}（{@code 30a8271} 時点））。
+     * 。
      */
     private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
             DataType.MESSAGE,

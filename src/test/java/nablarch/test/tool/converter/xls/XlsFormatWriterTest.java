@@ -147,8 +147,8 @@ public class XlsFormatWriterTest {
      * Then : 足りない列は<b>空セル</b>で埋められ、行はブロック幅どおり 2 列になる。
      *
      * <p>
-     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）は「データ行のセル数（Excel形式）……が
-     * フィールド数より少ない場合、不足したフィールドは {@code ""} として補完される」と定めており、
+     * 記法はデータ行のセル数（Excel形式）……が
+     * フィールド数より少ない場合、不足したフィールドは {@code ""} として補完されると定めており、
      * <b>不足側は正当な形</b>である（余りの側だけが XLS-41 の番人で落ちる）。
      * 辺④の同じ担保は {@code YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull}。
      * </p>
@@ -305,8 +305,7 @@ public class XlsFormatWriterTest {
      * <p>
      * フィールド長の番人の<b>範囲</b>も兼ねる。弾くのは固定長ファイルと電文だけであり、
      * <b>可変長ファイルでは {@code length} が {@code null} であることが正しい</b>
-     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
-     * 「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」）。
+     * （可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である）。
      * 番人の範囲を可変長まで広げるとこのテストが落ちる。
      * </p>
      */
@@ -358,12 +357,12 @@ public class XlsFormatWriterTest {
     /**
      * Given: 2 レコード目のレコード種別が null の固定長ファイル。
      * When : build。
-     * Then : IllegalStateException。XLS-06。記法は「データの後ろに新たなレコード種別とフィールド名称を
-     *        書いた時点で、新しいレコードレイアウトとして扱われる」と定めており
-     *        （{@code testdata_notation.rst:1082}（{@code 30a8271} 時点））、レコード種別を書かない
+     * Then : IllegalStateException。XLS-06。記法はデータの後ろに新たなレコード種別とフィールド名称を
+     *        書いた時点で、新しいレコードレイアウトとして扱われると定めており
+     *        、レコード種別を書かない
      *        2 件目以降のレコードレイアウトは Excel 記法では書き表せない。読み戻せない版面を黙って
      *        書かず早期に失敗する。<b>辺④（YAML）はこの形を書けるため、番人はモデルへ寄せず
-     *        書き出し側に残す</b>（{@code :1143}、本体スキーマ {@code $defs.record_fragment} の
+     *        書き出し側に残す</b>（記法、本体スキーマ {@code $defs.record_fragment} の
      *        {@code required} は {@code record_type} を含まない）。
      */
     @Test(expected = IllegalStateException.class)
@@ -389,12 +388,12 @@ public class XlsFormatWriterTest {
      *
      * <p>
      * Excel 記法はデータ行が無くてもカラム名の行を省略できない
-     * （{@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
+     * （記法はデータ行を書かない場合でも、カラム名の行は省略できない。
      * 識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
-     * その次に現れた行がカラム名の行になる」。{@code 30a8271} 時点）。一方 YAML 記法では
-     * カラム名は {@code rows:} の先頭要素のキーで決まるため（{@code :819}）、0 件データ
-     * （{@code :836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」）には
-     * カラム名を書く場所が無い。{@code :1515} が定めるマーカーカラム（半角角括弧で囲むと
+     * その次に現れた行がカラム名の行になる。{@code 30a8271} 時点）。一方 YAML 記法では
+     * カラム名は {@code rows:} の先頭要素のキーで決まるため、0 件データ
+     * （記法は0 件のデータは、{@code rows:} に空配列 {@code []} を記載する）には
+     * カラム名を書く場所が無い。記法が定めるマーカーカラム（半角角括弧で囲むと
      * 読み込み対象から除外される。{@code SETUP_TABLE}・{@code EXPECTED_TABLE}・{@code LIST_MAP} で
      * 使える）を 1 つ置くことが、両方の明文を同時に満たす唯一の書き方である
      * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19）。
@@ -421,10 +420,10 @@ public class XlsFormatWriterTest {
      * Then : キーの行にマーカーカラム {@code [EMPTY]} を 1 つだけ書く。
      *
      * <p>
-     * {@code LIST_MAP} も {@code testdata_notation.rst:628}「1行目に {@code LIST_MAP=} に続けて
-     * シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として読み込む」の
-     * とおりキー行が構成上必須であり、{@code :1515} はマーカーカラムが {@code LIST_MAP} でも
-     * 使えることを明記している（{@code 30a8271} 時点）。
+     * {@code LIST_MAP} も 記法は 1 行目に {@code LIST_MAP=} に続けて
+     * シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として読み込むの
+     * とおりキー行が構成上必須であり、記法はマーカーカラムが {@code LIST_MAP} でも
+     * 使えることを明記している。
      * </p>
      */
     @Test
@@ -1015,7 +1014,7 @@ public class XlsFormatWriterTest {
      * XLS-27 の本題である。マーカーカラム案を採る前は、カラム名の行を書けないため後続ブロックの
      * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測。
      * {@code coverage/issues.md} <b>XLS-27</b>）。マーカーカラムは
-     * {@code testdata_notation.rst:1515}（{@code 30a8271} 時点）により読み込み対象から除外されるため、
+     * 記法により読み込み対象から除外されるため、
      * 読み戻したカラム名は 0 件に戻る。
      * </p>
      */
@@ -1079,7 +1078,7 @@ public class XlsFormatWriterTest {
      *
      * <p>
      * 書きは Java の {@code null} を {@code null} 記法のセルへ写し、読みはそれを Java の {@code null} へ
-     * 戻す（記法⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になる非可逆があったが、
+     * 戻す（記法は⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になる非可逆があったが、
      * 読みに {@code NullInterpreter} を掛けたことで解消している。
      * </p>
      */

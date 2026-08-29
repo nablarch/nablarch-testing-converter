@@ -41,7 +41,7 @@ import org.junit.rules.TemporaryFolder;
  * 中間モデル → YAML テキストの直列化（{@code serialize}）を中心に検証する。全値ダブル
  * クォート・{@code null} はアンクォート・キーは原則無クォートを、種別ごと（テーブル／LIST_MAP／ファイル／
  * メッセージ／送信系）の出力で確認する。加えてクォート/エスケープのエッジ、{@code write} のファイル出力、
- * および実 {@link YamlFormatReader} で読み戻して同値になる往復（記法対称）を検証する。
+ * および実 {@link YamlFormatReader} で読み戻して同値になる往復（記法は対称）を検証する。
  * </p>
  *
  * @author kiyobot
@@ -185,8 +185,7 @@ public class YamlFormatWriterTest {
     /**
      * フィールド長の番人の<b>範囲</b>も兼ねる。弾くのは固定長ファイルと電文だけであり、
      * <b>可変長ファイルでは {@code length} が {@code null} であることが正しい</b>
-     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
-     * 「可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」）。
+     * （可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である）。
      * 番人の範囲を可変長まで広げるとこのテストが落ちる。
      */
     @Test

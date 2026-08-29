@@ -156,7 +156,7 @@ public class YamlFormatReaderScalarTest {
      * <p>
      * <b>行の先頭に空でない値を持つカラム {@code K} を必ず置く。</b>検証対象が空文字のとき、
      * 行の値がすべて空文字だと行ごと読み飛ばされてしまうためである
-     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）。
+     * （記法。
      * この読み飛ばしそのものは {@link #skipsRowWhoseValuesAreAllEmpty} が押さえる）。
      * 取り出す値は従来どおり {@code V} 列である。
      * </p>

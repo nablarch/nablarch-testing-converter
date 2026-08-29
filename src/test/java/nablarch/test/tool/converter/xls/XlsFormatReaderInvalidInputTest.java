@@ -508,7 +508,7 @@ public class XlsFormatReaderInvalidInputTest {
      * {@code [X]} へ整形するため、版面の {@code SETUP_TABLEX=} とは前方一致せず 0 件になる。
      * #34 より前は生値をそのまま渡していたため、{@code groupId} ＝ {@code "X"} のテーブルブロックとして
      * 読まれていた。正しいグループ ID の記法は {@code SETUP_TABLE[g1]=T} であり、
-     * 角括弧の無い形は解説書に無い。{@code issues.md} の <b>XLS-11</b> に記録した（修正はしない）。
+     * 角括弧の無い形は記法に無い。{@code issues.md} の <b>XLS-11</b> に記録した（修正はしない）。
      * </p>
      */
     @Test

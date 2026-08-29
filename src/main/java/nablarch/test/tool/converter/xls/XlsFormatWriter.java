@@ -55,10 +55,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *
  * <p>
  * データ行の値は<b>解釈後の値から Excel 記法へ戻して</b>書く（{@link #toCellNotation}）。中間モデルが持つのは
- * テスティングフレームワークが解釈したあとの値（Java {@code null} または {@link String}）であり
- * （{@code tools/testdata_converter.rst:14}）、読み（{@code XlsFormatReader}）で外した記法をここで戻すことで
- * 記法⇄値の写像を対称にする。戻すのは {@code null} リテラル・{@code \r}（CR）・引用符記法の 3 つで、
- * 値の途中のダブルクォート／2 文字の {@code \} ＋ {@code n}／LF は戻さない（記法側でも素通しのため）。
+ * テスティングフレームワークが解釈したあとの値（Java {@code null} または {@link String}）であり、
+ * 読み（{@code XlsFormatReader}）で外した記法をここで戻すことで記法⇄値の写像を対称にする。
+ * 戻すのは {@code null} リテラル・{@code \r}（CR）・引用符記法の 3 つで、
+ * 値の途中のダブルクォート／2 文字の {@code \} ＋ {@code n}／LF は戻さない（記法の側でも素通しのため）。
  * </p>
  *
  * <p>
@@ -80,10 +80,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * 空文字を表す Excel 記法（半角ダブルクォート 2 文字。本体 {@code QuotationTrimmer} が空文字へ解釈する表記）。
      *
      * <p>
-     * 全要素が空文字のエントリを空セルだけの行として書くと、読み戻しで空エントリとして読み飛ばされる
-     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点））。解説書は
-     * {@code implementation/testdata_examples.rst:2231}（同）で
-     * 「全フィールドが空文字のレコードは、いずれか1つのフィールドに {@code ""} と記述する」と定める。
+     * 全要素が空文字のエントリを空セルだけの行として書くと、読み戻しで空エントリとして読み飛ばされる。
+     * 全フィールドが空文字のレコードは、いずれか 1 つのフィールドにこの記法を書いて表す。
      * </p>
      */
     private static final String EMPTY_STRING_NOTATION = "\"\"";
@@ -157,7 +155,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * POI の {@code XSSFWorkbook#createSheet(String)} は 31 文字を超える名前を
      * {@code substring(0, 31)} で黙って切り詰めてから禁止文字を検査する。シート名は呼び出し側が
-     * データを引き当てるためのキーであり（{@code testdata_notation.rst:590}）、別名へ変わると引けなくなる。
+     * データを引き当てるためのキーであり、別名へ変わると引けなくなる。
      * また切り詰めが先に走ることで、禁止文字が 32 文字目以降にある名前は禁止文字検査に到達しない。
      * どちらも {@code createSheet} の前に文字数を検査すれば閉じる（{@code issues.md} XLS-16）。
      * </p>
@@ -232,16 +230,16 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19。いずれも {@code 30a8271} 時点）。
      * </p>
      * <ul>
-     *   <li>{@code testdata_notation.rst:802}「データ行を書かない場合でも、カラム名の行は省略できない。
-     *       識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
-     *       その次に現れた行がカラム名の行になる」——<b>識別子行だけを書くことはできない。</b>
-     *       {@code LIST_MAP} も {@code :628}「2行目を Map のキー、3行目以降を Map の値として読み込む」の
-     *       とおりキー行が構成上必須である</li>
-     *   <li>{@code :819}「カラム名は、最初の行（{@code rows:} の先頭要素）のキーで決まる」／
-     *       {@code :836}「0 件のデータは、{@code rows:} に空配列 {@code []} を記載する」——
+     *   <li>Excel 記法では、データ行を書かない場合でもカラム名の行を省略できない。
+     *       識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと
+     *       その次に現れた行がカラム名の行になる——<b>識別子行だけを書くことはできない。</b>
+     *       {@code LIST_MAP} も 2 行目を Map のキー、3 行目以降を Map の値として読み込むため、
+     *       キー行が構成上必須である</li>
+     *   <li>YAML 記法では、カラム名は最初の行（{@code rows:} の先頭要素）のキーで決まり、
+     *       0 件のデータは {@code rows:} に空配列 {@code []} を書く——
      *       <b>YAML の 0 件テーブルにはカラム名を書く場所が無い</b>ため、辺②は
      *       仕様適合入力からカラム名 0 件のブロックを正当に作る</li>
-     *   <li>{@code :1515}「カラム名を半角角括弧 {@code [ ]} で囲むと、そのカラムは「マーカーカラム」として
+     *   <li>カラム名を半角角括弧 {@code [ ]} で囲むと、そのカラムはマーカーカラムとして
      *       読み込み対象から除外される…Excel 形式の {@code SETUP_TABLE}・{@code EXPECTED_TABLE}・
      *       {@code LIST_MAP}、YAML 形式の {@code setup_tables}・{@code expected_tables}・{@code list_maps}、
      *       いずれのデータタイプでも使える」——<b>意味を持たないカラムを 1 つ置く正当な書き方がある</b></li>
@@ -287,9 +285,9 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * ファイルの版面を組み立てる（識別行 → ディレクティブ → レコード群）。
      * <p>
      * <b>ファイル種別 {@code null} はここでは検査しない。</b>Excel 記法はファイルデータを固定長と
-     * 可変長の 2 種類に尽くしており（{@code testdata_notation.rst:883}（{@code 30a8271} 時点）
-     * 「固定長ファイルと可変長ファイルには、それぞれ固有の記法制約がある」。固定長は長さ行を持ち、
-     * 可変長は持たない）、どちらとも決まっていないファイルデータブロックは Excel 記法に存在しない形である
+     * 可変長の 2 種類に尽くしており（固定長ファイルと可変長ファイルにはそれぞれ固有の制約があり、
+     * 固定長は長さ行を持ち可変長は持たない）、
+     * どちらとも決まっていないファイルデータブロックは Excel 記法に存在しない形である
      * （{@code coverage/issues.md} <b>XLS-29</b>）。{@link FileDataBlock} が<b>生成時点で拒否する</b>ため
      * ここへは届かない（番人の移設は 2026-08-19）。
      * </p>
@@ -311,15 +309,13 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * （識別行 → ディレクティブ → FW 制御ヘッダ → 本文レコード群）。
      * <p>
      * <b>本文レコード 0 件はここでは検査しない。</b>Excel 記法・YAML 記法のいずれも本文レコード 0 件の電文を
-     * 認めていない（電文が存在しない場合は {@code testdata_notation.rst:1257}
-     * （{@code 30a8271} 時点）のとおり<b>データブロックごと省略する</b>のが記法であり、レコード 0 件の
+     * 認めていない（電文が存在しない場合は<b>データブロックごと省略する</b>のが記法であり、レコード 0 件の
      * 電文を表す書き方は明文が無い。本体スキーマも {@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} が
      * {@code records.minItems} ＝ 1 とする）が、{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
      * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
      * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり
-     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。スキーマも
-     * {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）、こちらは拒否しない。
+     * （スキーマも {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）、こちらは拒否しない。
      * </p>
      *
      * @param block メッセージブロック
@@ -339,19 +335,18 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     /**
      * 複数レコードレイアウトを版面へ追加する。
      * <p>
-     * Excel 記法は「1つのファイルデータブロック内に複数のレコードレイアウトを連続して記述すると、データの
-     * 後ろに<b>新たなレコード種別とフィールド名称を書いた時点で</b>、新しいレコードレイアウトとして扱われる」
-     * と定めており（{@code testdata_notation.rst:1082}（{@code 30a8271} 時点）。{@code :1058} も
-     * 「レコード種別を記載する。複数レコードレイアウトの場合は、この記述を連続して記載する」と書いている）、
+     * Excel 記法は、1 つのファイルデータブロック内に複数のレコードレイアウトを連続して書くと、
+     * データの後ろに<b>新たなレコード種別とフィールド名称を書いた時点で</b>新しいレコードレイアウトとして
+     * 扱われると定めている（複数レコードレイアウトの場合はレコード種別の記述を連続して書く）。
      * レコード種別を書かなければ新しいレコードレイアウトにならない。したがって 2 レコード目以降で
      * レコード種別が空（{@code null}／空文字）のレコードレイアウトは、<b>Excel 記法では書き表せない</b>。
      * 読み戻せない版面を黙って書かず、前提崩れとして即座に失敗させる
      * （{@link XlsFormatReader} の番人と同じ思想。{@code coverage/issues.md} <b>XLS-06</b>）。
      * </p>
      * <p>
-     * <b>この番人は中間モデルへ寄せない。</b>YAML 記法にはこの制約が無く（{@code :1143}「{@code rows:} の
+     * <b>この番人は中間モデルへ寄せない。</b>YAML 記法にはこの制約が無く（{@code rows:} の
      * 各行は配列形式で、{@code fields:} と同じ順序・同じ件数で値を並べる。<b>先頭を空にするという Excel 形式の
-     * 制約はない</b>」）、本体スキーマ {@code $defs.record_fragment} の {@code required} も
+     * 制約はない</b>）、本体スキーマ {@code $defs.record_fragment} の {@code required} も
      * {@code ["fields", "rows"]} だけで {@code record_type} を含まない。レコード種別を持たない 2 件目以降の
      * レコードレイアウトは辺④（YAML 書き出し）では正しく書けるため、中間モデルが保持できてよい形である。
      * 31 文字上限（{@link #requireValidSheetNameLength}）と同じく、Excel 形式固有の書き出し不能として
@@ -359,31 +354,29 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * </p>
      * <p>
      * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>Excel 記法に存在しない形であり
-     * （{@code testdata_notation.rst:888}（{@code 30a8271} 時点）。フィールドが無いと名前行がレコード種別
-     * セル 1 個だけになり、本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない。
+     * （フィールドが無いと名前行がレコード種別セル 1 個だけになり、
+     * 本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない。
      * {@code coverage/issues.md} <b>XLS-22</b>）、{@link RecordLayout} が<b>生成時点で拒否する</b>ため
      * ここへは届かない（番人の移設は 2026-08-19）。
      * </p>
      * <p>
      * <b>データ型が {@code null} のフィールド定義もここでは検査しない。</b>Excel 記法はフィールド名称・
-     * データ型のリストを必須としており（{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。
-     * {@code :888} は「フィールド名称リストまたはデータ型リストが未指定または空である」を記述時のエラーに
-     * 挙げる）、データ型を持たないフィールド定義は Excel 記法に存在しない形だが
+     * データ型のリストを必須としており（フィールド名称リストまたはデータ型リストが未指定または空であることを
+     * 記述時のエラーに挙げる）、データ型を持たないフィールド定義は Excel 記法に存在しない形だが
      * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）、{@link FieldDef} が<b>生成時点で拒否する</b>
      * ためここへは届かない（番人の移設は §1-D）。
      * </p>
      * <p>
      * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>Excel 記法は固定長ファイルに
-     * ついて「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と定めており
-     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。{@code :889} は
-     * 「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
-     * 電文も {@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
-     * フィールド長・データという、前述のファイルデータと同じ構成を持つ」で同じ制約に掛かる
+     * ついてフィールド名称・データ型・フィールド長の 3 リストが同サイズで必須と定めており
+     * （3 リストのサイズが一致していないことを記述時のエラーに挙げる）、
+     * 電文のメッセージボディもフィールド名称・データ型・フィールド長・データという
+     * ファイルデータと同じ構成を持つため、同じ制約に掛かる
      * （{@code coverage/issues.md} <b>XLS-30</b>）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
      * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
      * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
-     * 正しい</b>ため拒否しない（{@code :883}「可変長ファイルでは、フィールド名称・データ型の2リストが
-     * 同サイズで必須であり、フィールド長は不要である」）。番人の移設は 2026-08-19。
+     * 正しい</b>ため拒否しない（可変長ファイルではフィールド名称・データ型の 2 リストが
+     * 同サイズで必須であり、フィールド長は不要である）。番人の移設は 2026-08-19。
      * </p>
      *
      * @param l          版面
@@ -446,7 +439,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         for (List<String> values : record.getRows()) {
             List<String> valueCells = literals(values);
             // 全フィールドが空文字のデータ行は、先頭フィールドへ空文字記法を書く
-            // （testdata_examples.rst:2231「いずれか1つのフィールドに "" と記述する」）。
+            // （いずれか 1 つのフィールドに "" と書く）。
             // 空セルだけの行にすると本体 PoiXlsReader#isBlankLine が行ごと捨てる。
             if (!valueCells.isEmpty() && isAllBlank(valueCells)) {
                 valueCells.set(0, EMPTY_STRING_NOTATION);
@@ -548,8 +541,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *
      * <p>
      * 中間モデルの {@code groupId} は<b>生値</b>（{@code g1}、省略時は空文字）である。半角角括弧は
-     * Excel 形式の書式であって値ではないため、ここで付ける
-     * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。外すのは
+     * Excel 形式の書式であって値ではないため、ここで付ける。外すのは
      * {@code TestCoreReaderAdapter#markerGroupId} であり、この 2 か所が Excel 版面の書式を知る層である。
      * </p>
      *
@@ -575,9 +567,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * カラム名を 1 件も持たない 0 件テーブルのカラム名行へ書くマーカーカラム。
      *
      * <p>
-     * 半角角括弧で囲んであるため、本体は読み込み対象から除外する
-     * （{@code testdata_notation.rst:1515}。{@code 30a8271} 時点）。
-     * カラム名の行そのものは {@code :802} により省略できないため、意味を持たないカラムを 1 つ置いて
+     * 半角角括弧で囲んであるため、本体は読み込み対象から除外する。
+     * カラム名の行そのものは記法により省略できないため、意味を持たないカラムを 1 つ置いて
      * 行の存在だけを満たす（{@code coverage/issues.md} <b>XLS-27</b>）。
      * </p>
      */
@@ -618,7 +609,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>全要素が空文字のエントリは各セルへ空文字記法（{@code ""}）を書く。</b>空セルだけの行にすると、
      * 読み戻しで空エントリとして読み飛ばされてエントリが 1 件消える
-     * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点））。
+     * 。
      * 一部の要素だけが空文字のエントリは空セルのまま書く（行として空にならないため）。
      * </p>
      *
@@ -663,10 +654,10 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *       （{@code LineSeparatorInterpreter} が戻す）</li>
      *   <li>ii 半角 {@code null}（大文字小文字不問） —— 半角ダブルクォートで囲む。囲まないと読み戻しで
      *       {@code NullInterpreter} が Java {@code null} にしてしまう
-     *       （{@code implementation/testdata_notation.rst:1362}）</li>
+     *       </li>
      *   <li>iii 前後が同じダブルクォート（半角 {@code "} または全角 {@code ”}）で囲まれた値 ——
      *       半角ダブルクォートでさらに囲む。囲まないと読み戻しで {@code QuotationTrimmer} が外側を外して
-     *       しまう（同 {@code :1374}・{@code :1377}）</li>
+     *       しまう</li>
      * </ul>
      *
      * <p>
@@ -677,7 +668,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>戻さないもの</b>: 値の途中のダブルクォート（{@code QuotationTrimmer} は外側 1 層しか外さない）／
      * 2 文字の {@code \} ＋ {@code n}／LF（どちらも {@code LineSeparatorInterpreter} の既定パターンの
-     * 対象外。同 {@code :1391}）。いずれも記法側で素通しされるため、戻す必要が無い。
+     * 対象外）。いずれも記法の側で素通しされるため、戻す必要が無い。
      * </p>
      *
      * @param value 解釈後の値
@@ -699,7 +690,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *
      * <p>
      * 本体の {@code QuotationTrimmer} が外側 1 層を外す条件そのものである
-     * （{@code nablarch-testing} の {@code QuotationTrimmer.java:25}-{@code :27}）。1 文字の {@code "} も
+     * （{@code nablarch-testing} の {@code QuotationTrimmer}）。1 文字の {@code "} も
      * 「前後が {@code "}」に当たるため真になる（この 1 文字を囲まずに書くと、読み戻しで
      * {@code substring(1, 0)} により例外になる）。
      * </p>

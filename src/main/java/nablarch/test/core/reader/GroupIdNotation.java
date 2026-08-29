@@ -5,17 +5,17 @@ package nablarch.test.core.reader;
  *
  * <p>
  * 中間モデルとアダプタの公開 API が持つグループ ID は<b>生値</b>（{@code case01}、省略時は空文字）である。
- * 半角角括弧で囲む {@code [case01]} は Excel 形式の書式であって値ではない
- * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点）「中間モデルは……仕様上の意味だけを持つ」）。
+ * 半角角括弧で囲む {@code [case01]} は Excel 形式の書式であって値ではない。
+ * 中間モデルはテスティングフレームワークの仕様上の意味だけを持つ。
  * </p>
  *
  * <p>
  * 一方、変更できない上流 2 つは API 境界で<b>整形済み</b>のグループ ID を要求する。
  * </p>
  * <ul>
- *   <li>Excel —— {@code nablarch-testing@3c4bd2a} の {@code GroupDataParsingTemplate.java:41}-{@code :42} が
+ *   <li>Excel —— {@code GroupDataParsingTemplate} が
  *       {@code getTargetType().getName() + groupId + '='} を組み立ててマーカーセルと前方一致する</li>
- *   <li>YAML —— {@code nablarch-testing-yaml@0b3015c} の {@code YamlSection.groupMatches:281}-{@code :284} が
+ *   <li>YAML —— {@code YamlSection#groupMatches} が
  *       {@code "[" + rawGroupId + "]"} を作って比較する</li>
  * </ul>
  *

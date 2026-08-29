@@ -98,13 +98,13 @@ public class YamlTestCoreAdapter {
      * YAML 形式の入れ物は {@code <path>/<入れ物名>} ディレクトリである
      * （Excel 形式の {@code <path>/<入れ物名>.xls} に相当する）。入れ物名は {@code resource} の
      * 最後の {@code "/"} より前の部分で、{@code "/"} を含まない場合は {@code resource} 全体を
-     * 入れ物名として扱う（{@code nablarch-testing-yaml@0b3015c} の {@code YamlLoader.java:165}-{@code :186}）。
+     * 入れ物名として扱う（{@code YamlLoader}）。
      * </p>
      *
      * <p>
      * <b>読み込み単位（{@code <path>/<入れ物名>/<読み込み単位名>.yaml}）の存在は見ない。</b>
      * 入れ物ディレクトリさえ在れば、実在しない読み込み単位名を渡しても {@code true} を返す。
-     * 読み込み単位の存在を判定するのは同 {@code :200}-{@code :202} の {@code isDataExisting} である。
+     * 読み込み単位の存在を判定するのは {@code isDataExisting} である。
      * </p>
      *
      * @param path     取得元パス
@@ -189,7 +189,7 @@ public class YamlTestCoreAdapter {
      * @param resource リソース名
      * @param groupId  <b>生値の</b>グループ ID（{@code group_id} と生値で一致比較する）。{@code null} を渡すと
      *                 {@code group_id} を省略したエントリ（デフォルトグループ）を対象にする。
-     *                 上流 {@code YamlMessageBuilder#buildSendSyncBodies}（{@code 0b3015c:150}-{@code :163}）が
+     *                 上流 {@code YamlMessageBuilder#buildSendSyncBodies}が
      *                 生値で比較するため、<b>整形しない</b>
      * @param type     データタイプ（送信系 4 種のいずれか）
      * @return 本文（固定長ファイルの器）一覧（記述順。対象が無ければ空）
@@ -210,9 +210,9 @@ public class YamlTestCoreAdapter {
      * （{@link #DEFAULT_GROUP_MARKER}）を付けた 1 セクションだけの Map を組み立てる。
      * <p>
      * 本体の {@code YamlMessageBuilder#buildSendSyncBodies} は {@code group_id} が非 null のエントリしか
-     * 返さないため（{@code rawGroupId != null && rawGroupId.equals(groupId)}）、記法仕様
-     * （{@code testdata_notation.rst:254}「グループIDを省略した場合は…デフォルトグループが対象になる」）
-     * どおりに読むにはこの前処理が要る。元の Map・エントリ Map は書き換えず複製する。
+     * 返さないため（{@code rawGroupId != null && rawGroupId.equals(groupId)}）、
+     * グループ ID を省略したエントリはデフォルトグループの対象になる、という記法どおりに読むには
+     * この前処理が要る。元の Map・エントリ Map は書き換えず複製する。
      * 合成 ID を付けるエントリは「{@code group_id} を持たないもの」だけに限り、かつ他のエントリを含めない
      * ため、実在のグループ ID と衝突しない。
      * </p>

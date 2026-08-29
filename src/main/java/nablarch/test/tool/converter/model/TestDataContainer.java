@@ -13,8 +13,8 @@ import java.util.List;
  * <p>
  * <b>名前を持たないコンテナは作れない。生成時点で拒否する</b>
  * （{@code coverage/issues.md} <b>XLS-37</b>）。名前はテストクラスと 1 対 1 に対応する引き当てキーであり、
- * {@code testdata_notation.rst:44}（{@code 30a8271} 時点）「同名の1つのExcelファイル（{@code .xls}
- * または {@code .xlsx}）がテストクラスに対応し、1シートが読み込み単位に対応する」のとおり、
+ * 記法は同名の 1 つの Excel ファイル（{@code .xls}
+ * または {@code .xlsx}）がテストクラスに対応し、1シートが読み込み単位に対応するのとおり、
  * Excel 形式ではブック名、YAML 形式ではディレクトリ名になる。{@code null} を持てると
  * 書き出し側が {@code null.xlsx} というファイルを黙って作ってしまう。
  * </p>

@@ -232,8 +232,8 @@ public class YamlTestCoreAdapterTest {
      * {@code group_id} 付きの MSG1・MSG2・MSG3 は含まれない。
      * </p>
      * <p>
-     * 記法（{@code testdata_notation.rst:254}「グループIDを省略した場合は…デフォルトグループが
-     * 対象になる」）どおりの挙動である。本体ビルダは {@code group_id} が非 null のエントリしか
+     * 記法（グループ ID を省略した場合はデフォルトグループが
+     * 対象になる）どおりの挙動である。本体ビルダは {@code group_id} が非 null のエントリしか
      * 返さないため、{@link YamlTestCoreAdapter} 側の前処理
      * （{@code defaultGroupOnlyYaml}）でしか実現できない。この前処理の直接の担保
      * （{@code issues.md} YML-02）。
@@ -367,9 +367,9 @@ public class YamlTestCoreAdapterTest {
      * Then : 入れ物ディレクトリの有無だけを映す（読み込み単位の有無は見ない）。
      *
      * <p>
-     * 委譲先は {@code nablarch-testing-yaml@0b3015c} の {@code YamlLoader#isResourceExisting}
-     * （{@code YamlLoader.java:184}-{@code :186}。{@code buildContainerPath} の結果が
-     * ディレクトリかどうかだけを見る）。入れ物名の決め方は同 {@code :97}-{@code :100}
+     * 委譲先は {@code YamlLoader#isResourceExisting}
+     * （{@code YamlLoader}。{@code buildContainerPath} の結果が
+     * ディレクトリかどうかだけを見る）。入れ物名の決め方は同 記法
      * （最後の {@code "/"} より前。{@code "/"} が無ければ全体）。
      * </p>
      */

@@ -79,8 +79,8 @@ public class TestDataBlockTest {
 
     @Test
     public void データタイプDEFAULTのブロックは生成できない() {
-        // Given: DEFAULT は記法のデータタイプ表に載っているが（notation:188-190「フレームワーク内部用
-        //        （通常は使用しない）」）、YAML のトップレベルキー対応表（notation:206-241）に行が無く、
+        // Given: DEFAULT は記法のデータタイプ表に載っているが（記法はフレームワーク内部用
+        //        （通常は使用しない））、YAML のトップレベルキー対応表（記法）に行が無く、
         //        YAML では表現できない。中間モデルの契約は 4 辺すべてが表現できる範囲で定める
         // When
         try {
@@ -94,8 +94,8 @@ public class TestDataBlockTest {
 
     @Test
     public void データ種別がnullのデータブロックは生成できない() {
-        // Given: データブロックは必ず 1 つのデータタイプを持つ。Excel はマーカー（notation:198
-        //        「データタイプ=識別子の値」）、YAML はトップレベルキー（notation:206-241）が
+        // Given: データブロックは必ず 1 つのデータタイプを持つ。Excel はマーカー（
+        //        「データタイプ=識別子の値」）、YAML はトップレベルキー（記法）が
         //        データタイプから決まるため、データタイプの無いブロックはどちらの形式でも書けない
         // When
         try {
@@ -109,7 +109,7 @@ public class TestDataBlockTest {
 
     @Test
     public void 識別子がnullのデータブロックは生成できない() {
-        // Given: 識別子は記法上の必須要素である（notation:198「データタイプ=識別子の値」）。
+        // Given: 識別子は記法上の必須要素である（データタイプ=識別子の値）。
         //        本体スキーマも $defs.table_data の required に table を含み、type: string としている
         // When
         try {
@@ -137,7 +137,7 @@ public class TestDataBlockTest {
     @Test
     public void テーブル系でないデータ種別のテーブルブロックは生成できない() {
         // Given: データタイプと、そのブロックが取りうる記述の形は 1:1 に対応する
-        //        （notation:206-241 のデータタイプ ⇔ トップレベルキー対応表。本体スキーマも
+        //        （記法のデータタイプ ⇔ トップレベルキー対応表。本体スキーマも
         //        table_data ／ file_data ／ message_data を別の $defs として定義し、
         //        いずれも additionalProperties: false としている）
         // When
@@ -181,8 +181,8 @@ public class TestDataBlockTest {
 
     @Test
     public void グループID省略は空文字で表しデフォルトグループとする() {
-        // Given: 省略は空文字（notation:254「グループIDを省略した場合は、グループIDを持たない
-        //        データブロック（デフォルトグループ）が対象になる」）
+        // Given: 省略は空文字（記法はグループIDを省略した場合は、グループIDを持たない
+        //        データブロック（デフォルトグループ）が対象になる）
         // When
         TableDataBlock sut = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "emp",
                 List.of("id"), List.of(List.of("1")));

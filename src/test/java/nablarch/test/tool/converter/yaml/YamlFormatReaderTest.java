@@ -183,9 +183,9 @@ public class YamlFormatReaderTest {
      * Then : IllegalArgumentException（{@link FileDataBlock} が生成時点で拒否する）。
      *
      * <p>
-     * <b>この入力は記法に適合しない。</b>{@code testdata_notation.rst:883}（{@code 30a8271} 時点）は
+     * <b>この入力は記法に適合しない。</b>記法は
      * 「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」と定め、
-     * {@code :889} は記述時のエラーとして「フィールド名称・データ型・フィールド長リストのサイズが
+     * 記法は記述時のエラーとして「フィールド名称・データ型・フィールド長リストのサイズが
      * 一致していない」を挙げる（{@code coverage/issues.md} <b>XLS-30</b>）。
      * </p>
      *
@@ -377,8 +377,8 @@ public class YamlFormatReaderTest {
      * <b>この入力は本体スキーマに適合しない。</b>{@code $defs.message_data} は
      * {@code required} ＝ {@code ["id", "records"]} かつ {@code records.minItems} ＝ 1 であり、
      * {@code records:} を省いても {@code records: []} と書いても通らない。記法にも電文の
-     * レコード 0 件を表す書き方が無く、電文が存在しない場合は {@code testdata_notation.rst:1257}
-     * （{@code 30a8271} 時点）のとおり<b>データブロックごと省略する</b>
+     * レコード 0 件を表す書き方が無く、電文が存在しない場合は 記法
+     * のとおり<b>データブロックごと省略する</b>
      * （{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
      * </p>
      *
@@ -494,7 +494,7 @@ public class YamlFormatReaderTest {
         // Given: group_id 付き 1 件＋group_id 無し 1 件
         //        （スキーマは送信系に group_id を要求しない。$defs.expected_request_message_data /
         //          $defs.group_message_data の required はいずれも ["id","records"] である。
-        //          省略時の意味は記法仕様が定めている — testdata_notation.rst:254
+        //          省略時の意味は記法が定めている
         //          「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が
         //          対象になる」。issues.md YML-02）
         Map<String, Object> yaml = map(

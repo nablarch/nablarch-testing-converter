@@ -165,7 +165,7 @@ public class XlsFormatWriterCellTypeTest {
      *
      * <p>
      * データ行の値は {@code XlsFormatWriter} が Excel 記法へ戻して書くため（{@code null} リテラル・
-     * {@code \r}・引用符記法）、「モデルの文字がそのままセルへ載る」ことを前提にする検査には使えない。
+     * {@code \r}・引用符記法）、モデルの文字がそのままセルへ載ることを前提にする検査には使えない。
      * カラム名は記法への戻しを受けず素のまま載るため、そのための入口として用意している。
      * </p>
      *
@@ -530,7 +530,7 @@ public class XlsFormatWriterCellTypeTest {
      *
      * <p>
      * 担保する軸要素: D3-06（改行の異表記）。中間モデルが持つのは解釈後の値であり、書きはそれを
-     * Excel 記法へ戻す（{@code implementation/testdata_notation.rst:1389}）。この戻しにより、
+     * Excel 記法へ戻す。この戻しにより、
      * データ行の値の経路では XLS-18（{@code CR} が読み戻しで {@code LF} になる）が起きなくなる。
      * </p>
      */

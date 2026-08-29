@@ -590,9 +590,9 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : 空マッピングの行<b>だけ</b>が読み飛ばされ、2 行目はカラム名も値も保たれる。
      *
      * <p>
-     * {@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）
-     * 「全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
-     * （{@code {}}）……の場合にスキップされる。」のとおりであり、カラム名は<b>読み飛ばしたあとの
+     * 記法
+     * 全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
+     * （{@code {}}）……の場合にスキップされる。のとおりであり、カラム名は<b>読み飛ばしたあとの
      * 先頭行</b>で決まる。実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}
      * （2026-08-28）。
      * </p>
@@ -628,7 +628,7 @@ public class YamlFormatReaderInvalidInputTest {
      * <b>テーブル経路（{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable}）と同じ結果になる。</b>
      * 以前は同じ入力でも経路によって結果が違い（テーブルは行ごと消える／LIST_MAP は値を持たない行が残る）、
      * それが {@code coverage/issues.md} <b>YML-04</b> であった。依存先 {@code nablarch-testing-yaml} の
-     * Step 4 是正で両経路とも {@code testdata_notation.rst:1500} どおりになった（#36）。
+     * Step 4 是正で両経路とも 記法どおりになった（#36）。
      * 実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}（2026-08-28）。
      * </p>
      */
@@ -684,13 +684,12 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : <b>例外にならず</b>、フィールド数を超える値が黙って捨てられる。
      *
      * <p>
-     * <b>本テストは他責の現状を記録したものである。</b>解説書は<b>読み込みでエラーにすることを定めていない</b>
-     * —— {@code 5783b35} の {@code implementation/testdata_notation.rst} に記述時エラー一覧は無く、
-     * フィールド数と要素数の一致に触れるのは {@code tools/testdata_converter.rst:47} の
-     * {@code YamlTestDataValidator} の検査 7 項目だけで、同 {@code :55} が
-     * 「検証は変換の処理経路には組み込まれておらず、変換の実行時に自動では呼び出されない」と明記している。
+     * <b>本テストは他責の現状を記録したものである。</b>YAML 形式には記述時エラーの一覧が無く、
+     * <b>読み込みでエラーにすることは定められていない</b>。フィールド数と要素数の一致に触れるのは
+     * {@code YamlTestDataValidator} の検査だけであり、その検証は変換の処理経路に組み込まれておらず、
+     * 変換の実行時に自動では呼び出されない。
      * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
-     * （解説書に無い書き方は追わない）。
+     * （記法に無い書き方は追わない）。
      * </p>
      *
      * <p>
@@ -963,7 +962,7 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * 記法が定めるのはシンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意の
-     * リテラル文字列である（{@code testdata_notation.rst:947-948}）。中間モデルには辺①
+     * リテラル文字列である。中間モデルには辺①
      * （{@code XlsFormatReader#normalizeDirectiveValue}）と同じ逆正規化を通した値を入れる。
      * </p>
      *
@@ -1004,7 +1003,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 本体の器は {@code LineSeparator.evaluate} でシンボルを実改行へ変換するが、
      * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）も辺②
      * （{@code YamlFormatReader#toStringDirectives}）も同じ逆正規化でシンボルへ戻すため、
-     * 同じ入力表記が同じ中間モデル値になる。記法の出典は {@code testdata_notation.rst:1116}
+     * 同じ入力表記が同じ中間モデル値になる。記法どおりである。
      * （{@code record-separator CRLF}）。{@code coverage/issues.md} <b>YML-08</b>。
      * </p>
      */
@@ -1194,12 +1193,11 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      *
      * <p>
-     * <b>本テストは他責の現状を固定したものである。</b>解説書はテーブル系のカラム名の大小の扱いに
-     * いっさい触れていない（{@code 5783b35} の {@code ja/development_tools/testing_framework} 全走査で
-     * 「大文字」は 14 箇所あるが、テーブルのカラム名に触れるものは 0 件）。converter に大文字化を
-     * 止める権限も無いため、現状を記録に留めている（{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
+     * <b>本テストは他責の現状を固定したものである。</b>記法はテーブル系のカラム名の大小の扱いに
+     * いっさい触れていない。converter に大文字化を止める権限も無いため、現状を記録に留めている
+     * （{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
      * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
-     * （解説書に無い書き方は追わない）。
+     * （記法に無い書き方は追わない）。
      * </p>
      *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-10 の根拠テスト）。</p>
@@ -1264,8 +1262,8 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24。
      * {@code coverage/issues.md} <b>XLS-45</b>）。Excel 記法に可変長のフィールド長行が無く
-     * （{@code testdata_notation.rst:1076}（{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの
-     * 場合はフィールド長行を記載しない点のみである。」）、書ける先の無い値を中間モデルが保持できると
+     * （記法は固定長との違いは、可変長ファイルの
+     * 場合はフィールド長行を記載しない点のみである。）、書ける先の無い値を中間モデルが保持できると
      * 辺③で黙って落ちるためである。拒否するのは<b>中間モデルの生成時</b>であって書き出し側ではない。
      * </p>
      *
@@ -1287,8 +1285,8 @@ public class YamlFormatReaderInvalidInputTest {
      * <b>スキーマ側の対応が入れば、本テストは落ちる。</b>落ちる段がスキーマ検証まで前へ動き、
      * 例外が {@code YamlSchemaValidationException} へ変わるためである。同クラスは
      * {@code IllegalStateException} を継承しており（nablarch-testing-yaml の
-     * {@code src/main/java/nablarch/test/core/reader/yaml/YamlSchemaValidationException.java:12}
-     * （{@code a5cb6dd} 時点）「{@code public class YamlSchemaValidationException extends IllegalStateException}」）、
+     * {@code YamlSchemaValidationException}
+     * 「{@code public class YamlSchemaValidationException extends IllegalStateException}」）、
      * {@code IllegalArgumentException} のサブクラスではない。{@code YamlFixture.read} が包み直さないことは、
      * 同じ経路でこの例外をそのまま受ける {@link #failsWithSchemaValidationExceptionWhenFieldTypeIsMissing}
      * から分かる。<b>そのときは本テストを、スキーマ違反を主張する形（{@code assertSchemaViolation}）へ

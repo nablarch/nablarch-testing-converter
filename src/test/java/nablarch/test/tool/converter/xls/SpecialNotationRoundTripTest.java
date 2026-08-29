@@ -48,16 +48,16 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>母集合</b>（解説書は {@code nablarch-document@5783b35}）:
+ * <b>母集合</b>:
  * </p>
  * <ul>
- *   <li>{@code implementation/testdata_notation.rst} の特殊記法の表 ——
- *       Excel 形式 12 行（{@code :1356}-{@code :1391}）／YAML 形式 12 行（{@code :1408}-{@code :1443}）。
- *       <b>2 つの表は同じ 12 の「値の種類」を同じ順で並べており</b>、行ごとに Excel 記法と YAML 記法が
- *       対応する。改行文字の行だけは CR と LF の 2 形を含むため、本クラスでは 2 つに分けて測る</li>
- *   <li>{@code implementation/testdata_examples.rst} の「null・空文字・改行など特殊な値を記述する」
- *       （{@code :2133}-{@code :2461}）の各記載例 —— 6 つの小節が Excel 形式と YAML 形式の例を
- *       それぞれ 1 つずつ持つ</li>
+ *   <li>特殊記法の一覧 —— Excel 形式 12 種／YAML 形式 12 種。
+ *       <b>2 つの一覧は同じ 12 の値の種類を同じ順で並べており</b>、種類ごとに Excel 記法と YAML 記法が
+ *       対応する。改行文字だけは CR と LF の 2 形を含むため、本クラスでは 2 つに分けて測る</li>
+ *   <li>{@code null}・空文字・改行など特殊な値の記述例 —— 6 つの例が Excel 形式と YAML 形式の
+ *       書き方をそれぞれ 1 つずつ持つ</li>
+ *   <li>#44 で足した 4 種（末尾の {@code null}／全カラムの値が空文字のエントリ／
+ *       マーカーカラムだけに値があるエントリ／アップロードファイルの記述例）</li>
  * </ul>
  *
  * <p>
@@ -75,7 +75,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>行が読み飛ばされないよう、検証対象カラム {@code V} の前に空でないカラム {@code K} を必ず置く</b>
- * （{@code implementation/testdata_notation.rst:1500}。空文字のケースで行ごと消えるため）。
+ * （記法。空文字のケースで行ごと消えるため）。
  * </p>
  *
  * @author kiyobot
@@ -440,7 +440,7 @@ public class SpecialNotationRoundTripTest {
      *
      * @param excelCell  Excel 形式の記法（{@code V} 列のセル文字列）
      * @param yamlScalar YAML 形式の記法（{@code V:} に続けて書くスカラー）
-     * @param expected   解説書が定める<b>解釈後の値</b>
+     * @param expected   フレームワークが読む<b>解釈後の値</b>
      */
     private void assertFourRoutes(String excelCell, String yamlScalar, String expected) {
         assertFourRoutes(excelCell, yamlScalar, expected, true);
@@ -493,68 +493,68 @@ public class SpecialNotationRoundTripTest {
                 dir(8).toString());
         assertThat("YAML→XLS→YAML", readYaml(dir(8)), is(fromYaml));
 
-        // 2 つの記法が同じ意味を表していること（tools/testdata_converter.rst:14）
+        // 2 つの記法が同じ意味を表していること
         assertThat("Excel 記法と YAML 記法が同じ値を表す", fromXls, is(fromYaml));
     }
 
-    // ------------------------------------------------------------------ notation.rst の表 12 行
+    // ------------------------------------------------------------------ 特殊記法の 12 種
 
-    /** 表 1 行目 —— 通常の文字列（{@code :1356}-{@code :1358} ／ {@code :1408}-{@code :1410}）。 */
+    /** 種類 1 —— 通常の文字列。 */
     @Test
     public void plainString() {
         assertFourRoutes("abc", "\"abc\"", "abc");
     }
 
-    /** 表 2 行目 —— null（{@code :1359}-{@code :1361} ／ {@code :1411}-{@code :1413}）。 */
+    /** 種類 2 —— null。 */
     @Test
     public void javaNull() {
         assertFourRoutes("null", "null", null);
     }
 
-    /** 表 3 行目 —— 文字列の null（{@code :1362}-{@code :1364} ／ {@code :1414}-{@code :1416}）。 */
+    /** 種類 3 —— 文字列の null。 */
     @Test
     public void stringNull() {
         assertFourRoutes("\"null\"", "\"null\"", "null");
     }
 
-    /** 表 4 行目 —— 空文字（{@code :1365}-{@code :1367} ／ {@code :1417}-{@code :1419}）。 */
+    /** 種類 4 —— 空文字。 */
     @Test
     public void emptyString() {
         assertFourRoutes("", "\"\"", "");
     }
 
-    /** 表 5 行目 —— 先頭ゼロ付き数値（{@code :1368}-{@code :1370} ／ {@code :1420}-{@code :1422}）。 */
+    /** 種類 5 —— 先頭ゼロ付き数値。 */
     @Test
     public void leadingZeroNumber() {
         assertFourRoutes("001", "\"001\"", "001");
     }
 
-    /** 表 6 行目 —— {@code true}（文字列）（{@code :1371}-{@code :1373} ／ {@code :1423}-{@code :1425}）。 */
+    /** 種類 6 —— {@code true}（文字列）。 */
     @Test
     public void booleanLikeString() {
         assertFourRoutes("true", "\"true\"", "true");
     }
 
-    /** 表 7 行目 —— 半角スペース 1 文字（{@code :1374}-{@code :1376} ／ {@code :1426}-{@code :1428}）。 */
+    /** 種類 7 —— 半角スペース 1 文字。 */
     @Test
     public void singleHalfWidthSpace() {
         assertFourRoutes("\" \"", "\" \"", " ");
     }
 
-    /** 表 8 行目 —— ダブルクォート 1 文字（{@code :1377}-{@code :1379} ／ {@code :1429}-{@code :1431}）。 */
+    /** 種類 8 —— ダブルクォート 1 文字。 */
     @Test
     public void singleDoubleQuote() {
         assertFourRoutes("\"\"\"", "'\"'", "\"");
     }
 
-    /** 表 9 行目 —— {@code ${systemTime}}（{@code :1380}-{@code :1382} ／ {@code :1432}-{@code :1434}）。 */
+    /** 種類 9 —— {@code ${systemTime}}。 */
     @Test
     public void systemTimeNotation() {
         assertFourRoutes("${systemTime}", "\"${systemTime}\"", "${systemTime}");
     }
 
     /**
-     * 表 10 行目 —— {@code ${binaryFile:パス}}（{@code :1383}-{@code :1385} ／ {@code :1435}-{@code :1437}）。
+     * 種類 10 —— {@code ${binaryFile:パス}}。
      *
      * <p>
      * 正解の読み手はフレームワークであり、フレームワークはこの記法を取得元パス起点で解決して
@@ -568,14 +568,14 @@ public class SpecialNotationRoundTripTest {
         assertFourRoutes("${binaryFile:testdata.bin}", "\"${binaryFile:testdata.bin}\"", "010203", false);
     }
 
-    /** 表 11 行目 —— {@code ${文字種,文字数}}（{@code :1386}-{@code :1388} ／ {@code :1438}-{@code :1440}）。 */
+    /** 種類 11 —— {@code ${文字種,文字数}}。 */
     @Test
     public void charTypeNotation() {
         assertFourRoutes("${半角英字,10}", "\"${半角英字,10}\"", "${半角英字,10}");
     }
 
     /**
-     * 表 12 行目 —— 改行文字の CR（{@code :1389}-{@code :1391} ／ {@code :1441}-{@code :1443}）。
+     * 種類 12 —— 改行文字の CR。
      * Excel は 2 文字の {@code \} ＋ {@code r}、YAML は {@code "\r"}。
      */
     @Test
@@ -584,18 +584,17 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 表 12 行目 —— 改行文字の LF（同上）。Excel はセル内の改行（{@code Alt+Enter}）、YAML は {@code "\n"}。
+     * 種類 12 —— 改行文字の LF（同上）。Excel はセル内の改行（{@code Alt+Enter}）、YAML は {@code "\n"}。
      */
     @Test
     public void lineFeed() {
         assertFourRoutes("a" + LF + "b", "\"a\\nb\"", "a" + LF + "b");
     }
 
-    // ------------------------------------------------------------------ examples.rst の記載例
+    // ------------------------------------------------------------------ 特殊な値の記述例
 
     /**
-     * 記載例 1 —— 日付・システム日時・NULL（{@code testdata_examples.rst:2149}-{@code :2176} ／
-     * {@code :2184}-{@code :2202}）。4 行 4 カラムをそのまま置く。
+     * 記載例 1 —— 日付・システム日時・NULL。4 行 4 カラムをそのまま置く。
      */
     @Test
     public void exampleDateSystemTimeAndNull() {
@@ -635,8 +634,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 2 —— 空文字・改行（{@code testdata_examples.rst:2212}-{@code :2227} ／
-     * {@code :2270}-{@code :2278}）。Excel 形式の例に LF は含まれない（同 {@code :2229}）。
+     * 記載例 2 —— 空文字・改行。Excel 形式の例に LF は含まれない。
      */
     @Test
     public void exampleEmptyStringAndLineBreak() {
@@ -663,8 +661,8 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 2b —— YAML 形式だけが持つ LF の例（{@code testdata_examples.rst:2284}-{@code :2289}）。
-     * Excel 形式ではセル内改行で書く（同 {@code :2229}）ので、対応する Excel 側をセル内改行で組む。
+     * 記載例 2b —— YAML 形式だけが持つ LF の例。
+     * Excel 形式ではセル内改行で書くので、対応する Excel 側をセル内改行で組む。
      */
     @Test
     public void exampleLineFeedInBody() {
@@ -687,8 +685,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 3 —— スペース・ダブルクォート（{@code testdata_examples.rst:2320}-{@code :2332} ／
-     * {@code :2340}-{@code :2345}）。
+     * 記載例 3 —— スペース・ダブルクォート。
      */
     @Test
     public void exampleSpaceAndDoubleQuote() {
@@ -711,8 +708,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 4 —— バイナリデータ（{@code testdata_examples.rst:2355}-{@code :2366} ／
-     * {@code :2376}-{@code :2382}）。
+     * 記載例 4 —— バイナリデータ。
      */
     @Test
     public void exampleBinaryData() {
@@ -738,8 +734,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 5 —— 文字列の増幅（{@code testdata_examples.rst:2392}-{@code :2407} ／
-     * {@code :2415}-{@code :2421}）。
+     * 記載例 5 —— 文字列の増幅。
      */
     @Test
     public void exampleAmplifiedString() {
@@ -764,8 +759,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例 6 —— 全フィールドが空文字のレコード（{@code testdata_examples.rst:2233}-{@code :2260} ／
-     * {@code :2293}-{@code :2308}）。ファイルデータのため {@link #assertExampleFourRoutes} ではなく
+     * 記載例 6 —— 全フィールドが空文字のレコード。ファイルデータのため {@link #assertExampleFourRoutes} ではなく
      * ファイル用の突き合わせを使う。
      */
     @Test

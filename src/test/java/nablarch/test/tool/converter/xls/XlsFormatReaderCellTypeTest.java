@@ -38,8 +38,7 @@ import org.junit.rules.TemporaryFolder;
  * 「全セルが文字列書式であること」を前提として明示しているため、それを外れる入力
  * （表示形式を持たない数値セル・日付／時刻／日時書式セル・数式セル・真偽値セル・エラー値セル）は
  * 担保対象にしない。<b>値が数値で表示形式が {@code @}（文字列書式）のセル</b>も同じく仕様外である
- * （解説書 {@code testdata_notation.rst:75} と直後の {@code important}。
- * {@code coverage/issues.md} <b>XLS-01</b>）。ただし作成者から見れば文字列書式であり
+ * （{@code coverage/issues.md} <b>XLS-01</b>）。ただし作成者から見れば文字列書式であり
  * 参照フィクスチャの実物にも存在する形であるため、
  * {@link #readsTextFormattedNumericCellAsDoubleString()} を<b>実挙動の記録として</b>残す
  * （担保ではない。同テストの Javadoc を参照）。
@@ -272,8 +271,8 @@ public class XlsFormatReaderCellTypeTest {
      *
      * <p>
      * 中間モデルが持つのはテスティングフレームワークが解釈したあとの値であり、{@code null} 記法は
-     * Java の {@code null} へ写る（{@code implementation/testdata_notation.rst:1359}）。文字列としての
-     * {@code null} は引用符で囲んで区別する（同 {@code :1362}）。
+     * Java の {@code null} へ写る。文字列としての
+     * {@code null} は引用符で囲んで区別する。
      * </p>
      */
     @Test
@@ -292,14 +291,13 @@ public class XlsFormatReaderCellTypeTest {
      *
      * <p>
      * <b>これは仕様外入力であり、converter は対応しない（{@code coverage/issues.md} <b>XLS-01</b>）。</b>
-     * 解説書 {@code testdata_notation.rst:75} は「Excelのセルの書式は、必ず文字列書式に統一して
-     * おく必要がある」と定め、直後の {@code important}（{@code :79}）は
-     * 「Excelファイルに文字列以外の書式でデータを記述すると、Excelがセルの値を自動的に変換して
-     * しまう（例えば数値書式では先頭の {@code 0} が消えて {@code 0001} が {@code 1} になる、
-     * 日付書式では表示形式が変わるなど）ため、正しくデータを読み取れなくなる」と明言している。
-     * セル種別が数値である本ケースは「文字列以外の書式でデータを記述した」状態であり、
-     * 解説書自身が読み取れないと言っている入力である。converter の入出力は
-     * NTF が実行できるテストデータに限るため、正しい値を決めることができない。
+     * 記法は、Excel のセルの書式を必ず文字列書式に統一しておく必要があると定めている。
+     * 文字列以外の書式でデータを書くと Excel がセルの値を自動的に変換してしまい
+     * （数値書式では先頭の {@code 0} が消えて {@code 0001} が {@code 1} になる、
+     * 日付書式では表示形式が変わる、など）、テスティングフレームワークが正しくデータを読み取れなくなる。
+     * セル種別が数値である本ケースはその「文字列以外の書式でデータを書いた」状態にあたる。
+     * converter の入出力はテスティングフレームワークが実行できるテストデータに限るため、
+     * 正しい値を決めることができない。
      * </p>
      *
      * <p>

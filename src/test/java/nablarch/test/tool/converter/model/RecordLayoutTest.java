@@ -36,8 +36,8 @@ public class RecordLayoutTest {
 
     /**
      * XLS-22 ／ YML-12 の 3 形目。フィールドを 1 件も持たないレコードレイアウトは生成できない。
-     * {@code testdata_notation.rst:888}（{@code 30a8271} 時点）は「フィールド名称リストまたは
-     * データ型リストが未指定または空である」を記述時のエラーに挙げ、本体スキーマ
+     * 記法はフィールド名称リストまたは
+     * データ型リストが未指定または空であるを記述時のエラーに挙げ、本体スキーマ
      * {@code $defs.record_fragment} は {@code fields} を必須かつ {@code minItems} ＝ 1 とする。
      *
      * <p>
@@ -64,7 +64,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド名称が重複したレコードは生成できない() {
-        // Given: notation:887「同一レコード種別内でフィールド名称が重複している」は記述時のエラー（XLS-40）
+        // Given: 同一レコード種別内でフィールド名称が重複していることは記述時のエラー（XLS-40）
         List<FieldDef> fields = List.of(
                 new FieldDef("f1", "数値", "5"), new FieldDef("f1", "半角英字", "3"));
         try {
@@ -89,7 +89,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド定義の件数より要素数が多いデータ行を持つレコードは生成できない() {
-        // Given: notation:891「データ要素数が不正である」はファイルデータの記述時エラー（XLS-41 の「多い側」）
+        // Given: データ要素数が不正であることはファイルデータの記述時のエラー（XLS-41 の「多い側」）
         List<FieldDef> fields = List.of(
                 new FieldDef("f1", "数値", "5"), new FieldDef("f2", "半角英字", "3"));
         List<List<String>> rows = List.of(Arrays.asList("1", "a", "余り"));
@@ -106,7 +106,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド定義の件数より要素数が少ないデータ行は保持できる() {
-        // Given: notation:883 は「少ない側」を正常と定め、不足したフィールドは "" として補完されると書く。
+        // Given: 記法は少ない側を正常と定め、不足したフィールドは "" として補完されると書く。
         //        全フィールドを省略した行（YAML では rows: に空配列）も記法として明示的に案内している。
         //        したがって不変条件は「行の要素数 ≦ fields の件数」であり、一致の強制ではない（XLS-42）。
         List<FieldDef> fields = List.of(
@@ -168,7 +168,7 @@ public class RecordLayoutTest {
 
     @Test
     public void セルがnullのデータ行は保持できる() {
-        // Given: セルの null は記法にある（notation:767-772「セルに null」・:829-834
+        // Given: セルの null は記法にある（記法はセルに null
         //        「アンクォートの null」）。行そのものの null とは別である
         List<List<String>> rows = List.of(Arrays.asList("1", null));
 

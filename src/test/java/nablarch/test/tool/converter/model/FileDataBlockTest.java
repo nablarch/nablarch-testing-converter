@@ -74,7 +74,7 @@ public class FileDataBlockTest {
 
     /**
      * XLS-43。ディレクティブのキーが {@code null} のブロックは生成できない。
-     * 記法は「キー名と値の 2 要素」で記述することを定めており（{@code testdata_notation.rst:906}・{@code :892}）、
+     * 記法はキー名と値の 2 要素で記述することを定めており、
      * 本体スキーマ {@code $defs.directives} は {@code additionalProperties: false} でキーを列挙しているため、
      * {@code null} のキーはそもそも書けない。
      */
@@ -162,8 +162,7 @@ public class FileDataBlockTest {
      * {@code $defs.file_data.properties.type} の description が「fixed = 固定長
      * （SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長（SETUP_VARIABLE / EXPECTED_VARIABLE）」と、
      * 4 種のデータ種別それぞれに {@code fixed} ／ {@code variable} のどちらか一方を一意に割り当てている。
-     * 解説書も同じで、{@code testdata_notation.rst:850}（{@code 30a8271} 時点）が
-     * データタイプそのものに固定長／可変長の別を割り当てている。
+     * 記法も同じで、データタイプそのものに固定長／可変長の別を割り当てている。
      * したがって<b>データ種別が決まればファイル種別は決まる</b>（逆向きは SETUP／EXPECTED の情報が要るため
      * 定まらない。4 対 2 の写像であって全単射ではない）。
      * </p>
@@ -189,7 +188,7 @@ public class FileDataBlockTest {
      * 導出の対応が定まっているのは {@code SETUP_FIXED} ／ {@code EXPECTED_FIXED}（固定長）と
      * {@code SETUP_VARIABLE} ／ {@code EXPECTED_VARIABLE}（可変長）の 4 種だけであり
      * （本体スキーマ {@code $defs.file_data.properties.type} の description ／
-     * {@code testdata_notation.rst:850}（{@code 30a8271} 時点））、
+     * 記法）、
      * それ以外のデータ種別に対する固定長／可変長の別は<b>NTF 仕様に無い</b>。
      * {@code public static} の受け口が黙って {@link FileType#VARIABLE} を返すと、
      * 「不正な状態を型で表現できなくする」という XLS-44 の修正の趣旨が受け口の側で崩れる。
@@ -296,9 +295,9 @@ public class FileDataBlockTest {
 
     /**
      * XLS-30。固定長ファイルでフィールド長が {@code null} のブロックは生成できない。
-     * {@code testdata_notation.rst:883}（{@code 30a8271} 時点）は固定長ファイルについて
+     * 記法は固定長ファイルについて
      * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」と定め（逐語）、
-     * {@code :889} は記述時エラーとして「フィールド名称・データ型・フィールド長リストのサイズが
+     * 記法は記述時エラーとして「フィールド名称・データ型・フィールド長リストのサイズが
      * 一致していない」を挙げる。長さを持たないフィールドは 4 辺のどこにも記法どおりには書き出せない。
      */
     @Test
@@ -341,7 +340,7 @@ public class FileDataBlockTest {
             }
         }
 
-        // Then: 可変長系はフィールド長を要求しないため保持できる（記法どおり）
+        // Then: 可変長系はフィールド長を要求しないため保持できる（記法はどおり）
         for (DataType variableType : List.of(DataType.SETUP_VARIABLE, DataType.EXPECTED_VARIABLE)) {
             FileDataBlock sut = new FileDataBlock(variableType, "", "t.csv", new LinkedHashMap<>(), records);
             assertThat(sut.getFileType(), is(FileType.VARIABLE));
@@ -351,8 +350,8 @@ public class FileDataBlockTest {
 
     /**
      * XLS-30。<b>可変長ファイルではフィールド長 {@code null} が正しい</b>ため拒否しない
-     * （{@code testdata_notation.rst:883}「可変長ファイルでは、フィールド名称・データ型の2リストが
-     * 同サイズで必須であり、フィールド長は不要である」）。
+     * （記法は可変長ファイルでは、フィールド名称・データ型の2リストが
+     * 同サイズで必須であり、フィールド長は不要である）。
      */
     @Test
     public void 可変長ファイルはフィールド長がnullでも生成できる() {
@@ -369,10 +368,9 @@ public class FileDataBlockTest {
      * XLS-45。<b>可変長ファイルでフィールド長を持つフィールド定義のブロックは生成できない。</b>
      * <p>
      * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24）。
-     * Excel 記法に可変長のフィールド長行が無い（{@code testdata_notation.rst:1076}
-     * （{@code 30a8271} 時点）「固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
-     * 点のみである。」／{@code :883}「可変長ファイルでは、フィールド名称・データ型の2リストが
-     * 同サイズで必須であり、フィールド長は不要である。」）ためであり、書ける先の無い値を
+     * Excel 記法に可変長のフィールド長行が無い（固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
+     * 点のみである。／可変長ファイルでは、フィールド名称・データ型の2リストが
+     * 同サイズで必須であり、フィールド長は不要である。）ためであり、書ける先の無い値を
      * 中間モデルが保持できると辺③で黙って落ちる。<b>生成時点で拒否する</b>
      * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
      * </p>

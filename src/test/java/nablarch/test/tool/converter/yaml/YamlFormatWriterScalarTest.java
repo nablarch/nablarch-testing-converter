@@ -269,7 +269,7 @@ public class YamlFormatWriterScalarTest {
      *        {@code \n} へエスケープ</b>して書かれる。
      *
      * <p>
-     * 担保する軸要素: D4-07（記法）。既存の
+     * 担保する軸要素: D4-07。既存の
      * {@code YamlFormatWriterTest#serialize_escapesQuotesBackslashAndControlChars} は
      * {@code \n}／{@code \r}／{@code \t}／{@code \x01}／{@code "}／{@code \} をまとめた 1 つの値で
      * エスケープを固定している。本メソッドは<b>改行だけを含む値でも複数行記法にならない</b>ことを

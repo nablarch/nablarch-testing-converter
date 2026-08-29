@@ -83,7 +83,7 @@ import org.junit.rules.TemporaryFolder;
  * 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
  * 1 形目（ファイルブロックの {@code records} 空）だけは記法・スキーマとも<b>合法な形が存在する</b>ため
  * 弾くのではなく {@code records: []} を書くように直してあり、本クラスの
- * {@link #writesEmptyRecordsListForFileBlockWithoutRecords()}（記法）と
+ * {@link #writesEmptyRecordsListForFileBlockWithoutRecords()}と
  * {@link #readsBackFileBlockWithEmptyRecords()}（読み戻し）が固定する。
  * </p>
  *
@@ -343,7 +343,7 @@ public class YamlFormatWriterModelTest {
      * <p>
      * 担保する軸要素: <b>A-06 ／ A-07 ／ A-08 ／ A-09</b>。辺④のトップレベルキーは
      * SETUP 系 → {@code setup_files} ／ EXPECTED 系 → {@code expected_files} の <b>2 対 1</b> であり
-     * （{@code testdata_notation.rst:212-235}）、固定長／可変長を分けるのは {@code type:} だけである。
+     * 、固定長／可変長を分けるのは {@code type:} だけである。
      * 導出前はその {@code type:} が引数の {@code fileType} から出ていたため、
      * <b>4 種のデータ種別を区別する出力が辺④に無く</b> 4 行とも ❌ だった
      * （{@code coverage/issues.md} <b>XLS-44</b>「現れ方（辺④ 軸A の A-06〜A-09）」）。
@@ -681,11 +681,11 @@ public class YamlFormatWriterModelTest {
      * Then : {@code records: []}（空配列）が書かれる。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
      *
      * <p>
-     * 記法仕様は「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」
-     * （{@code testdata_notation.rst:881}）、「{@code setup_files}・{@code expected_files} の各エントリには
+     * 記法は0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する
+     * 、「{@code setup_files}・{@code expected_files} の各エントリには
      * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる。
      * 0バイトの空ファイルを表現するには、{@code records:} に空配列 {@code []} を記載する」
-     * （{@code testdata_notation.rst:1146}）と定めている。
+     * と定めている。
      * </p>
      *
      * <p>
@@ -893,7 +893,7 @@ public class YamlFormatWriterModelTest {
      * 本体スキーマの {@code $defs.file_data.required} は {@code records} を要求するが
      * {@code minItems} は 0 であり、<b>空配列なら通る</b>（キーごと省略すると通らない）。
      * 記法仕様も 0 バイトの空ファイルを {@code records: []} で表すと定めている
-     * （{@code testdata_notation.rst:1146}）。
+     * 。
      * </p>
      */
     @Test

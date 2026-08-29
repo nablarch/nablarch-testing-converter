@@ -46,11 +46,11 @@ public class SampleConversionTest {
      * {@code ClientActionTest/testFindNoClients.yaml:3} と
      * {@code ClientActionTest/testShowWithEmptyClientTable.yaml:3} の 2 箇所が
      * {@code setup_tables} 配下の 0 件テーブルである。YAML 記法ではカラム名が {@code rows:} の
-     * 先頭要素のキーで決まるため（{@code testdata_notation.rst:819}。{@code 30a8271} 時点）、
-     * 0 件テーブル（同 {@code :836}）にはカラム名を書く場所が無く、中間モデルはカラム名 0 件になる。
-     * 辺③は Excel の「データ行を書かない場合でも、カラム名の行は省略できない」制約（{@code :802}）を
-     * 満たすため、カラム名の行へマーカーカラム {@code [EMPTY]} を 1 つ書く（{@code :1515}）。
-     * 残る {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173}／{@code :199} の
+     * 先頭要素のキーで決まるため、
+     * 0 件テーブルにはカラム名を書く場所が無く、中間モデルはカラム名 0 件になる。
+     * 辺③は Excel の「データ行を書かない場合でも、カラム名の行は省略できない」制約を
+     * 満たすため、カラム名の行へマーカーカラム {@code [EMPTY]} を 1 つ書く。
+     * 残る {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173}／記法の
      * {@code rows: []} は綴りは同じでも別物で、{@code expected_files} 配下のファイルデータの
      * 0 件レコードであり、カラム名は {@code fields:} に持つ。
      * </p>

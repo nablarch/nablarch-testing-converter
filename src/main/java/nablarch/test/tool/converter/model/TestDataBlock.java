@@ -16,7 +16,7 @@ import java.util.Set;
  * <p>
  * <b>{@code groupId} は生値である</b>（{@code g1}。半角角括弧は付けない）。角括弧は Excel 形式の書式であって
  * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である
- * （{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。書式を知ってよいのは
+ * 。書式を知ってよいのは
  * Excel 版面の読み書き（付ける＝{@code XlsFormatWriter#marker}／外す＝
  * {@code TestCoreReaderAdapter#markerGroupId}）と、整形済みを要求する上流 API の境界
  * （{@code TestCoreReaderAdapter}・{@code YamlTestCoreAdapter} が渡す直前）の 2 層だけである。
@@ -25,18 +25,17 @@ import java.util.Set;
  * <p>
  * <b>{@code groupId} は {@code null} であってはならない。省略は空文字で表す。生成時点で拒否する。</b>
  * Excel 記法・YAML 記法のいずれも {@code null} と空文字を区別できないためである
- * （Excel は {@code testdata_notation.rst:198}（{@code 30a8271} 時点）の {@code データタイプ=識別子の値} と
- * {@code :278} の {@code データタイプ名[グループID]=} が書ける形を定めるが、どちらも「何も書かない」という
+ * （Excel は 記法の {@code データタイプ=識別子の値} と
+ * 記法の {@code データタイプ名[グループID]=} が書ける形を定めるが、どちらも「何も書かない」という
  * 同じ 1 つの出力にしかならない。YAML 本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} は {@code group_id} を
  * {@code {"type": "string", "minLength": 1}} の任意キーとしており、空文字を禁じ、省略はキーを置かない形で表す）。
- * 省略が「グループ ID を持たないデータブロック（デフォルトグループ）」を指すことは {@code :254} が定める。
+ * 省略が「グループ ID を持たないデータブロック（デフォルトグループ）」を指すことは 記法が定める。
  * </p>
  *
  * <p>
  * <b>{@code identifier} は {@code null} であってはならない。生成時点で拒否する。</b>
- * 識別子は記法上の必須要素である（{@code testdata_notation.rst:198}（{@code 30a8271} 時点）
- * {@code データタイプ=識別子の値}）。本体スキーマ
+ * 識別子は記法上の必須要素である（{@code データタイプ=識別子の値}）。本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} も {@code $defs.table_data} の
  * {@code required} に {@code table} を含め、{@code {"type": "string"}} としている。
  * <b>空文字は拒否しない</b>（Excel は {@code id=[]} として往復し、YAML の {@code table: ""} は
@@ -46,17 +45,16 @@ import java.util.Set;
  * <p>
  * <b>{@code dataType} は {@code null} であってはならない。生成時点で拒否する。</b>
  * データブロックは必ず 1 つのデータタイプを持つ。Excel 形式はマーカー
- * （{@code testdata_notation.rst:198}（{@code 30a8271} 時点）の {@code データタイプ=識別子の値}）、
- * YAML 形式はトップレベルキー（{@code :206-241}）がデータタイプから決まるため、
+ * （記法の {@code データタイプ=識別子の値}）、
+ * YAML 形式はトップレベルキーがデータタイプから決まるため、
  * <b>データタイプの無いブロックはどちらの形式でも書けない</b>
  * （{@code coverage/issues.md} <b>XLS-34</b>）。
  * </p>
  *
  * <p>
  * <b>{@code dataType} に {@link DataType#DEFAULT} を持たせてはならない。生成時点で拒否する。</b>
- * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（{@code testdata_notation.rst:188-190}
- * （{@code 30a8271} 時点）「フレームワーク内部用（通常は使用しない）」）、YAML のトップレベルキー
- * 対応表（{@code :206-241}「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」）
+ * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（フレームワーク内部用（通常は使用しない））、YAML のトップレベルキー
+ * 対応表（「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」）
  * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は 4 辺すべてが
  * 表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
  * （{@code coverage/issues.md} <b>XLS-20</b>）。**根拠が「対応表に行が無い」という不在である点に注意。**
@@ -65,9 +63,8 @@ import java.util.Set;
  * <p>
  * <b>データ種別は、そのブロックのクラスの系統に属していなければならない。生成時点で拒否する。</b>
  * データタイプとブロックの形は 1:1 に対応するためである。YAML 形式は
- * <b>データタイプごとに専用のトップレベルキー</b>を使い（{@code testdata_notation.rst:206}
- * （{@code 30a8271} 時点）「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」と
- * {@code :212-235} の対応表）、本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} は
+ * <b>データタイプごとに専用のトップレベルキー</b>を使い（データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりであると
+ * 対応表）、本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} は
  * キーごとに別の {@code $defs} を割り当てている（{@code setup_tables} ／ {@code expected_tables} ／
  * {@code expected_complete_tables} → {@code $defs.table_data}（{@code required} ＝
  * {@code ["table","rows"]}）、{@code list_maps} → {@code $defs.list_map_data}（{@code ["id","rows"]}）、

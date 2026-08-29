@@ -418,7 +418,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     /**
      * 送信系セクション内エントリの生グループ ID を初出順で列挙する（重複排除）。
      * {@code group_id} を省略したエントリはデフォルトグループとして {@code null} で列挙する
-     * （記法仕様 {@code testdata_notation.rst:254}）。
+     * 。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
@@ -479,7 +479,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * エントリの {@code group_id} を<b>生値の</b>グループ ID（省略時は空文字）として取り出す。
      * <p>
      * 中間モデルが持つのはテスティングフレームワークの仕様上の意味だけであり、半角角括弧は
-     * Excel 形式の書式であって値ではない（{@code tools/testdata_converter.rst:14}（{@code 5783b35} 時点））。
+     * Excel 形式の書式であって値ではない。
      * 上流 API が要求する整形は {@code YamlTestCoreAdapter} が渡す直前に行う。
      * </p>
      *

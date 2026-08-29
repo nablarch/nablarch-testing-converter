@@ -35,8 +35,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 解説書 {@code tools/testdata_converter.rst}（{@code 5783b35}）が述べている
- * <b>Excel 形式の出力についての振る舞い</b>を押さえるテスト（指示書 第3節のうち 3-2・3-6〜3-10）。
+ * <b>Excel 形式の出力についての振る舞い</b>を押さえるテスト。
  *
  * <p>
  * 既存の {@code XlsFormatWriterTest} が押さえているのは<b>既定値</b>の色である。本クラスが押さえるのは
@@ -124,10 +123,10 @@ public class ExcelOutputDocumentedBehaviorTest {
      * Then : 往復後のセルにその色・表示形式・結合が<b>残っていない</b>（<b>負のテスト</b>）。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:59}「形式に固有で、テスティングフレームワークの仕様上の意味を
+     * 変換ツールの仕様形式に固有で、テスティングフレームワークの仕様上の意味を
      * 持たない情報は中間モデルに保持されないため、往復しても再現されない。Excel 形式のセルの色・書式・
      * 結合セル……がこれにあたる。Excel 形式へ書き出す際は、元の色や書式ではなく……設定に従った整形が
-     * 新たに付与される」。
+     * 新たに付与される。
      * </p>
      */
     @Test
@@ -170,7 +169,7 @@ public class ExcelOutputDocumentedBehaviorTest {
      * When : {@code withTestShotsHeaderColor(x)} を設定して書き出す。
      * Then : ヘッダ行の背景色が {@code x} になる。
      *
-     * <p>{@code tools/testdata_converter.rst:251}-{@code :254}。</p>
+     * <p>変換ツールの仕様。</p>
      */
     @Test
     public void appliesConfiguredTestShotsHeaderColor() {
@@ -195,9 +194,9 @@ public class ExcelOutputDocumentedBehaviorTest {
      * Then : <b>どちらも</b>ヘッダ行の背景色が {@code x} になる。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:259}-{@code :262}
-     * 「{@code EXPECTED_} で始まるデータブロックと {@code RESPONSE_} で始まるデータブロックの
-     * ヘッダ行の背景色」。
+     * 変換ツールの仕様
+     * {@code EXPECTED_} で始まるデータブロックと {@code RESPONSE_} で始まるデータブロックの
+     * ヘッダ行の背景色。
      * </p>
      */
     @Test
@@ -225,8 +224,8 @@ public class ExcelOutputDocumentedBehaviorTest {
      * Then : 前 2 つのヘッダ行が {@code x} になり、{@code testShots} は変わらない。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:263}-{@code :266}
-     * 「{@code MESSAGE}・{@code LIST_MAP}（識別子が {@code testShots} 以外）のヘッダ行の背景色」。
+     * 変換ツールの仕様
+     * {@code MESSAGE}・{@code LIST_MAP}（識別子が {@code testShots} 以外）のヘッダ行の背景色。
      * </p>
      */
     @Test
@@ -259,8 +258,8 @@ public class ExcelOutputDocumentedBehaviorTest {
      * Then : 既定では 20 文字相当で頭打ちになり、5 を指定すると 5 文字相当になる。
      *
      * <p>
-     * {@code tools/testdata_converter.rst:275}-{@code :278}
-     * 「列幅を自動調整する場合の上限文字数」。POI の列幅は 1 文字あたり 256 単位である。
+     * 変換ツールの仕様
+     * 列幅を自動調整する場合の上限文字数。POI の列幅は 1 文字あたり 256 単位である。
      * </p>
      */
     @Test
@@ -288,7 +287,7 @@ public class ExcelOutputDocumentedBehaviorTest {
      * When : 既定と {@code withDisplayGridlines(true)} で書き出す。
      * Then : 既定ではグリッド線表示がオフ、{@code true} ではオンになる。
      *
-     * <p>{@code tools/testdata_converter.rst:287}-{@code :290}（既定は {@code false}）。</p>
+     * <p>変換ツールの仕様（既定は {@code false}）。</p>
      */
     @Test
     public void togglesDisplayGridlines() {

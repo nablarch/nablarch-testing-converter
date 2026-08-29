@@ -647,7 +647,7 @@ public class RoundTripTest {
      *
      * <p>
      * XLS 経路は書きで {@code null} 記法のセルへ写し、読みで Java の {@code null} へ戻す
-     * （記法⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になり YAML 経路と非対称だったが、
+     * （記法は⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になり YAML 経路と非対称だったが、
      * 読みに {@code NullInterpreter} を掛けたことで解消している。
      * </p>
      */

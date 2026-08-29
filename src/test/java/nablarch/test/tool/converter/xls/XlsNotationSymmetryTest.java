@@ -24,8 +24,8 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 中間モデルが持つのは「テスティングフレームワークが解釈したあとの値」（Java {@code null} または
- * {@link String}）であって Excel 形式固有の記法ではない（{@code tools/testdata_converter.rst:14}・
- * {@code :22}・{@code :34}-{@code :35}）。読み（{@link XlsFormatReader}）で外した記法を
+ * {@link String}）であって Excel 形式固有の記法ではない（変換ツールの仕様・
+ * 記法・記法）。読み（{@link XlsFormatReader}）で外した記法を
  * 書き（{@link XlsFormatWriter}）で戻すことで写像が対称になる。
  * </p>
  *
@@ -39,8 +39,8 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * {@code implementation/testdata_notation.rst} の特殊記法の表を<b>全行・4 経路</b>で押さえるのは
- * 別タスク（完了条件3）の担当であり、本クラスは重複しない。
+ * 特殊記法の一覧を<b>全種・4 経路</b>で押さえるのは {@code SpecialNotationRoundTripTest} の担当であり、
+ * 本クラスは重複しない。
  * </p>
  *
  * <p>
@@ -192,7 +192,7 @@ public class XlsNotationSymmetryTest {
      * Given: セルに {@code \r}／{@code \n}／セル内 LF と書いた実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@code \r} だけが CR になり、{@code \n} は 2 文字のまま・LF は LF のまま素通しになる
-     *        （{@code implementation/testdata_notation.rst:1391}）。
+     *        。
      */
     @Test
     public void readsBackslashRNotationAsCarriageReturn() {
@@ -211,7 +211,7 @@ public class XlsNotationSymmetryTest {
     /**
      * Given: セルに {@code ${systemTime}} と書いた実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 記法のまま保たれる（{@code ${...}} 系は解決しない。{@code tools/testdata_converter.rst:61}）。
+     * Then : 記法のまま保たれる（{@code ${...}} 系は解決しない。変換ツールの仕様）。
      */
     @Test
     public void keepsDollarNotationUninterpreted() {

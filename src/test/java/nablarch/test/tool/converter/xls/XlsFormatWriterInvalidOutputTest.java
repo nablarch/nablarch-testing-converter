@@ -503,9 +503,8 @@ public class XlsFormatWriterInvalidOutputTest {
      *        <b>ブックは作られない。</b>
      *
      * <p>
-     * シート名は呼び出し側が渡す引き当てキーである（{@code testdata_notation.rst:590}
-     * 「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
-     * List 形式または Map 形式でデータを取得できる」、
+     * シート名は呼び出し側が渡す引き当てキーである（読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
+     * List 形式または Map 形式でデータを取得できる、
      * 続く {@code TestSupport#getListMap(String sheetName, String id)}）。
      * 黙って別名へ切り詰めると呼び出し側から引けなくなるため、切り詰めずに落とす
      * （{@code issues.md} <b>XLS-16</b>）。

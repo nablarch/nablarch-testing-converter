@@ -176,9 +176,9 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <b>ファイル種別 {@code null} はここでは検査しない。</b>{@code $defs.file_data} は {@code type} を
      * 必須とし、値を {@code enum} ＝ {@code ["fixed", "variable"]} に限るため、どちらとも決まっていない
      * ブロックは読み戻せる形に書けない。記法にも
-     * {@code testdata_notation.rst:1146}（{@code 30a8271} 時点）
-     * 「{@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
-     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになる」とある
+     * 記法
+     * {@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
+     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになるとある
      * （{@code coverage/issues.md} <b>XLS-29</b>）。{@link FileDataBlock} が<b>生成時点で拒否する</b>ため
      * ここへは届かない（番人の移設は 2026-08-19）。
      * </p>
@@ -206,12 +206,12 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} はいずれも
      * {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
      * {@code records: []} と書いても読み戻せない。記法にも電文のレコード 0 件を表す書き方の
-     * 明文が無く、電文が存在しない場合は {@code testdata_notation.rst:1257}（{@code 30a8271} 時点）の
+     * 明文が無く、電文が存在しない場合は 記法の
      * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
      * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
      * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり、
      * {@link #emitFile} 経由で {@code records: []} を出す正当な経路である
-     * （{@code testdata_notation.rst:881}／{@code :1109}／{@code :1146}。スキーマも
+     * （スキーマも
      * {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
      * </p>
      *
@@ -280,7 +280,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * 空なら {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
      * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法仕様が定めているためである
-     * （{@code testdata_notation.rst:881}／{@code :1146}。本体スキーマも
+     * （記法は／記法。本体スキーマも
      * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
      * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
      * {@link MessageDataBlock} が 0 件を<b>生成時点で拒否する</b>（{@code $defs.message_data} の
@@ -301,14 +301,13 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>記法は固定長ファイルについて
      * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と定め
-     * （{@code testdata_notation.rst:883}（{@code 30a8271} 時点）。{@code :889} は
-     * 「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
-     * 電文も {@code :1158}「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
-     * フィールド長・データという、前述のファイルデータと同じ構成を持つ」で同じ制約に掛かる
+     * （「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
+     * 電文も 記法はフレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
+     * フィールド長・データという、前述のファイルデータと同じ構成を持つで同じ制約に掛かる
      * （{@code coverage/issues.md} <b>XLS-30</b>）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
      * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
      * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
-     * 正しい</b>ため拒否しない（{@code :883}「可変長ファイルでは…フィールド長は不要である」）。
+     * 正しい</b>ため拒否しない（記法は可変長ファイルでは…フィールド長は不要である）。
      * 番人の移設は 2026-08-19。
      * </p>
      *

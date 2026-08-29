@@ -29,7 +29,7 @@ public final class TableDataBlock extends ColumnRowDataBlock {
     /**
      * 取りうるデータ種別。YAML のトップレベルキー {@code setup_tables} ／ {@code expected_tables} ／
      * {@code expected_complete_tables}（いずれも {@code $defs.table_data}）に対応する 3 種
-     * （{@code testdata_notation.rst:214-219}（{@code 30a8271} 時点））。
+     * 。
      */
     private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
             DataType.SETUP_TABLE_DATA, DataType.EXPECTED_TABLE_DATA, DataType.EXPECTED_COMPLETED);

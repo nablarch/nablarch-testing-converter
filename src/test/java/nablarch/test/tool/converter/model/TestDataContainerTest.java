@@ -52,8 +52,8 @@ public class TestDataContainerTest {
     @Test
     public void 名前がnullの器は生成できない() {
         // Given: 器の名前はテストクラスと 1 対 1 に対応する引き当てキーであり
-        //        （notation:44「同名の1つのExcelファイル（.xls または .xlsx）がテストクラスに対応し、
-        //        1シートが読み込み単位に対応する」）、辺③はこれをそのままブック名にする。
+        //        （記法は同名の1つのExcelファイル（.xls または .xlsx）がテストクラスに対応し、
+        //        1シートが読み込み単位に対応する）、辺③はこれをそのままブック名にする。
         //        null では null.xlsx というファイルが黙って作られる（XLS-37）
         // When
         try {
@@ -125,8 +125,8 @@ public class TestDataContainerTest {
     @Test
     public void 名前がnullの読み込み単位は生成できない() {
         // Given: 読み込み単位の名前は呼び出し側がデータを引き当てるキーであり
-        //        （notation:590「読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と
-        //        ID を指定して…取得できる」）、null では引けない。生成時点で拒否する
+        //        （記法は読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と
+        //        ID を指定して…取得できる）、null では引けない。生成時点で拒否する
         // When
         try {
             new TestDataSection(null, List.of());

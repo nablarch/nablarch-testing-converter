@@ -14,8 +14,8 @@ import java.util.List;
  * <p>
  * <b>フィールドを 1 件も持たないレコードレイアウトは作れない。生成時点で拒否する。</b>
  * Excel 記法・YAML 記法のいずれもフィールドを持たないレコードレイアウトを認めていないためである
- * （Excel は {@code testdata_notation.rst:888}（{@code 30a8271} 時点）が「フィールド名称リストまたは
- * データ型リストが未指定または空である」を記述時のエラーに挙げる。YAML は本体スキーマ
+ * （Excel は 記法がフィールド名称リストまたは
+ * データ型リストが未指定または空であるを記述時のエラーに挙げる。YAML は本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.record_fragment} が
  * {@code fields} を必須かつ {@code minItems} ＝ 1 とする）。
  * <b>番人はもとは辺③④の書き出し側にあった</b>（{@code coverage/issues.md} <b>XLS-22</b> ／
@@ -25,8 +25,8 @@ import java.util.List;
  *
  * <p>
  * <b>フィールド名称が重複したレコードレイアウトは作れない。生成時点で拒否する</b>
- * （{@code testdata_notation.rst:887}（{@code 30a8271} 時点）「同一レコード種別内でフィールド名称が
- * 重複している」は記述時のエラーである。{@code coverage/issues.md} <b>XLS-40</b>）。
+ * （記法は同一レコード種別内でフィールド名称が
+ * 重複しているは記述時のエラーである。{@code coverage/issues.md} <b>XLS-40</b>）。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>

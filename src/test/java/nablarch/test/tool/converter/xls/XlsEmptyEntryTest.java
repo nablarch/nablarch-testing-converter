@@ -38,19 +38,18 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 空エントリの読み飛ばしは<b>記法として空</b>のエントリだけを対象とする
- * （{@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）「Excel では行の全セルが空の場合」）。
+ * （記法はExcel では行の全セルが空の場合）。
  * 半角 {@code ""}（2 文字）は<b>空文字を表す記法であって空セルではない</b>ため、読み飛ばしの対象ではない。
  * 本体も同じ扱いで、空エントリの判定を解釈前の生セルで行う
- * （{@code nablarch-testing@3c4bd2a} の {@code PoiXlsReader.java:93} が {@code :140}-{@code :147} の
- * {@code isBlankLine} で生セルの行を捨て、{@code TestDataParsingTemplate.java:180} の空行判定も
- * {@code :183} の {@code interpret} より前にある）。
+ * （{@code PoiXlsReader} が 記法の
+ * {@code isBlankLine} で生セルの行を捨て、{@code TestDataParsingTemplate} の空行判定も
+ * 記法の {@code interpret} より前にある）。
  * </p>
  *
  * <p>
  * 逆向き（書き）も同じ理由で対称になる。全要素が空文字のエントリを空セルだけの行として書くと、
- * 次に読むときに空エントリとして落ちる。解説書は
- * {@code implementation/testdata_examples.rst:2231}（同）で
- * 「全フィールドが空文字のレコードは、いずれか1つのフィールドに {@code ""} と記述する」と定める。
+ * 次に読むときに空エントリとして落ちる。全フィールドが空文字のレコードは、
+ * いずれか 1 つのフィールドに {@code ""} と書いて表す。
  * </p>
  *
  * <p>
@@ -214,7 +213,7 @@ public class XlsEmptyEntryTest {
      * Then : 読み込むエントリ件数が本体（{@code PoiXlsReader}）と一致する。
      *
      * <p>
-     * 全セルが空セルの行だけが読み飛ばされる（{@code testdata_notation.rst:1500}）。
+     * 全セルが空セルの行だけが読み飛ばされる。
      * </p>
      */
     @Test
@@ -239,7 +238,7 @@ public class XlsEmptyEntryTest {
     /**
      * Given: 全セルが空セル（1 つは書式だけ、1 つはセルそのものが無い）の行を持つ実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : その行は読み飛ばされる（{@code testdata_notation.rst:1500} の規則そのもの）。
+     * Then : その行は読み飛ばされる（記法の規則そのもの）。
      */
     @Test
     public void dropsTableEntryWhoseCellsAreAllBlank() {
@@ -322,7 +321,7 @@ public class XlsEmptyEntryTest {
      * Given: 全フィールドが空文字のデータ行を持つ可変長ファイルの中間モデル。
      * When : Excel 形式へ書き出す。
      * Then : そのデータ行の<b>先頭フィールド</b>へ {@code ""} と書かれる
-     *        （{@code testdata_examples.rst:2231}「いずれか1つのフィールドに {@code ""} と記述する」）。
+     *        （記載例はいずれか1つのフィールドに {@code ""} と記述する）。
      */
     @Test
     public void writesFirstFieldOfAllEmptyFileDataRowAsQuotedEmptyString() {
@@ -390,7 +389,7 @@ public class XlsEmptyEntryTest {
     }
 
     /**
-     * Given: {@code testdata_examples.rst:2237}-{@code :2260} の記載例（可変長ファイル）そのままの実 {@code .xlsx}。
+     * Given: 記載例（可変長ファイル）そのままの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} → 中間モデル → 実 {@code .xlsx} と往復させる。
      * Then : レコード件数と値が保たれる。
      */
@@ -411,7 +410,7 @@ public class XlsEmptyEntryTest {
     }
 
     /**
-     * Given: {@code testdata_examples.rst:2237}-{@code :2260} の記載例（可変長ファイル）そのままの実 {@code .xlsx}。
+     * Given: 記載例（可変長ファイル）そのままの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} → 中間モデル → YAML → 中間モデル → 実 {@code .xlsx} と往復させる。
      * Then : レコード件数と値が保たれる。
      */
@@ -438,7 +437,7 @@ public class XlsEmptyEntryTest {
     // ------------------------------------------------------------------ フィクスチャ
 
     /**
-     * {@code testdata_examples.rst:2237}-{@code :2260} の記載例を実 {@code .xlsx} として書き出す。
+     * 記載例を実 {@code .xlsx} として書き出す。
      */
     private void writeDocumentedExample() {
         XlsFixture.book(BOOK).sheet(SHEET)
