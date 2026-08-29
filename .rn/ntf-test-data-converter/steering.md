@@ -2020,12 +2020,12 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `mvn -o clean test` が緑（`@Ignore` 0 件）であることを確認する
-- [ ] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
-- [ ] `checks/step4-2-report.md` の §2〜§7 を埋める
-- [ ] 既存テストの期待値を変えた箇所を件数つきで全件挙げる
-- [ ] 一時ファイル（`ZzProbeTest`・`ZzOracleProbeTest`）を削除し `git status --short` が空になることを確認する
-- [ ] 変更を push する
+- [x] `mvn -o clean test` が緑（`@Ignore` 0 件）であることを確認する
+- [x] カバレッジ C0/C1 を計測し、`src/main` の是正で下がった箇所があれば挙げる
+- [x] `checks/step4-2-report.md` の §2〜§7 を埋める
+- [x] 既存テストの期待値を変えた箇所を件数つきで全件挙げる
+- [x] 一時ファイル（`ZzProbeTest`・`ZzOracleProbeTest`）を削除し `git status --short` が空になることを確認する
+- [x] 変更を push する
 
 **Completion criteria**:
 

@@ -164,3 +164,199 @@ git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src                      →  11 行
 ```
 
 全件の `file:line` は 2-6 のコミットの差分で示す。
+
+
+---
+
+## 2. 第2節 6 件の是正結果
+
+コミットは 6 つ（`d611bec` の次から）。`src/` の差分は各コミットの `git diff --stat` が正である。
+
+| 是正 | タスク | コミット | 変更したファイル | 直す前に落ちたテスト |
+|---|---|---|---|---|
+| 2-1 Excel 読みの値処理を本体と同じ順序にする | #40 | `4418726`（`b7d2320` の `src/main` を含む） | `core/reader/TestCoreReaderAdapter`（本体パーサ 6 種へインタープリタ列を渡す／`SendSyncBodyCollector` の `super` を `INTERPRETERS` へ）、`xls/XlsFormatReader`（値を器から取り、自前の解釈と死んだコードを削除）、`xls/XlsFormatWriter`（`appendKeyValueRows` を `toCellNotation` 経由へ） | `XlsTrailingNullTest` 5 件（`d611bec` で全件赤）／`TestCoreReaderAdapterTest#readTablesReturnsRawTableData`／`XlsFormatReaderTest#readMapsTableBlockPreservingRawValues` |
+| 2-2 マーカーカラムだけに値があるエントリを残す | #41 | `1915207` | `xls/XlsFormatReader#rowCount`（カラム名 0 件のブロックは行を持たない。値は見ない） | `XlsMarkerOnlyEntryTest` 2 件（`d611bec` で赤）／`XlsFormatReaderRealFileTest` 2 件・`XlsReferenceFixtureTest` 1 件（`b7d2320` で赤。**期待値は変えていない**） |
+| 2-3 交互記述のシートで警告を出す | #42 | `729347b` | `xls/XlsFormatReader#warnInterleavedBlocks`・`#unreadIdentifiersAfter`・`#isGroupCollected` | `XlsInterleavedBlockTest` 2 件が (i) 警告の件数で赤（実装前に確認） |
+| 2-4 `nablarch-testing-yaml` 第2回への追随 | #43 | `f858ae5` | **`src/main` は無変更**（器経由で自動追随する） | 着手時点の赤 4 件（指示書 2-4 の表と全件一致） |
+| 2-5 4 経路テストの正解を本体にし、母集合を足す | #44 | `1d572ef` | **`src/main` は無変更** | `SpecialNotationRoundTripTest` の新規 3 件（`d611bec` で赤。§3） |
+| 2-6 ソースから解説書への参照をすべて取り除く | #45 | `26701b7` | `src/` 48 ファイルのコメント・Javadoc のみ（コードは 1 文字も変わっていない） | —— |
+
+**`src/main` の変更は 3 ファイルに閉じている**（`TestCoreReaderAdapter` ／ `XlsFormatReader` ／ `XlsFormatWriter`）。
+`d611bec..HEAD` の `src/main` 差分に 19 ファイルが並ぶが、そのうち 16 ファイルは #45 のコメント変更だけである。
+
+### 指示書との食い違い 2 件（いずれも実測で訂正した）
+
+| # | 指示書 | 実測 | どうしたか |
+|---|---|---|---|
+| 1 | §8-5「`b7d2320` に残った死んだコードを消す —— `XlsFormatReader` の `tail`・…」 | **`tail` は死んでいない。**生行から原文（型行・長さ行・名前行）を復元する経路が 4 か所から呼んでいる | `tail` は残し、他の 7 か所（＋インタープリタ定数 3 と import 4）を削除した。指示書が根拠にした `git grep 'private .*(…)\('` は**定義だけ**を探す式で、呼び出しの有無を見ていない |
+| 2 | 2-1 の対処 1「本体パーサ 6 種へインタープリタ列を渡す」 | `b7d2320` の時点で**送信同期系だけが渡せていなかった**。`SendSyncBodyCollector` の `super(reader, EMPTY_INTERPRETERS, targetType)` が残っており、S2（送信同期の末尾 `null`）が本体と食い違ったまま | `super` を `INTERPRETERS` へ改めた。セルを解釈するのは読み手であるテンプレート側であって、`onReadLine` 以降しか呼ばれない委譲先ではない |
+
+---
+
+## 3. 2-5 の結果（母集合と 4 経路）
+
+`SpecialNotationRoundTripTest` **26 件**（第1回の 20 件 ＋ #44 で足した 6 件）。**全件緑。**
+
+**正解は変換ツールのリーダではない。** Excel 形式はフレームワーク本体（`PoiXlsReader` ＋ パーサ ＋
+インタープリタ列）、YAML 形式は `nablarch-testing-yaml` の `YamlTestDataParser` に読ませた値を正解とする
+（テスト専用の `FrameworkOracle` ／ `YamlFrameworkOracle`）。各テストは 4 経路の往復に先立って
+**変換ツールが読んだ中間モデルの値を正解と突き合わせる**。
+
+**往復だけでは末尾 `null` の欠陥を検知できない。** 変換ツールが `x,null,null` を `x,null,null` と読み、
+書き戻すときも `null` 記法へ戻すため、往復の前後でフレームワークが読む値は変わらないからである。
+この突き合わせを入れる前は、`d611bec` でも 26 件のうち落ちたのは 1 件だけだった。
+
+| 母集合 | 件数 | 4 経路 | 備考 |
+|---|---:|---|---|
+| 特殊記法 12 種（Excel 記法 ⇄ YAML 記法の対） | 13 | 全経路 緑 | 改行は CR と LF に分けて測るため 13 件 |
+| 特殊な値の記述例 6 例 | 7 | 全経路 緑 | LF の例は YAML 側だけが持つため別建て |
+| **#44 追加**: 末尾 `null`（ファイル F1・F4・F6 ／ 電文 M1） | 2 | 全経路 緑 | `d611bec` では**変換ツールの Excel 読みが本体と一致する**で赤 |
+| **#44 追加**: 全カラムの値が空文字のエントリ（テーブル／`LIST_MAP`） | 2 | 全経路 緑 | 第1回はガードのカラムを置いていたため母集合に無かった |
+| **#44 追加**: マーカーカラムだけに値があるエントリ | 1 | 全経路 緑 | `d611bec` では赤 |
+| **#44 追加**: アップロードファイルの記述例（`LIST_MAP` ＋ `[no]` ＋ `${attach:…}`） | 1 | 全経路 緑 | 第1回は母集合から外していた |
+
+**`d611bec` で落ちる 3 件**（完了条件1。worktree に `d611bec` を出し、新しいテストだけを持ち込んで実測）:
+
+```
+Tests run: 26, Failures: 3, Errors: 0, Skipped: 0
+  markerOnlyEntryInListMap   変換ツールの Excel 読みが本体と一致する
+  trailingNullInFixedFile    変換ツールの Excel 読みが本体と一致する
+  trailingNullInMessage      変換ツールの Excel 読みが本体と一致する
+```
+
+**送信同期電文（2-1 実測表の S2）は 4 経路の母集合へは入れていない。** 4 経路のうち YAML→XLS→YAML は
+送信同期の識別子とグループ ID の対応を要し、母集合の 1 件として組むより直接の突き合わせのほうが
+確かめたいことに近いためである。S2 の担保は
+`XlsTrailingNullTest#readsTrailingNullsAsEmptyStringInSendSyncMessage`（#40）にある。
+
+---
+
+## 4. 期待値をわざと崩す確認の結果（完了条件4）
+
+**足したテスト 22 件・直したテスト 7 件のすべてについて確認した。変異は計 34 件。**
+崩した状態でそのテストだけを実行し `Failures: 1` になることを確認してから元へ戻している。
+全件の表は各タスクの `checks/task-4N.md`「完了条件4」にある。
+
+| タスク | 変異 | 内訳 |
+|---|---:|---|
+| #40 | 7 | `XlsTrailingNullTest` 5 件（本体の値の期待を 1 要素ずつ崩す）／(e) 1・2 の直した期待値 2 件 |
+| #41 | 5 | `XlsMarkerOnlyEntryTest` 2 件（本体が読む件数 3 → 2）／文言を書き直した 3 件（行 0 件 → 1 件） |
+| #42 | 5 | 警告の件数 1 → 2 ／出力の期待に落ちたブロックを足す ／(iii) の突き合わせ相手を別グループへ ／文言 ／負のテストの 0 → 1 |
+| #43 | 10 | 足した 6 件（値・エラー文言）／直した 4 件（いずれも直す前の値へ戻す） |
+| #44 | 7 | 足した 6 件（YAML 側の値・パスを変える）／既存 1 件（`javaNull` の期待を `null` → `""`） |
+
+---
+
+## 5. 既存テストの期待値を変えた箇所の全件（完了条件5）
+
+**変えたのは 7 件。変えなかったが結果が緑へ変わったものが 3 件。** テストの総数は 656 → 678（＋22。すべて新規）。
+
+### 変えた 7 件
+
+| # | テスト | 変更前 → 変更後 | 理由 | タスク |
+|---|---|---|---|---|
+| 1 | `core/reader/TestCoreReaderAdapterTest#readTablesReturnsRawTableData` → `#readTablesReturnsValuesInterpretedByFramework` | 「器から出る値は記法のまま（未加工）」→ 解釈後の値（引用符記法は外側 1 層が外れ、`null` 記法は Java `null`。`${…}` は記法のまま） | 本体にセルを解釈させる配線へ変えたため主張が成り立たない。フィクスチャがセルに Java `null` を入れていた点も直した（実 `PoiXlsReader` は空セルを空文字で返すため、その入力は実在しない） | #40 |
+| 2 | `xls/XlsFormatReaderTest#readMapsTableBlockPreservingRawValues` → `#readMapsTableBlockWithFrameworkInterpretedValues` | 同上 | 同上 | #40 |
+| 3 | `yaml/YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull` | 2 行目の期待 `[a, null, ""]` → `[a, "", ""]` | 末尾側に並んだ `null` と欠損はまとめて空文字になる（yaml 第2回 2-1）。テストの主題（書かれた空文字と欠損が区別できない＝YML-05）は 1 行目が担っており変わっていない | #43 |
+| 4 | `yaml/YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNullInRecordFragmentPath` → `#readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath` | 期待 `null` → `""`。改名 | ヘルパのフィクスチャはフィールド 1 件で、**唯一のフィールドは常に末尾**である | #43 |
+| 5 | `yaml/YamlFormatReaderScalarTest#skipsRowWhoseValuesAreAllEmpty` | 期待に全値が空文字の行を戻した | 読み飛ばされるのは空マッピング `{}` の行だけである（yaml 第2回 2-4） | #43 |
+| 6 | `yaml/YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` | フィクスチャの `records:` を 2 件 → 1 件。期待するレコード数も 2 → 1 | 電文のレコードレイアウトは 1 つであり、2 件はスキーマ検証で落ちる（yaml 第2回 2-2）。テストの主題（`FW_HEADER` という名前のレコードが落とされないこと）は変えていない | #43 |
+| 7 | `xls/SpecialNotationRoundTripTest#binaryFileNotation` | 期待 `"${binaryFile:testdata.bin}"` → `"010203"` | 正解の読み手をフレームワークにしたため、この記法は取得元パス起点で解決されファイル内容の 16 進文字列になる | #44 |
+
+### 変えなかったが結果が緑へ変わった 3 件（指示書 §8-2）
+
+| テスト | 何を変えたか |
+|---|---|
+| `xls/XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` | **期待値（行 0 件）は変えていない。** assert メッセージと Javadoc の理由の説明だけを「カラム名を 1 つも持たないブロックはデータ行を持たない」へ書き直した |
+| `xls/XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` | 同上 |
+| `xls/XlsReferenceFixtureTest#readsExcelSavedWorkbookIntoIntermediateModel` | 同上（`expectedRequestParams` の Javadoc） |
+
+### 変えなかったもの（主なもの）
+
+`XlsFormatReaderCellTypeTest` 10 件・`XlsNotationSymmetryTest` 8 件・`XlsEmptyEntryTest` 12 件・
+`RoundTripTest` 30 件・`XlsFormatReaderRealFileTest` の残り 21 件・`SpecialNotationRoundTripTest` の
+第1回 19 件は、いずれも期待値を触っていない。値の意味が本体と一致した結果として緑のままである。
+
+---
+
+## 6. カバレッジ C0/C1（完了条件7）
+
+**着手前（`d611bec`）と完了時（`26701b7`）の 2 回を、同じ手順で計測して突き合わせた。**
+
+```sh
+rm -f jacoco.exec
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o clean jacoco:instrument test jacoco:restore-instrumented-classes
+JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn -o jacoco:report -Djacoco.dataFile=$(pwd)/jacoco.exec
+md5sum target/site/jacoco/jacoco.csv
+```
+
+- 着手前（`d611bec`。worktree で計測。赤 4 件を含む実行）: 行 **1632/1706 ＝ 95.66%** ／ 分岐 **761/818 ＝ 93.03%**
+  —— これは第1回の報告 §6-3 が記録した値と一致する（同じ手順・同じ対象であることの確認）
+- 完了時（`26701b7`。`jacoco.csv` md5 `0ea76427cb5afd322a2c3804ea30bf13`）:
+  行 **1632/1704 ＝ 95.77%** ／ 分岐 **763/810 ＝ 94.20%**
+
+**`coverage/coverage-report.md` は書き換えていない**（`steering.md` Rules「JaCoCo の再計測はしない」の趣旨は
+同書が引く行番号を自己無効化させないことであり、本節の数値は別の実行である。`checks/` は時点の証拠記録）。
+
+区分別（着手前 → 完了時）:
+
+| 区分 | 行（前） | 行（後） | 分岐（前） | 分岐（後） | 分岐の未到達 |
+|---|---|---|---|---|---|
+| ① `XlsFormatReader`（2 クラス） | 204/209 | **201/204** | 117/142 | **119/134** | 25 → **15** |
+| ② `YamlFormatReader`（2 クラス） | 194/194 | **194/194** | 102/102 | **102/102** | 0 → **0** |
+| ③ `XlsFormatWriter`（1 クラス） | 176/177 | **177/178** | 118/126 | **118/126** | 8 → **8** |
+| ④ `YamlFormatWriter`（1 クラス） | 150/152 | **150/152** | 81/84 | **81/84** | 3 → **3** |
+| ⑤ `TestCoreReaderAdapter`（4 クラス） | 99/107 | **101/109** | 33/37 | **33/37** | 4 → **4** |
+| ⑥ 中間モデル（12 クラス） | 163/163 | **163/163** | 70/70 | **70/70** | 0 → **0** |
+
+（⑥ の値が第1回の報告 §6-3 の `150/150` と違うのは区分に入れたクラスの数え方の差である。
+本節は**前後とも同じ数え方**で集計しているので、増減の比較には影響しない。）
+
+### 下がった箇所
+
+**無い。全 53 クラスについて、未到達の行も未到達の分岐も 1 件も増えていない**（CSV を 1 行ずつ突き合わせた実測）。
+
+**下がるどころか `XlsFormatReader` が改善している** —— 未到達分岐 **25 → 15**、未到達行 **5 → 3**。
+自前の解釈（`interpretValue` ／ `interpretRows` ／ `dropEmptyEntries` 系）を削除して総分岐が 142 → 134 へ減り、
+かつ #41・#42 で足した判定にテストが届いているためである。
+
+**残っている未到達 15 分岐は `XlsFormatReader` に集中している。** 第1回の報告 §6-4 が残課題として
+開示した 2 件（`XlsFormatWriter#isQuotationWrapped` の全角クォート側 3 分岐／
+`TestCoreReaderAdapter#markerGroupId` の角括弧が閉じていない側 2 分岐）は**今回も未到達のまま**であり、
+どちらも第2回の完了条件に含まれていない。**足すかどうかの判断は調整側に委ねる。**
+
+---
+
+## 7. 2-6 の件数と抽出方法（完了条件11）
+
+### 着手前（#45 着手時点。#44 完了後）
+
+```
+git grep -nE '\.rst|nablarch-document|解説書|出典|根拠:' -- src/   → 157 行 / 42 ファイル
+    src/main  64 行 / 18 ファイル
+    src/test  93 行 / 24 ファイル
+git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src                      →   9 行
+```
+
+指示書 §2-6 が挙げた `d611bec` 時点の 167 行・43 ファイルより減っているのは、#40 で
+`XlsFormatReader` の死んだコードを Javadoc ごと削除したためである。
+**全件の `file:line` は 2-6 のコミット `26701b7` の差分が示す。**
+
+### 作業後
+
+```
+git grep -nE '\.rst|nablarch-document|解説書|出典|根拠:' -- src/   → 0
+git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src                      → 0
+```
+
+### コミット
+
+**`26701b7`（単独）。** 変更は `src/` 48 ファイル・+361／-403 行で、すべてコメントと Javadoc である。
+コメント（`//`・`/* */`）を機械的に取り除いて空白を正規化したうえで着手前（`1d572ef`）と突き合わせ、
+**コードに差分のあるファイルが 0 件**であることを確認した（手順は `checks/task-45.md`）。
+
+### 残したもの
+
+- 本体スキーマ（`nablarch/test/ntf-testdata-yaml-schema.json`）の description の引用 —— 解説書ではない
+- `{@code coverage/issues.md}` ／ `{@code steering.md}` への参照 —— 指示書 2-6 が「根拠の追跡は `.rn/` の
+  報告書・台帳で行う」と定めているため
