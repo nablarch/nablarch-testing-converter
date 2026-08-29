@@ -1905,9 +1905,9 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] `XlsFormatReader.readDataRows` の値を `FragmentView.getValues` から取り、`interpretValue`／`interpretRows` を消す
 - [x] (a) `normalizeDirectiveValue` の `QuotationTrimmer` 二重適用を外す
 - [x] (a)(b) `XlsFormatWriter.appendKeyValueRows` を `toCellNotation` 経由にする
-- [ ] 【§8-5】`b7d2320` に残った死んだコードを消す —— `XlsFormatReader` の `tail`・`interpretValue`・`stripQuotes`・`dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretRows`、`TestCoreReaderAdapter` の `EXPERIMENT:` コメント。`isQuotationWrapped` も参照が無くなれば消す
-- [ ] 本体を正解にしたテスト（実 `.xlsx` 起点。2-1 実測表 F1・F4・F6・M1・S2）を足す
-- [ ] 足したテスト・直したテストの期待値をわざと崩すと落ちることを1度確認する
+- [x] 【§8-5】`b7d2320` に残った死んだコードを消す —— `XlsFormatReader` の `tail`・`interpretValue`・`stripQuotes`・`dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretRows`、`TestCoreReaderAdapter` の `EXPERIMENT:` コメント。`isQuotationWrapped` も参照が無くなれば消す
+- [x] 本体を正解にしたテスト（実 `.xlsx` 起点。2-1 実測表 F1・F4・F6・M1・S2）を足す
+- [x] 足したテスト・直したテストの期待値をわざと崩すと落ちることを1度確認する
 
 **Completion criteria**:
 

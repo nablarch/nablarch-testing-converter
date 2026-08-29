@@ -29,8 +29,12 @@ import nablarch.test.core.util.interpreter.TestDataInterpreter;
  * 相乗りさせ、この可視性の壁を越える。相乗りの影響は本クラスに局所化される。
  * </p>
  * <p>
- * 配線は常に<b>空の interpreters</b>で行うため、{@code ${...}} 等の特殊記法・補完・
- * マージといった値加工は一切行われず、IN 値は記法のまま（未加工）で取り出される。
+ * データを持つパーサ（テーブル・{@code LIST_MAP}・固定長／可変長ファイル・電文・送信同期電文）は、
+ * テスティングフレームワークが単体テストで使うのと同じ順のインタープリタ列
+ * （{@code null} 記法 → 引用符記法 → 改行記法）で配線する。値の意味をフレームワークと
+ * 同じにするためであり、変換ツール側で値を解釈し直すことはしない。
+ * {@code ${...}} 等の特殊記法を扱うインタープリタは渡さない（記法のまま運ぶ）。
+ * 生行を原文のまま取り出すコレクタ（ヘッダ行・ボディ行）だけは空の interpreters で配線する。
  * また {@code getExpectedTableData} のような後処理（デフォルト値補完・期待値マージ）も
  * 行わない。各メソッドはデータタイプに対応する本体器をそのまま返す。
  * </p>
@@ -39,10 +43,10 @@ import nablarch.test.core.util.interpreter.TestDataInterpreter;
  */
 public class TestCoreReaderAdapter {
 
-    /** 空の interpreters（値加工を一切行わせないための配線） */
+    /** 空の interpreters（生行を原文のまま取り出すコレクタ用の配線） */
     private static final List<TestDataInterpreter> EMPTY_INTERPRETERS = Collections.emptyList();
 
-    /** EXPERIMENT: 本体 unit-test.xml と同順のインタープリタ列 */
+    /** テスティングフレームワークが単体テストで使うのと同順のインタープリタ列 */
     private static final List<TestDataInterpreter> INTERPRETERS = Collections.unmodifiableList(
             Arrays.<TestDataInterpreter>asList(new NullInterpreter(), new QuotationTrimmer(),
                                                new LineSeparatorInterpreter()));
@@ -338,7 +342,9 @@ public class TestCoreReaderAdapter {
          * @param targetType 対象データタイプ（送信系 4 種のいずれか）
          */
         SendSyncBodyCollector(TestDataReader reader, DataType targetType) {
-            super(reader, EMPTY_INTERPRETERS, targetType);
+            // セルを解釈するのは読み手であるこのテンプレート側であり、委譲先ではない
+            // （委譲先は onReadLine 以降しか呼ばれず、自身の interpreters を使う機会が無い）。
+            super(reader, INTERPRETERS, targetType);
             delegate = new SendSyncMessageParser(reader, INTERPRETERS, targetType);
         }
 

@@ -1113,6 +1113,43 @@ Tests run: 605, Failures: 0, Errors: 0, Skipped: 2
 **辺③④のライタ・`YamlTestDataValidator` には番人も WARN も足していない**（`issues.md` XLS-45 の
 「converter 側の対応（#31）」）。
 
+**追補その 13（2026-08-29 実測。#40 で 2-1（Excel 読みの値処理を本体と同じ順序にする）を実施したぶん）**
+
+追補その 12（605 件）から、Step 4 第1回（#32〜#39）で足した 51 件と、#40 で足した 5 件を導き直した。
+**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 670
+② （0 件）
+③ 8c327d0: 536
+   HEAD: 656   ← #40 のコミットが載る前の値
+```
+
+**① が 670、③ の HEAD が 656 と食い違うのは、① が作業ツリーを数えるためである。** 差 14 件の内訳は
+**#40 が足した 5 件**（`xls/XlsTrailingNullTest`）と、**追跡していない測定用の一時テスト 9 件**
+（`core/reader/ZzOracleProbeTest` ／ `xls/ZzProbeTest`。#46 で削除する）である。
+追跡対象だけを数えた値は **661** である。
+
+```sh
+# 追跡対象だけを数える（一時テストを除く）
+git ls-files 'src/test/**/*.java' | xargs grep -c '^    @Test' | awk -F: '{s+=$2} END {print s}'
+```
+
+**605 → 661（差 ＋56）の内訳** —— Step 4 第1回で ＋51（§4.5 の 5 クラス）、#40 で ＋5。削除は無い。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋5 | `xls/XlsTrailingNullTest`（5 件） | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。期待値はテストが書かず `core/reader/FrameworkOracle` が本体から取る |
+
+**#40 は既存テスト 2 件の期待値を変えた（件数は増減しない）。**
+`core/reader/TestCoreReaderAdapterTest#readTablesReturnsRawTableData` →
+`#readTablesReturnsValuesInterpretedByFramework`、
+`xls/XlsFormatReaderTest#readMapsTableBlockPreservingRawValues` →
+`#readMapsTableBlockWithFrameworkInterpretedValues`。どちらも「器から出る値は記法のまま（未加工）」を
+主張していたが、本体にセルを解釈させる配線へ変えたため主張が成り立たなくなった。
+フィクスチャがセルに Java `null` を入れていた点も直した（実 `PoiXlsReader` は空セルを空文字で返すため、
+その入力は実在しない）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -3321,6 +3358,31 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 
 **この 5 クラスが埋めているのは軸ではなく、解説書の記述に対する担保である。**
 母集合と経路ごとの合否は `checks/step4-report.md` に記録する。
+
+## 4.6 Step 4 第2回（#40〜#45）が新設したテストクラス（2026-08-29 追記）
+
+**本節は #40 で新設した。**第2回は「解説書に書いてあることを実装とテストで押さえる」もので、
+軸A〜F の要素表とは切り口が違う。**軸要素対応表（`axis-matrix.md`）へは載せない**——理由は §4.5 と同じで、
+測っているのは中間モデルの写しの穴ではなく、フレームワーク本体と意味が一致するかである。
+件数は導出コマンドの実測である。
+
+| テストクラス | 追加タスク | 件数 | 導出コマンド | 何を担保するか |
+|---|---|---:|---|---|
+| `xls/XlsTrailingNullTest` | #40 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsTrailingNullTest.java` | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。実 `.xlsx` 起点 |
+
+**期待値の出どころを本体に移した（#40）。** 上記クラスは期待値を自分で書かず、
+`core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。
+変換ツールと期待値が同じ写し間違いを持つと検知できないためである
+（変換ツール自身の 2 つのリーダを突き合わせていた `SpecialNotationRoundTripTest` で実際に起きた）。
+本体の値そのものも各テストで明示し、本体側が黙って変わったときに気づけるようにしている。
+
+**テスト専用の相乗りクラス 3 本（#40）。** いずれも `src/main` からは使わない。
+
+| クラス | 置いたパッケージ | 越えた壁 |
+|---|---|---|
+| `core/reader/FrameworkOracle` | `nablarch.test.core.reader` | 本体パーサの `getResult()` ／ `MessageParser#getDelegate()`（パッケージプライベート） |
+| `core/file/DataFileInspector` | `nablarch.test.core.file` | `DataFileFragment` の `names` ／ `values`（protected）。`DataFile#toDataRecords()` は固定長レコードとしての型変換を伴い空文字が `null` へ変わるため、値の突き合わせには使えない |
+| `core/messaging/MessagePoolInspector` | `nablarch.test.core.messaging` | `MessagePool#getSource()`（protected） |
 
 ## 5. 全体サマリ
 

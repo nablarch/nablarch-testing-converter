@@ -106,19 +106,20 @@ public class TestCoreReaderAdapterTest {
     // ------------------------------------------------------------------ readTables
 
     /**
-     * Given: マーカーカラム・{@code ${...}}・空文字・null セルを含む SETUP_TABLE ブロック。
+     * Given: マーカーカラム・{@code ${...}}・空文字・{@code null} 記法・引用符記法を含む SETUP_TABLE ブロック。
      * When : {@code readTables(SETUP_TABLE_DATA)} を呼ぶ。
-     * Then : 本体器{@link TableData}が返り、IN 値が記法のまま（未加工）で、マーカーカラムが除外される。
+     * Then : 本体器{@link TableData}が返り、値はテスティングフレームワークが解釈したあとの値になり、
+     *        マーカーカラムが除外される。{@code ${...}} は解釈されず記法のまま運ばれる。
      */
     @Test
-    public void readTablesReturnsRawTableData() {
+    public void readTablesReturnsValuesInterpretedByFramework() {
         // Given
-        String resource = "readTablesReturnsRawTableData";
+        String resource = "readTablesReturnsValuesInterpretedByFramework";
         List<List<String>> lines = new ArrayList<List<String>>();
         lines.add(row("SETUP_TABLE=USERS"));
         lines.add(row("USER_NAME", "AGE", "[NOTE]"));   // [NOTE] はマーカーカラム
-        lines.add(row("${userName}", "", "memo"));       // ${...}・空文字
-        lines.add(row("literal", null, "memo2"));        // null セル
+        lines.add(row("${userName}", "", "memo"));       // ${...}・空セル
+        lines.add(row("\"quoted\"", "null", "memo2"));   // 引用符記法・null 記法
 
         TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
                 new FakeTestDataReader().put(resource, lines));
@@ -132,10 +133,11 @@ public class TestCoreReaderAdapterTest {
         assertThat(table.getTableName(), is("USERS"));
         // マーカーカラムは除外される
         assertThat(table.getColumnNames().length, is(2));
-        // IN 値は記法のまま（未加工）
+        // ${...} は解釈しないインタープリタを渡していないので記法のまま
         assertThat(table.getValue(0, "USER_NAME").toString(), is("${userName}"));
         assertThat(table.getValue(0, "AGE").toString(), is(""));
-        assertThat(table.getValue(1, "USER_NAME").toString(), is("literal"));
+        // 引用符記法は外側 1 層が外れ、null 記法は Java null になる
+        assertThat(table.getValue(1, "USER_NAME").toString(), is("quoted"));
         assertThat(table.getValue(1, "AGE"), is(nullValue()));
     }
 

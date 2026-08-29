@@ -126,19 +126,20 @@ public class XlsFormatReaderTest {
     // ------------------------------------------------------------------ table
 
     /**
-     * Given: {@code ${...}}・空文字・null セルを含む SETUP_TABLE ブロック 1 件。
+     * Given: {@code ${...}}・空セル・{@code null} 記法を含む SETUP_TABLE ブロック 1 件。
      * When : {@code read}。
-     * Then : TableDataBlock に写され、IN 値が記法のまま（null と空文字を区別）。
+     * Then : TableDataBlock に写され、値はテスティングフレームワークが解釈したあとの値になる
+     *        （{@code null} 記法は Java {@code null}、空セルは空文字。{@code ${...}} は記法のまま）。
      */
     @Test
-    public void readMapsTableBlockPreservingRawValues() {
+    public void readMapsTableBlockWithFrameworkInterpretedValues() {
         // Given
-        String resource = "book/readMapsTableBlockPreservingRawValues";
+        String resource = "book/readMapsTableBlockWithFrameworkInterpretedValues";
         List<List<String>> lines = new ArrayList<List<String>>();
         lines.add(row("SETUP_TABLE=USERS"));
         lines.add(row("USER_NAME", "AGE"));
         lines.add(row("${userName}", ""));
-        lines.add(row("literal", null));
+        lines.add(row("literal", "null"));
 
         // When
         TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
@@ -150,7 +151,7 @@ public class XlsFormatReaderTest {
         assertThat(table.getIdentifier(), is("USERS"));
         assertThat(table.getColumnNames(), is(Arrays.asList("USER_NAME", "AGE")));
         assertThat(table.getRows().get(0), is(Arrays.asList("${userName}", "")));
-        // null セルは null のまま（空文字と区別）
+        // null 記法は Java null（空文字と区別）
         assertThat(table.getRows().get(1).get(0), is("literal"));
         assertThat(table.getRows().get(1).get(1), is(nullValue()));
     }

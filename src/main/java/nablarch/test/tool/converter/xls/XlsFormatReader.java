@@ -22,10 +22,6 @@ import nablarch.test.core.reader.PoiXlsReader;
 import nablarch.test.core.reader.BlockHeader;
 import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
-import nablarch.test.core.util.interpreter.InterpretationContext;
-import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
-import nablarch.test.core.util.interpreter.NullInterpreter;
-import nablarch.test.core.util.interpreter.QuotationTrimmer;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
 import nablarch.test.tool.converter.model.FieldDef;
@@ -50,11 +46,11 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * </p>
  *
  * <p>
- * 器の中身は {@link TestCoreFileAdapter}（本体 {@code file} パッケージ相乗り）が読む。器から出る IN 値は
- * 記法のまま（未加工）である（アダプタが空 interpreters で配線するため）。本クラスは中間モデルへ入れる前に
- * {@link #interpretValue} で本体と同じ 3 つのインタープリタを掛け、記法ではなく
- * <b>テスティングフレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）にする
- * （{@code tools/testdata_converter.rst:14}）。一方、本体の構造解析は
+ * 器の中身は {@link TestCoreFileAdapter}（本体 {@code file} パッケージ相乗り）が読む。データ行の値は
+ * 本クラスでは解釈しない。{@link TestCoreReaderAdapter} が本体パーサへインタープリタ列を渡し、
+ * 本体が全セルを解釈してから構造解析するため、器から取り出した時点で既に
+ * <b>テスティングフレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）に
+ * なっている。一方、本体の構造解析は
  * テスト実行に必要な正規化を器に施す（長さ省略 {@code -} の実バイト長化・型記法のフレームワーク表記化・
  * レコード種別の private 化）。作成者が記述した原文が要るため、これら正規化される箇所だけ
  * {@link TestCoreReaderAdapter#readBlockBodyLines(String, String, String, String, DataType) 生行}から
@@ -243,8 +239,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         List<List<String>> bodyLines =
                 adapter.readBlockBodyLines(basePath, resourceName, header.getGroupId(), header.getIdentifier(),
                         DataType.MESSAGE);
-        // FW ヘッダ値は本体 MessageParser が生文字列として返すため、QuotationTrimmer 記法は使われない。
-        // stripQuotes は適用しない。
+        // FW ヘッダ値は本体 MessageParser が解釈後の値として返すため、変換器側の加工は要らない。
         Map<String, String> fwHeaderFields = new LinkedHashMap<>(message.getFwHeader());
         return new MessageDataBlock(DataType.MESSAGE, header.getGroupId(), header.getIdentifier(),
                 toStringDirectives(view.getDirectives()), fwHeaderFields,
@@ -498,22 +493,6 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 値が QuotationTrimmer 記法（前後が同一のダブルクォート（半角／全角）で囲まれ、剥がしても
-     * 破綻しない 2 文字超）であるかを判定する。
-     *
-     * @param value 判定対象
-     * @return QuotationTrimmer を安全に適用できる記法なら真
-     */
-    private static boolean isQuotationWrapped(String value) {
-        if (value == null || value.length() <= 2) {
-            return false;
-        }
-        return (value.startsWith("\"") && value.endsWith("\""))
-                || (value.startsWith("”") && value.endsWith("”"));
-    }
-
-
-    /**
      * 先頭要素を除いたリストを返す。空リストはそのまま返す。
      *
      * @param list 対象
@@ -521,167 +500,6 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     private static List<String> tail(List<String> list) {
         return list.isEmpty() ? list : list.subList(1, list.size());
-    }
-
-    /** Excel 引用符記法を取り除くために使い回す {@link QuotationTrimmer} インスタンス */
-    private static final QuotationTrimmer QUOTATION_TRIMMER = new QuotationTrimmer();
-
-    /** {@code null} 記法を Java {@code null} へ解釈するために使い回すインスタンス */
-    private static final NullInterpreter NULL_INTERPRETER = new NullInterpreter();
-
-    /** 改行記法（{@code \r}）を CR へ解釈するために使い回すインスタンス */
-    private static final LineSeparatorInterpreter LINE_SEPARATOR_INTERPRETER = new LineSeparatorInterpreter();
-
-    /**
-     * データ行のセル値を、テスティングフレームワークが解釈したあとの値（Java {@code null} または
-     * {@link String}）へ写す。
-     *
-     * <p>
-     * 中間モデルが持つのは Excel 形式固有の記法ではなく解釈後の値である
-     * （{@code tools/testdata_converter.rst:14}・{@code :22}・{@code :34}-{@code :35}）。本体の Excel 実行経路は
-     * {@code readTestData} の {@code interpret} でインタープリタ列を適用するが、変換器はインタープリタが
-     * 空のまま本体パーサを呼ぶため、ここで同等の解釈を行う。
-     * </p>
-     *
-     * <p>
-     * 掛けるのは次の 3 つで、順序は本体の設定（{@code nablarch-testing} の
-     * {@code src/test/resources/unit-test.xml:29}-{@code :40}）と同じである。
-     * </p>
-     * <ol>
-     *   <li>{@link NullInterpreter} —— 半角 {@code null}（大文字小文字不問）を Java {@code null} にする。
-     *       ここで打ち切られるため以降は適用されない</li>
-     *   <li>{@link QuotationTrimmer} —— 前後を同じダブルクォート（半角／全角）で囲まれた値から
-     *       外側 1 層を外す</li>
-     *   <li>{@link LineSeparatorInterpreter} —— 2 文字の {@code \} ＋ {@code r} を CR にする。
-     *       {@code \} ＋ {@code n} とセル内 LF は対象外（{@code implementation/testdata_notation.rst:1391}）</li>
-     * </ol>
-     *
-     * <p>
-     * {@code ${systemTime}} などの {@code ${...}} 系は掛けない。変換器は記法のまま運ぶ
-     * （{@code tools/testdata_converter.rst:61}）。
-     * </p>
-     *
-     * @param value セル値
-     * @return 解釈後の値（{@code null} 記法および {@code null} セルは {@code null}）
-     */
-    private static String interpretValue(String value) {
-        // toRecordLayouts の valueCells.get(i) は Excel の空白セルに対して null を返すため、このガードは必須。
-        if (value == null) {
-            return null;
-        }
-        return new InterpretationContext(value, NULL_INTERPRETER, QUOTATION_TRIMMER, LINE_SEPARATOR_INTERPRETER)
-                .invokeNext();
-    }
-
-    /**
-     * Excel 引用符記法を取り除く（{@link QuotationTrimmer} に委譲）。<b>ディレクティブ値専用</b>である。
-     * <p>
-     * データ行の値は {@link #interpretValue} が 3 つのインタープリタで解釈する。ディレクティブ値を
-     * 分けているのは、{@link #normalizeDirectiveValue} が
-     * {@link #isQuotationWrapped 引用符記法のときだけ} 呼ぶ形で
-     * 「記法ではない生値（可変長の {@code quoting-delimiter} 既定値 {@code "} 1 文字など）」を素通しする
-     * 必要があり、{@code null} 記法・改行記法の解釈も掛からないためである。
-     * </p>
-     *
-     * @param value ディレクティブ値
-     * @return 前後ダブルクォートを除去した文字列
-     */
-    private static String stripQuotes(String value) {
-        return new InterpretationContext(value, QUOTATION_TRIMMER).invokeNext();
-    }
-
-    /**
-     * マーカーカラムを除外したあとの行から、空エントリ（全要素が {@code null} または空文字の行）を除く。
-     * <p>
-     * {@code notation:1535}「全要素が null または空文字のエントリは読み飛ばされる」を、
-     * <b>マーカーカラムの除外（{@code notation:1550}）のあとに</b>適用する。本体
-     * {@code PoiXlsReader#readLine} は除外前の生の行で空エントリを判定するため、
-     * マーカーカラムだけを持つ行は本体では空エントリにならず、除外後に「セルを 1 つも持たない行」として
-     * 残ってしまう。これは記法に無い形（{@code notation:652} のとおり、テーブルデータは
-     * カラム名とデータ行を持つ構成である）なので、ここで落とす。
-     * </p>
-     * <p>
-     * 記法は 2 つの規則の前後関係を定めていない。「除外 → 空エントリ判定」を前提とする
-     * （ユーザー確定・2026-08-18。解説書側へ明文化を申し送る）。課題は
-     * {@code coverage/issues.md} の XLS-08 に記録している。
-     * </p>
-     *
-     * <p>
-     * <b>判定は解釈後の値ではなく記法（セルの文字列）で行う。</b>読み飛ばしの対象は
-     * {@code notation:1500}「Excel では行の全セルが空の場合」であって「解釈すると全要素が
-     * {@code null} になる行」ではない。{@code null} 記法を書いたセルは空セルではないため、
-     * 全セルが {@code null} 記法の行は読み飛ばさない。
-     * </p>
-     *
-     * @param cellRows マーカーカラム除外後の行（セルの文字列）
-     * @return 空エントリを除いた行
-     */
-    private static List<List<String>> dropEmptyEntries(List<List<String>> cellRows) {
-        List<List<String>> result = new ArrayList<>(cellRows.size());
-        for (List<String> cells : cellRows) {
-            if (!isEmptyEntry(cells)) {
-                result.add(cells);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 行が空エントリ（全セルが空）かを判定する。
-     * <p>要素を 1 つも持たない行も空エントリとみなす。</p>
-     *
-     * @param cells 判定対象の行（セルの文字列）
-     * @return 空エントリなら {@code true}
-     */
-    private static boolean isEmptyEntry(List<String> cells) {
-        for (String cell : cells) {
-            if (!isEmptyCell(cell)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * セルが空かを記法で判定する。空セル（{@code null}／空文字）だけが空である。
-     * <p>
-     * <b>引用符だけの記法（半角 {@code ""}／全角 {@code ””}）は空ではない。</b>これらは空文字を表す
-     * <b>記法</b>であって空セルではなく、{@code implementation/testdata_notation.rst:1500}
-     * （{@code 5783b35} 時点）の読み飛ばしは「行の全セルが空の場合」を対象とする。
-     * 本体も同じ扱いで、空エントリの判定を解釈前の生セルで行う
-     * （{@code nablarch-testing@3c4bd2a} の {@code PoiXlsReader.java:93} が {@code :140}-{@code :147} の
-     * {@code isBlankLine} で生セルの行を捨て、{@code TestDataParsingTemplate.java:180} の空行判定も
-     * {@code :183} の {@code interpret} より前にある）。
-     * </p>
-     * <p>
-     * 空文字を表す記法まで空とみなすと、{@code testdata_examples.rst:2231}（同）の
-     * 「全フィールドが空文字のレコードは、いずれか1つのフィールドに {@code ""} と記述する」で書かれた
-     * エントリが、本体には届くのに converter では消える。
-     * </p>
-     *
-     * @param cell セルの文字列
-     * @return 空なら {@code true}
-     */
-    private static boolean isEmptyCell(String cell) {
-        return cell == null || cell.isEmpty();
-    }
-
-    /**
-     * 行の各セルを {@link #interpretValue} で解釈後の値へ写す。
-     *
-     * @param cellRows セルの文字列の行
-     * @return 解釈後の値の行
-     */
-    private static List<List<String>> interpretRows(List<List<String>> cellRows) {
-        List<List<String>> result = new ArrayList<>(cellRows.size());
-        for (List<String> cells : cellRows) {
-            List<String> row = new ArrayList<>(cells.size());
-            for (String cell : cells) {
-                row.add(interpretValue(cell));
-            }
-            result.add(row);
-        }
-        return result;
     }
 
     /**
