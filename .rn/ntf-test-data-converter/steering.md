@@ -1900,11 +1900,11 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] (a)〜(e)「着手前に特定すること」の結果を `checks/step4-2-report.md` §1 にまとめ、実装前に報告する
-- [ ] `TestCoreReaderAdapter` の本体パーサ 6 種へ `NullInterpreter`→`QuotationTrimmer`→`LineSeparatorInterpreter` を渡す（`HeaderCollector`・`BodyLineCollector` は空のまま）
-- [ ] `XlsFormatReader.readDataRows` の値を `FragmentView.getValues` から取り、`interpretValue`／`interpretRows` を消す
-- [ ] (a) `normalizeDirectiveValue` の `QuotationTrimmer` 二重適用を外す
-- [ ] (a)(b) `XlsFormatWriter.appendKeyValueRows` を `toCellNotation` 経由にする
+- [x] (a)〜(e)「着手前に特定すること」の結果を `checks/step4-2-report.md` §1 にまとめ、実装前に報告する
+- [x] `TestCoreReaderAdapter` の本体パーサ 6 種へ `NullInterpreter`→`QuotationTrimmer`→`LineSeparatorInterpreter` を渡す（`HeaderCollector`・`BodyLineCollector` は空のまま）
+- [x] `XlsFormatReader.readDataRows` の値を `FragmentView.getValues` から取り、`interpretValue`／`interpretRows` を消す
+- [x] (a) `normalizeDirectiveValue` の `QuotationTrimmer` 二重適用を外す
+- [x] (a)(b) `XlsFormatWriter.appendKeyValueRows` を `toCellNotation` 経由にする
 - [ ] 本体を正解にしたテスト（実 `.xlsx` 起点。2-1 実測表 F1・F4・F6・M1・S2）を足す
 - [ ] 足したテスト・直したテストの期待値をわざと崩すと落ちることを1度確認する
 
@@ -1922,7 +1922,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell` を削除する
+- [x] `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell` を削除する
 - [ ] 既存テスト 3 件（`XlsFormatReaderRealFileTest` 2 件・`XlsReferenceFixtureTest` 1 件）の期待値を解説書どおりに直す
 - [ ] 本体が読む件数と一致することを実 `.xlsx` 起点で押さえるテストを足す
 - [ ] 期待値をわざと崩すと落ちることを1度確認する
@@ -1940,7 +1940,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] (ii) が現状で成り立つかの実測結果を報告する（実装前）
+- [x] (ii) が現状で成り立つかの実測結果を報告する（実装前）
 - [ ] 先に落ちるテストを書く（(i) 警告1件・(ii) 出力に無い・(iii) 本体が読む結果が一致）
 - [ ] (i) で落ちることを確認する
 - [ ] `readHeaders` の並びから再出現を検出して `LOGGER.warning` を出す（`LIST_MAP`・`MESSAGE` は対象外）
@@ -1995,7 +1995,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] 取り除く行の全件を機械抽出し、件数を報告する
+- [x] 取り除く行の全件を機械抽出し、件数を報告する
 - [ ] `.rst` パス・`nablarch-document`・「解説書」「出典」・節見出し・逐語引用を取り除く
 - [ ] 他リポジトリのソースを `path:line` で指す 11 行はクラス名だけ残す
 - [ ] テストの動作・期待値は変えない（コメント・Javadoc・assert メッセージの文字列だけ）
@@ -2038,8 +2038,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-29
+- **Last completed**: **#40 の着手前調査と主要な `src/main` 変更、#41 の削除、#42・#45 の着手前調査。** 指示書 `ntf-step4-07-nablarch-testing-converter-2.md` の「2-1・2-3 の着手前に特定すること」を実測で埋め、`checks/step4-2-report.md` §1 に 6 表（(a)〜(e)・2-3・2-6 件数）としてまとめて報告済み（`c10de5e`）。`src/main` 側は #40 の配線変更・値取得先の変更・(a) 二重適用の除去・(a)(b) 書き戻しの記法化と、#41 の `dropEmptyEntries` 系削除まで入っている（本コミット。`wip:`）
+- **Next**: **ユーザーの「この表でよいか」の返事待ち。** 返事が来たら #40 の残り（本体を正解にしたテスト追加・ミューテーション確認）へ進む。判断を仰いでいるのは 1 件 —— (e) の 3〜5 が「全カラムがマーカーカラム」の退化形で、除外後のエントリがセル 0 個になる点（解説書 `tools/testdata_converter.rst:63` に記述が無い。報告では解説書どおり「残す」を推奨）
+- **Notes**: branch `ntf-test-data-converter`。`mvn -o clean test` は現状 `663 / F6 E3`（うち 4 件が着手時からの yaml 追随分＝#43 で解消、5 件が #40・#41 で期待値を直す対象、増えた 7 件は測定用プローブ）。測定用の一時テスト 2 件は #46 で削除する —— `?? src/test/java/nablarch/test/core/reader/ZzOracleProbeTest.java`・`?? src/test/java/nablarch/test/tool/converter/xls/ZzProbeTest.java`
