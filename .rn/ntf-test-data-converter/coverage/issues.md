@@ -1780,7 +1780,10 @@ ID は発見順に振り、振り直さない。
   送信系（`response_body_messages`）でも同じく落ちる）は、#25.5 まで
   `YamlFormatReaderRealFileTest#dropsFwHeaderNamedRecordFromSendSyncInRealYaml` が
   **1 件で両方とも固定していた**（送信系に `FW_HEADER` ＋本文を 1 件ずつ置き、本文だけが残ることをアサート）。
-  現在は同じ入力で **2 件とも残る**ことを `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` が固定している。
+  現在は `#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` が固定している。
+  **同テストのフィクスチャは #43（2026-08-29）で `records:` 1 件へ改めた** —— 電文のレコードレイアウトは 1 つであり、
+  2 件書くと `nablarch-testing-yaml` 第2回の是正でスキーマ検証に落ちるようになったためである。
+  固定している主張（`FW_HEADER` という名前のレコードが落とされないこと）は変えていない。
   **修正前の挙動を固定しているアクティブなテストは無い**（残す必要が無くなったため）。
   修正前の「送信系に `FW_HEADER` のみを置いた形」の観測（ブロックだけが残る。掃引表 項目 21）も同様である。
 - 影響（修正前）: スキーマの description を読んで「FW_HEADER は予約値ではないので可読性のために使ってよい」と

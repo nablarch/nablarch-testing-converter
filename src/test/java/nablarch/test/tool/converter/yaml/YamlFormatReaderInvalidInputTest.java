@@ -731,12 +731,18 @@ public class YamlFormatReaderInvalidInputTest {
      * Given: フィールド 3 件に対して値が足りない行（1 個だけの行と、2 個目に明示 {@code null} を書いた行）。
      * When : 実 {@code .yaml} を {@code read}。
      * Then : <b>例外にならず</b>、欠けた位置は Java {@code null} ではなく<b>空文字</b>で埋められる。
-     *        明示的に書いた {@code null} は Java {@code null} のまま残る。
+     *        末尾に書いた {@code null} も空文字になる（形式によらず、末尾のフィールドの {@code null} は空文字である）。
      *
      * <p>
      * すなわち<b>「書かれた空文字」と「要素数不足で埋められた欠損」が中間モデル上で区別できない</b>。
      * 軸D の D2-11 で固定した「空文字と Java {@code null} は区別される」は<b>書かれた値についてのみ</b>成り立つ。
      * {@code coverage/issues.md} <b>YML-05</b> の根拠テスト。
+     * </p>
+     *
+     * <p>
+     * 2 行目の {@code null} は<b>末尾側</b>にあるため空文字になる。後ろに空文字でも {@code null} でもない
+     * フィールドがあるときに {@code null} のまま残ることは
+     * {@code YamlFrameworkAlignmentTest#keepsNonTrailingNullAsJavaNullInRecordFragment} が固定する。
      * </p>
      */
     @Test
@@ -760,8 +766,8 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(record.getFields().size(), is(3));
         assertThat("欠損は空文字で埋められる（null ではない）", record.getRows().get(0),
                 is(Arrays.asList("a", "", "")));
-        assertThat("明示的に書いた null は null のまま。欠損だけが空文字になる", record.getRows().get(1),
-                is(Arrays.asList("a", null, "")));
+        assertThat("末尾側に並んだ null と欠損はまとめて空文字になる", record.getRows().get(1),
+                is(Arrays.asList("a", "", "")));
     }
 
     /**

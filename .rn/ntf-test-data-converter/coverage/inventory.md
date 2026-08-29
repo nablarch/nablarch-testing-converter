@@ -1196,6 +1196,39 @@ assert メッセージ・Javadoc の「全要素が空のエントリになる�
 | ＋ | `xls/XlsInterleavedBlockTest#warnsAndDropsBlockAfterInterleavedDataType` | データタイプが交互のシートで同じことを固定する |
 | ＋ | `xls/XlsInterleavedBlockTest#doesNotWarnForDataTypesFetchedByIdentifier` | 識別子で 1 件を引くデータタイプ（`MESSAGE` ／ `LIST_MAP`）は対象外で、警告を出さない（**負のテスト**） |
 
+**追補その 16（2026-08-29 実測。#43 で 2-4（`nablarch-testing-yaml` 第2回の是正への追随）を実施したぶん）**
+
+追補その 15（追跡対象 666 件）から、#43 で足した 6 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 681   ← 作業ツリー。追跡していない測定用の一時テスト 9 件を含む
+③ 8c327d0: 536
+   HEAD: 666   ← #43 のコミットが載る前の値
+```
+
+追跡対象は **672** 件（666 ＋ 6）。
+
+**666 → 672（差 ＋6）の内訳** —— 追加 6 件のみ。削除は無い。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `yaml/YamlFrameworkAlignmentTest#keepsNonTrailingNullAsJavaNullInRecordFragment` | 末尾でない `null` は Java `null` のまま残る（末尾の `null` が空文字になることの裏） |
+| ＋ | `#rejectsMessageWithTwoRecords` | 電文のレコードレイアウトを 2 つ書くとスキーマ検証で落ちる（**負のテスト**） |
+| ＋ | `#rejectsFwHeaderWithUnknownKey` | `fw_header:` に決められた名前にないキーを書くとエラーになる（**負のテスト**） |
+| ＋ | `#acceptsFwHeaderWithKnownKey` | 上の対照。決められた名前のキーなら読める |
+| ＋ | `#keepsRowWhoseValuesAreAllEmptyStringsInTable` | 全値が空文字のエントリは読み飛ばされない |
+| ＋ | `#rejectsTwoCharacterBackslashR` | バックスラッシュと `r` の 2 文字を含む値を書くとエラーになる（**負のテスト**） |
+
+**#43 は既存テスト 4 件の期待値を変えた（件数は増減しない）。** いずれも変換ツール側のテストが
+`nablarch-testing-yaml` 第2回より前の挙動を期待値に書いていたもので、`src/main` の欠陥ではない。
+
+| テスト | 直した内容 |
+|---|---|
+| `yaml/YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull` | 2 行目の期待を `[a, null, ""]` → `[a, "", ""]`。末尾側に並んだ `null` と欠損はまとめて空文字になる |
+| `yaml/YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNullInRecordFragmentPath` → `#readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath` | 期待を `null` → `""` へ。唯一のフィールドは常に末尾であるため。改名した |
+| `yaml/YamlFormatReaderScalarTest#skipsRowWhoseValuesAreAllEmpty` | 期待に全値が空文字の行を戻した。読み飛ばされるのは空マッピング `{}` の行だけである |
+| `yaml/YamlFormatReaderRealFileTest#keepsFwHeaderNamedRecordInSendSyncFromRealYaml` | フィクスチャの `records:` を 2 件 → 1 件へ。電文のレコードレイアウトは 1 つであり、2 件はスキーマ検証で落ちる。テストの主題（`FW_HEADER` という名前のレコードが落とされないこと）は変えていない |
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -1987,7 +2020,7 @@ YML-08 の field-separator だけ「通る側」のテストが無く、Javadoc 
 
 | 元のケース | LIST_MAP 経路（`list_maps`） | レコード断片経路（`record_fragment.rows`） | 経路差 |
 |---|---|---|---|
-| D2-06 `null`（引用符なし） | `readsUnquotedNullAsJavaNullInListMapPath` → Java `null` | `readsUnquotedNullAsJavaNullInRecordFragmentPath` → Java `null` | **無し**（`setup_tables` 経路と同じ） |
+| D2-06 `null`（引用符なし） | `readsUnquotedNullAsJavaNullInListMapPath` → Java `null` | `readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath` → **空文字**（**#43 で変わった**） | **有り**。レコード断片には「末尾のフィールド」という位置の概念があり、そこに書いた `null` は空文字になる（唯一のフィールドは常に末尾）。末尾でない位置なら Java `null` のまま残る（`YamlFrameworkAlignmentTest#keepsNonTrailingNullAsJavaNullInRecordFragment`） |
 | D2-11 空文字 `""` | `readsEmptyStringAsIsInListMapPath` → `""` | `readsEmptyStringAsIsInRecordFragmentPath` → `""`（**固定できる性質が弱い**。下の但し書き） | **無し**（同上） |
 
 **但し書き（レコード断片経路の空文字）**: この経路では、行の要素数が `fields` の件数に足りないときに
@@ -2219,7 +2252,7 @@ NTF は `group_id` で収集するため実行結果は変わらず、後段の�
   |---|---|
   | `addTableBlocks`（`value == null ? null : value.toString()`） | `readsUnquotedNullAsJavaNull` ／ `readsOmittedValueAsJavaNull`（2 件） |
   | `addListMapBlocks`（`mapRow.get(column)`） | `readsUnquotedNullAsJavaNullInListMapPath`（1 件） |
-  | `toRecordLayouts`（`valueMap.get(name)`） | `readsUnquotedNullAsJavaNullInRecordFragmentPath`（1 件） |
+  | `toRecordLayouts`（`valueMap.get(name)`） | `readsUnquotedNullAsJavaNullInRecordFragmentPath`（1 件。**#43 で `readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath` へ改称**） |
 
   残る 23 件は characterization である。**軸D の ✅ を converter の実装の担保として読まないこと。**
   辺②で軸D を測る目的は「YAML 記法 → 中間モデルの値」を記録・固定することであり、
@@ -3417,6 +3450,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 | `xls/XlsTrailingNullTest` | #40 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsTrailingNullTest.java` | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。実 `.xlsx` 起点 |
 | `xls/XlsMarkerOnlyEntryTest` | #41 | 2 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsMarkerOnlyEntryTest.java` | マーカーカラムだけに値があるエントリが、**本体が読むのと同じ件数**残ること（テーブル系・`LIST_MAP`）。実 `.xlsx` 起点 |
 | `xls/XlsInterleavedBlockTest` | #42 | 3 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsInterleavedBlockTest.java` | 交互記述のシートで警告が 1 件出て、読まれないブロックが出力に無く、出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致すること。実 `.xlsx` 起点 |
+| `yaml/YamlFrameworkAlignmentTest` | #43 | 6 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFrameworkAlignmentTest.java` | 変換ツールの YAML 読み込みが、フレームワークの YAML 読み込みと同じ意味を持つこと（末尾の `null`／電文の `records:` は 1 つ／`fw_header:` のキー／空エントリは `{}` だけ／2 文字の `\r` はエラー）。実 `.yaml` 起点 |
 
 **期待値の出どころを本体に移した（#40）。** 上記クラスは期待値を自分で書かず、
 `core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。

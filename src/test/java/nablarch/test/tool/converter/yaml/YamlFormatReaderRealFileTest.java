@@ -609,10 +609,10 @@ public class YamlFormatReaderRealFileTest {
     }
 
     /**
-     * Given: {@code response_body_messages}（送信系）に、{@code record_type: "FW_HEADER"} のレコードと
-     *        本文レコードを 1 件ずつ書いた YAML。
+     * Given: {@code response_body_messages}（送信系）に、{@code record_type: "FW_HEADER"} のレコードを
+     *        1 件だけ書いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : <b>2 件とも残る</b>（ファイル系と同じ扱いになる）。
+     * Then : <b>落とされずに残る</b>（ファイル系と同じ扱いになる）。
      *
      * <p>
      * <b>記法どおりの仕様を書いたテストである（{@code YML-03} の修正で緑になった）。</b>
@@ -632,6 +632,13 @@ public class YamlFormatReaderRealFileTest {
      * {@code #toRecordLayouts} の不整合チェックにも掛からない。
      * </p>
      *
+     * <p>
+     * <b>レコードは 1 件だけ書く。</b>電文のレコードレイアウトは 1 つであり、2 つ以上書くと
+     * YAML 側のスキーマ検証で落ちる（{@code YamlFrameworkAlignmentTest#rejectsMessageWithTwoRecords}）。
+     * 本テストが確かめたいのは「{@code FW_HEADER} という名前のレコードが落とされないこと」であり、
+     * レコードの件数ではない。
+     * </p>
+     *
      * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。経路差の担保）。</p>
      */
     @Test
@@ -646,22 +653,15 @@ public class YamlFormatReaderRealFileTest {
                 + "        fields:\n"
                 + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
                 + "        rows:\n"
-                + "          - [\"h\"]\n"
-                + "      - fields:\n"
-                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
-                + "        rows:\n"
-                + "          - [\"b\"]\n");
+                + "          - [\"h\"]\n");
 
         // Then
         MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
-        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(2));
+        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(1));
         assertThat("レコード種別は原文のまま残る（ファイル系と同じ）",
                 block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
         assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("h1"));
         assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("h"))));
-        assertThat("本文レコードは記述順のまま 2 件目に来る",
-                block.getRecords().get(1).getFields().get(0).getName(), is("b1"));
-        assertThat(block.getRecords().get(1).getRows(), is(Arrays.asList(Arrays.asList("b"))));
     }
 
     /**

@@ -737,7 +737,7 @@ unzip -p "$(find ~/.m2/repository/com/nablarch/framework/nablarch-testing-yaml \
 
 **軸D の外に残る空欄**: 12 ケースのうち 10 ケースは `setup_tables` の 1 経路でしか測っていない。
 LIST_MAP 経路とレコード断片経路で測ったのは D2-06 と D2-11 の 2 ケースだけである
-（`YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNullInListMapPath` ／ `YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNullInRecordFragmentPath` ／ `YamlFormatReaderScalarTest#readsEmptyStringAsIsInListMapPath` ／ `YamlFormatReaderScalarTest#readsEmptyStringAsIsInRecordFragmentPath`。2 ケースとも経路差は無かった）。
+（`YamlFormatReaderScalarTest#readsUnquotedNullAsJavaNullInListMapPath` ／ `YamlFormatReaderScalarTest#readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath` ／ `YamlFormatReaderScalarTest#readsEmptyStringAsIsInListMapPath` ／ `YamlFormatReaderScalarTest#readsEmptyStringAsIsInRecordFragmentPath`）。**D2-06 はレコード断片経路だけ結果が違う**（末尾のフィールドの `null` は空文字になる。#43 で変わった。`inventory.md` §2.1-2 の経路差の表）。D2-11 に経路差は無い。
 **残る 10 ケースに経路差が無いことは未確認である**（`inventory.md` §2.1-2 の開示）。
 
 ### 2.5 軸E 多重度（11 行）

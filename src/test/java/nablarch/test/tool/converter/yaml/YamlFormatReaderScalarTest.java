@@ -563,12 +563,12 @@ public class YamlFormatReaderScalarTest {
     /**
      * Given: 空マッピング {@code {}} の行と、すべての値が空文字 {@code ""} の行を含む {@code setup_tables}。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : その 2 行だけが読み飛ばされ、値を持つ行だけが残る。
+     * Then : <b>空マッピングの行だけ</b>が読み飛ばされ、すべての値が空文字の行は残る。
      *
      * <p>
-     * {@code implementation/testdata_notation.rst:1500}（{@code 5783b35} 時点）
-     * 「全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
-     * （{@code {}}）またはすべての値が空文字の場合にスキップされる。」
+     * 読み飛ばされる「記法として空のエントリ」は、YAML 形式では {@code rows:} 内の要素が
+     * 空マッピング（{@code {}}）の場合だけである。{@code ""} と書いた空文字は値であり、
+     * すべての値が {@code ""} のエントリは読み飛ばされず、全カラムが空文字のエントリとして読み込まれる。
      * </p>
      *
      * <p>
@@ -593,8 +593,8 @@ public class YamlFormatReaderScalarTest {
         // Then
         TableDataBlock table = YamlFixture.onlyBlock(container, TableDataBlock.class);
         assertThat(table.getColumnNames(), is(Arrays.asList("K", "V")));
-        assertThat("空マッピングの行と全値が空文字の行の 2 行が読み飛ばされる",
-                table.getRows(), is(Arrays.asList(Arrays.asList("x", "1"))));
+        assertThat("読み飛ばされるのは空マッピングの行だけ。全値が空文字の行は残る",
+                table.getRows(), is(Arrays.asList(Arrays.asList("x", "1"), Arrays.asList("", ""))));
     }
 
     // ------------------------------------------------------------------ 経路差の確認（D2-06・D2-11 のみ）
@@ -639,15 +639,27 @@ public class YamlFormatReaderScalarTest {
     }
 
     /**
-     * Given: 引用符なしの {@code null} をレコード断片の行値に置いた YAML。
+     * Given: 引用符なしの {@code null} をレコード断片の唯一のフィールドの値に置いた YAML。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : Java の {@code null} が入る（{@code setup_tables} 経路と同じ）。
+     * Then : <b>空文字</b>が入る。末尾のフィールドに {@code null} と書いた場合は、形式によらず空文字になる。
+     *
+     * <p>
+     * {@code setup_tables} ／ {@code list_maps} 経路（{@link #readsUnquotedNullAsJavaNull} ／
+     * {@link #readsUnquotedNullAsJavaNullInListMapPath}）とは結果が違う。レコード断片には
+     * 「末尾のフィールド」という位置の概念があり、そこに書いた {@code null} は空文字になるためである。
+     * 唯一のフィールドは常に末尾である。
+     * </p>
+     *
+     * <p>
+     * 後ろに空文字でも {@code null} でもないフィールドがあるときに {@code null} のまま残ることは
+     * {@code YamlFrameworkAlignmentTest#keepsNonTrailingNullAsJavaNullInRecordFragment} が固定する。
+     * </p>
      *
      * <p>担保する軸要素: D2-06 をレコード断片経路で確認したもの（同一ケース・別経路）。</p>
      */
     @Test
-    public void readsUnquotedNullAsJavaNullInRecordFragmentPath() {
-        assertThat(readRecordFragmentValue("null"), is(nullValue()));
+    public void readsTrailingUnquotedNullAsEmptyStringInRecordFragmentPath() {
+        assertThat(readRecordFragmentValue("null"), is(""));
     }
 
     /**
