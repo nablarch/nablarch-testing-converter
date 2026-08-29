@@ -466,7 +466,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     private void appendKeyValueRows(BlockLayout l, Map<String, String> map) {
         for (Map.Entry<String, String> entry : map.entrySet()) {
-            l.add(RowKind.DIRECTIVE, Arrays.asList(entry.getKey(), nullToEmpty(entry.getValue())));
+            l.add(RowKind.DIRECTIVE,
+                  Arrays.asList(entry.getKey(), toCellNotation(nullToEmpty(entry.getValue()))));
         }
     }
 

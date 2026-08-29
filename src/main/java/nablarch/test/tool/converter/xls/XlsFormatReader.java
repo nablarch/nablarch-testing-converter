@@ -164,7 +164,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                 cellRows.add(cells);
             }
             result.add(new TableDataBlock(type, groupId, table.getTableName(), columnNames,
-                                          interpretRows(dropEmptyEntries(cellRows))));
+                                          cellRows));
         }
         return result;
     }
@@ -194,7 +194,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             cellRows.add(cells);
         }
         return new ListMapBlock(header.getGroupId(), header.getIdentifier(), columnNames,
-                                interpretRows(dropEmptyEntries(cellRows)));
+                                cellRows);
     }
 
     /**
@@ -421,12 +421,12 @@ public class XlsFormatReader implements TestDataFormatReader {
             FragmentView fragment, List<RecordLayout> records, String recordType, List<FieldDef> fields) {
         List<List<String>> rows = new ArrayList<>(fragment.getValues().size());
         for (int v = 0; v < fragment.getValues().size(); v++) {
-            List<String> valueCells = tail(requireLine(bodyLines, idx, names, "値行"));
+            requireLine(bodyLines, idx, names, "値行");
             idx++;
+            Map<String, String> valueMap = fragment.getValues().get(v);
             List<String> row = new ArrayList<>(names.size());
             for (int i = 0; i < names.size(); i++) {
-                String cellValue = i < valueCells.size() ? valueCells.get(i) : "";
-                row.add(interpretValue(cellValue));
+                row.add(valueMap.get(names.get(i)));
             }
             rows.add(row);
         }
@@ -494,9 +494,6 @@ public class XlsFormatReader implements TestDataFormatReader {
         // ときのみ剥がす。デフォルトディレクティブとして本体器に注入される " 1 文字（可変長の
         // quoting-delimiter 既定値）等は記法ではなく生値であり、本体 Excel 経路でも QuotationTrimmer を
         // 通らないため、ここでも素通しする（1 文字を剥がそうとする QuotationTrimmer の例外も同時に回避）。
-        if (isQuotationWrapped(value)) {
-            return stripQuotes(value);
-        }
         return value;
     }
 

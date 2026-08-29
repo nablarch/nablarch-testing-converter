@@ -14,6 +14,9 @@ import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.messaging.MessagePool;
+import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
+import nablarch.test.core.util.interpreter.NullInterpreter;
+import nablarch.test.core.util.interpreter.QuotationTrimmer;
 import nablarch.test.core.util.interpreter.TestDataInterpreter;
 
 /**
@@ -38,6 +41,11 @@ public class TestCoreReaderAdapter {
 
     /** 空の interpreters（値加工を一切行わせないための配線） */
     private static final List<TestDataInterpreter> EMPTY_INTERPRETERS = Collections.emptyList();
+
+    /** EXPERIMENT: 本体 unit-test.xml と同順のインタープリタ列 */
+    private static final List<TestDataInterpreter> INTERPRETERS = Collections.unmodifiableList(
+            Arrays.<TestDataInterpreter>asList(new NullInterpreter(), new QuotationTrimmer(),
+                                               new LineSeparatorInterpreter()));
 
     /** テストデータリーダ */
     private final TestDataReader reader;
@@ -83,7 +91,7 @@ public class TestCoreReaderAdapter {
                 throw new IllegalArgumentException(
                         "unsupported data type for readTables. type=[" + type + "]");
         }
-        TableDataParser parser = new TableDataParser(reader, EMPTY_INTERPRETERS, dbInfo, defaultValues, type);
+        TableDataParser parser = new TableDataParser(reader, INTERPRETERS, dbInfo, defaultValues, type);
         // 変換器経路: 本体静的キャッシュを汚染しない
         parser.parse(path, resource, GroupIdNotation.format(id), false);
         return parser.getResult();
@@ -98,7 +106,7 @@ public class TestCoreReaderAdapter {
      * @return 行データ一覧（キーはヘッダ行のカラム名）
      */
     public List<Map<String, String>> readListMap(String path, String resource, String id) {
-        ListMapParser parser = new ListMapParser(reader, EMPTY_INTERPRETERS);
+        ListMapParser parser = new ListMapParser(reader, INTERPRETERS);
         parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
         return parser.getResult();
     }
@@ -148,11 +156,11 @@ public class TestCoreReaderAdapter {
         switch (type) {
             case SETUP_FIXED:
             case EXPECTED_FIXED:
-                parser = new FixedLengthFileParser(reader, EMPTY_INTERPRETERS, type);
+                parser = new FixedLengthFileParser(reader, INTERPRETERS, type);
                 break;
             case SETUP_VARIABLE:
             case EXPECTED_VARIABLE:
-                parser = new VariableLengthFileParser(reader, EMPTY_INTERPRETERS, type);
+                parser = new VariableLengthFileParser(reader, INTERPRETERS, type);
                 break;
             default:
                 throw new IllegalArgumentException(
@@ -180,7 +188,7 @@ public class TestCoreReaderAdapter {
      * @return メッセージ。対象が存在しない場合は{@code null}
      */
     public MessageData readMessage(String path, String resource, String id) {
-        MessageParser parser = new MessageParser(reader, EMPTY_INTERPRETERS, DataType.MESSAGE);
+        MessageParser parser = new MessageParser(reader, INTERPRETERS, DataType.MESSAGE);
         parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
         List<FixedLengthFile> bodies = parser.getDelegate().getResult();
         if (bodies.isEmpty()) {
@@ -331,7 +339,7 @@ public class TestCoreReaderAdapter {
          */
         SendSyncBodyCollector(TestDataReader reader, DataType targetType) {
             super(reader, EMPTY_INTERPRETERS, targetType);
-            delegate = new SendSyncMessageParser(reader, EMPTY_INTERPRETERS, targetType);
+            delegate = new SendSyncMessageParser(reader, INTERPRETERS, targetType);
         }
 
         @Override
