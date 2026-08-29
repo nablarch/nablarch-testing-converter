@@ -1905,6 +1905,7 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - [x] `XlsFormatReader.readDataRows` の値を `FragmentView.getValues` から取り、`interpretValue`／`interpretRows` を消す
 - [x] (a) `normalizeDirectiveValue` の `QuotationTrimmer` 二重適用を外す
 - [x] (a)(b) `XlsFormatWriter.appendKeyValueRows` を `toCellNotation` 経由にする
+- [ ] 【§8-5】`b7d2320` に残った死んだコードを消す —— `XlsFormatReader` の `tail`・`interpretValue`・`stripQuotes`・`dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretRows`、`TestCoreReaderAdapter` の `EXPERIMENT:` コメント。`isQuotationWrapped` も参照が無くなれば消す
 - [ ] 本体を正解にしたテスト（実 `.xlsx` 起点。2-1 実測表 F1・F4・F6・M1・S2）を足す
 - [ ] 足したテスト・直したテストの期待値をわざと崩すと落ちることを1度確認する
 
@@ -1913,23 +1914,27 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 直す前は落ちて直したあとは通るテストがある
 - (a)〜(e) の表が報告に載っている
 - 末尾 `null` の値が本体と一致する
+- `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretValue`・`interpretRows`・`stripQuotes`・`tail` の**定義**が `src/main` に残っていない
 
 ### #41: 2-2 —— マーカーカラムだけに値があるエントリを残す
 
-**Purpose**: 解説書 `tools/testdata_converter.rst:63`・`implementation/testdata_notation.rst:1502` に合わせる。
+**Purpose**: 解説書 `tools/testdata_converter.rst:63` に合わせる。同 `:63` は 2 つを定めている —— (1) 第4文以降「マーカーカラム**だけに値がある**エントリは残す（消えるのはマーカーカラムの値だけ）」＝**他のカラムを持つブロック**の話。(2) 第3文「マーカーカラムだけで構成したデータブロックは、Excel 形式から読み込むとデータ行も残らない」＝**カラム名がマーカーカラムだけのブロック**は行を持たない。`implementation/testdata_notation.rst:1502` は (1) 側。
 
 **Prerequisites**: #40
 
 **Steps**:
 
 - [x] `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell` を削除する
-- [ ] 既存テスト 3 件（`XlsFormatReaderRealFileTest` 2 件・`XlsReferenceFixtureTest` 1 件）の期待値を解説書どおりに直す
-- [ ] 本体が読む件数と一致することを実 `.xlsx` 起点で押さえるテストを足す
+- [ ] 【§8-1】テーブル・`LIST_MAP` とも、**マーカーカラム除外後のカラム名が 0 件のブロックは行を持たせない**（値を見て落とす判定は入れない）
+- [ ] 【§8-2】(e) 3〜5 の**期待値は変えない**。assert メッセージ・Javadoc の「全要素が空のエントリになるため読み飛ばされる」「XLS-08」を「カラム名が 0 件のため行を持たない」の言葉で書き直す
+- [ ] 【§8-3】本体が読む件数と一致することを実 `.xlsx` 起点で押さえるテストを足す。**他のカラムを持つブロック**で組む（`[no]`,`id`,`name`／`1,U0001,yamada`・`(空),"",""`・`3,(空),(空)`）
+- [ ] 【§8-4】台帳エントリに「XLS-08（空エントリ判定をマーカー除外の後に行う）の仕組みを上書きした。結果が変わるのは他のカラムを持つブロックだけで、カラム名 0 件のブロックの結果（行 0 件）は変わらない」と明記する
 - [ ] 期待値をわざと崩すと落ちることを1度確認する
 
 **Completion criteria**:
 
-- マーカーカラムだけに値があるエントリが本体と同じ件数で残る
+- マーカーカラムだけに値があるエントリが本体と同じ件数で残る（他のカラムを持つブロック）
+- カラム名がマーカーカラムだけのブロックは行 0 件のまま（(e) 3〜5 の期待値が変わっていない）
 - 直す前は落ちて直したあとは通るテストがある
 
 ### #42: 2-3 —— 交互記述のシートで警告を出す
@@ -2038,8 +2043,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-29
-- **Last completed**: **#40 の着手前調査と主要な `src/main` 変更、#41 の削除、#42・#45 の着手前調査。** 指示書 `ntf-step4-07-nablarch-testing-converter-2.md` の「2-1・2-3 の着手前に特定すること」を実測で埋め、`checks/step4-2-report.md` §1 に 6 表（(a)〜(e)・2-3・2-6 件数）としてまとめて報告済み（`c10de5e`）。`src/main` 側は #40 の配線変更・値取得先の変更・(a) 二重適用の除去・(a)(b) 書き戻しの記法化と、#41 の `dropEmptyEntries` 系削除まで入っている（本コミット。`wip:`）
-- **Next**: **ユーザーの「この表でよいか」の返事待ち。** 返事が来たら #40 の残り（本体を正解にしたテスト追加・ミューテーション確認）へ進む。判断を仰いでいるのは 1 件 —— (e) の 3〜5 が「全カラムがマーカーカラム」の退化形で、除外後のエントリがセル 0 個になる点（解説書 `tools/testdata_converter.rst:63` に記述が無い。報告では解説書どおり「残す」を推奨）
-- **Notes**: branch `ntf-test-data-converter`。`mvn -o clean test` は現状 `663 / F6 E3`（うち 4 件が着手時からの yaml 追随分＝#43 で解消、5 件が #40・#41 で期待値を直す対象、増えた 7 件は測定用プローブ）。測定用の一時テスト 2 件は #46 で削除する —— `?? src/test/java/nablarch/test/core/reader/ZzOracleProbeTest.java`・`?? src/test/java/nablarch/test/tool/converter/xls/ZzProbeTest.java`
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
