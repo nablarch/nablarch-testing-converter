@@ -360,3 +360,68 @@ git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src                      → 0
 - 本体スキーマ（`nablarch/test/ntf-testdata-yaml-schema.json`）の description の引用 —— 解説書ではない
 - `{@code coverage/issues.md}` ／ `{@code steering.md}` への参照 —— 指示書 2-6 が「根拠の追跡は `.rn/` の
   報告書・台帳で行う」と定めているため
+
+---
+
+## 8. #47 —— 判定（指示書 §9）に付いた是正 4 点
+
+**結論: 4 点すべて実施した。`src/main` のコードは 1 行も変えていない**（変えたのはコメントだけ）。
+変異試験で検知されなかった 3 件（M6・M7・M8）は、いずれも**足したテストが検知する**ようになった。
+
+### 8-1 足したテストと変異の結果（指示書 §9 の 1・2）
+
+| 変異 | 壊した箇所 | 検知するテスト | 変異あり | HEAD |
+|---|---|---|---|---|
+| M6 | `XlsFormatWriter#appendKeyValueRows` の `toCellNotation` を外す | `xls/XlsKeyValueNotationTest` 2 件 | **2 件とも赤** | 緑 |
+| M7 | `XlsFormatReader#isGroupCollected` をテーブルだけに | `xls/XlsInterleavedBlockTest#warnsAndDropsFileBlockAfterInterleavedGroupId` | **赤** | 緑 |
+| M8 | `XlsFormatReader#unreadIdentifiersAfter` の直後に `break` | `xls/XlsInterleavedBlockTest#warnsAboutEveryUnreadBlockAfterInterleavedGroupId` | **赤** | 緑 |
+
+足した 4 件はいずれも**実 `.xlsx` 起点**で、期待値を自分で書かず**フレームワーク本体が読んだ値**を
+正解にしている。実測の失敗メッセージは `checks/task-47.md` にある。
+
+### 8-2 コメントの是正（指示書 §9 の 3）
+
+`XlsFormatReader#normalizeDirectiveValue` の Javadoc「それ以外のキーは QuotationTrimmer 記法を剥がす」と
+本文コメント「変換器はインタープリタが空のため、ここで同等処理を行い……ときのみ剥がす」は、
+2-1 (a-1) で剥がす処理を外したあとも残っており、いまのコード（`return value;`）と合っていなかった。
+**「区切り文字以外は加工しない。ここへ届くのは本体が解釈し終えた値であり、記法へ戻すのは書き出し側の役目」**
+の趣旨へ書き直した。**コードは変えていない。**
+
+### 8-3 台帳の是正（指示書 §9 の 4）
+
+`steering.md` #40 の完了条件から `tail` を外し、次の 1 行を足した。
+
+> **`tail` は上の一覧から外した**（#47・2026-08-30）。`tail` は生行から原文を復元する経路
+> （`XlsFormatReader` の `skipToFirstNameRow` 1 か所・`verifyNameRow` 1 か所・`readFieldDefs` 2 か所の計 4 か所）が
+> 呼んでおり死んでいない。残したのが正しく、§8-5 の一覧のほうが誤りだった
+
+Steps の `【§8-5】` 行は [x] のまま動かしていない（何をしたかは §2 にある）。
+
+### 8-4 指示書との食い違い 1 件（実測で訂正した）
+
+**指示書 §9 の 1（2 つ目のケース）は「`MESSAGE` の FW ヘッダ `requestId` セルに `"""R1"""`。
+本体は `"R1"` に読む」とするが、実測では本体は `""R1""` に読む。**
+`QuotationTrimmer` が外すのは外側 1 層だけであり、`"""R1"""` からは 1 個ずつしか減らない。
+1 つ目のケース（`quoting-delimiter` に `"""""` → 本体は `"""`）は指示書のとおりだった。
+
+**入力は指示書の指定どおり `"""R1"""` のままにし、期待値だけを実測へ合わせた。**
+M6 を検知するという目的（素で書くと 1 層減る）はどちらの値でも成り立つ。
+
+### 8-5 完了条件
+
+| # | 完了条件 | 判定 | 置き場所 |
+|---|---|:-:|---|
+| 1 | 1・2 の各テストが指定の変異で落ち、HEAD で通ることが `checks/task-47.md` に書かれている | ✅ | `checks/task-47.md`「変異試験」 |
+| 2 | `mvn -o clean test` 緑（`Tests run: 682`） | ✅ | `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS` |
+| 3 | `git grep` 2 式が 0 件のまま | ✅ | どちらも 0 件 |
+| 4 | `git status --short` が空 | ✅ | 本コミット後に無出力 |
+| 5 | push 済み | ✅ | 本コミット |
+
+### 8-6 調整側へ開示するもの
+
+マージ可否の判断は出さない。開示は次の 3 件（内訳は `checks/task-47.md` の末尾表）。
+
+1. 指示書 §9 の期待値 1 件が実測と違った（8-4）
+2. M8 のテストを最初 `containsString("D")` で書いたところ、警告本文の「グループID」に `D` が含まれるため
+   変異があっても緑になった。読まれなかったブロックの一覧そのもの（`[C, D]`）を突き合わせる形へ直した
+3. `DataFileInspector` にディレクティブを取り出す口を足した（`src/test` のみ）

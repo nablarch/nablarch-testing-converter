@@ -15,6 +15,8 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import nablarch.test.core.db.TableData;
+import nablarch.test.core.file.DataFile;
+import nablarch.test.core.file.DataFileInspector;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.FrameworkOracle;
 import nablarch.test.core.reader.YamlFrameworkOracle;
@@ -189,6 +191,21 @@ public class XlsInterleavedBlockTest {
         return dump;
     }
 
+    /**
+     * フレームワークが読んだファイルを、パスとフィールド名・値の対で列挙する。
+     *
+     * @param files ファイル一覧
+     * @return パス → フィールド名 → 値 の文字列表現（記述順）
+     */
+    private static List<String> fileDump(List<? extends DataFile> files) {
+        List<String> dump = new ArrayList<String>();
+        for (DataFile file : files) {
+            dump.add(file.getPath() + "=" + DataFileInspector.fieldNames(file)
+                    + DataFileInspector.values(file));
+        }
+        return dump;
+    }
+
     // ------------------------------------------------------------------ グループ ID が交互
 
     /**
@@ -237,6 +254,108 @@ public class XlsInterleavedBlockTest {
                 tableDump(YamlFrameworkOracle.setupTables(outDir().toString(), SHEET, "g1")),
                 is(tableDump(FrameworkOracle.tables(dir().toString(), resource(), "[g1]",
                         DataType.SETUP_TABLE_DATA))));
+    }
+
+    /**
+     * Given: {@code SETUP_TABLE=A} ／ {@code SETUP_TABLE[g1]=B} ／ {@code SETUP_TABLE=C} ／
+     *        {@code SETUP_TABLE=D} の順に並んだ実 {@code .xlsx}。挟まれたあとに同じキーのブロックが
+     *        <b>2 件</b>続く。
+     * When : 実 {@code .xlsx} を変換ツールで読む。
+     * Then : 警告は 1 件で、読まれなかった {@code C} と {@code D} の<b>両方</b>を含む。出力にも両方が無い。
+     *
+     * <p>
+     * 読まれないブロックは打ち切り位置より後ろの<b>すべて</b>である。1 件目で数え終えると、
+     * 2 件目以降が警告にも現れないまま出力からも消える。
+     * </p>
+     */
+    @Test
+    public void warnsAboutEveryUnreadBlockAfterInterleavedGroupId() {
+        // Given
+        book().row(text("SETUP_TABLE=A"))
+                .row(text("id"))
+                .row(text("a1"))
+                .row(text("SETUP_TABLE[g1]=B"))
+                .row(text("id"))
+                .row(text("b1"))
+                .row(text("SETUP_TABLE=C"))
+                .row(text("id"))
+                .row(text("c1"))
+                .row(text("SETUP_TABLE=D"))
+                .row(text("id"))
+                .row(text("d1"))
+                .writeTo(dir());
+
+        // When
+        List<String> warnings = new ArrayList<String>();
+        TestDataContainer container = readCapturingWarnings(warnings);
+
+        // Then (i) 警告 1 件に C と D の両方が載る。
+        // 識別子 1 文字を containsString で探すと本文の別語に当たるため（"D" は "グループID" に含まれる）、
+        // 読まれなかったブロックの一覧そのものを突き合わせる。
+        assertThat("警告の件数", warnings.size(), is(1));
+        String warning = warnings.get(0);
+        assertThat(warning, containsString("[C, D]"));
+
+        // Then (ii) 出力に C も D も無い
+        assertThat(tableKeys(container), is(java.util.Arrays.asList("/A", "g1/B")));
+    }
+
+    // ------------------------------------------------------------------ ファイル系
+
+    /**
+     * Given: {@code SETUP_FIXED=a.dat} ／ {@code SETUP_FIXED[g1]=b.dat} ／ {@code SETUP_FIXED=c.dat} の順に
+     *        並んだ実 {@code .xlsx}。テーブルと同じ形の交互記述をファイル系で組んだもの。
+     * When : 実 {@code .xlsx} を変換ツールで読み、YAML へ書き出す。
+     * Then : 警告が 1 件出る。出力に {@code c.dat} は無い。出力をフレームワークが読んだ結果が、
+     *        元の {@code .xlsx} をフレームワークが読んだ結果と一致する。
+     *
+     * <p>
+     * ファイル系はテーブルと同じく収集方式が「グループ」であり、交互記述の対象である。
+     * </p>
+     */
+    @Test
+    public void warnsAndDropsFileBlockAfterInterleavedGroupId() {
+        // Given
+        book().row(text("SETUP_FIXED=a.dat"))
+                .row(text("data"), text("f1"))
+                .row(XlsFixture.blank(), text("半角英字"))
+                .row(XlsFixture.blank(), text("5"))
+                .row(XlsFixture.blank(), text("a"))
+                .row(text("SETUP_FIXED[g1]=b.dat"))
+                .row(text("data"), text("f1"))
+                .row(XlsFixture.blank(), text("半角英字"))
+                .row(XlsFixture.blank(), text("5"))
+                .row(XlsFixture.blank(), text("b"))
+                .row(text("SETUP_FIXED=c.dat"))
+                .row(text("data"), text("f1"))
+                .row(XlsFixture.blank(), text("半角英字"))
+                .row(XlsFixture.blank(), text("5"))
+                .row(XlsFixture.blank(), text("c"))
+                .writeTo(dir());
+
+        // When
+        List<String> warnings = new ArrayList<String>();
+        TestDataContainer container = readCapturingWarnings(warnings);
+        writeYaml(container);
+
+        // Then (i) 警告が 1 件
+        assertThat("警告の件数", warnings.size(), is(1));
+        String warning = warnings.get(0);
+        assertThat(warning, containsString(BOOK));
+        assertThat(warning, containsString(SHEET));
+        assertThat(warning, containsString("SETUP_FIXED"));
+        assertThat(warning, containsString("c.dat"));
+
+        // Then (ii) 出力に c.dat が無い
+        assertThat(tableKeys(container), is(java.util.Arrays.asList("/a.dat", "g1/b.dat")));
+
+        // Then (iii) 出力をフレームワークが読んだ結果が、元の .xlsx を読んだ結果と一致する
+        assertThat("グループ指定なし",
+                fileDump(YamlFrameworkOracle.setupFiles(outDir().toString(), SHEET)),
+                is(fileDump(FrameworkOracle.files(dir().toString(), resource(), "", DataType.SETUP_FIXED))));
+        assertThat("グループ g1",
+                fileDump(YamlFrameworkOracle.setupFiles(outDir().toString(), SHEET, "g1")),
+                is(fileDump(FrameworkOracle.files(dir().toString(), resource(), "[g1]", DataType.SETUP_FIXED))));
     }
 
     // ------------------------------------------------------------------ データタイプが交互

@@ -3,9 +3,10 @@ package nablarch.test.core.file;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
- * {@link DataFile} が保持するフィールド名と値へ、テストから到達するための相乗りヘルパ。
+ * {@link DataFile} が保持するフィールド名・値・ディレクティブへ、テストから到達するための相乗りヘルパ。
  *
  * <p>
  * ファイル・電文の値をフレームワーク本体に読ませて「正解」として取り出すとき、本体が実際に保持している
@@ -15,7 +16,8 @@ import java.util.Map;
  * </p>
  *
  * <p>
- * 保持している値は {@code DataFileFragment} の protected フィールドの向こうにある。protected は
+ * 保持している値は {@code DataFileFragment} の protected フィールドの向こうにあり、ディレクティブは
+ * {@link DataFile} の protected フィールドの向こうにある。protected は
  * 同一パッケージからは見えるため、本クラスを {@link DataFile} と同じパッケージへ 1 枚だけ置いて壁を越える。
  * 相乗りの影響は本クラスに閉じる。テスト専用であり、{@code src/main} からは使わない。
  * </p>
@@ -44,6 +46,23 @@ public final class DataFileInspector {
             }
         }
         return rows;
+    }
+
+    /**
+     * ファイルが保持するディレクティブを、キーの辞書順に並べて返す。
+     *
+     * <p>
+     * ディレクティブ値は本体が {@code setDirective} で型変換したあとの値である
+     * （{@code Charset}・enum・整数等）。値そのものではなく<b>本体が保持している形</b>を
+     * 突き合わせたいときに使う。並べ替えるのは、本体が {@code HashMap} で保持していて
+     * 記述順を保たないためである。
+     * </p>
+     *
+     * @param file 本体が読んだファイル
+     * @return ディレクティブ（キーの辞書順）
+     */
+    public static Map<String, Object> directives(DataFile file) {
+        return new TreeMap<String, Object>(file.directives);
     }
 
     /**

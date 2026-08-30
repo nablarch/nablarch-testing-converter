@@ -1274,6 +1274,31 @@ assert メッセージ・Javadoc の「全要素が空のエントリになる�
 Step 4 第2回（#40〜#45）の合計は **672 → 678 ではなく 656 → 678（＋22）** である
 （#40 ＋5・#41 ＋2・#42 ＋3・#43 ＋6・#44 ＋6・#45 ±0）。
 
+**追補その 19（2026-08-30 実測。#47 で第2回の判定に付いた是正を実施したぶん）**
+
+追補その 18（追跡対象 678 件）から、#47 で足した 4 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 682
+② （0 件）
+③ 8c327d0: 536
+   HEAD: 678   ← #47 のコミットが載る前の値
+```
+
+追跡対象は **682** 件（678 ＋ 4）。
+
+**678 → 682（差 ＋4）の内訳** —— 追加 4 件のみ。削除は無い。既存テストの期待値は変えていない。
+
+| 増減 | テスト | 担保・理由 |
+|---|---|---|
+| ＋ | `xls/XlsKeyValueNotationTest#keepsQuotationNotationOfDirectiveValueThroughXlsRoundTrip` | ディレクティブ行の引用符記法が XLS→XLS で保たれる（`quoting-delimiter`） |
+| ＋ | `xls/XlsKeyValueNotationTest#keepsQuotationNotationOfFwHeaderValueThroughXlsRoundTrip` | FW 制御ヘッダ行の引用符記法が XLS→XLS で保たれる（`requestId`） |
+| ＋ | `xls/XlsInterleavedBlockTest#warnsAboutEveryUnreadBlockAfterInterleavedGroupId` | 読まれないブロックが 2 件あるとき、警告 1 件に**両方**が載る |
+| ＋ | `xls/XlsInterleavedBlockTest#warnsAndDropsFileBlockAfterInterleavedGroupId` | ファイル系（`SETUP_FIXED`）でも交互記述を検出して警告する |
+
+Step 4 第2回（#40〜#45・#47）の合計は **656 → 682（＋26）** である
+（#40 ＋5・#41 ＋2・#42 ＋3・#43 ＋6・#44 ＋6・#45 ±0・#47 ＋4）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
@@ -3483,7 +3508,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 **この 5 クラスが埋めているのは軸ではなく、解説書の記述に対する担保である。**
 母集合と経路ごとの合否は `checks/step4-report.md` に記録する。
 
-## 4.6 Step 4 第2回（#40〜#45）が新設したテストクラス（2026-08-29 追記）
+## 4.6 Step 4 第2回（#40〜#45・#47）が新設したテストクラス（2026-08-29 追記。#47 を 2026-08-30 に追記）
 
 **本節は #40 で新設した。**第2回は「解説書に書いてあることを実装とテストで押さえる」もので、
 軸A〜F の要素表とは切り口が違う。**軸要素対応表（`axis-matrix.md`）へは載せない**——理由は §4.5 と同じで、
@@ -3494,8 +3519,9 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 |---|---|---:|---|---|
 | `xls/XlsTrailingNullTest` | #40 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsTrailingNullTest.java` | ファイル・電文・送信同期電文の末尾に連続して `null` 記法を書いたときの値が、**フレームワーク本体が読む値と一致する**こと。実 `.xlsx` 起点 |
 | `xls/XlsMarkerOnlyEntryTest` | #41 | 2 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsMarkerOnlyEntryTest.java` | マーカーカラムだけに値があるエントリが、**本体が読むのと同じ件数**残ること（テーブル系・`LIST_MAP`）。実 `.xlsx` 起点 |
-| `xls/XlsInterleavedBlockTest` | #42 | 3 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsInterleavedBlockTest.java` | 交互記述のシートで警告が 1 件出て、読まれないブロックが出力に無く、出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致すること。実 `.xlsx` 起点 |
+| `xls/XlsInterleavedBlockTest` | #42・#47 | 5 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsInterleavedBlockTest.java` | 交互記述のシートで警告が 1 件出て、読まれないブロックが出力に無く、出力をフレームワークが読んだ結果が元の `.xlsx` を読んだ結果と一致すること。実 `.xlsx` 起点。**#47 でファイル系と、読まれないブロックが 2 件ある形を足した** |
 | `yaml/YamlFrameworkAlignmentTest` | #43 | 6 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/yaml/YamlFrameworkAlignmentTest.java` | 変換ツールの YAML 読み込みが、フレームワークの YAML 読み込みと同じ意味を持つこと（末尾の `null`／電文の `records:` は 1 つ／`fw_header:` のキー／空エントリは `{}` だけ／2 文字の `\r` はエラー）。実 `.yaml` 起点 |
+| `xls/XlsKeyValueNotationTest` | #47 | 2 | `grep -c '^    @Test' src/test/java/nablarch/test/tool/converter/xls/XlsKeyValueNotationTest.java` | `key, value` 形式のメタ行（ディレクティブ行・FW 制御ヘッダ行）の引用符記法が Excel 形式の往復で保たれること。元の `.xlsx` を本体が読んだ値と、XLS→XLS した `.xlsx` を本体が読んだ値を突き合わせる。実 `.xlsx` 起点 |
 
 **期待値の出どころを本体に移した（#40 で新設クラス、#44 で既存の 4 経路テスト）。** 上記クラスは期待値を自分で書かず、
 `core/reader/FrameworkOracle`（テスト専用）が本体パーサへ同じ `.xlsx` を読ませて取り出した値と突き合わせる。
@@ -3508,7 +3534,7 @@ steering Rules（フェーズ2）は「各辺の担保を往復テストの追�
 | クラス | 置いたパッケージ | 越えた壁 |
 |---|---|---|
 | `core/reader/FrameworkOracle` | `nablarch.test.core.reader` | 本体パーサの `getResult()` ／ `MessageParser#getDelegate()`（パッケージプライベート） |
-| `core/file/DataFileInspector` | `nablarch.test.core.file` | `DataFileFragment` の `names` ／ `values`（protected）。`DataFile#toDataRecords()` は固定長レコードとしての型変換を伴い空文字が `null` へ変わるため、値の突き合わせには使えない |
+| `core/file/DataFileInspector` | `nablarch.test.core.file` | `DataFileFragment` の `names` ／ `values`（protected）と `DataFile` の `directives`（protected。**#47 で追加**）。`DataFile#toDataRecords()` は固定長レコードとしての型変換を伴い空文字が `null` へ変わるため、値の突き合わせには使えない |
 | `core/messaging/MessagePoolInspector` | `nablarch.test.core.messaging` | `MessagePool#getSource()`（protected） |
 | `core/reader/YamlFrameworkOracle` | `nablarch.test.core.reader` | （壁は無い。`YamlTestDataParser` は public）。**#42 で追加。** YAML 側の正解を取る口を Excel 側と同じ場所に置くために同居させている |
 

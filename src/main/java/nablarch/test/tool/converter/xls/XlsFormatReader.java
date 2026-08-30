@@ -478,19 +478,17 @@ public class XlsFormatReader implements TestDataFormatReader {
     /**
      * 本体ディレクティブ値を、YAML へ書き出す表現（仕様 DR-09/DR-10 のシンボル）へ逆正規化する。
      * 区切り文字（record-separator／field-separator）の逆正規化は辺②（YamlFormatReader）と共有する
-     * {@link DirectiveUtil#normalizeSeparator} が行う。それ以外のキーは QuotationTrimmer 記法を剥がす。
+     * {@link DirectiveUtil#normalizeSeparator} が行う。それ以外のキーは値をそのまま返す。
      */
     private static String normalizeDirectiveValue(String key, String value) {
         if ("record-separator".equals(key) || "field-separator".equals(key)) {
             return DirectiveUtil.normalizeSeparator(key, value);
         }
-        // ディレクティブ値も本体 Excel 実行経路では readTestData の interpret により QuotationTrimmer が
-        // 適用される（例: quoting-delimiter のセル値 """ は " に解釈される）。変換器はインタープリタが
-        // 空のため、ここで同等処理を行い Excel 実行経路と挙動を一致させる（YAML 経路は QuotationTrimmer
-        // を持たないため必須）。ただし QuotationTrimmer 記法（前後がダブルクォートで囲まれた 2 文字超）の
-        // ときのみ剥がす。デフォルトディレクティブとして本体器に注入される " 1 文字（可変長の
-        // quoting-delimiter 既定値）等は記法ではなく生値であり、本体 Excel 経路でも QuotationTrimmer を
-        // 通らないため、ここでも素通しする（1 文字を剥がそうとする QuotationTrimmer の例外も同時に回避）。
+        // 区切り文字以外は加工しない。本体パーサへ NullInterpreter → QuotationTrimmer →
+        // LineSeparatorInterpreter を渡しているため、ここへ届く値は本体が解釈し終えたあとの値である
+        // （例: quoting-delimiter のセル値がダブルクォート 5 個なら、本体が外側 1 層を外した 3 個が届く）。
+        // 変換器がここでもう一度剥がすと二重適用になり、本体が読む値とずれる。
+        // 記法へ戻すのは書き出し側（XlsFormatWriter の toCellNotation）の役目である。
         return value;
     }
 

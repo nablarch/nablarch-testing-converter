@@ -1914,7 +1914,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - 直す前は落ちて直したあとは通るテストがある
 - (a)〜(e) の表が報告に載っている
 - 末尾 `null` の値が本体と一致する
-- `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretValue`・`interpretRows`・`stripQuotes`・`tail` の**定義**が `src/main` に残っていない
+- `dropEmptyEntries`・`isEmptyEntry`・`isEmptyCell`・`interpretValue`・`interpretRows`・`stripQuotes` の**定義**が `src/main` に残っていない
+- **`tail` は上の一覧から外した**（#47・2026-08-30）。`tail` は生行から原文を復元する経路（`XlsFormatReader` の `skipToFirstNameRow` 1 か所・`verifyNameRow` 1 か所・`readFieldDefs` 2 か所の計 4 か所）が呼んでおり死んでいない。残したのが正しく、§8-5 の一覧のほうが誤りだった
 
 ### #41: 2-2 —— マーカーカラムだけに値があるエントリを残す
 
@@ -2046,14 +2047,14 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] a-3 のテストを 2 件足す（実 `.xlsx` 起点・正解は本体。`quoting-delimiter` ／ FW ヘッダ `requestId`）
-- [ ] M6（`appendKeyValueRows` の `toCellNotation` を外す）で 2 件とも落ち、HEAD で通ることを確認する
-- [ ] 2-3 のテストを 2 件足す（ファイル系 ／ 読まれないブロックが 2 件）
-- [ ] M7（`isGroupCollected` をテーブルだけに）・M8（`unreadIdentifiersAfter` の直後に `break`）で
+- [x] a-3 のテストを 2 件足す（実 `.xlsx` 起点・正解は本体。`quoting-delimiter` ／ FW ヘッダ `requestId`）
+- [x] M6（`appendKeyValueRows` の `toCellNotation` を外す）で 2 件とも落ち、HEAD で通ることを確認する
+- [x] 2-3 のテストを 2 件足す（ファイル系 ／ 読まれないブロックが 2 件）
+- [x] M7（`isGroupCollected` をテーブルだけに）・M8（`unreadIdentifiersAfter` の直後に `break`）で
       それぞれ落ち、HEAD で通ることを確認する
-- [ ] `XlsFormatReader#normalizeDirectiveValue` の Javadoc・本文コメントを実態へ書き直す（コードは変えない）
-- [ ] 本ファイル #40 の完了条件から `tail` を外し、残した理由を 1 行足す
-- [ ] `checks/task-47.md` に変異と結果を記録し、`checks/step4-2-report.md` へ §8 を足す
+- [x] `XlsFormatReader#normalizeDirectiveValue` の Javadoc・本文コメントを実態へ書き直す（コードは変えない）
+- [x] 本ファイル #40 の完了条件から `tail` を外し、残した理由を 1 行足す
+- [x] `checks/task-47.md` に変異と結果を記録し、`checks/step4-2-report.md` へ §8 を足す
 
 **Completion criteria**:
 
