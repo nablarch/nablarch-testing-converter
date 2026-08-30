@@ -2073,8 +2073,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-30
+- **Last completed**: **#47。第2回の判定（指示書 §9）に付いた是正 4 点を実施して push した（`46457d3`）。** 変異 M6・M7・M8 はいずれも足したテストが検知する。報告は `checks/step4-2-report.md` §8、自己点検は `checks/task-47.md`
+- **Next**: **調整側（ユーザー）の判定待ち。** #47 で第2回のタスクはすべて完了しており、こちらから着手するものは無い。次の指示が来るまで待つ
+- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件。#47 で開示している判断材料 3 件は `checks/task-47.md` の末尾表
