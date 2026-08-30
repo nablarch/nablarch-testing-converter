@@ -2035,6 +2035,35 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - `git status --short` が空
 - push 済み
 
+### #47: 第2回の判定を受けた是正 —— 変異で検知されなかった 3 経路にテストを足す
+
+**Purpose**: 指示書 第2回 §9（`nablarch-document@origin/ntf-yaml-support`）の判定で、変異試験で
+検知されなかった箇所が 3 件（M6 = 2-1 a-3 の書き戻し／M7 = 2-3 のファイル系／M8 = 読まれないブロックが
+2 件）見つかった。テストを足して検知できるようにし、あわせてコメント 1 か所と台帳 1 行を実態へ合わせる。
+**`src/main` のコードは変えない**（変えるのはコメントだけ）。
+
+**Prerequisites**: #46
+
+**Steps**:
+
+- [ ] a-3 のテストを 2 件足す（実 `.xlsx` 起点・正解は本体。`quoting-delimiter` ／ FW ヘッダ `requestId`）
+- [ ] M6（`appendKeyValueRows` の `toCellNotation` を外す）で 2 件とも落ち、HEAD で通ることを確認する
+- [ ] 2-3 のテストを 2 件足す（ファイル系 ／ 読まれないブロックが 2 件）
+- [ ] M7（`isGroupCollected` をテーブルだけに）・M8（`unreadIdentifiersAfter` の直後に `break`）で
+      それぞれ落ち、HEAD で通ることを確認する
+- [ ] `XlsFormatReader#normalizeDirectiveValue` の Javadoc・本文コメントを実態へ書き直す（コードは変えない）
+- [ ] 本ファイル #40 の完了条件から `tail` を外し、残した理由を 1 行足す
+- [ ] `checks/task-47.md` に変異と結果を記録し、`checks/step4-2-report.md` へ §8 を足す
+
+**Completion criteria**:
+
+- 足した 4 件について、指定した変異で落ちること・HEAD で通ることが `checks/task-47.md` に書かれている
+- `mvn -o clean test` が緑（`Tests run: 682`）
+- `git grep -nE '\.rst|nablarch-document|解説書|出典|根拠:' -- src/` と
+  `git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src` がいずれも 0 件のまま
+- `git status --short` が空
+- push 済み
+
 ---
 
 # State
@@ -2043,8 +2072,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-30
-- **Last completed**: **#46。指示書 第2回（`ntf-step4-07-nablarch-testing-converter-2.md`）の 2-1〜2-6 をすべて実施し、完了条件 11 項を満たして push した（`77e4a22`）。** 報告は `checks/step4-2-report.md` §1〜§7。各タスクの自己点検は `checks/task-40.md`〜`task-46.md`
-- **Next**: **調整側（ユーザー）の判定待ち。** 第2回の全タスクが完了しており、こちらから着手するものは無い。次の指示が来るまで待つ
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は `Tests run: 678, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件。開示している判断材料 4 件は `checks/task-46.md` の末尾表
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
