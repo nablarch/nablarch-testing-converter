@@ -2065,6 +2065,28 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 - `git status --short` が空
 - push 済み
 
+### 第2回の承認（2026-08-30）
+
+**#47 は承認された。converter の Step 4 第2回はこれで完了で、追加タスクは無い。**
+出典は指示書 §10（`nablarch-document@origin/ntf-yaml-support`・`623d1bc`。
+`.rn/20260724-ntf-yaml-support/ntf-step4-07-nablarch-testing-converter-2.md:458`-`:494`）。
+
+判定はディレクターの独立検証（scratchpad の clone・`46457d3`。CC の報告書は根拠にしていない）に基づく。
+`mvn -o clean test` → `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0`、
+`git diff --stat 77e4a22 46457d3 -- src/` は 4 ファイル・+324／−10 で `src/main` は
+`XlsFormatReader.java:479`-`:491` の Javadoc と本文コメントだけ（コード行の変更なし）、
+変異 M6・M7・M8 はいずれも足したテストが検知、`@Ignore` 0 件。
+
+`checks/task-47.md` 末尾表で開示した 3 件の判定（指示書 §10）:
+
+1. **§9 の期待値の誤りはディレクター側の誤りであると確定した。** 実測の `""R1""` に合わせた判断が正しい。
+   `QuotationTrimmer#trimQuotation`（`nablarch-testing@3c4bd2a`・
+   `src/main/java/nablarch/test/core/util/interpreter/QuotationTrimmer.java:24`-`:30`）は
+   先頭と末尾の `"` を **1 組だけ**外すため、`"""R1"""` は `""R1""` になる。
+   入力を指定どおりに残し期待値だけを実測へ合わせたのが正しい扱いである
+2. M8 の assert を `[C, D]` の一覧照合にした件 —— 受け入れ
+3. `DataFileInspector#directives`（`src/test` のみ）—— 受け入れ
+
 ---
 
 # State
@@ -2075,6 +2097,6 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-08-30
-- **Last completed**: **#47。第2回の判定（指示書 §9）に付いた是正 4 点を実施して push した（`46457d3`）。** 変異 M6・M7・M8 はいずれも足したテストが検知する。報告は `checks/step4-2-report.md` §8、自己点検は `checks/task-47.md`
-- **Next**: **調整側（ユーザー）の判定待ち。** #47 で第2回のタスクはすべて完了しており、こちらから着手するものは無い。次の指示が来るまで待つ
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件。#47 で開示している判断材料 3 件は `checks/task-47.md` の末尾表
+- **Last completed**: **#47 が承認された（指示書 §10・2026-08-30）。converter の Step 4 第2回はこれで完了で、追加タスクは無い。** 承認の内容と開示 3 件の判定は Decisions「第2回の承認（2026-08-30）」
+- **Next**: **無し。** steering の未チェックタスクは 0 件。次の指示が来るまで着手するものは無い
+- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件
