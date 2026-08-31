@@ -1299,6 +1299,49 @@ Step 4 第2回（#40〜#45）の合計は **672 → 678 ではなく 656 → 678
 Step 4 第2回（#40〜#45・#47）の合計は **656 → 682（＋26）** である
 （#40 ＋5・#41 ＋2・#42 ＋3・#43 ＋6・#44 ＋6・#45 ±0・#47 ＋4）。
 
+**追補その 20（2026-08-31 実測。#48 でカバレッジ基準（未達0）を適用したぶん）**
+
+追補その 19（追跡対象 682 件）から、#48 で足した 28 件を導き直した。**導出コマンドは上の ①〜③ と同じ。**
+
+```
+① 710
+② （0 件）
+③ 8c327d0: 536
+   HEAD: 710
+```
+
+追跡対象は **710** 件（682 ＋ 28）。
+
+**682 → 710（差 ＋28）の内訳** —— 追加 28 件のみ。削除は無い。既存テストの期待値は変えていない。
+ファイル別の増減（`git grep -c '^    @Test' <rev> -- 'src/test/**/*.java'` を `a5f006c` と `HEAD` で取り比較）:
+
+| ファイル | a5f006c | HEAD | 増減 |
+|---|---|---|---|
+| `core/file/TestCoreFileAdapterTest.java` | 7 | 8 | ＋1 |
+| `core/reader/GroupIdNotationTest.java`（新設） | 0 | 3 | ＋3 |
+| `core/reader/StubDbInfoTest.java`（新設） | 0 | 2 | ＋2 |
+| `core/reader/TestCoreReaderAdapterTest.java` | 24 | 27 | ＋3 |
+| `tool/converter/ConverterFileFilterTest.java` | 12 | 15 | ＋3 |
+| `tool/converter/DirectiveUtilTest.java`（新設） | 0 | 1 | ＋1 |
+| `tool/converter/FormatHandlerBoundaryTest.java`（新設） | 0 | 3 | ＋3 |
+| `tool/converter/XlsOutputConfigTest.java` | 6 | 7 | ＋1 |
+| `tool/converter/xls/XlsFormatReaderAdapterContractTest.java`（新設） | 0 | 7 | ＋7 |
+| `tool/converter/xls/XlsFormatReaderTest.java` | 33 | 35 | ＋2 |
+| `tool/converter/xls/XlsFormatWriterTest.java` | 45 | 47 | ＋2 |
+
+**#48 は軸A〜F の担保を増やす作業ではない。** 足した 28 件は C0／C1 の未達を消すためのもので、
+1 件ごとに何を担保したか・変異で落ちることの実測は `checks/task-48.md` §7・§8 が正である。
+
+**#48 は `src/main` を 4 か所削っている**（到達しない実装都合のコード。`checks/task-48.md` §5）。
+`ConverterFileFilter`・`ConverterPathResolver`・`TestDataConverter` の private コンストラクタが投げていた
+`AssertionError` と、`XlsFormatWriter#isMarkerColumn` の `columnName != null` 判定である。
+**軸要素の判定は変えていない。**
+
+**#48 完了時の JaCoCo（`ed7c6d9`。手順は `checks/task-48.md` §1）** ——
+行 **1677/1698 ＝ 98.76%**／分岐 **800/808 ＝ 99.01%**。残る未達（29 行・8 分岐）は
+到達不能と判断して報告に上げたもので、**user 判断待ちのためコメントは入れていない**
+（一覧と理由は `checks/task-48.md` §6）。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
