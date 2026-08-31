@@ -999,4 +999,65 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat(cause.getMessage(), containsString("can't convert value []."));
         assertThat(cause.getMessage(), containsString("convert table ="));
     }
+
+    // ------------------------------------------------------------------ カラム名が 1 件も残らないブロック
+
+    /**
+     * Given: カラム名の行のセルが {@code null} 記法だけの {@code SETUP_TABLE} の実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : 例外にならず、カラム名 0 件・行 0 件になる。
+     *
+     * <p>
+     * フレームワークは行を解釈したあとに行末の空要素を取り除くため、{@code null} 記法だけの
+     * カラム名の行はカラム名を 1 件も残さない。<b>マーカーカラムでもないので保つ名前が無く、
+     * カラム名を 1 件も持たないブロックは行を持てない</b>（中間モデルの不変条件）ため、行を落とす。
+     * マーカーカラムだけのブロック（名前と値を保つ）とはここが違う。
+     * </p>
+     */
+    @Test
+    public void dropsRowsWhenTableColumnRowInterpretsToNothingInRealBook() {
+        // Given
+        book("nullColumnRow").row(text("SETUP_TABLE=T"))
+                .row(text("null"))
+                .row(text("1"))
+                .row(text("2"))
+                .writeTo(dir());
+
+        // When
+        TableDataBlock table = onlyBlock("nullColumnRow", TableDataBlock.class);
+
+        // Then
+        assertThat("カラム名が 1 件も残らない", table.getColumnNames(), is(Collections.<String>emptyList()));
+        assertThat("カラム名を持たないブロックは行を持たない",
+                table.getRows(), is(Collections.<List<String>>emptyList()));
+    }
+
+    /**
+     * Given: 識別行にグループ ID を書いた {@code LIST_MAP} の実 {@code .xlsx}。
+     * When : 実 {@code .xlsx} を {@code read}。
+     * Then : 例外にならず、カラム名 0 件・行 0 件になる。
+     *
+     * <p>
+     * <b>これは現状の挙動の記録である。</b>{@code LIST_MAP} のカラム名の取り出しはグループ指定なしの
+     * ブロックだけを探すため、識別行にグループ ID があると対象ブロックが見つからずカラム名が 0 件になる。
+     * カラム名を 1 件も持たないブロックは行を持てないため、行も落ちる。
+     * </p>
+     */
+    @Test
+    public void dropsRowsWhenListMapMarkerHasGroupIdInRealBook() {
+        // Given
+        book("groupedListMap").row(text("LIST_MAP[g1]=lm"))
+                .row(text("A"))
+                .row(text("1"))
+                .writeTo(dir());
+
+        // When
+        ListMapBlock listMap = onlyBlock("groupedListMap", ListMapBlock.class);
+
+        // Then
+        assertThat("グループ指定つきの LIST_MAP はカラム名が取れない",
+                listMap.getColumnNames(), is(Collections.<String>emptyList()));
+        assertThat("カラム名を持たないブロックは行を持たない",
+                listMap.getRows(), is(Collections.<List<String>>emptyList()));
+    }
 }

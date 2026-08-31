@@ -25,6 +25,7 @@ import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
+import nablarch.test.tool.converter.model.ColumnRowDataBlock;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -166,7 +167,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                 continue;
             }
             List<List<String>> cellRows = new ArrayList<>();
-            for (int r = 0; r < table.size(); r++) {
+            for (int r = 0; r < rowCount(columnNames, table.size()); r++) {
                 List<String> cells = new ArrayList<>(columnNames.size());
                 for (String column : columnNames) {
                     Object value = table.getValue(r, column);
@@ -203,7 +204,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         }
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> cellRows = new ArrayList<>();
-        for (int r = 0; r < mapRows.size(); r++) {
+        for (int r = 0; r < rowCount(columnNames, mapRows.size()); r++) {
             Map<String, String> mapRow = mapRows.get(r);
             List<String> cells = new ArrayList<>(columnNames.size());
             for (String column : columnNames) {
@@ -639,6 +640,35 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @param columnNames  マーカーカラムを除いたカラム名
      * @return 版面。マーカーカラムだけのブロックでなければ {@code null}
      */
+    /**
+     * ブロックが持つデータ行の数を返す。カラム名を 1 件も持たないブロックは 0 を返す。
+     *
+     * <p>
+     * <b>カラム名を 1 件も持たないブロックは行を持てない</b>（{@link ColumnRowDataBlock} の不変条件）。
+     * どちらの記法にも「値があってカラム名が無い」形は書けないためである。
+     * </p>
+     *
+     * <p>
+     * <b>カラム名の行がマーカーカラムだけのブロックはここへ来ない。</b>そちらは
+     * {@link #markerOnlyBlock} がマーカーカラムの名前と値ごと保つ。ここへ来るのは、カラム名の行が
+     * <b>マーカーカラムでもないのに 1 件も残らなかった</b>ブロックだけである。実際に起こるのは次の 2 つで、
+     * どちらも版面に書き戻せる形が無いため行を落とす。
+     * </p>
+     * <ul>
+     *   <li>カラム名の行のセルが {@code null} 記法だけ —— フレームワークは解釈のあとに行末の空要素を
+     *       取り除くため、カラム名が 1 件も残らない（テーブル系の経路）</li>
+     *   <li>{@code LIST_MAP} の識別行にグループ ID を書いた —— カラム名の取り出しがグループ指定なしの
+     *       ブロックだけを探すため、対象ブロックが見つからず 0 件になる（{@code LIST_MAP} の経路）</li>
+     * </ul>
+     *
+     * @param columnNames ブロックのカラム名
+     * @param rowCount    フレームワークが返した行数
+     * @return データ行の数（カラム名が空なら 0）
+     */
+    private static int rowCount(List<String> columnNames, int rowCount) {
+        return columnNames.isEmpty() ? 0 : rowCount;
+    }
+
     private MarkerOnlyBlock markerOnlyBlock(String basePath, String resourceName, String groupId,
                                             String identifier, DataType type, List<String> columnNames) {
         if (!columnNames.isEmpty()) {

@@ -159,14 +159,17 @@ public class YamlFormatReader implements TestDataFormatReader {
             for (int t = 0; t < tables.size(); t++) {
                 TableData table = tables.get(t);
                 String[] columns = table.getColumnNames();
-                // 器が 1 つもカラムを持たないときだけ、同じグループの Map エントリ（器と 1:1 同順）を
-                // 見に行き、カラム名の行がマーカーカラムだけかを判定する。
-                List<String> markerColumns = columns.length == 0 && t < entries.size()
-                        ? markerOnlyColumns(entries.get(t)) : Collections.<String>emptyList();
-                if (!markerColumns.isEmpty()) {
-                    blocks.add(new TableDataBlock(type, groupId, table.getTableName(), markerColumns,
-                            rawRows(entries.get(t), markerColumns)));
-                    continue;
+                if (columns.length == 0) {
+                    // 器が 1 つもカラムを持たないときだけ、同じグループの Map エントリ（器と 1:1 同順）を
+                    // 見に行き、カラム名の行がマーカーカラムだけかを判定する。件数の一致は
+                    // ファイル系・送信同期系と同じ検査に委ね、対応が破綻していれば静かに進めず止める。
+                    requireSameSize(tables.size(), entries.size(), sectionKey, groupId);
+                    List<String> markerColumns = markerOnlyColumns(entries.get(t));
+                    if (!markerColumns.isEmpty()) {
+                        blocks.add(new TableDataBlock(type, groupId, table.getTableName(), markerColumns,
+                                rawRows(entries.get(t), markerColumns)));
+                        continue;
+                    }
                 }
                 List<List<String>> rows = new ArrayList<>(table.size());
                 for (int r = 0; r < table.size(); r++) {

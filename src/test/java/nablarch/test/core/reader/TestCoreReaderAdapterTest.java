@@ -880,4 +880,82 @@ public class TestCoreReaderAdapterTest {
         assertThat("データタイプ名で始まる行もデータ行として残る", body.get(1), is(row("MESSAGE", "v1")));
         assertThat("その後の行の収集も途切れない", body.get(2), is(row("plain", "v2")));
     }
+
+    // ------------------------------------------------------------------ readMarkerOnlyBlock
+
+    /**
+     * Given: 対象の識別子を持つブロックが存在しないリソース。
+     * When : {@code readMarkerOnlyBlock} を呼ぶ。
+     * Then : {@code null} が返る。
+     *
+     * <p>版面が 1 行も取れないブロックは、マーカーカラムだけのブロックとして扱いようがない。</p>
+     */
+    @Test
+    public void readMarkerOnlyBlock_returnsNullWhenBlockAbsent() {
+        // Given
+        String resource = "readMarkerOnlyBlock_returnsNullWhenBlockAbsent";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=present"));
+        lines.add(row("[no]"));
+        lines.add(row("1"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        MarkerOnlyBlock block = adapter.readMarkerOnlyBlock(DIR, resource, "", "absent", DataType.LIST_MAP);
+
+        // Then
+        assertThat(block, is(nullValue()));
+    }
+
+    /**
+     * Given: カラム名の行がマーカーカラム 2 件で、データ行の 2 行目が 1 セルしかないブロック。
+     * When : {@code readMarkerOnlyBlock} を呼ぶ。
+     * Then : 足りない位置が空文字で埋まり、どの行もカラム名と同じ要素数になる。
+     *
+     * <p>本体 {@code HeaderLine} がマーカーカラムを除くときの埋め方と同じにするためである。</p>
+     */
+    @Test
+    public void readMarkerOnlyBlock_padsShortRowWithEmptyString() {
+        // Given
+        String resource = "readMarkerOnlyBlock_padsShortRowWithEmptyString";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=lm"));
+        lines.add(row("[no]", "[memo]"));
+        lines.add(row("2", "b"));
+        lines.add(row("1"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        MarkerOnlyBlock block = adapter.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP);
+
+        // Then
+        assertNotNull(block);
+        assertThat(block.getColumnNames(), is(row("[no]", "[memo]")));
+        assertThat(block.getRows(), is(Arrays.asList(row("2", "b"), row("1", ""))));
+    }
+
+    /**
+     * Given: カラム名の行に非マーカーのカラムを 1 つ含むブロック。
+     * When : {@code readMarkerOnlyBlock} を呼ぶ。
+     * Then : {@code null} が返る（マーカーカラムだけのブロックではない）。
+     */
+    @Test
+    public void readMarkerOnlyBlock_returnsNullWhenColumnRowHasDataColumn() {
+        // Given
+        String resource = "readMarkerOnlyBlock_returnsNullWhenColumnRowHasDataColumn";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=lm"));
+        lines.add(row("[no]", "id"));
+        lines.add(row("1", "U0001"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When / Then
+        assertThat(adapter.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP), is(nullValue()));
+    }
 }
