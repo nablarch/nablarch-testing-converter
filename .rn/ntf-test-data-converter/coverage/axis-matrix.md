@@ -54,7 +54,7 @@
 **🔺 も 2 役を持つ。** 状態欄の値としての 🔺（＝その軸要素の担保が往復テストしか無い）と、
 列見出しとしての「🔺 往復」欄（＝状態欄が ✅ でも ✅ 以外でも、その軸要素を通す往復テストを併記する欄）である。
 §5.2 が報告する「🔺 弱い担保のみ 0 件」は状態欄だけの集計であって、🔺 往復欄が空という意味ではない
-（🔺 往復欄が `—` でない行は 96 行ある。導出は §0.6 の ③）。
+（🔺 往復欄が `—` でない行は 95 行ある。導出は §0.6 の ③）。
 なお `inventory.md` の凡例は 🔺 を「間接的・副次的にしか通っていない」と定義しているが、
 本書は「実ファイルを通す往復テスト経由でしか通っていない」に狭めて使う（§0.5 に挙げた 3 群だけを計上する）。
 
@@ -524,7 +524,7 @@ awk '/^## 1\. /,/^## 2\. /' axis-matrix.md | grep -E '^\| [A-F][0-9-]' \
 | C-06(省略) | 同 省略（`""`） | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` ／ `#readsListMapBlockFromRealBook` ／ `#readsMessageBlockFromRealBook` | `RoundTripTest#xls_setupTable_isPreserved` | `null` ではなく `""`。`null` は `TestDataBlock` が拒否する |
 | C-07 | `TestDataBlock.identifier` | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
-| C-08(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` ／ `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` | `XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock` ／ `#roundTripsZeroRowListMapWithoutEatingNextBlock` | マーカー列だけのブロックで到達する（`issues.md` XLS-08）。除外後は行も空になる。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
+| C-08(空) | 同 空 | — | — | — | 到達不能。カラム名の行がマーカーカラムだけのブロックは、マーカーカラムの名前と値を保って読むように改めた（解説書の仕様変更への追随）。カラム名の行は記法上省略できず空行でもありえないため、マーカーカラムを除いて 0 件になった場合はマーカーカラム名がそのまま `columnNames` に入る。根拠テストは `XlsMarkerOnlyBlockTest#keepsMarkerOnlyColumnsAndValuesInTable` ／ `#keepsMarkerOnlyColumnsAndValuesInListMap`（いずれも `columnNames` が非空であることをアサートする）。この形へ到達するのは辺②（YAML の `rows: []`）だけである（§2.3）。0 件テーブルに残る担保の穴は §7 の ①〜⑧ |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupTableBlockFromRealBook` | — | — |
 | C-09(空) | 同 空 | ✅ | `XlsFormatReaderRealFileTest#readsEmptyRowsFromTableWithoutDataRowsInRealBook` ／ `#readsEmptyRowsFromListMapWithoutDataRowsInRealBook` | — | テーブル経路・LIST_MAP 経路の 2 つ |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `XlsFormatReaderRealFileTest#readsSetupFixedFileBlockFromRealBook` | — | — |
@@ -1301,10 +1301,10 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 
 | 状態 | 辺① | 辺② | 辺③ | 辺④ | 合計 |
 |---|---|---|---|---|---|
-| ✅ 担保あり | 70 | 73 | 71 | 70 | 284 |
+| ✅ 担保あり | 69 | 73 | 71 | 70 | 283 |
 | 🔺 弱い担保のみ | 0 | 0 | 0 | 0 | 0 |
 | ❌ 未担保 | 0 | 0 | 0 | 0 | 0 |
-| — 空欄 | 8 | 8 | 5 | 6 | 27 |
+| — 空欄 | 9 | 8 | 5 | 6 | 28 |
 | **合計** | **78** | **81** | **76** | **76** | **311** |
 
 導出コマンドは §0.6 の ②（`n/a` の行を置かない理由は §0.1）。
@@ -1321,23 +1321,24 @@ grep -rn 'list()\.length\|listFiles' src/test/java/nablarch/test/tool/converter/
 持てなくなり、反応すべき対抗値が型として存在しなくなったためである。§3.3 の当該行と直後の照合）。
 **❌ が 0 件であることは「穴が無い」ことを意味しない**（下の 2 段落と §5.4・§7 を参照）。
 
-「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 96 行ある
+「🔺 弱い担保のみ 0 件」は状態欄だけの集計である —— 🔺 往復欄が `—` でない行は 95 行ある
 （導出は §0.6 の ③）。§0.1 の「🔺 も 2 役を持つ」を参照。
 
 **❌ の件数は穴の総数ではない。** 上表は本書の計上単位（§0.2）で数えたときの件数であり、
 軸A〜F のどの要素にも当てはまらない担保の穴は各節末尾と §5.4 と §7 に開示してある。
 
-### 5.3 空欄（`—`）27 件の内訳
+### 5.3 空欄（`—`）28 件の内訳
 
 | 分類 | 件数 | 該当 |
 |---|---|---|
 | 構造上の到達不能（読み手側が 1 シート／1 リソース単位 API） | 4 | 辺①・辺② の C-02(空) ／ E-4(複数)（2 辺 × 2 要素） |
 | 入力側が先に閉じている到達不能（閉じている機構は要素で分かれる。C-11(空) ／ C-13(空) は 2 辺とも NTF 本体の `DataFile` の注入、C-17(空) ／ C-20(省略) は辺①が本体パーサ・辺②が YAML スキーマ） | 8 | 辺①・辺② の C-11(空) ／ C-13(空) ／ C-17(空) ／ C-20(省略)（2 辺 × 4 要素） |
 | 中間モデルの不変条件による到達不能（#25.5） | 12 | 4 辺の A-01（4）／4 辺の C-15(空)（4）／辺③・辺④ の C-17(空)（2）／辺③・辺④ の C-20(省略)（2） |
+| 読み手が版面から必ずカラム名を得るための到達不能 | 1 | 辺① C-08(空)（カラム名の行は省略できず、マーカーカラムだけのブロックはその名前を保つ。§1.3） |
 | その辺が読まないフィールド | 1 | 辺④ C-01（`YamlFormatWriter#write` はコンテナの名前を参照しない） |
 | 対象外（衝突検査は上位層）かつ上位層が担保済み | 1 | 辺④ F4-02 |
 | 対象外（衝突検査は上位層）だが上位層にも担保が無い（§5.4） | 1 | 辺③ F3-02 |
-| **合計** | **27** | |
+| **合計** | **28** | |
 
 **衝突検査の 2 件を 1 つにまとめない。** どちらも辺の担当クラスの関心事ではないため状態は `—` だが、
 上位層まで見たときの担保の有無が正反対である（辺④は上位層の既存テストが実際に通しており、
@@ -1578,8 +1579,8 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md \
 
 **8 件はすべて 0 件テーブル／マーカーカラム `[EMPTY]` にまつわるもので、本書の次の 4 行が理由欄から
 ここを参照している**: 辺① C-08(空)（§1.3）／辺② C-08(空)（§2.3）／辺③ C-08(空)（§3.3）／
-辺④ C-08(空)（§4.3）。4 行とも状態は ✅ である —— 空欄ではなく、
-✅ の担保の厚みに残る穴としてここに開示する（`steering.md` Rules「担保の穴は、テストを足さない場合でも
+辺④ C-08(空)（§4.3）。**辺①は状態が `—`（到達不能）で、残る 3 行は ✅ である** —— ✅ の 3 行は
+空欄ではなく、✅ の担保の厚みに残る穴としてここに開示する（`steering.md` Rules「担保の穴は、テストを足さない場合でも
 台帳に開示する」）。
 
 | # | 穴の内容 |

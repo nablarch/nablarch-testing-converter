@@ -531,12 +531,14 @@ XLS-02・XLS-03 は欠番である**（欠番はこの 2 件だけで、`XLS-01`
 **掲載順**: 「凡例 → 並び順の原則」に従い、**検出できない** XLS-08 を本節の先頭に置く。課題 ID は発見順のまま
 振り直していない（XLS-08 は 2026-08-12 の修正ラウンドで追加したもの）。
 
-### XLS-08 マーカー列だけのブロックは「セル 0 個の行」になり、書き戻すと行が消える（影響度 低・**検出できない**）
+### XLS-08 マーカー列だけのブロックは「セル 0 個の行」になり、書き戻すと行が消える（影響度 低・**検出できない**・**2026-08-31 に決着**）
+
+**現在の値は下表ではなく、末尾の【2026-08-31・#50】である。**下表は 2026-08-12〜2026-08-29 の時点の記録として残す。
 
 | 入力 | 中間モデルへ入る結果 | 担保テスト |
 |---|---|---|
-| `SETUP_TABLE=T`／カラム行 `[no]` のみ／データ行 `1`, `2` | **修正前**: `columnNames=[]`、`rows=[[], []]`（セルを 1 つも持たない行が 2 件）／**修正後**: `columnNames=[]`、`rows=[]` | `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` |
-| `LIST_MAP=lm`／カラム行 `[no]` のみ／データ行 `1` | **修正前**: `columnNames=[]`、`rows=[[]]`／**修正後**: `columnNames=[]`、`rows=[]` | `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` |
+| `SETUP_TABLE=T`／カラム行 `[no]` のみ／データ行 `1`, `2` | **修正前**: `columnNames=[]`、`rows=[[], []]`（セルを 1 つも持たない行が 2 件）／**修正後**: `columnNames=[]`、`rows=[]` | 当時の `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook`（現在は `#keepsMarkerOnlyColumnAndValuesInRealBook`） |
+| `LIST_MAP=lm`／カラム行 `[no]` のみ／データ行 `1` | **修正前**: `columnNames=[]`、`rows=[[]]`／**修正後**: `columnNames=[]`、`rows=[]` | 当時の `#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook`（現在は `#keepsMarkerOnlyColumnAndValuesInListMapInRealBook`） |
 
 - 原因: マーカー列（`[no]`）は本体 `HeaderLine#getEffectiveColumnNames()` が有効カラム名から除外する
   （steering #15 の意図した除外）。一方、データ行の件数はそのまま数えられるため、
@@ -605,6 +607,33 @@ XLS-02・XLS-03 は欠番である**（欠番はこの 2 件だけで、`XLS-01`
       （カラム名 0 件のブロック）と、第4文以降「マーカーカラムだけに値があるエントリは……
       マーカーカラムの値だけを除いたエントリとして中間モデルに残す」（他のカラムを持つブロック）。
       カラム名の数で分ける実装は、この 2 つをそのまま写したものである。
+  - **【2026-08-31・#50】上の (2) が引いていた定めは取り下げられ、XLS-08 は決着した。** 下の
+    【2026-08-31・#50】を参照。
+
+**【2026-08-31・#50】マーカーカラムだけのブロックは、マーカーカラムとその値を保つ（決着）。**
+
+| 入力 | 中間モデルへ入る結果（現在） | 担保テスト |
+|---|---|---|
+| `SETUP_TABLE=T`／カラム行 `[no]` のみ／データ行 `3`, `1`, `4`, `2` | `columnNames=["[no]"]`、`rows=[["3"],["1"],["4"],["2"]]` | `XlsMarkerOnlyBlockTest#keepsMarkerOnlyColumnsAndValuesInTable` |
+| `LIST_MAP=requestParams`／カラム行 `[no]` のみ／データ行 `3`, `1`, `4`, `2` | 同上（`ListMapBlock`） | `XlsMarkerOnlyBlockTest#keepsMarkerOnlyColumnsAndValuesInListMap` |
+
+- **変更の理由**: 旧仕様（マーカーカラムだけで構成したデータブロックはデータ行も残らない）は
+  取り下げられた。カラム名の行をマーカーカラムだけで構成したデータブロックは例外として、
+  マーカーカラムとその値を保ったまま変換する。**このブロックの各エントリはフィールドを持たないが、
+  テストショット一覧と行の順序で対応付ける用途では、エントリの数と並びが意味を持つためである。**
+- **中間モデルの形**: 「カラム名 0 件・行 N 件」は解消した。マーカーカラムを保つため
+  `columnNames` は 1 件以上になり、記法に無い形が中間モデルへ入らなくなった。
+- **値は本体が解釈したあとの値である。** 本体は行の解釈をマーカーカラムの除外より<b>前</b>に
+  行の全セルへ掛けるため（`nablarch-testing@dcaed44` の
+  `src/main/java/nablarch/test/core/reader/TestDataParsingTemplate.java:183`）、マーカーカラムの値も
+  他のカラムと同じ解釈を受ける。したがって辺③の記法への戻し（`XlsFormatWriter#toCellNotation`）が
+  そのまま逆写像として働き、辺③・辺④は変更していない。
+- **実装**: `TestCoreReaderAdapter#readMarkerOnlyBlock` が本体の行読み込みを再利用して除外前の版面を
+  取り出し、`XlsFormatReader` はマーカー除外後のカラム名が 0 件のときだけそれを使う。
+  行を落としていた `XlsFormatReader#rowCount` は削除した。
+- **`nablarch-example-web` 由来の実フィクスチャ**（`XlsReferenceFixtureTest` の
+  `LIST_MAP=requestParams`）も `columnNames=["[no]"]`／`rows=[["1.0"]]` になった
+  （値が `"1.0"` なのは当該セルが表示形式 `@` 付きの数値セルであるためで、XLS-01 の実挙動そのものである）。
 
 ### XLS-06 レコード種別の省略が実 `.xlsx` 経路では `null` にならず空文字になる（影響度 中・**#25.5 で修正済み**）
 
