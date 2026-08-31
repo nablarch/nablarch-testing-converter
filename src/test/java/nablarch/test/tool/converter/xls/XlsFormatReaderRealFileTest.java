@@ -121,7 +121,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * なお C-08 {@code columnNames} 空は #21 送りではなく<b>本クラスで担保する</b>
- * （{@link #dropsMarkerOnlyRowsAsEmptyEntriesInRealBook} ほか）。マーカー列だけのテーブルで
+ * （{@link #keepsMarkerOnlyColumnAndValuesInRealBook} ほか）。マーカー列だけのテーブルで
  * 到達でき、軸E の 4 観点（E-1〜E-4）に対応する要素を持たないためである。
  * </p>
  *
@@ -344,13 +344,12 @@ public class XlsFormatReaderRealFileTest {
         assertThat(listMap.getRows(), is(Arrays.asList(Arrays.asList("z1", "a1", "m1"))));
     }
 
-    // ------------------------------------------------------------------ 軸C columnNames 空
+    // ------------------------------------------------------------------ 軸C マーカーカラムだけのブロック
 
     /**
      * Given: マーカー列 {@code [no]} だけを持つ（データ列が 1 つも無い）{@code SETUP_TABLE} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : マーカー列は本体 {@code HeaderLine#getEffectiveColumnNames()} が除外するため列名は 0 件になり、
-     *        <b>行も 0 件になる</b>。カラム名を 1 つも持たないブロックはデータ行を持たないためである。
+     * Then : マーカー列の名前と各行の値が保たれる。
      *
      * <p>
      * 担保する軸要素: C-08（空）。本タスクの当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが、
@@ -359,16 +358,20 @@ public class XlsFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>行が 0 件になる仕組みは 2 度変わったが、期待値は変わっていない。</b>
-     * 最初は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに固定していた。
-     * 次に「マーカーカラムを除いたあとに全要素が空のエントリを落とす」という判定で 0 件にした。
-     * 現在は<b>カラム名の数だけ</b>で決めており、値は見ない。
-     * 値で落とす判定は、フレームワークには届く行（全セルが {@code null} 記法の行・
-     * 全セルが空文字記法の行）まで消してしまうため外した。
+     * <b>期待値は 2 度変わっている。</b>最初は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに
+     * 固定していた。次に「カラム名の数だけで決め、カラム名が 0 件なら行も 0 件」とした。
+     * 現在は<b>カラム名の行がマーカーカラムだけのブロックを例外として扱い、マーカーカラムとその値を
+     * 保つ</b>。各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
+     * エントリの数と並びが意味を持つためである。
+     * </p>
+     *
+     * <p>
+     * 本体の読みを正解にした担保は {@code XlsMarkerOnlyBlockTest} にある。本テストは
+     * 実 {@code .xlsx} 起点の軸C 棚卸しとして版面の見え方を固定する。
      * </p>
      */
     @Test
-    public void dropsMarkerOnlyRowsAsEmptyEntriesInRealBook() {
+    public void keepsMarkerOnlyColumnAndValuesInRealBook() {
         // Given
         book().row(text("SETUP_TABLE=T"))
                 .row(text("[no]"))
@@ -380,20 +383,21 @@ public class XlsFormatReaderRealFileTest {
         TableDataBlock table = onlyBlock(TableDataBlock.class);
 
         // Then
-        assertThat("マーカー列は有効カラム名から除外される", table.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("カラム名を 1 つも持たないブロックはデータ行を持たない",
-                table.getRows(), is(Collections.<List<String>>emptyList()));
+        assertThat("マーカー列だけのブロックはマーカー列を保つ",
+                table.getColumnNames(), is(Arrays.asList("[no]")));
+        assertThat("各行の値も保つ", table.getRows(),
+                is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
     }
 
     /**
      * Given: マーカー列 {@code [no]} だけを持つ {@code LIST_MAP} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : テーブル系と同じく列名 0 件・行 0 件になる（経路が別なので個別に固定する）。
+     * Then : テーブル系と同じくマーカー列の名前と値が保たれる（経路が別なので個別に固定する）。
      *
      * <p>担保する軸要素: C-08（空。{@link ListMapBlock} 側の経路）。</p>
      */
     @Test
-    public void dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook() {
+    public void keepsMarkerOnlyColumnAndValuesInListMapInRealBook() {
         // Given
         book().row(text("LIST_MAP=lm"))
                 .row(text("[no]"))
@@ -404,9 +408,9 @@ public class XlsFormatReaderRealFileTest {
         ListMapBlock listMap = onlyBlock(ListMapBlock.class);
 
         // Then
-        assertThat("マーカー列は有効カラム名から除外される", listMap.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("カラム名を 1 つも持たないブロックはデータ行を持たない",
-                listMap.getRows(), is(Collections.<List<String>>emptyList()));
+        assertThat("マーカー列だけのブロックはマーカー列を保つ",
+                listMap.getColumnNames(), is(Arrays.asList("[no]")));
+        assertThat("各行の値も保つ", listMap.getRows(), is(Arrays.asList(Arrays.asList("1"))));
     }
 
     // ------------------------------------------------------------------ 軸A ファイル系

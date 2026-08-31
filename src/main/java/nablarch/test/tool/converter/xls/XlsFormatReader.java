@@ -20,6 +20,7 @@ import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.PoiXlsReader;
 import nablarch.test.core.reader.BlockHeader;
+import nablarch.test.core.reader.MarkerOnlyBlock;
 import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.tool.converter.DirectiveUtil;
@@ -157,8 +158,15 @@ public class XlsFormatReader implements TestDataFormatReader {
             String[] columns = table.getColumnNames();
             List<String> columnNames = deduplicateColumnNames(
                     Arrays.asList(columns), resourceName, table.getTableName());
+            MarkerOnlyBlock markerOnly = markerOnlyBlock(basePath, resourceName, groupId,
+                                                         table.getTableName(), type, columnNames);
+            if (markerOnly != null) {
+                result.add(new TableDataBlock(type, groupId, table.getTableName(),
+                                              markerOnly.getColumnNames(), markerOnly.getRows()));
+                continue;
+            }
             List<List<String>> cellRows = new ArrayList<>();
-            for (int r = 0; r < rowCount(columnNames, table.size()); r++) {
+            for (int r = 0; r < table.size(); r++) {
                 List<String> cells = new ArrayList<>(columnNames.size());
                 for (String column : columnNames) {
                     Object value = table.getValue(r, column);
@@ -187,9 +195,15 @@ public class XlsFormatReader implements TestDataFormatReader {
         List<String> rawColumnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
         List<String> columnNames = deduplicateColumnNames(rawColumnNames, resourceName, header.getIdentifier());
         // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
+        MarkerOnlyBlock markerOnly = markerOnlyBlock(basePath, resourceName, header.getGroupId(),
+                                                     header.getIdentifier(), DataType.LIST_MAP, columnNames);
+        if (markerOnly != null) {
+            return new ListMapBlock(header.getGroupId(), header.getIdentifier(),
+                                    markerOnly.getColumnNames(), markerOnly.getRows());
+        }
         List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> cellRows = new ArrayList<>();
-        for (int r = 0; r < rowCount(columnNames, mapRows.size()); r++) {
+        for (int r = 0; r < mapRows.size(); r++) {
             Map<String, String> mapRow = mapRows.get(r);
             List<String> cells = new ArrayList<>(columnNames.size());
             for (String column : columnNames) {
@@ -603,26 +617,34 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * ブロックが持つデータ行の数を返す。
+     * カラム名の行が<b>マーカーカラムだけ</b>で構成されたブロックの版面を返す。そうでなければ {@code null}。
      *
      * <p>
-     * カラム名が 1 つも無いブロック（カラム名の行がマーカーカラムだけで構成されているブロック）は、
-     * データ行を持たない。値が何であっても、フィールドを 1 つも持たないエントリは記法として意味を持たない。
+     * マーカーカラムはフレームワークが読み込み対象から除外するため、除外後のカラム名が 0 件になったときだけ
+     * この形の候補になる。除外前の版面（マーカーカラムの名前と各行の値）は器に残っていないため、
+     * アダプタが本体の行読み込みを再利用して取り直す。
      * </p>
      *
      * <p>
-     * 判定はカラム名の数だけで行い、<b>値は見ない</b>。値で落とすと、全セルに {@code null} 記法を書いた行や
-     * 全セルを空文字記法で書いた行のように、フレームワークには届く行まで消えてしまう。
-     * フレームワークは全セルが空の行を読み込みの入口で落としており、変換器へ届く時点で
-     * 「本当に空の行」は存在しない。
+     * <b>このブロックは名前と値を保ったまま変換する。</b>各エントリはフィールドを持たないが、
+     * テストショット一覧と行の順序で対応付ける用途ではエントリの数と並びが意味を持つためである。
+     * 実データカラムを 1 つでも持つブロックのマーカーカラムは、従来どおりフレームワークの除外に従って落とす。
      * </p>
      *
-     * @param columnNames マーカーカラムを除いたカラム名
-     * @param rowCount    フレームワークが返した行数
-     * @return データ行の数（カラム名が空なら 0）
+     * @param basePath     ディレクトリ
+     * @param resourceName リソース名
+     * @param groupId      生値のグループ ID
+     * @param identifier   識別子（テーブル名／{@code LIST_MAP} の ID）
+     * @param type         データタイプ
+     * @param columnNames  マーカーカラムを除いたカラム名
+     * @return 版面。マーカーカラムだけのブロックでなければ {@code null}
      */
-    private static int rowCount(List<String> columnNames, int rowCount) {
-        return columnNames.isEmpty() ? 0 : rowCount;
+    private MarkerOnlyBlock markerOnlyBlock(String basePath, String resourceName, String groupId,
+                                            String identifier, DataType type, List<String> columnNames) {
+        if (!columnNames.isEmpty()) {
+            return null;
+        }
+        return adapter.readMarkerOnlyBlock(basePath, resourceName, groupId, identifier, type);
     }
 
     /**

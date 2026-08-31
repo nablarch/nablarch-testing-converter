@@ -349,20 +349,26 @@ public class XlsReferenceFixtureTest {
     }
 
     /**
-     * {@code LIST_MAP=requestParams} の期待値。マーカー列 {@code [no]} しか持たないため、
-     * 中間モデルには列名 0 件・行 0 件が入る。
+     * {@code LIST_MAP=requestParams} の期待値。カラム名の行がマーカー列 {@code [no]} だけで構成されるため、
+     * 中間モデルにはマーカー列の名前と各行の値がそのまま入る。
      * <p>
-     * <b>行が 0 件になるのは、カラム名を 1 つも持たないブロックがデータ行を持たないためである。</b>
-     * 値は見ない（値で落とす判定は、フレームワークには届く行まで消してしまうため外した）。
+     * このブロックの各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
+     * エントリの数と並びが意味を持つため、マーカー列とその値を保つ。
      * {@code nablarch-example-web} 由来の実フィクスチャにこの形が実在することを示す 1 例である。
+     * </p>
+     * <p>
+     * 値が {@code "1.0"} なのは、この {@code [no]} のセルが表示形式 {@code @} 付きの<b>数値セル</b>で
+     * あるためである。本体の読み手は表示形式を見ないため数値として文字列化される
+     * （{@code coverage/issues.md} <b>XLS-01</b>。実挙動の記録は
+     * {@code XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString}）。
      * </p>
      *
      * @return 期待ブロック
      */
     private static TestDataBlock expectedRequestParams() {
         return new ListMapBlock("", "requestParams",
-                Collections.<String>emptyList(),
-                Collections.<List<String>>emptyList());
+                Arrays.asList("[no]"),
+                Arrays.asList(Arrays.asList("1.0")));
     }
 
     /**

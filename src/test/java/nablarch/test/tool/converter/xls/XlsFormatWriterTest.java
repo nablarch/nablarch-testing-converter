@@ -1007,15 +1007,15 @@ public class XlsFormatWriterTest {
     /**
      * Given: 0 件テーブルの<b>直後に別のブロック</b>を置いた読み込み単位。
      * When : 書き出し → 実 Reader で読み戻し。
-     * Then : ブロックは 2 件のまま。0 件テーブルは {@code columnNames} ／ {@code rows} とも 0 件に戻り、
-     *        後続ブロックは食われない。
+     * Then : ブロックは 2 件のまま。0 件テーブルはカラム名の行に書いたマーカーカラム 1 件を保って戻り、
+     *        行は 0 件のまま。後続ブロックは食われない。
      *
      * <p>
      * XLS-27 の本題である。マーカーカラム案を採る前は、カラム名の行を書けないため後続ブロックの
      * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測。
-     * {@code coverage/issues.md} <b>XLS-27</b>）。マーカーカラムは
-     * 記法により読み込み対象から除外されるため、
-     * 読み戻したカラム名は 0 件に戻る。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。カラム名の行がマーカーカラムだけのブロックは
+     * マーカーカラムを保って読み戻すため、書いたマーカーカラムがそのまま戻る。
+     * 行を 1 件も持たない点は書き出し前と変わらない。
      * </p>
      */
     @Test
@@ -1034,7 +1034,7 @@ public class XlsFormatWriterTest {
         assertThat(blocks.size(), is(2));
         TableDataBlock first = (TableDataBlock) blocks.get(0);
         assertThat(first.getIdentifier(), is("EMPTY_T"));
-        assertThat(first.getColumnNames().isEmpty(), is(true));
+        assertThat(first.getColumnNames(), is(Arrays.asList("[EMPTY]")));
         assertThat(first.getRows().isEmpty(), is(true));
         TableDataBlock second = (TableDataBlock) blocks.get(1);
         assertThat(second.getIdentifier(), is("NEXT_T"));
@@ -1045,7 +1045,7 @@ public class XlsFormatWriterTest {
     /**
      * Given: 0 件 {@code LIST_MAP} の直後に別の {@code LIST_MAP} を置いた読み込み単位。
      * When : 書き出し → 実 Reader で読み戻し。
-     * Then : ブロックは 2 件のまま。0 件側はカラム名・行とも 0 件に戻る。
+     * Then : ブロックは 2 件のまま。0 件側はカラム名の行に書いたマーカーカラム 1 件を保って戻り、行は 0 件のまま。
      */
     @Test
     public void roundTripsZeroRowListMapWithoutEatingNextBlock() {
@@ -1063,7 +1063,7 @@ public class XlsFormatWriterTest {
         assertThat(blocks.size(), is(2));
         ListMapBlock first = (ListMapBlock) blocks.get(0);
         assertThat(first.getIdentifier(), is("EMPTY_LM"));
-        assertThat(first.getColumnNames().isEmpty(), is(true));
+        assertThat(first.getColumnNames(), is(Arrays.asList("[EMPTY]")));
         assertThat(first.getRows().isEmpty(), is(true));
         ListMapBlock second = (ListMapBlock) blocks.get(1);
         assertThat(second.getIdentifier(), is("NEXT_LM"));

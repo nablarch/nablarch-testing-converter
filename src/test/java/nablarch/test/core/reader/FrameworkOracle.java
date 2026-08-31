@@ -76,6 +76,51 @@ public final class FrameworkOracle {
     }
 
     /**
+     * フレームワークが<b>実行時に使う読み手</b>（{@link BasicTestDataParser}）を組み立てる。
+     *
+     * <p>
+     * 本クラスの他のメソッドが本体パーサを直接呼ぶのに対し、こちらは実行時と同じ公開 API を通す。
+     * ブロックの読み飛ばし・エントリ件数のように「フレームワークがいくつのエントリを受け取るか」を
+     * 正解にしたいテストで使う。
+     * </p>
+     *
+     * @param dir 取得元パス
+     * @return パーサ
+     */
+    private static BasicTestDataParser testDataParser(String dir) {
+        BasicTestDataParser parser = new BasicTestDataParser();
+        parser.setTestDataReader(new PoiXlsReader());
+        parser.setDbInfo(new StubDbInfo());
+        parser.setDefaultValues(new BasicDefaultValues());
+        parser.setInterpreters(interpreters(dir));
+        return parser;
+    }
+
+    /**
+     * セットアップ用テーブルを、実行時と同じ読み手（{@link BasicTestDataParser}）に読ませる。
+     *
+     * @param dir      ディレクトリ
+     * @param resource リソース名（{@code "ブック名/シート名"}）
+     * @param groupId  整形済みグループ ID（指定なしは何も渡さない）
+     * @return 本体が読んだテーブル一覧
+     */
+    public static List<TableData> setupTablesViaTestDataParser(String dir, String resource, String... groupId) {
+        return testDataParser(dir).getSetupTableData(dir, resource, groupId);
+    }
+
+    /**
+     * {@code LIST_MAP} を、実行時と同じ読み手（{@link BasicTestDataParser}）に読ませる。
+     *
+     * @param dir      ディレクトリ
+     * @param resource リソース名
+     * @param id       識別子
+     * @return 本体が読んだ行ごとのマップ
+     */
+    public static List<Map<String, String>> listMapViaTestDataParser(String dir, String resource, String id) {
+        return testDataParser(dir).getListMap(dir, resource, id);
+    }
+
+    /**
      * テーブル系ブロックを本体に読ませる。
      *
      * @param dir      ディレクトリ

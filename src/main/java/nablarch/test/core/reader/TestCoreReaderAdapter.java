@@ -35,6 +35,8 @@ import nablarch.test.core.util.interpreter.TestDataInterpreter;
  * 同じにするためであり、変換ツール側で値を解釈し直すことはしない。
  * {@code ${...}} 等の特殊記法を扱うインタープリタは渡さない（記法のまま運ぶ）。
  * 生行を原文のまま取り出すコレクタ（ヘッダ行・ボディ行）だけは空の interpreters で配線する。
+ * ただしマーカーカラムだけのブロックの版面（{@link #readMarkerOnlyBlock}）は解釈後の値を要するため、
+ * 同じコレクタを本体パーサと同順のインタープリタ列で配線する。
  * また {@code getExpectedTableData} のような後処理（デフォルト値補完・期待値マージ）も
  * 行わない。各メソッドはデータタイプに対応する本体器をそのまま返す。
  * </p>
@@ -283,9 +285,87 @@ public class TestCoreReaderAdapter {
      */
     public List<List<String>> readBlockBodyLines(String path, String resource, String groupId,
                                                  String identifier, DataType type) {
-        BodyLineCollector collector = new BodyLineCollector(reader, type, groupId, identifier);
+        BodyLineCollector collector =
+                new BodyLineCollector(reader, EMPTY_INTERPRETERS, type, groupId, identifier, true);
         collector.parse(path, resource, "", false); // 変換器経路: 本体静的キャッシュを汚染しない
         return collector.getResult();
+    }
+
+    /**
+     * カラム名の行が<b>マーカーカラムだけ</b>で構成されたブロックの版面（カラム名と各行の値）を取り出す。
+     * <p>
+     * マーカーカラムはフレームワークが読み込み対象から除外するため、器（{@link TableData}／
+     * {@code List<Map>}）にはカラムも値も残らない。変換ツールはこのブロックを版面ごと往復させるため、
+     * 除外前の姿を要する。本メソッドは本体 {@link TestDataParsingTemplate}（行の読み込み・コメント／空行除去・
+     * マーカー判定・<b>セルの解釈</b>）を再利用して対象ブロックの行を取り出し、カラム名の行が
+     * {@link HeaderLine} の有効カラム名を 1 つも残さない場合にだけ版面を返す。
+     * </p>
+     * <p>
+     * <b>値は本体パーサと同じインタープリタ列を通したあとの値である。</b>本体は行の解釈を
+     * マーカーカラムの除外より前に行の全セルへ掛けるため（{@code TestDataParsingTemplate} の
+     * {@code readTestData}）、マーカーカラムの値も他のカラムと同じ解釈を受ける。中間モデルが持つのは
+     * 解釈後の値であり、Excel 形式への書き戻し（{@code XlsFormatWriter} の記法への戻し）はその逆写像である。
+     * </p>
+     * <p>
+     * <b>行末の空セルは取り除かない。</b>{@code null} 記法は解釈の結果 Java {@code null} になり、
+     * 行末の空セル除去（{@link NablarchTestUtils#trimTailCopy(List)}）はこれを空要素として落としてしまう。
+     * 代わりに本体 {@code HeaderLine#excludeMarkerColumns} と同じく、足りない位置を空文字で埋めて
+     * カラム名と同じ要素数へ揃える。
+     * </p>
+     *
+     * @param path       取得元パス
+     * @param resource   取得元リソース名
+     * @param groupId    <b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）
+     * @param identifier 識別子（テーブル名／{@code LIST_MAP} の ID）
+     * @param type       データタイプ（テーブル系／{@code LIST_MAP}）
+     * @return 版面。対象ブロックが無い場合と、カラム名の行に有効なカラム名が 1 つでもある場合は {@code null}
+     */
+    public MarkerOnlyBlock readMarkerOnlyBlock(String path, String resource, String groupId,
+                                               String identifier, DataType type) {
+        BodyLineCollector collector =
+                new BodyLineCollector(reader, INTERPRETERS, type, groupId, identifier, false);
+        collector.parse(path, resource, "", false); // 変換器経路: 本体静的キャッシュを汚染しない
+        List<List<String>> lines = collector.getResult();
+        if (lines.isEmpty()) {
+            return null;
+        }
+        List<String> columnNames = NablarchTestUtils.trimTailCopy(lines.get(0));
+        if (columnNames.isEmpty() || new HeaderLine(columnNames).getEffectiveColumnNames().length > 0) {
+            return null;
+        }
+        List<List<String>> rows = new ArrayList<>(lines.size() - 1);
+        for (int r = 1; r < lines.size(); r++) {
+            List<String> line = lines.get(r);
+            List<String> row = new ArrayList<>(columnNames.size());
+            for (int c = 0; c < columnNames.size(); c++) {
+                row.add(c < line.size() ? line.get(c) : "");
+            }
+            rows.add(row);
+        }
+        return new MarkerOnlyBlock(columnNames, rows);
+    }
+
+    /**
+     * ブロックの識別子を、本体の器が持つ形へ揃える。
+     * <p>
+     * テーブル系だけは本体 {@link TableData} が識別子（テーブル名）を trim して大文字化するため
+     * （{@code TableData#setTableName}）、器から取った識別子でシート上のマーカー行を引き当てるには
+     * 同じ正規化を掛ける必要がある。それ以外のデータタイプは器が識別子を加工しないためそのまま返す。
+     * </p>
+     *
+     * @param type       データタイプ
+     * @param identifier 識別子
+     * @return 揃えた識別子
+     */
+    private static String normalizeIdentifier(DataType type, String identifier) {
+        switch (type) {
+            case SETUP_TABLE_DATA:
+            case EXPECTED_TABLE_DATA:
+            case EXPECTED_COMPLETED:
+                return identifier.trim().toUpperCase();
+            default:
+                return identifier;
+        }
     }
 
     /**
@@ -462,20 +542,26 @@ public class TestCoreReaderAdapter {
         /** 対象ブロックを検出して収集中か */
         private boolean collecting = false;
 
+        /** 行末の空セルを取り除くか */
+        private final boolean trimTail;
+
         /**
          * コンストラクタ。
          *
          * @param reader           テストデータリーダ
+         * @param interpreters     行のセルへ掛ける解釈クラス（原文で取り出すなら空）
          * @param targetType       対象データタイプ
          * @param targetGroupId    対象グループ ID（無指定は空文字）
          * @param targetIdentifier 対象識別子
+         * @param trimTail         行末の空セルを取り除くなら真
          */
-        BodyLineCollector(TestDataReader reader, DataType targetType, String targetGroupId,
-                          String targetIdentifier) {
-            super(reader, EMPTY_INTERPRETERS, DataType.DEFAULT);
+        BodyLineCollector(TestDataReader reader, List<TestDataInterpreter> interpreters, DataType targetType,
+                          String targetGroupId, String targetIdentifier, boolean trimTail) {
+            super(reader, interpreters, DataType.DEFAULT);
             this.targetType = targetType;
             this.targetGroupId = targetGroupId;
-            this.targetIdentifier = targetIdentifier;
+            this.targetIdentifier = normalizeIdentifier(targetType, targetIdentifier);
+            this.trimTail = trimTail;
         }
 
         @Override
@@ -488,7 +574,7 @@ public class TestCoreReaderAdapter {
                     String groupId = markerGroupId(type, first);
                     if (groupId != null) {
                         // マーカー行＝新しいブロックの開始。対象ブロックかで収集を切り替える。
-                        String identifier = getTypeValue(line);
+                        String identifier = normalizeIdentifier(targetType, getTypeValue(line));
                         collecting = type == targetType
                                 && groupId.equals(targetGroupId)
                                 && identifier.equals(targetIdentifier);
@@ -496,7 +582,7 @@ public class TestCoreReaderAdapter {
                     }
                 }
                 if (collecting) {
-                    bodyLines.add(NablarchTestUtils.trimTailCopy(line));
+                    bodyLines.add(trimTail ? NablarchTestUtils.trimTailCopy(line) : new ArrayList<>(line));
                 }
             }
         }
