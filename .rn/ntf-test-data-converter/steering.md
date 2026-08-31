@@ -2338,8 +2338,16 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-31
+- **Last completed**: **#54（締め）まで完了。**解説書 #54（カラム名の行がマーカーカラムだけの
+  データブロックはマーカーカラムとその値を保つ）への追随はこれで全部終わり、報告も出した。
+  報告の正は `checks/step4-54-report.md`
+- **Next**: **無し。** steering の未チェックタスクは 0 件。ディレクター側の独立再実行と
+  integration 再検証の結果を待つ状態で、次の指示が来るまで着手するものは無い
+- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。
+  `mvn clean test` は `Tests run: 731, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。
+  `@Ignore` アノテーション 0 件。未達 30 行／8 分岐は #49 で承認済みの到達不能箇所と完全一致で、
+  本是正が持ち込んだ未達は 0 件。マージ可否の判断は出さない（Rules）。判断は調整側（ユーザー）が出す。
+  **持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の
+  `build` ＋3 の出所が未確認。**`handover.md` の提出タイミングは調整側の判断**であり、こちらからは出さない
