@@ -1296,4 +1296,39 @@ public class XlsFormatWriterTest {
                 "\"ab",             // 半角が先頭だけ → 囲まない
                 "\"\"ab\"\"")));      // 半角で前後を囲んだ値 → さらに半角で囲む
     }
+    /**
+     * Given: フィールドを持つが、セルを 1 つも持たないデータ行を含む固定長ファイル。
+     * When : 書き出す。
+     * Then : 空文字記法（{@code ""}）を書き込む先が無いため何も足さず、マーカーカラムと
+     *        版面幅ぶんの空セルだけの行を書く。
+     *
+     * <p>
+     * 記法はデータ行のセル数がフィールド数以下であることだけを求める（{@code RecordLayout} の
+     * {@code requireRowsNotLongerThan}）ため、セル 0 個の行は中間モデルとして正しい。
+     * 「全フィールドが空文字なら先頭へ空文字記法を書く」処理は、書き込む先が無い行には掛からない。
+     * </p>
+     *
+     * <p>担保：全空判定の前段にある「セルを 1 つも持たない」側。</p>
+     */
+    @Test
+    public void writesFileDataRowWithNoCellsAsMarkerColumnOnly() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("ZF", "半角英字", "2")),
+                Arrays.asList(Collections.<String>emptyList()));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat",
+                map("text-encoding", "UTF-8"), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("empty_row", "s", file)), "s");
+
+        // Then —— データ行は先頭のマーカーカラムだけ（空文字記法 "" は足さない）
+        assertThat(cell(sheet, 0, 0), is("SETUP_FIXED=t.dat"));
+        assertThat(line(sheet, 2), is(Arrays.asList("data", "ZF")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字")));
+        assertThat(line(sheet, 4), is(Arrays.asList("", "2")));
+        // データ行はマーカーカラム＋版面幅ぶんの空セルだけ。空文字記法 "" は書かれない
+        assertThat(line(sheet, 5), is(Arrays.asList("", "")));
+        assertThat(sheet.getLastRowNum(), is(5));
+    }
 }

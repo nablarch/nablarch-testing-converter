@@ -1177,4 +1177,79 @@ public class XlsFormatReaderTest {
         FileDataBlock file = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
         assertThat(file.getDirectives().get("quoting-delimiter"), is("foo"));
     }
+    /**
+     * Given: 同じ識別子の {@code LIST_MAP} マーカーが 2 つ並ぶシート。
+     * When : {@code read}。
+     * Then : ブロックは 1 件だけになる（同じ識別子の 2 つ目は読まない）。
+     *
+     * <p>
+     * {@code LIST_MAP} は識別子で一括取得するため、同じ識別子で 2 回読むと同じ内容が 2 件並んでしまう。
+     * 担保：識別子による重複排除の「既に処理済み」側。
+     * </p>
+     */
+    @Test
+    public void readsListMapOnlyOncePerIdentifier() {
+        // Given
+        String resource = "readsListMapOnlyOncePerIdentifier/s";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=dup"));
+        lines.add(row("ZCOL"));
+        lines.add(row("v1"));
+        lines.add(row("LIST_MAP=dup"));
+        lines.add(row("ZCOL"));
+        lines.add(row("v2"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        assertThat(container.getSections().get(0).getBlocks().size(), is(1));
+        ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(listMap.getIdentifier(), is("dup"));
+    }
+
+    /**
+     * Given: 同名カラムが 3 回現れるヘッダ行と、{@code "/"} を含まないリソース名。
+     * When : {@code read}。
+     * Then : WARN は同名カラムにつき 1 件だけ出る。ブック名・シート名を切り出せないリソース名では
+     *        どちらもリソース名全体になる。
+     *
+     * <p>
+     * 担保：重複警告の「その名前は警告済み」側と、{@code bookName}／{@code sheetName} の
+     * 「{@code "/"} を含まない」側。
+     * </p>
+     */
+    @Test
+    public void warnsOncePerDuplicateNameAndFallsBackToWholeResourceName() {
+        // Given —— カラムの並びは辞書順とずらす
+        String resource = "noSlashResource";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=m"));
+        lines.add(row("ZCOL_A", "ZCOL_A", "ZCOL_A", "ACOL"));
+        lines.add(row("v1", "v2", "v3", "a"));
+
+        CapturingHandler handler = new CapturingHandler();
+        Logger logger = Logger.getLogger(XlsFormatReader.class.getName());
+        logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
+        logger.setLevel(Level.WARNING);
+        try {
+            // When
+            TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+            // Then: 3 回の重複でも WARN は 1 件
+            assertThat(handler.messages.size(), is(1));
+            // ブック名・シート名はどちらもリソース名全体
+            assertThat(handler.messages.get(0), is(
+                    "[" + resource + "] シート \"" + resource + "\" のブロック \"m\""
+                            + " に重複カラム名 \"ZCOL_A\" があります。3 列目の値を採用します。"));
+            // 後勝ちで 1 件に絞られる
+            ListMapBlock listMap = (ListMapBlock) container.getSections().get(0).getBlocks().get(0);
+            assertThat(listMap.getColumnNames(), is(Arrays.asList("ZCOL_A", "ACOL")));
+            assertThat(listMap.getRows().get(0), is(Arrays.asList("v3", "a")));
+        } finally {
+            logger.setUseParentHandlers(true);
+            logger.removeHandler(handler);
+        }
+    }
 }
