@@ -651,15 +651,23 @@ public class YamlFormatReaderInvalidInputTest {
     /**
      * Given: {@code rows} のキーがマーカーカラム {@code [no]} だけの {@code setup_tables}。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : マーカーは除外されるため、カラム 0 件・値を持たない行 2 件になる。
+     * Then : マーカーカラムの名前と各行の値が保たれる。
      *
      * <p>
-     * 辺①の {@code coverage/issues.md} <b>XLS-08</b>（マーカー列だけのブロックがセル 0 個の行になる）と
-     * <b>同じ形</b>が辺②でも起こる。マーカーの除外そのものは意図した仕様（steering #15）である。
+     * カラム名の行がマーカーカラムだけのデータブロックは例外として、マーカーカラムとその値を保ったまま
+     * 変換する。各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
+     * エントリの数と並びが意味を持つためである。<b>辺①（{@code coverage/issues.md} <b>XLS-08</b>）と
+     * 同じ扱いであり、2 辺は対称である。</b>
+     * </p>
+     *
+     * <p>
+     * <b>本クラスに残しているのは、この入力が「マーカーの除外でカラムが 0 件になる」という
+     * 異常系の入り口として書かれていたためである。</b>本体の読みを正解にした担保と、
+     * 実データカラムを持つエントリでマーカーが落ちる非回帰は {@code YamlMarkerOnlyBlockTest} にある。
      * </p>
      */
     @Test
-    public void readsMarkerOnlyTableAsColumnlessRows() {
+    public void keepsMarkerOnlyTableColumnsAndValues() {
         // Given / When
         TestDataContainer container = YamlFixture.read(dir(), ""
                 + "setup_tables:\n"
@@ -670,9 +678,9 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
-        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
-        assertThat(block.getRows(),
-                is(Arrays.asList(Collections.<String>emptyList(), Collections.<String>emptyList())));
+        assertThat("マーカーカラムの名前が残る", block.getColumnNames(), is(Arrays.asList("[no]")));
+        assertThat("各行の値も残る", block.getRows(),
+                is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
     }
 
     // ------------------------------------------------------------------ YML-14 フィールド数より値が多い行（余りが黙って消える）

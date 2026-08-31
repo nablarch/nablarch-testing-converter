@@ -155,8 +155,19 @@ public class YamlFormatReader implements TestDataFormatReader {
                                String sectionKey, DataType type, List<TestDataBlock> blocks) {
         for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
             List<TableData> tables = adapter.readTables(basePath, resourceName, groupId, type);
-            for (TableData table : tables) {
+            List<Map<String, Object>> entries = entriesForGroupId(yaml, sectionKey, groupId);
+            for (int t = 0; t < tables.size(); t++) {
+                TableData table = tables.get(t);
                 String[] columns = table.getColumnNames();
+                // 器が 1 つもカラムを持たないときだけ、同じグループの Map エントリ（器と 1:1 同順）を
+                // 見に行き、カラム名の行がマーカーカラムだけかを判定する。
+                List<String> markerColumns = columns.length == 0 && t < entries.size()
+                        ? markerOnlyColumns(entries.get(t)) : Collections.<String>emptyList();
+                if (!markerColumns.isEmpty()) {
+                    blocks.add(new TableDataBlock(type, groupId, table.getTableName(), markerColumns,
+                            rawRows(entries.get(t), markerColumns)));
+                    continue;
+                }
                 List<List<String>> rows = new ArrayList<>(table.size());
                 for (int r = 0; r < table.size(); r++) {
                     List<String> row = new ArrayList<>(columns.length);
@@ -190,6 +201,12 @@ public class YamlFormatReader implements TestDataFormatReader {
         for (Object entryObj : YamlSection.getList(yaml, YamlSection.KEY_LIST_MAPS)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
             String id = YamlSection.toStr(entry.get(YamlSection.FIELD_ID));
+            List<String> markerColumns = markerOnlyColumns(entry);
+            if (!markerColumns.isEmpty()) {
+                blocks.add(new ListMapBlock(rawGroupId(entry), id, markerColumns,
+                        rawRows(entry, markerColumns)));
+                continue;
+            }
             List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, id);
             List<String> orderedColumns = nonMarkerColumns(entry);
             List<List<String>> rows = new ArrayList<>(mapRows.size());
@@ -489,6 +506,60 @@ public class YamlFormatReader implements TestDataFormatReader {
     private static String rawGroupId(Map<String, Object> entry) {
         String groupId = YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID));
         return groupId != null ? groupId : "";
+    }
+
+    /**
+     * カラム名の行が<b>マーカーカラムだけ</b>で構成されたエントリについて、そのカラム名（YAML 記述順）を返す。
+     * <p>
+     * <b>このブロックはマーカーカラムとその値を保ったまま変換する。</b>各エントリはフィールドを持たないが、
+     * テストショット一覧と行の順序で対応付ける用途ではエントリの数と並びが意味を持つためである。
+     * 非マーカーのカラムが 1 つでもあるエントリと、行を 1 つも持たないエントリ（カラム名が決まらない）は
+     * 空リストを返し、従来どおり器を正として写す。
+     * </p>
+     *
+     * @param entry エントリ Map（{@code rows} を持つ）
+     * @return マーカーカラム名（記述順）。マーカーカラムだけのエントリでなければ空
+     */
+    private static List<String> markerOnlyColumns(Map<String, Object> entry) {
+        List<String> columns = YamlSection.resolveColumns(
+                YamlSection.getList(entry, YamlSection.FIELD_ROWS));
+        for (String column : columns) {
+            if (!YamlSection.isMarker(column)) {
+                return Collections.emptyList();
+            }
+        }
+        return columns;
+    }
+
+    /**
+     * エントリの行を、指定のカラム名の並びで<b>原文のまま</b>取り出す。
+     * <p>
+     * マーカーカラムは器（{@code TableData}／{@code List<Map>}）へ入らないため、値は同じ Map の原文から
+     * 復元するしかない。YAML 経路は値加工のインタープリタを 1 つも積まない（変換ツールの読みは
+     * 記法のまま運ぶ）ので、原文がそのまま中間モデルの値になる。
+     * </p>
+     * <p>
+     * 行として存在しないもの（空マッピング {@code {} }）の除去は本体の
+     * {@link YamlSection#dropBlankRows} に委ねる。除去の条件を変換ツール側で二重実装しないためである。
+     * </p>
+     *
+     * @param entry   エントリ Map（{@code rows} を持つ）
+     * @param columns 取り出すカラム名（記述順）
+     * @return 行ごとの値（カラム名と同順。キーが無い位置は {@code null}）
+     */
+    private static List<List<String>> rawRows(Map<String, Object> entry, List<String> columns) {
+        List<Object> rawRows = YamlSection.dropBlankRows(
+                YamlSection.getList(entry, YamlSection.FIELD_ROWS));
+        List<List<String>> rows = new ArrayList<>(rawRows.size());
+        for (Object rawRow : rawRows) {
+            Map<String, Object> map = YamlSection.castMap(rawRow);
+            List<String> row = new ArrayList<>(columns.size());
+            for (String column : columns) {
+                row.add(YamlSection.objectToString(map.get(column)));
+            }
+            rows.add(row);
+        }
+        return rows;
     }
 
     /**
