@@ -250,15 +250,15 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>黙ってカラム名行を落とすと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、
      * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測。
-     * {@code coverage/issues.md} <b>XLS-27</b>）。マーカーカラムは読み込み対象から除外されるため、
-     * 読み戻すと {@code columnNames} ／ {@code rows} とも 0 件に戻る
-     * （{@link XlsFormatReader} の XLS-08 の正規化。担保は
-     * {@code XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock}）。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。<b>読み戻すと、書いたマーカーカラムがそのまま
+     * {@code columnNames} に入る</b>——カラム名の行がマーカーカラムだけのブロックは、マーカーカラムの名前と
+     * 値を保って読むためである（{@link XlsFormatReader} の XLS-08 の決着）。行は 0 件のままである
+     * （担保は {@code XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock}）。
      * </p>
      * <p>
      * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>どちらの記法にも書けない形であり、
      * {@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>（{@code coverage/issues.md} <b>XLS-21</b>。
-     * 番人の移設は 2026-08-19）。
+     * 番人の移設は 2026-08-19、セルを 1 つも持たない行まで拒否対象を広げたのは 2026-08-31）。
      * </p>
      *
      * @param block カラム・行ブロック

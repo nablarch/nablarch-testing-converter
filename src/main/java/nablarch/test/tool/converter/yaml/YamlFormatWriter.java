@@ -19,6 +19,7 @@ import org.snakeyaml.engine.v2.common.ScalarStyle;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlSection;
 import nablarch.test.tool.converter.TestDataFormatWriter;
+import nablarch.test.tool.converter.model.ColumnRowDataBlock;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -253,6 +254,17 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
 
     /**
      * テーブル／LIST_MAP の行を「カラム名→値」のマップ列として出力する。
+     * <p>
+     * 行が 1 件も無ければ {@code rows: []}（空配列）を出力する。
+     * </p>
+     * <p>
+     * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>キーを 1 つも持たない行は
+     * {@code - &#123;&#125;} と書くしかなく、読み戻すと行として存在しないものとして取り除かれる
+     * ——書き出せてはならない形である。{@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>
+     * （{@code coverage/issues.md} <b>XLS-21</b>。セルを 1 つも持たない行まで拒否対象を広げたのは
+     * 2026-08-31。カラム名の行がマーカーカラムだけのブロックがマーカーの名前と値を保つようになり、
+     * どちらの読みからもこの形が作られなくなったためである）。
+     * </p>
      *
      * @param sb      出力先
      * @param parent  親エントリ
@@ -268,10 +280,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         int rowLevel = parent.childLevel();
         for (List<String> row : rows) {
             YamlSeq item = new YamlSeq(sb, rowLevel);
-            if (columns.isEmpty()) {
-                item.line("{}");
-                continue;
-            }
             for (int i = 0; i < columns.size(); i++) {
                 item.prop(columns.get(i), i < row.size() ? row.get(i) : null);
             }

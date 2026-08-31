@@ -19,8 +19,9 @@ import java.util.List;
  * </p>
  *
  * <p>
- * <b>カラム名 0 件で「セルを持つ行」を抱えるブロックは作れない。生成時点で拒否する</b>
- * （{@code coverage/issues.md} <b>XLS-21</b>。判定の見直しと番人の設置は 2026-08-19）。
+ * <b>カラム名 0 件で「行」を抱えるブロックは作れない。生成時点で拒否する</b>
+ * （{@code coverage/issues.md} <b>XLS-21</b>。判定の見直しと番人の設置は 2026-08-19、
+ * セルを 1 つも持たない行まで拒否対象を広げたのは 2026-08-31）。
  * 記法はテーブル系データを
  * 「データタイプと識別子の値・カラム名・データ行という共通の構成を持つ」と定め、YAML はカラム名を
  * {@code rows:} の先頭要素のキーで決めるため、値があってカラム名が無い形は書けない。
@@ -29,18 +30,20 @@ import java.util.List;
  * </p>
  *
  * <p>
- * <b>拒否するのは「セルを 1 つ以上持つ行」だけである。</b>次の 2 つは辺①②が仕様適合入力から実際に作るため、
- * 拒否しない。
+ * <b>セルを 1 つも持たない行も拒否する。</b>かつてはこの形を通していた ——
+ * カラム名の行がマーカーカラムだけのブロックがマーカーの除外を受けると
+ * 「カラム名 0 件・セルを持たない行が n 件」になり、辺①②が仕様適合入力から実際に作っていたためである
+ * （<b>XLS-08</b> ／ <b>YML-04</b>）。<b>その 2 辺がマーカーカラムの名前と値を保つようになり、
+ * この形はどちらの読みからも作られなくなった。</b>どちらの記法にも書けない形でもある ——
+ * YAML へ書くと {@code - &#123;&#125;} になり、読み戻すと行として存在しないものとして取り除かれる。
  * </p>
- * <ul>
- *   <li><b>カラム名 0 件・行 0 件</b>——YAML の 0 件テーブル（記法は0 件のデータは、
- *       {@code rows:} に空配列 {@code []} を記載する）はカラム名を書く場所を持たない。辺③は
- *       記法のマーカーカラムを 1 つ書いて Excel の「カラム名の行は省略できない」制約を満たす
- *       （<b>XLS-27</b>）</li>
- *   <li><b>カラム名 0 件・セルを 1 つも持たない行が n 件</b>——マーカーカラムだけのブロックが
- *       記法の除外を受けるとこの形になる（<b>XLS-08</b> ／ <b>YML-04</b>）。値を持たないため
- *       値の消失は起きず、扱いの非対称（辺①は落とし辺②は残す）は当該項の課題である</li>
- * </ul>
+ *
+ * <p>
+ * <b>拒否しないのは「カラム名 0 件・行 0 件」だけである。</b>YAML の 0 件テーブル（記法は0 件のデータは、
+ * {@code rows:} に空配列 {@code []} を記載する）はカラム名を書く場所を持たず、辺②が仕様適合入力から
+ * 実際に作る。辺③は記法のマーカーカラムを 1 つ書いて Excel の「カラム名の行は省略できない」制約を満たす
+ * （<b>XLS-27</b>）。
+ * </p>
  *
  * <p>
  * <b>{@code columnNames} の重複は拒否しない。番人も WARN も置かない</b>
@@ -79,25 +82,21 @@ public abstract sealed class ColumnRowDataBlock extends TestDataBlock
      * @param columnNames カラム名リスト（マーカーカラムを含む。記述順・大文字化なし）
      * @param rows        データ行のリスト（{@code null} セルと空文字 {@code ""} を区別し、特殊記法を記法のまま保持）
      * @throws IllegalArgumentException {@code columnNames} かその要素、{@code rows} かその要素（行）が
-     *                                  {@code null} の場合（セルの {@code null} は通す）
+     *                                  {@code null} の場合（セルの {@code null} は通す）、
+     *                                  または {@code columnNames} が空で {@code rows} が空でない場合
      */
     protected ColumnRowDataBlock(DataType dataType, String groupId, String identifier,
                                  List<String> columnNames, List<List<String>> rows) {
         super(dataType, groupId, identifier);
         this.columnNames = ModelPreconditions.requireNoNulls("カラム名リスト", columnNames);
         this.rows = ModelPreconditions.requireNoNullRows("データ行のリスト", rows);
-        if (this.columnNames.isEmpty()) {
-            for (int i = 0; i < this.rows.size(); i++) {
-                if (!this.rows.get(i).isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "カラム名を 1 件も持たないブロックはセルを持つデータ行を持てません"
-                                    + "（記法のテーブル系データはデータタイプと識別子の値・カラム名・"
-                                    + "データ行という共通の構成を持ち、YAML ではカラム名が rows: の"
-                                    + "先頭要素のキーで決まるため、値があってカラム名が無い形は書けません）。"
-                                    + " 識別子=[" + identifier + "] 行番号=" + (i + 1)
-                                    + " セル数=" + this.rows.get(i).size());
-                }
-            }
+        if (this.columnNames.isEmpty() && !this.rows.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "カラム名を 1 件も持たないブロックはデータ行を持てません"
+                            + "（記法のテーブル系データはデータタイプと識別子の値・カラム名・"
+                            + "データ行という共通の構成を持ち、YAML ではカラム名が rows: の"
+                            + "先頭要素のキーで決まるため、カラム名が無い行は書けません）。"
+                            + " 識別子=[" + identifier + "] 行数=" + this.rows.size());
         }
     }
 

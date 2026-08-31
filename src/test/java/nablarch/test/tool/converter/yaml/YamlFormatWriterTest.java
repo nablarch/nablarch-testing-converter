@@ -417,18 +417,26 @@ public class YamlFormatWriterTest {
                 + "    rows: []\n"));
     }
 
+    /**
+     * カラム名 0 件・行 0 件（YAML の 0 件テーブル）は {@code rows: []} になる。
+     *
+     * <p>
+     * カラム名 0 件で<b>行を持つ</b>ブロックは {@code ColumnRowDataBlock} が生成時点で拒否するため、
+     * 辺④が扱うカラム名 0 件はこの形だけである
+     * （{@code TableDataBlockTest#カラムなしで行を持つブロックは生成できない}）。
+     * </p>
+     */
     @Test
-    public void serialize_emptyColumnsRow_emitsEmptyFlowMap() {
+    public void serialize_emptyColumnsAndRows_emitsEmptyFlowList() {
         // Given
         TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
-                new ArrayList<String>(), rows(row()));
+                new ArrayList<String>(), rows());
 
         // When / Then
         assertThat(serialize(block), is(""
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
-                + "    rows:\n"
-                + "      - {}\n"));
+                + "    rows: []\n"));
     }
 
     @Test
