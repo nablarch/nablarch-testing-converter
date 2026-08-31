@@ -2144,13 +2144,13 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 **Steps**:
 
-- [ ] `XlsFormatReader#read` の if-チェーン末尾へ `else` 節を足し、到達不能である理由と残す理由を書く
-- [ ] (c) のうちコメントが無い箇所（C2・C7）へ理由コメントを新規に入れる
-- [ ] 片方しか言っていない箇所（C3・C4 の `Styles`・C5 の 2 箇所・C8）へ不足している側を追記する
-- [ ] 両方を満たす箇所（C1・C4 の `DataFormat`／`YamlFormatWriter`）は変更しないことを確認する
-- [ ] `XlsFormatWriter#layoutColumnRow` の「`isMarkerColumn` の `null` 判定は防御として残してある」を実装へ合わせる
-- [ ] 再測定し、未達が (c) の箇所（＋新設 throw）と完全一致することを確認する
-- [ ] `checks/task-49.md` にコメント全件一覧と再測定値を記録する
+- [x] `XlsFormatReader#read` の if-チェーン末尾へ `else` 節を足し、到達不能である理由と残す理由を書く
+- [x] (c) のうちコメントが無い箇所（C2・C7）へ理由コメントを新規に入れる
+- [x] 片方しか言っていない箇所（C3・C4 の `Styles`・C5 の 2 箇所・C8）へ不足している側を追記する
+- [x] 両方を満たす箇所（C1・C4 の `DataFormat`／`YamlFormatWriter`）は変更しないことを確認する
+- [x] `XlsFormatWriter#layoutColumnRow` の「`isMarkerColumn` の `null` 判定は防御として残してある」を実装へ合わせる
+- [x] 再測定し、未達が (c) の箇所（＋新設 throw）と完全一致することを確認する
+- [x] `checks/task-49.md` にコメント全件一覧と再測定値を記録する
 
 **Completion criteria**:
 
