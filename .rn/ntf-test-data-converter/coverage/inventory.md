@@ -3118,7 +3118,7 @@ Java イディオムとしての安全網であり軸要素ではない。内訳
 | 16 | `serialize_emptyKey_isQuoted` | A-10 | B-4 | C-13(値あり) | ※空キーのクォート | — | — |
 | 17 | `serialize_distinguishesNullFromNullString` | A-02 | B-1 | C-09 | **D4-03 `"null"`** ✅, **D4-04 `null`** ✅ | E-2(複数=2) | — |
 | 18 | `serialize_emptyRows_emitsEmptyFlowList` | A-02 | B-1 | **C-09(空)** ✅ | — | **E-2(0)** ✅ | — |
-| 19 | `serialize_emptyColumnsRow_emitsEmptyFlowMap` | A-02 | B-1 | **C-08(空)** ✅ | — | E-2(1) | — |
+| 19 | `serialize_emptyColumnsAndRows_emitsEmptyFlowList`（**#53 で差し替え**。旧 `serialize_emptyColumnsRow_emitsEmptyFlowMap` はキーを 1 つも持たない行を書くテストで、その形を中間モデルが生成時点で拒否するようになったため削除した） | A-02 | B-1 | **C-08(空)** ✅ | — | **E-2(0)** | — |
 | 20 | `serialize_recordWithEmptyFieldsAndRows_emitsEmptyFlowLists` | A-06 | B-3 | **C-17(空)** ✅, **C-18(空)** ✅, C-16(省略) | — | E-3(1) | — |
 | 21 | `serialize_rowShorterThanColumns_fillsMissingWithNull` | A-02 | B-1 | C-08, C-09 | D4-04 `null`（補完） | — | ✅ 行と列の数の不一致（行が短い → null 補完） |
 | 22 | `serialize_fieldWithNullType_omitsType` | A-09 | B-3 | **C-20(省略)** ✅ | — | E-3(1) | — |

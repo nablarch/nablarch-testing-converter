@@ -180,7 +180,7 @@
 |---|---|---|---|
 | `dataType` が `DataType.DEFAULT` のブロックは作れない | `TestDataBlock` | A-01 | 4 辺の A-01 を空欄にする（4 件） |
 | `dataType` ／ `groupId` ／ `identifier` が `null` のブロックは作れない | `TestDataBlock` | C-05・C-06・C-07 | 空欄を作らない（`null` 側だけを閉じる。3 要素とも 4 辺で ✅） |
-| カラム名 0 件のブロックは「セルを持つ行」を持てない | `ColumnRowDataBlock` | C-08(空) | 空欄を作らない（C-08(空) の形を限定するだけ。4 辺で ✅） |
+| カラム名 0 件のブロックは行を 1 件も持てない | `ColumnRowDataBlock` | C-08(空) | 空欄を作らない（C-08(空) の形を「行 0 件」に限定するだけ。辺②③④で ✅）。**セルを 1 つも持たない行まで拒否対象を広げたのは 2026-08-31（#53）。**辺①の C-08(空) が空欄なのは本不変条件ではなく、辺①の読みがカラム名を必ず 1 件以上得るためである（§1.3） |
 | 固定長ファイル・電文でフィールド長 `null` は保持できない | `ModelPreconditions#requireLengths` | C-21(省略) | 空欄を作らない（到達先を可変長ファイルに限定するだけ。4 辺とも ✅。辺③ は #31 まで ❌ だった。§3.3） |
 | 可変長ファイルでフィールド長を持つフィールド定義は保持できない | `ModelPreconditions#requireNoLengths` | C-21(値あり) | 空欄を作らない（到達先を固定長ファイル・電文に限定するだけ。4 辺とも ✅）。**辺③ C-21(省略) の ❌ を解消した不変条件でもある**（`issues.md` XLS-45。#31） |
 | 本文レコード 0 件の電文ブロックは作れない | `MessageDataBlock` | C-15(空)・E-3(0件) | 4 辺の C-15(空) を空欄にする（4 件）。E-3(0件) は 4 辺で ✅（ファイル系で到達する） |
@@ -1159,7 +1159,7 @@ SETUP ／ EXPECTED の情報が要るため一意でない（4 対 2 の写像�
 | C-06(省略) | 同 省略（`""`） | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | `RoundTripTest#yaml_setupTable_isPreserved` | `group_id:` キーごと出ない |
 | C-07 | `TestDataBlock.identifier` | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | `table: "USERS"` |
 | C-08(非空) | `ColumnRowDataBlock.columnNames` 非空 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | カラム名が `rows:` の各要素のキーになる |
-| C-08(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptyColumnsRow_emitsEmptyFlowMap` | — | セルを持たない行が `- {}` になる。カラム名 0 件かつ行 0 件のときはカラム名を書く場所が無く、往復するとカラム名が復元されない（`issues.md` XLS-27 の申し送り。0 件テーブルに残る担保の穴は §7 の ①〜⑧） |
+| C-08(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptyColumnsAndRows_emitsEmptyFlowList` | — | `rows: []` を書く。**辺④が扱うカラム名 0 件はこの形（行 0 件）だけである** —— カラム名 0 件で行を持つブロックは `ColumnRowDataBlock` が生成時に拒否する（`TableDataBlockTest#カラムなしで行を持つブロックは生成できない`。`issues.md` XLS-21）。キーを 1 つも持たない行を書く分岐は #53 で削除した。カラム名を書く場所が無いため往復するとカラム名が復元されない（`issues.md` XLS-27 の申し送り。0 件テーブルに残る担保の穴は §7 の ①〜⑧） |
 | C-09(非空) | `ColumnRowDataBlock.rows` 非空 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | — |
 | C-09(空) | 同 空 | ✅ | `YamlFormatWriterTest#serialize_emptyRows_emitsEmptyFlowList` | — | `rows: []` |
 | C-11(非空) | `FileDataBlock.directives` 非空 | ✅ | `YamlFormatWriterTest#serializeFile_fixedWithDirectivesAndMultipleRecords` | — | `directives:` ブロックが記述順に出る |
@@ -1241,7 +1241,7 @@ YAML の特殊文字と制御文字を 1 文字ずつ `directives` のキーに�
 | E-1(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | 出力全文の完全一致なので、2 ブロック目が無いことも固定される |
 | E-1(複数) | 同 複数 | ✅ | `YamlFormatWriterTest#serialize_multipleSections_separatedByBlankLineInEncounterOrder` ／ `#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | — | 前者は異なるデータタイプ 2 件、後者は同じデータタイプ 2 件 |
 | E-2(0件) | ブロック内行数 0 | ✅ | `YamlFormatWriterTest#serialize_emptyRows_emitsEmptyFlowList` | — | C-09(空) と同じ入力 |
-| E-2(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serialize_emptyColumnsRow_emitsEmptyFlowMap` ／ `#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | — | どちらも出力全文の完全一致で、`rows:` の下に要素が 1 つだけ出ることが決まる（前者は `- {}` 1 件、後者は 2 ブロックがそれぞれ 1 行）。`YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` は担保ではない —— 同メソッドの Then は `startsWith("expected_complete_tables:\n")` の 1 本だけで `rows` を一切アサートしていない（同メソッドは A-04 ／ C-05 の担保である） |
+| E-2(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serializeTable_withGroupsSameType_coalescedUnderOneSectionWithRawGroupId` | — | 出力全文の完全一致で、`rows:` の下に要素が 1 つだけ出ることが決まる（2 ブロックがそれぞれ 1 行）。**#53 までは、キーを 1 つも持たない行（`- {}`）を書くテスト（メソッド名 `serialize_emptyColumnsRow_emitsEmptyFlowMap`）も担保に数えていた。その形は中間モデルが生成時点で拒否するようになり、テストごと削除した。**`YamlFormatWriterTest#serializeTable_completed_usesExpectedCompleteTablesKey` は担保ではない —— 同メソッドの Then は `startsWith("expected_complete_tables:\n")` の 1 本だけで `rows` を一切アサートしていない（同メソッドは A-04 ／ C-05 の担保である） |
 | E-2(複数) | 同 複数 | ✅ | `YamlFormatWriterTest#serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation` | — | 2 行 |
 | E-3(0件) | ファイル内レコードレイアウト数 0 | ✅ | `YamlFormatWriterModelTest#writesEmptyRecordsListForFileBlockWithoutRecords` | — | ファイル系だけで到達する。電文系は C-15(空) と同じ理由で到達不能 |
 | E-3(1件) | 同 1 | ✅ | `YamlFormatWriterTest#serializeMessage_withDirectivesAndFwHeader` | — | 出力全文の完全一致なので、`records:` の下に断片が 1 つだけ出ることも固定される |
@@ -1571,7 +1571,7 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md \
 
 ---
 
-## 7. 埋まっていない担保の穴（#26.5 から持ち越した 8 件）
+## 7. 埋まっていない担保の穴（#26.5 から持ち越した 8 件。うち 1 件は 2026-08-31 に解消して**残り 7 件**）
 
 **#26.5 で担保が二層（値の literal 2 件・機構の往復 4 件）あることを実測で確かめたうえで、なお埋まっていない穴である。**
 ——「未検証だから穴」ではない。8 件はいずれも #26.5 の変更が持ち込んだ欠陥ではなく既存の穴である
@@ -1588,7 +1588,7 @@ grep -E '^\| [A-F][0-9-]' axis-matrix.md \
 | ① | 実 `.xlsx` を通る唯一の経路 `SampleConversionTest#convertsClimanSampleIncludingZeroRowTable` がマーカーを検証していない。同メソッドの Then は「変換件数が 2」と `Files.exists` 2 本だけで、書き出したブックを開き直していない（テスト本文を読んで確かめた）。`[EMPTY]` という語も同クラスに 1 度しか現れず、それは Javadoc の中である（導出は下のコマンド） |
 | ② | `EXPECTED_TABLE` の 0 件往復テストが無い |
 | ③ | 0 件テーブルが唯一・末尾のブロックの往復テストが無い |
-| ④ | `columnNames=[]` かつ「セルを持たない行」を N 件持つ形（XLS-08 ／ YML-04）の往復テストが無い |
+| ④ | ~~`columnNames=[]` かつ「セルを持たない行」を N 件持つ形（XLS-08 ／ YML-04）の往復テストが無い~~ **解消（2026-08-31・#53）。この形は中間モデルが生成時点で拒否するようになり、どちらの読みからも作られない。往復させる対象そのものが無くなった** |
 | ⑤ | 実カラム名が `[EMPTY]` と衝突する形の明示テストが無い |
 | ⑥ | DB 実行経路（`TableData#replaceData`）の再実測が無い |
 | ⑦ | 2026-08-19 プローブの (2)(4) は `[空]` での実測であり `[EMPTY]` で再実測していない |

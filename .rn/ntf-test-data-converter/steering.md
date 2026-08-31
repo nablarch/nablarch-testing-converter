@@ -616,9 +616,9 @@ force push・`--amend` をしない。
 
 **Steps**:
 
-- [ ] `ColumnRowDataBlock` の番人を「カラム名 0 件では行を 1 件も持てない」へ広げ、Javadoc を実態へ合わせる
-- [ ] `YamlFormatWriter#emitMapRows` のカラム 0 件分岐を削除する（削除前に呼び出し側を全走査する）
-- [ ] 旧不変条件を固定していた既存テストを新不変条件へ直し、全件を `checks/task-53.md` に列挙する
+- [x] `ColumnRowDataBlock` の番人を「カラム名 0 件では行を 1 件も持てない」へ広げ、Javadoc を実態へ合わせる
+- [x] `YamlFormatWriter#emitMapRows` のカラム 0 件分岐を削除する（削除前に呼び出し側を全走査する）
+- [x] 旧不変条件を固定していた既存テストを新不変条件へ直し、全件を `checks/task-53.md` に列挙する
 
 **Completion criteria**:
 
