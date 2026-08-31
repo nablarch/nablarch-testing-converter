@@ -637,12 +637,12 @@ force push・`--amend` をしない。
 
 **Steps**:
 
-- [ ] 指示書 §2 のテスト 1・2 について、是正を意図的に壊すと落ちることを実測する
+- [x] 指示書 §2 のテスト 1・2 について、是正を意図的に壊すと落ちることを実測する
       （コマンドと結果を記録する）
-- [ ] カバレッジを `ntf-step4-09` と同じ手順で測定し、本是正が持ち込んだ未達が 0 であることを示す
-- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全件緑・`@Ignore` 0 件を確認する
-- [ ] `git grep -rn "nablarch-document\|\.rst" src/` が 0 件であることを確認する
-- [ ] `checks/step4-54-report.md` に ①差分の要約 ②テスト1〜4 と変異確認 ③既存テスト変更の全件
+- [x] カバレッジを `ntf-step4-09` と同じ手順で測定し、本是正が持ち込んだ未達が 0 であることを示す
+- [x] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全件緑・`@Ignore` 0 件を確認する
+- [x] `git grep -rn "nablarch-document\|\.rst" src/` が 0 件であることを確認する
+- [x] `checks/step4-54-report.md` に ①差分の要約 ②テスト1〜4 と変異確認 ③既存テスト変更の全件
       ④カバレッジ の順でまとめ、push して報告・停止する
 
 **Completion criteria**:

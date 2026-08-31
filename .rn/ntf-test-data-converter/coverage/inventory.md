@@ -1337,6 +1337,56 @@ Step 4 第2回（#40〜#45・#47）の合計は **656 → 682（＋26）** で�
 `AssertionError` と、`XlsFormatWriter#isMarkerColumn` の `columnName != null` 判定である。
 **軸要素の判定は変えていない。**
 
+**追補その 21（2026-08-31 実測。マーカーカラムだけのブロックを保つ是正（#50〜#54）のぶん）**
+
+追補その 20（追跡対象 710 件）から導き直した。**導出コマンドは上の ①〜③ と同じ**（③ の比較対象だけ
+本是正の起点 `8290d56` に置き換える）。
+
+```
+① 731
+② （0 件）
+③ 8290d56: 710
+   HEAD: 731
+```
+
+追跡対象は **731** 件（710 ＋ 21）。
+
+**710 → 731（差 ＋21）の内訳** —— 追加 22 件・削除 1 件。
+ファイル別の増減（`git grep -c '^    @Test' <rev> -- 'src/test/**/*.java'` を `8290d56` と作業ツリーで取り比較）:
+
+| ファイル | 8290d56 | HEAD | 増減 |
+|---|---|---|---|
+| `core/reader/TestCoreReaderAdapterTest.java` | 27 | 30 | ＋3 |
+| `tool/converter/model/TableDataBlockTest.java` | 10 | 11 | ＋1 |
+| `tool/converter/xls/MarkerOnlyBlockConversionTest.java`（新設） | 0 | 7 | ＋7 |
+| `tool/converter/xls/XlsFormatReaderInvalidInputTest.java` | 16 | 18 | ＋2 |
+| `tool/converter/xls/XlsMarkerOnlyBlockTest.java`（新設） | 0 | 4 | ＋4 |
+| `tool/converter/yaml/YamlMarkerOnlyBlockTest.java`（新設） | 0 | 4 | ＋4 |
+| `tool/converter/yaml/YamlFormatWriterTest.java` | 31 | 31 | ±0（1 件削除・1 件追加） |
+
+**削除した 1 件**は `YamlFormatWriterTest#serialize_emptyColumnsRow_emitsEmptyFlowMap`（キーを 1 つも持たない行
+`- {}` を書くテスト）である。その形を中間モデルが生成時点で拒否するようになり、書き出す経路ごと無くなった。
+代わりに `#serialize_emptyColumnsAndRows_emitsEmptyFlowList` を足してある。
+
+**改名した 4 件**（件数は変わらない）:
+
+| 旧 | 新 |
+|---|---|
+| `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInRealBook` | `#keepsMarkerOnlyColumnAndValuesInRealBook` |
+| `XlsFormatReaderRealFileTest#dropsMarkerOnlyRowsAsEmptyEntriesInListMapInRealBook` | `#keepsMarkerOnlyColumnAndValuesInListMapInRealBook` |
+| `YamlFormatReaderInvalidInputTest#readsMarkerOnlyTableAsColumnlessRows` | `#keepsMarkerOnlyTableColumnsAndValues` |
+| `TableDataBlockTest#カラムなしでセルを持たない行は保持する` | `#カラムなしで行を持つブロックは生成できない`（期待も反転） |
+
+**軸要素の判定が変わったのは 1 か所である。** 辺① C-08(空)（`columnNames` 空）は<b>到達不能</b>になった
+（`axis-matrix.md` §1.3。カラム名の行がマーカーカラムだけのブロックがマーカーカラム名を保つため、
+辺①の読みは必ずカラム名を 1 件以上得る）。辺②③④の C-08(空) は YAML の 0 件テーブル（`rows: []`）で
+引き続き到達する。
+
+**本是正完了時の JaCoCo（手順は `checks/task-48.md` §1）** ——
+行 **1744/1766 ＝ 98.75%**／分岐 **832/840 ＝ 99.05%**。**未達を持つ行 30・未達分岐 8 で、
+#49 完了時に承認された到達不能箇所（C1〜C8 と新設 throw）と完全に一致する。本是正が持ち込んだ未達は 0 件である**
+（対応表は `checks/task-54.md` §4）。
+
 **#48 完了時の JaCoCo（`ed7c6d9`。手順は `checks/task-48.md` §1）** ——
 行 **1677/1698 ＝ 98.76%**／分岐 **800/808 ＝ 99.01%**。残る未達（29 行・8 分岐）は
 到達不能と判断して報告に上げたもので、**user 判断待ちのためコメントは入れていない**
