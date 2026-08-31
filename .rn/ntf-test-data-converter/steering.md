@@ -590,12 +590,12 @@ force push・`--amend` をしない。
 
 **Steps**:
 
-- [ ] oracle テスト（Excel→YAML）を足す —— マーカーだけのブロックを本体 `BasicTestDataParser` で読んだ
+- [x] oracle テスト（Excel→YAML）を足す —— マーカーだけのブロックを本体 `BasicTestDataParser` で読んだ
       エントリ数と、変換後 YAML を `YamlTestDataParser` で読んだエントリ数・並びが一致する
-- [ ] 往復テストを足す —— Excel→YAML→Excel と YAML→Excel→YAML でマーカーカラムの名前・値・行数が保たれる
+- [x] 往復テストを足す —— Excel→YAML→Excel と YAML→Excel→YAML でマーカーカラムの名前・値・行数が保たれる
       （実ファイル起点）
-- [ ] 変換後 YAML が `ntf-testdata-yaml-schema.json` の検証を通ることを固定する
-- [ ] `checks/task-52.md` にテストと結果を記録する
+- [x] 変換後 YAML が `ntf-testdata-yaml-schema.json` の検証を通ることを固定する
+- [x] `checks/task-52.md` にテストと結果を記録する
 
 **Completion criteria**:
 
