@@ -36,7 +36,6 @@ public final class ConverterFileFilter {
 
     /** ユーティリティクラスにつきインスタンス化不可。 */
     private ConverterFileFilter() {
-        throw new AssertionError("ConverterFileFilter は static 専用です");
     }
 
     /**

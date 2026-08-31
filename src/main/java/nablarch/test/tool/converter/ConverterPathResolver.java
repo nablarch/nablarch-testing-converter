@@ -23,7 +23,6 @@ public final class ConverterPathResolver {
 
     /** ユーティリティクラスにつきインスタンス化不可。 */
     private ConverterPathResolver() {
-        throw new AssertionError("ConverterPathResolver は static 専用です");
     }
 
     /**

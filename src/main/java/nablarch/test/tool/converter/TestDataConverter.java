@@ -32,7 +32,6 @@ public final class TestDataConverter {
 
     /** ユーティリティクラスにつきインスタンス化不可。 */
     private TestDataConverter() {
-        throw new AssertionError("TestDataConverter は static 専用です");
     }
 
     /**

@@ -577,16 +577,12 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
     /**
      * マーカーカラム（{@code [...]} 形式）か判定する。
      *
-     * <p>
-     * {@code columnName} の {@code null} 判定は防御である——カラム名の {@code null} は
-     * {@code ColumnRowDataBlock} の生成時に拒否されるため、ここへは届かない。
-     * </p>
-     *
-     * @param columnName カラム名
+     * @param columnName カラム名（{@code null} 不可。カラム名の {@code null} は
+     *                   {@code ColumnRowDataBlock} の生成時に拒否されるため、ここへは届かない）
      * @return マーカーカラムなら真
      */
     private static boolean isMarkerColumn(String columnName) {
-        return columnName != null && columnName.startsWith("[") && columnName.endsWith("]");
+        return columnName.startsWith("[") && columnName.endsWith("]");
     }
 
     /**
