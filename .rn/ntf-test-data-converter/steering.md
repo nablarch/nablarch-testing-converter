@@ -496,6 +496,165 @@ nablarch-testing（ブランチ `convert-testdata-excel-to-text`）の変換ツ�
 
 ---
 
+### 解説書の仕様変更（#54）への追随（2026-08-31 着手）
+
+**正は指示書 `ntf-step4-12-converter-marker-rows.md`**（`nablarch-document@origin/ntf-yaml-support`。
+`git show origin/ntf-yaml-support:.rn/20260724-ntf-yaml-support/ntf-step4-12-converter-marker-rows.md`）。
+**カラム名の行がマーカーカラムだけで構成されたデータブロック（テーブル・`LIST_MAP`）は、
+マーカーカラムの名前と各行の値を保って両方向に変換する。** 旧仕様（データ行も残らない）は取り下げられた。
+
+**是正は判断済みで、範囲の判断はこちらでは持たない**（user 指示・2026-08-31）。
+やらないこと: 解説書・本体・yaml・integration を変更しない／ソース・記録に解説書への参照を書かない／
+force push・`--amend` をしない。
+
+**設計の要点（着手時に実物で確認した事実）**:
+
+- 本体は行の解釈（インタープリタ適用）を**マーカーカラムを除外する前**に行の全セルへ掛ける
+  （`nablarch-testing@dcaed44` の
+  `src/main/java/nablarch/test/core/reader/TestDataParsingTemplate.java:183` が `readTestData` の中で
+  `interpret(line)` を呼び、`HeaderLine` による除外は `onReadLine` 以降）。よって Excel 側の
+  マーカーカラムの値も**解釈後の値**として取り出せる。中間モデルが持つのは解釈後の値であり、
+  辺③の `toCellNotation`／`entryCells` はその逆写像であるため、辺③・辺④は変更不要になる
+- YAML 側はマーカーカラムを `interpret` の**前**に読み飛ばす
+  （`nablarch-testing-yaml@4431cf8` の
+  `src/main/java/nablarch/test/core/reader/yaml/YamlTableDataBuilder.java:142`・`:201`）。
+  変換ツールの読みはインタープリタを 1 つも積まない（同 rev の
+  `src/main/java/nablarch/test/core/reader/yaml/InterpreterResolver.java:54`-`:56` の `raw()`）ため、
+  YAML 側は原文がそのまま値である
+- 本体の `ListMapParser#onReadLine`・`TableDataParser#onReadLine` は、マーカー除外の結果が空でも
+  行を捨てない（同 `nablarch-testing@dcaed44`・`ListMapParser.java:86`-`:89`／
+  `TableDataParser.java:98`-`:101`）。行を落としているのは変換ツールの
+  `XlsFormatReader#rowCount` だけである
+
+---
+
+### #50: 辺① —— カラム名の行がマーカーカラムだけのブロックを、名前と値を保って読む
+
+**Purpose**: 指示書 §1 の是正箇所 1（`XlsFormatReader#rowCount`）。カラム名の行がマーカーカラムだけの
+テーブル・`LIST_MAP` について、マーカーカラムの名前と各行の値（本体が解釈したあとの値）を中間モデルへ残す。
+実データカラムを 1 つでも持つブロックのマーカーは従来どおり落とす。
+
+**Prerequisites**: none
+
+**Steps**:
+
+- [ ] 本体に解釈させたボディ行を取り出す口を `TestCoreReaderAdapter` へ足す（インタープリタ列は
+      本体パーサと同じもの。生行を原文で取る既存の口は変えない）
+- [ ] `XlsFormatReader` のテーブル・`LIST_MAP` の写しで、マーカー除外後のカラム名が 0 件のときだけ
+      マーカーカラムの版面を使うようにし、`rowCount` の行落としを外す
+- [ ] 実 `.xlsx` を入力に、本体 `BasicTestDataParser` を正解としたテストを足す（エントリ数・並び）
+- [ ] 実データカラムを持つブロックのマーカーが従来どおり消えることを固定する（非回帰）
+- [ ] 旧仕様を期待していた既存テストを新仕様へ直し、全件を `checks/task-50.md` に列挙する
+
+**Completion criteria**:
+
+- マーカーカラムだけのテーブル・`LIST_MAP` について、中間モデルのカラム名がマーカーカラム名と一致し、
+  行数・値が本体 `BasicTestDataParser` の読みと一致する
+- 実データカラムを持つブロックのマーカーカラムは従来どおりカラム名から落ちる
+- 直した既存テストが全件 `checks/task-50.md` に列挙されている
+- `mvn -o clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空
+
+---
+
+### #51: 辺② —— YAML 読みをマーカーカラムだけのブロックで辺①と対称にする
+
+**Purpose**: 指示書 §1 の是正箇所 3。YAML のエントリでも、カラム名がマーカーカラムだけのとき
+その名前と各行の値を中間モデルへ残す。実データカラムを持つエントリのマーカーは従来どおり落とす。
+
+**Prerequisites**: #50
+
+**Steps**:
+
+- [ ] `YamlFormatReader` のカラム名決定を「非マーカーが 1 件も無ければマーカーカラムを採る」へ改める
+- [ ] マーカーカラムだけのエントリの行値を、器ではなく同じ Map の原文から復元する
+      （器はマーカーカラムを持たないため）
+- [ ] `YamlTestDataParser` を正解としたテストを足す（エントリ数・並び）
+- [ ] 実データカラムを持つエントリのマーカーが従来どおり消えることを固定する（非回帰）
+- [ ] 直した既存テストを全件 `checks/task-51.md` に列挙する
+
+**Completion criteria**:
+
+- マーカーカラムだけの `list_maps`・テーブル系エントリについて、中間モデルのカラム名がマーカーカラム名と
+  一致し、行数・値が本体 `YamlTestDataParser` の読みと一致する
+- 実データカラムを持つエントリのマーカーカラムは従来どおりカラム名から落ちる
+- 直した既存テストが全件 `checks/task-51.md` に列挙されている
+- `mvn -o clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空
+
+---
+
+### #52: 通しのテスト —— oracle・往復・スキーマ検証
+
+**Purpose**: 指示書 §2 のテスト 1〜3。変換の観測可能な挙動を、変換ツール自身の読みを正解にせずに固定する。
+
+**Prerequisites**: #51
+
+**Steps**:
+
+- [ ] oracle テスト（Excel→YAML）を足す —— マーカーだけのブロックを本体 `BasicTestDataParser` で読んだ
+      エントリ数と、変換後 YAML を `YamlTestDataParser` で読んだエントリ数・並びが一致する
+- [ ] 往復テストを足す —— Excel→YAML→Excel と YAML→Excel→YAML でマーカーカラムの名前・値・行数が保たれる
+      （実ファイル起点）
+- [ ] 変換後 YAML が `ntf-testdata-yaml-schema.json` の検証を通ることを固定する
+- [ ] `checks/task-52.md` にテストと結果を記録する
+
+**Completion criteria**:
+
+- 指示書 §2 のテスト 1・2・3 が存在して緑
+- oracle テストが変換ツール自身の reader を正解にしていない
+- `mvn -o clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空
+
+---
+
+### #53: カラム名 0 件で行を持つ形を中間モデルの生成時に拒否し、辺④の `{}` 分岐を外す
+
+**Purpose**: #50・#51 のあと、カラム名 0 件で行を持つブロックはどちらの読みからも作られなくなる。
+不変条件を中間モデルの生成時に置き（Rules の「番人は書き出し側でなく中間モデルの生成時に置く」）、
+`YamlFormatWriter#emitMapRows` の `- {}` を書く分岐を落とす。`{}` は読み戻しで行として消えるため、
+書き出せてはならない形である。
+
+**Prerequisites**: #52
+
+**Steps**:
+
+- [ ] `ColumnRowDataBlock` の番人を「カラム名 0 件では行を 1 件も持てない」へ広げ、Javadoc を実態へ合わせる
+- [ ] `YamlFormatWriter#emitMapRows` のカラム 0 件分岐を削除する（削除前に呼び出し側を全走査する）
+- [ ] 旧不変条件を固定していた既存テストを新不変条件へ直し、全件を `checks/task-53.md` に列挙する
+
+**Completion criteria**:
+
+- カラム名 0 件・行 1 件以上のブロックが生成時に拒否され、その理由がメッセージに書かれている
+- `YamlFormatWriter` にカラム 0 件の行を書く経路が無い（grep 結果を記録）
+- カラム名 0 件・行 0 件（YAML の 0 件テーブル）は従来どおり作れる
+- `mvn -o clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空
+
+---
+
+### #54: 完了条件の締め —— 変異確認・カバレッジ・報告
+
+**Purpose**: 指示書 §4 の完了条件をすべて満たし、§5 の順で報告して停止する。
+
+**Prerequisites**: #53
+
+**Steps**:
+
+- [ ] 指示書 §2 のテスト 1・2 について、是正を意図的に壊すと落ちることを実測する
+      （コマンドと結果を記録する）
+- [ ] カバレッジを `ntf-step4-09` と同じ手順で測定し、本是正が持ち込んだ未達が 0 であることを示す
+- [ ] `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test` 全件緑・`@Ignore` 0 件を確認する
+- [ ] `git grep -rn "nablarch-document\|\.rst" src/` が 0 件であることを確認する
+- [ ] `checks/step4-54-report.md` に ①差分の要約 ②テスト1〜4 と変異確認 ③既存テスト変更の全件
+      ④カバレッジ の順でまとめ、push して報告・停止する
+
+**Completion criteria**:
+
+- テスト 1・2 の変異確認がコマンドと結果つきで記録されている
+- 既存テストの変更が全件列挙されている
+- カバレッジの未達に本是正が持ち込んだものが 0 件であることが示されている
+- `mvn clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空・push 済み
+- `git grep -rn "nablarch-document\|\.rst" src/` が 0 件
+
+---
+
 # Decisions
 
 ## ビルド環境
@@ -2179,14 +2338,8 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-31
-- **Last completed**: **#49 が承認された（2026-08-31）。**承認の内容は Decisions「#49 の承認（2026-08-31）」。
-  カバレッジ基準（未達 0）の適用はこれで終わり
-- **Next**: **無し。** steering の未チェックタスクは 0 件。次の指示が来るまで着手するものは無い
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は
-  `Tests run: 710, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` アノテーション 0 件。
-  未達 30 行／8 分岐はすべて承認済みの到達不能箇所（`checks/task-49.md` §3 の対応表）。
-  マージ可否の判断は出さない（Rules）。判断は調整側（ユーザー）が出す。
-  **`ConverterFileFilterTest` の 2 件（`findXlsFilesWrapsWalkFailure` ／ `findYamlDirsWrapsWalkFailure`）は
-  POSIX 権限（`chmod 000`）に依存する。** root 実行や権限を持たないファイルシステムでは前提が崩れる
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
