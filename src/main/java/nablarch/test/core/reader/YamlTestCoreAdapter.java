@@ -226,6 +226,11 @@ public class YamlTestCoreAdapter {
         Object sectionObj = yaml.get(sectionKey);
         if (sectionObj instanceof List) {
             for (Object entryObj : (List<?>) sectionObj) {
+                // 到達しない。ここへ来る yaml は loadRawMap ／ YamlLoader.load を通ったものだけで、
+                // 同メソッドはスキーマ検証に通らない YAML を返さずに例外にするため、セクションの要素が
+                // Map 以外になることがない。それでも残すのは、直後の Map への無検査キャストを守るためで、
+                // 判定を落とすとスキーマを経ない Map を渡されたときに ClassCastException になり、
+                // 原因の分からない場所で落ちる。
                 if (!(entryObj instanceof Map)) {
                     continue;
                 }

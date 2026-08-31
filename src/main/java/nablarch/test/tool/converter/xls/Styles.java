@@ -88,7 +88,10 @@ final class Styles {
                         color = config.getMarkerColumnColorIndex();
                         break;
                     default:
-                        // unreachable — new Fill constants must be handled here
+                        // 到達しない。Fill は 6 値で、NONE は直前の if で除かれ、残る 5 値を上で分岐済みのため。
+                        // それでも残すのは、switch の網羅性がコンパイル時に保証されず、default を落とすと
+                        // color が確定せずコンパイルできないためであり、Fill に値が増えたときに塗りの
+                        // 未実装をその場で検出する安全網も兼ねる。
                         throw new IllegalStateException("Unhandled Fill: " + fill);
                 }
                 style.setFillForegroundColor(color);

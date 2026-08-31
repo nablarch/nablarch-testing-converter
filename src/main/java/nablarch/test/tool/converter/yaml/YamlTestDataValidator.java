@@ -55,6 +55,12 @@ public class YamlTestDataValidator {
     private static final JsonSchema JSON_SCHEMA;
 
     static {
+        // 以下の失敗経路 2 つ（in == null ／ IOException）は到達しない。SCHEMA_RESOURCE は依存の
+        // nablarch-testing-yaml の jar に同梱されており、本クラスと同じクラスローダで必ず解決するため、
+        // in が null になることも、jar 内リソースの読み込みが IOException になることもない。
+        // それでも残すのは、null 判定を落とすとリソースを欠いた配布物で NullPointerException になり
+        // 原因が読めなくなるためと、try-with-resources の close が IOException を宣言するため
+        // catch 自体を外せないためである。
         try (InputStream in = YamlTestDataValidator.class.getResourceAsStream(SCHEMA_RESOURCE)) {
             if (in == null) {
                 throw new IllegalStateException("スキーマリソースが見つかりません: " + SCHEMA_RESOURCE);
@@ -150,7 +156,10 @@ public class YamlTestDataValidator {
                         "[V-SCH] スキーマ非適合: " + schemaError.getMessage()));
             }
         } catch (RuntimeException e) {
-            // networknt バリデータは不正入力に対して非チェック例外を送出することがある。リンタ自身が停止しないよう検証エラーに変換する。
+            // 到達しない。schema.validate へ届くのは直前の parseYaml を通った入力だけであり、parseYaml が
+            // 使う snakeyaml-engine は networknt が内部で使う parser より厳しいため、壊れた入力は手前で
+            // [V-YAML] として捕まる。それでも残すのは、リンタは全ファイルを走査し切ることが役目であり、
+            // 検証器が送出しうる非チェック例外で途中停止すると残りのファイルが検査されないためである。
             errors.add(new ValidationError(filePath, "", "[V-SCH] スキーマ検証エラー: " + e.getMessage()));
         }
 

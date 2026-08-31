@@ -182,7 +182,11 @@ public final class ConverterFileFilter {
                    .sorted()
                    .forEach(sameName::add);
         } catch (IOException e) {
-            // Files.list はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
+            // 到達しない。dir は直前の Files.walk が走査できたブックの親ディレクトリであり、走査できた以上
+            // そのディレクトリは読める。Files.list が失敗するのは走査との間に権限か存在が変わった場合だけで、
+            // テストから決定的には作れない。それでも残すのは、Files.list がチェック例外 IOException を
+            // 宣言するため catch を外せず、ストリーム操作の関数インタフェース契約を満たすには
+            // ラップが要るためである。
             throw new UncheckedIOException("failed to scan input directory: " + dir, e);
         }
         if (sameName.size() > 1) {

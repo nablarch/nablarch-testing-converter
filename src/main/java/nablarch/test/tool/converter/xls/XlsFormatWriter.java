@@ -218,7 +218,10 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         } else if (block instanceof MessageDataBlock) {
             return layoutMessage((MessageDataBlock) block);
         }
-        // sealed 階層が将来変更された場合のランタイム安全網。instanceof チェーンにはコンパイル時の網羅性保証がない。
+        // 到達しない。TestDataBlock は sealed で、許可された派生型は上ですべて判定しているため、ここへ届く
+        // インスタンスを作れない。それでも残すのは、instanceof チェーンにはコンパイル時の網羅性保証がなく、
+        // 本メソッドは戻り値を返すため末尾の throw を落とすとコンパイルできないためで、sealed 階層が
+        // 将来変更された場合のランタイム安全網も兼ねる。
         throw new IllegalArgumentException("unsupported block: " + block.getClass().getName());
     }
 
@@ -270,7 +273,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
         l.add(RowKind.HEADER, new ArrayList<>(columns));
         for (int c = 0; c < columns.size(); c++) {
             // カラム名の null は ColumnRowDataBlock が生成時に拒否するため、ここへは届かない
-            // （ModelPreconditions#requireNoNulls）。isMarkerColumn の null 判定は防御として残してある。
+            // （ModelPreconditions#requireNoNulls）。
             if (isMarkerColumn(columns.get(c))) {
                 l.markMarkerColumn(c);
             }

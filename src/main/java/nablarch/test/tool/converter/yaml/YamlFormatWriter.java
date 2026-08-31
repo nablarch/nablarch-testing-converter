@@ -139,7 +139,10 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         } else if (block instanceof MessageDataBlock) {
             emitMessage(sb, (MessageDataBlock) block);
         } else {
-            // sealed 階層が将来変更された場合のランタイム安全網。instanceof チェーンにはコンパイル時の網羅性保証がない。
+            // 到達しない。TestDataBlock は sealed で、許可された派生型は上ですべて判定しているため、ここへ
+            // 届くインスタンスを作れない。それでも残すのは、instanceof チェーンにはコンパイル時の網羅性
+            // 保証がなく、sealed 階層に派生型が増えたとき、そのブロックが黙って出力から欠落するのを防いで
+            // その場で検出するためである。
             throw new IllegalArgumentException("unsupported block: " + block.getClass().getName());
         }
     }
