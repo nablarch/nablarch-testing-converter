@@ -2117,21 +2117,59 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+### #48 の判定（2026-08-31）
+
+**(c) 8 件はすべて決着した。**C1〜C5・C7・C8 は到達不能として承認され、そのまま残す。C6 のみ
+`XlsFormatReader#read` の if-チェーン末尾に `else` を足して安全網にする（判定は選択肢 (C)。同じ 13 種を
+捌く `YamlFormatWriter#sectionKey` の `default` throw と同型に揃える）。追加した throw は到達不能扱いで、
+テストは足さない。あわせて (c) 全箇所へ理由コメントを入れる。
+出典は指示書 `ntf-step4-09-converter-coverage.md` §5（`nablarch-document@origin/ntf-yaml-support`・`89451e9e`）。
+
+判定はディレクターの独立再測定に基づく（測定値・未達 29 行/8 分岐・変異抜き取り 3 件がいずれも
+`checks/task-48.md` と一致）。
+
+**コメントの基準（user 指示・2026-08-31）**: 各コメント単体で「なぜ到達不能か」「なぜ残しているか」の
+**両方**が、そこを読んだ第三者に分かること。片方しか言っていない既存コメントは同水準まで追記し、
+両方を満たしている箇所は変更しない。
+
+---
+
+### #49: (c) 判定を受けた第2ラウンド —— C6 の安全網追加と (c) 全箇所の理由コメント
+
+**Purpose**: 上の #48 の判定を実装へ反映する。実行文の変更は C6 の `else` 節（throw 1 文）だけで、
+残りはコメントの追加・書き直しである。あわせて `XlsFormatWriter#layoutColumnRow` の本文コメントが
+#48 (b) で削除した `isMarkerColumn` の `null` 判定に言及したままなので、実装と整合させる。
+
+**Prerequisites**: #48
+
+**Steps**:
+
+- [ ] `XlsFormatReader#read` の if-チェーン末尾へ `else` 節を足し、到達不能である理由と残す理由を書く
+- [ ] (c) のうちコメントが無い箇所（C2・C7）へ理由コメントを新規に入れる
+- [ ] 片方しか言っていない箇所（C3・C4 の `Styles`・C5 の 2 箇所・C8）へ不足している側を追記する
+- [ ] 両方を満たす箇所（C1・C4 の `DataFormat`／`YamlFormatWriter`）は変更しないことを確認する
+- [ ] `XlsFormatWriter#layoutColumnRow` の「`isMarkerColumn` の `null` 判定は防御として残してある」を実装へ合わせる
+- [ ] 再測定し、未達が (c) の箇所（＋新設 throw）と完全一致することを確認する
+- [ ] `checks/task-49.md` にコメント全件一覧と再測定値を記録する
+
+**Completion criteria**:
+
+- `git diff` の実行文の変更が C6 の `else` 節（throw 1 文）だけである
+- (c) 全箇所のコメント一覧（`file:line` と逐語）が記録にあり、全件が「なぜ到達不能か」「なぜ残しているか」の両方を述べている
+- 再測定で残る未達が (c) の箇所（＋新設 throw。コメント挿入分の行番号ずれは吸収して示す）と完全一致する
+- `mvn -o clean test` 全件緑（710 件基準）・`@Ignore` 0 件・`git status --short` 空
+- `git grep -nE '\.rst|nablarch-document|解説書' -- src/` と `git grep -nE '[A-Za-z]+\.java:[0-9]+' -- src` がいずれも 0 件
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-31
-- **Last completed**: **#48（カバレッジ基準の適用）を実施し `1fcaec9` で push した。判定はまだ受けていない。**
-  結果は行 1677/1698 ＝ 98.76%・分岐 800/808 ＝ 99.01%。分類・変異・grep・測定ログの正は `checks/task-48.md`
-- **Next**: **#48 の判定待ち。** steering の未チェックタスクは 0 件。判定が出るまで着手するものは無い。
-  判定で決めてもらうのは 2 つ —— (1) 到達不能 29 行・8 分岐（`checks/task-48.md` §6 の C1〜C8）を
-  そのまま残してよいか（OK なら次ラウンドで理由コメントを入れる）。(2) そのうち **C6
-  （`XlsFormatReader.java:128`）だけはコンパイル上 `else` にできる**ため、残すか外すかに判断の余地がある
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は
-  `Tests run: 710, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件。
-  **`ConverterFileFilterTest` の 2 件（`findXlsFilesWrapsWalkFailure` ／ `findYamlDirsWrapsWalkFailure`）は
-  POSIX 権限（`chmod 000`）に依存する。** root 実行や権限を持たないファイルシステムでは前提が崩れる
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
