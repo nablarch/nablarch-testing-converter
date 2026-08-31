@@ -6,9 +6,14 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.junit.Before;
@@ -305,6 +310,91 @@ public class ConverterFileFilterTest {
             fail("should throw");
         } catch (ConverterException e) {
             assertThat(e.getMessage().startsWith("input directory not found:"), is(true));
+        }
+    }
+    /**
+     * Given: 入力ルートに空文字パス（{@code Paths.get("")}）を渡し、カレントディレクトリ直下に
+     *        変換対象のブックを 1 件だけ置く。
+     * When : findXlsFiles。
+     * Then : 親ディレクトリを持たない相対パス（{@code "x.xlsx"}）が返り、同名ブック検査は
+     *        親が無いとして何も検査せずに通る。
+     *
+     * <p>
+     * 担保：{@code requireNoSameNameBook} の {@code dir == null} 側。空文字の入力ルートから
+     * {@code Files.walk} が返す直下のパスは親を持たないため、この経路はこの入力でだけ通る。
+     * </p>
+     */
+    @Test
+    public void findXlsFilesAcceptsBookWithoutParentDirectory() throws IOException {
+        // Given —— カレント直下に置く（TemporaryFolder では親が付いてしまう）
+        Path book = Paths.get("nn-cov-no-parent.xlsx");
+        Files.createFile(book);
+        try {
+            // When
+            List<Path> found = ConverterFileFilter.findXlsFiles(
+                    Paths.get(""), Arrays.asList("nn-cov-no-parent.xlsx"), emptyList());
+
+            // Then
+            assertThat(found, is(Arrays.asList(book)));
+            assertThat("前提：親を持たない相対パスであること", found.get(0).getParent(), is((Path) null));
+        } finally {
+            Files.deleteIfExists(book);
+        }
+    }
+
+    /**
+     * Given: 読み取り権限を落とした入力ディレクトリ（ディレクトリとしては存在する）。
+     * When : findXlsFiles。
+     * Then : チェック例外を握り潰さず {@link UncheckedIOException} で上げる。
+     *
+     * <p>担保：{@code find} の {@code catch (IOException)} 側。</p>
+     */
+    @Test
+    public void findXlsFilesWrapsWalkFailure() throws IOException {
+        // Given
+        Path denied = folder.newFolder("denied-xls").toPath();
+        Files.setPosixFilePermissions(denied, EnumSet.noneOf(PosixFilePermission.class));
+        try {
+            assertThat("前提：ディレクトリとしては存在する", Files.isDirectory(denied), is(true));
+
+            // When / Then
+            try {
+                ConverterFileFilter.findXlsFiles(denied, emptyList(), emptyList());
+                fail("should throw UncheckedIOException");
+            } catch (UncheckedIOException e) {
+                assertThat(e.getMessage(), is("failed to scan input directory: " + denied));
+                assertThat(e.getCause() instanceof IOException, is(true));
+            }
+        } finally {
+            Files.setPosixFilePermissions(denied, PosixFilePermissions.fromString("rwx------"));
+        }
+    }
+
+    /**
+     * Given: 読み取り権限を落とした入力ディレクトリ（ディレクトリとしては存在する）。
+     * When : findYamlDirs。
+     * Then : チェック例外を握り潰さず {@link UncheckedIOException} で上げる。
+     *
+     * <p>担保：{@code findYamlDirs} の {@code catch (IOException)} 側。</p>
+     */
+    @Test
+    public void findYamlDirsWrapsWalkFailure() throws IOException {
+        // Given
+        Path denied = folder.newFolder("denied-yaml").toPath();
+        Files.setPosixFilePermissions(denied, EnumSet.noneOf(PosixFilePermission.class));
+        try {
+            assertThat("前提：ディレクトリとしては存在する", Files.isDirectory(denied), is(true));
+
+            // When / Then
+            try {
+                ConverterFileFilter.findYamlDirs(denied, emptyList(), emptyList());
+                fail("should throw UncheckedIOException");
+            } catch (UncheckedIOException e) {
+                assertThat(e.getMessage(), is("failed to scan input directory: " + denied));
+                assertThat(e.getCause() instanceof IOException, is(true));
+            }
+        } finally {
+            Files.setPosixFilePermissions(denied, PosixFilePermissions.fromString("rwx------"));
         }
     }
 }

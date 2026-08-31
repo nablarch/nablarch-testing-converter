@@ -1263,4 +1263,37 @@ public class XlsFormatWriterTest {
         assertThat(fieldNames, is(Arrays.asList("requestId", "resendFlag")));
         assertThat(rec.getRows().get(0), is(Arrays.asList("RM21AA0104_01", "0")));
     }
+    /**
+     * Given: 前後を同じダブルクォートで囲んだ値と、片側だけがダブルクォートの値。
+     * When : 書き出す。
+     * Then : 前後が同じダブルクォートで囲まれている値だけが、さらに半角ダブルクォートで囲まれて書かれる。
+     *
+     * <p>
+     * 本体の {@code QuotationTrimmer} は先頭と末尾が同じダブルクォート（半角 {@code "} または
+     * 全角 {@code ”}）のときに外側 1 組を外す。囲まずに書くとその 1 組が読み戻しで失われるため、
+     * 書き側で 1 組足す。片側だけがダブルクォートの値は {@code QuotationTrimmer} が触らないので足さない。
+     * </p>
+     *
+     * <p>担保：{@code isQuotationWrapped} の全角側 2 分岐と、半角側の「先頭だけ一致」側。</p>
+     */
+    @Test
+    public void wrapsOnlyValuesQuotedOnBothEnds() {
+        // Given —— 列の並びは辞書順とずらす
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("Z_FULL_BOTH", "A_FULL_HEAD", "M_HALF_HEAD", "B_HALF_BOTH"),
+                Collections.singletonList(row("\u201dab\u201d", "\u201dab", "\"ab", "\"ab\"")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("quote_wrap", "s", table)), "s");
+
+        // Then —— 0 行目はマーカー行、1 行目がカラム名行、2 行目がデータ行
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T"));
+        assertThat(line(sheet, 1),
+                is(Arrays.asList("Z_FULL_BOTH", "A_FULL_HEAD", "M_HALF_HEAD", "B_HALF_BOTH")));
+        assertThat(line(sheet, 2), is(Arrays.asList(
+                "\"\u201dab\u201d\"",   // 全角で前後を囲んだ値 → さらに半角で囲む
+                "\u201dab",            // 全角が先頭だけ → 囲まない
+                "\"ab",             // 半角が先頭だけ → 囲まない
+                "\"\"ab\"\"")));      // 半角で前後を囲んだ値 → さらに半角で囲む
+    }
 }

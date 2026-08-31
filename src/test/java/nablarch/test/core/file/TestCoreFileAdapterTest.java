@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -173,5 +174,28 @@ public class TestCoreFileAdapterTest {
         originalRow.put("f1", "MUTATED");
 
         assertThat(view.getFragments().get(0).getValues().get(0).get("f1"), is("abc"));
+    }
+
+    /**
+     * Given: 型行を持たない断片（本体器の {@code types} が {@code null}）。
+     * When : FragmentView#getTypes を呼ぶ。
+     * Then : {@code null} が返る（空リストへ化けず、読み取り専用ラップも掛からない）。
+     *
+     * <p>
+     * {@code getLengths} の {@code null} 側は可変長ファイルの読み込みが通しているが、
+     * {@code getTypes} の {@code null} 側は同じ経路では通らないため、断片を直接組んで担保する。
+     * </p>
+     */
+    @Test
+    public void getTypes_returnsNullWhenFragmentHasNoTypeRow() {
+        FragmentView view = new FragmentView(
+                Arrays.asList("f1"), null, Arrays.asList("3"),
+                Arrays.<Map<String, String>>asList(Collections.singletonMap("f1", "abc")));
+
+        assertThat(view.getTypes(), is(nullValue()));
+        // 他の getter は通常どおり読み取り専用で返る（null 化が types だけであることの確認）
+        assertThat(view.getNames(), is((List<String>) Arrays.asList("f1")));
+        assertThat(view.getLengths(), is((List<String>) Arrays.asList("3")));
+        assertThat(view.getValues().get(0).get("f1"), is("abc"));
     }
 }

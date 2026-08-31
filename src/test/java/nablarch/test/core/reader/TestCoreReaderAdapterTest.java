@@ -792,4 +792,92 @@ public class TestCoreReaderAdapterTest {
         // Then
         assertThat(headers.isEmpty(), is(true));
     }
+    /**
+     * Given: 角括弧が開いたまま閉じていないマーカー（{@code SETUP_TABLE[g1=USERS}）。
+     * When : {@code readHeaders} を呼ぶ。
+     * Then : 角括弧を外さず、データタイプ名と {@code =} の間をそのままグループ ID にする。
+     *
+     * <p>
+     * 担保：{@code markerGroupId} の「先頭が {@code [} だが末尾が {@code ]} でない」側。
+     * 外すのは<b>対になっている</b>角括弧だけであり、片方だけの角括弧は書式ではなく値として扱う。
+     * </p>
+     */
+    @Test
+    public void readHeadersKeepsUnclosedBracketAsPartOfGroupId() {
+        // Given
+        String resource = "readHeadersKeepsUnclosedBracketAsPartOfGroupId";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_TABLE[g1=USERS"));
+        lines.add(row("USER_NAME"));
+        lines.add(row("alice"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+
+        // Then
+        assertThat(headers.size(), is(1));
+        assertThat(headers.get(0).getGroupId(), is("[g1"));
+        assertThat(headers.get(0).getIdentifier(), is("USERS"));
+    }
+
+    /**
+     * Given: 先頭が角括弧でないマーカー（{@code SETUP_TABLE g1]=USERS}）。
+     * When : {@code readHeaders} を呼ぶ。
+     * Then : 末尾の {@code ]} を外さず、データタイプ名と {@code =} の間をそのままグループ ID にする。
+     *
+     * <p>担保：{@code markerGroupId} の「先頭が {@code [} でない」側。</p>
+     */
+    @Test
+    public void readHeadersKeepsTrailingBracketWhenNotOpened() {
+        // Given
+        String resource = "readHeadersKeepsTrailingBracketWhenNotOpened";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("SETUP_TABLE g1]=USERS"));
+        lines.add(row("USER_NAME"));
+        lines.add(row("alice"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+
+        // Then
+        assertThat(headers.size(), is(1));
+        assertThat(headers.get(0).getGroupId(), is(" g1]"));
+        assertThat(headers.get(0).getIdentifier(), is("USERS"));
+    }
+
+    /**
+     * Given: 収集対象ブロックの本体に、データタイプ名で始まるが {@code =} を含まないデータ行がある。
+     * When : {@code readBlockBodyLines} を呼ぶ。
+     * Then : その行はマーカー行でなくデータ行として本体に含まれ、収集は途切れない。
+     *
+     * <p>担保：{@code BodyLineCollector#parse} の {@code groupId == null}（マーカー行でない）側。</p>
+     */
+    @Test
+    public void readBlockBodyLinesTreatsTypeNamedRowWithoutEqualsAsData() {
+        // Given —— 3 行目の先頭セルはデータタイプ名（MESSAGE）で始まるが '=' を含まない
+        String resource = "readBlockBodyLinesTreatsTypeNamedRowWithoutEqualsAsData";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("LIST_MAP=testShots"));
+        lines.add(row("zcol", "acol"));
+        lines.add(row("MESSAGE", "v1"));
+        lines.add(row("plain", "v2"));
+
+        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+                new FakeTestDataReader().put(resource, lines));
+
+        // When
+        List<List<String>> body = adapter.readBlockBodyLines(DIR, resource, "", "testShots", DataType.LIST_MAP);
+
+        // Then
+        assertThat(body.size(), is(3));
+        assertThat(body.get(0), is(row("zcol", "acol")));
+        assertThat("データタイプ名で始まる行もデータ行として残る", body.get(1), is(row("MESSAGE", "v1")));
+        assertThat("その後の行の収集も途切れない", body.get(2), is(row("plain", "v2")));
+    }
 }

@@ -140,4 +140,58 @@ public class XlsOutputConfigTest {
         // Then
         assertThat(result.getBlankRowsBetweenBlocks(), is(0));
     }
+
+    /**
+     * Given: 11 個のフィールドすべてに既定値と異なる値を setter で与える。
+     * When : toExcelFormatConfig() を呼ぶ。
+     * Then : 11 項目すべてが与えた値になる（既定値のままの項目が 1 つも無い）。
+     *
+     * <p>担保：setter 11 本と {@code toExcelFormatConfig()} の 11 個の {@code != null} 分岐。</p>
+     */
+    @Test
+    public void allFieldsSpecified_appliesEveryValue() {
+        // Given
+        XlsOutputConfig config = new XlsOutputConfig();
+        config.setTestShotsHeaderColor("RED");
+        config.setSetupHeaderColor("BLUE");
+        config.setExpectedHeaderColor("GREEN");
+        config.setOtherHeaderColor("PINK");
+        config.setMarkerColumnColor("BROWN");
+        config.setAutoColumnWidth(false);
+        config.setMaxColumnWidthChars(7);
+        config.setDrawBlockBorder(false);
+        config.setDrawCellBorder(false);
+        config.setDisplayGridlines(true);
+        config.setBlankRowsBetweenBlocks(3);
+
+        // When
+        ExcelFormatConfig result = config.toExcelFormatConfig();
+
+        // Then
+        assertThat(result.getTestShotsHeaderColorIndex(), is(IndexedColors.RED.getIndex()));
+        assertThat(result.getSetupHeaderColorIndex(), is(IndexedColors.BLUE.getIndex()));
+        assertThat(result.getExpectedHeaderColorIndex(), is(IndexedColors.GREEN.getIndex()));
+        assertThat(result.getOtherHeaderColorIndex(), is(IndexedColors.PINK.getIndex()));
+        assertThat(result.getMarkerColumnColorIndex(), is(IndexedColors.BROWN.getIndex()));
+        assertThat(result.isAutoColumnWidth(), is(false));
+        assertThat(result.getMaxColumnWidthChars(), is(7));
+        assertThat(result.isDrawBlockBorder(), is(false));
+        assertThat(result.isDrawCellBorder(), is(false));
+        assertThat(result.isDisplayGridlines(), is(true));
+        assertThat(result.getBlankRowsBetweenBlocks(), is(3));
+
+        // 既定値と衝突していないこと（衝突していると「反映された」と言えない）
+        ExcelFormatConfig defaults = ExcelFormatConfig.defaults();
+        assertThat(defaults.getTestShotsHeaderColorIndex() == IndexedColors.RED.getIndex(), is(false));
+        assertThat(defaults.getSetupHeaderColorIndex() == IndexedColors.BLUE.getIndex(), is(false));
+        assertThat(defaults.getExpectedHeaderColorIndex() == IndexedColors.GREEN.getIndex(), is(false));
+        assertThat(defaults.getOtherHeaderColorIndex() == IndexedColors.PINK.getIndex(), is(false));
+        assertThat(defaults.getMarkerColumnColorIndex() == IndexedColors.BROWN.getIndex(), is(false));
+        assertThat(defaults.isAutoColumnWidth(), is(true));
+        assertThat(defaults.getMaxColumnWidthChars() == 7, is(false));
+        assertThat(defaults.isDrawBlockBorder(), is(true));
+        assertThat(defaults.isDrawCellBorder(), is(true));
+        assertThat(defaults.isDisplayGridlines(), is(false));
+        assertThat(defaults.getBlankRowsBetweenBlocks() == 3, is(false));
+    }
 }
