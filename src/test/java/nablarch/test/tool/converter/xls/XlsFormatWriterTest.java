@@ -1,0 +1,1334 @@
+package nablarch.test.tool.converter.xls;
+
+import static nablarch.test.tool.converter.xls.XlsFixture.cell;
+import static nablarch.test.tool.converter.xls.XlsFixture.line;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import nablarch.test.core.reader.DataType;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.ListMapBlock;
+import nablarch.test.tool.converter.model.MessageDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
+import nablarch.test.tool.converter.model.TableDataBlock;
+import nablarch.test.tool.converter.model.TestDataBlock;
+import nablarch.test.tool.converter.model.TestDataContainer;
+import nablarch.test.tool.converter.model.TestDataSection;
+
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+/**
+ * {@link XlsFormatWriter} のテストクラス。
+ *
+ * <p>
+ * 45 件の内訳は <b>{@code build}（メモリ上のブック）を見る 31 件</b>・
+ * <b>{@code write} で実 {@code .xlsx} を書く 12 件</b>・
+ * <b>SUT のブックを作らない 2 件</b>である（31 ＋ 12 ＋ 2 ＝ 45）。
+ * </p>
+ * <ul>
+ *   <li><b>{@code build} 31 件</b> — メモリ上のブックからセル値・背景色・罫線・列幅を直接アサートする。</li>
+ *   <li><b>{@code write} 12 件</b> — 往復テスト 10 件（{@code roundTrips*}。{@link #roundTrip} 経由で
+ *       書き出し、実 {@link XlsFormatReader} でモデル → Excel → モデルの同値を検証する）と、
+ *       {@link #writesWorkbookFileWithSheetPerSection}（ファイルとシートの生成を確かめる）・
+ *       {@link #wrapsIoFailure}（書き出し失敗の例外）。
+ *       {@code grep -n "new XlsFormatWriter()\.write(" <本ファイル>} は 3 か所を返し、うち 1 か所が
+ *       {@link #roundTrip} ヘルパで 10 件が共有する。</li>
+ *   <li><b>どちらも呼ばない 2 件</b> — {@link #eachGroupHasDistinctDefaultColor} と
+ *       {@link #rejectsNegativeBlankRows}。{@link ExcelFormatConfig} だけを叩くため
+ *       {@link XlsFormatWriter} のブックを作らない。</li>
+ * </ul>
+ *
+ * <p>
+ * 件数の導出コマンドと実測は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1 の末尾にある。
+ * 本体パーサのキャッシュ衝突を避けるため、往復テストはテストごとに一意のブック名・
+ * {@link TemporaryFolder} を使う。
+ * </p>
+ *
+ * @author kiyobot
+ */
+public class XlsFormatWriterTest {
+
+    /** 往復テストの出力先（テストごとに一意）。 */
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    // ------------------------------------------------------------------ helpers
+
+    /**
+     * null を含められるよう {@link Arrays#asList} で行を組み立てる。
+     *
+     * @param cells セル
+     * @return 行
+     */
+    private static List<String> row(String... cells) {
+        return Arrays.asList(cells);
+    }
+
+    /**
+     * 1 セクション 1 コンテナを組み立てる。
+     *
+     * @param book   ブック名
+     * @param sheet  シート名
+     * @param blocks ブロック
+     * @return コンテナ
+     */
+    private static TestDataContainer container(String book, String sheet, TestDataBlock... blocks) {
+        TestDataSection section = new TestDataSection(sheet, Arrays.asList(blocks));
+        return new TestDataContainer(book, Collections.singletonList(section));
+    }
+
+    /** キー順を保つマップを作る。 */
+    private static Map<String, String> map(String... kv) {
+        Map<String, String> m = new LinkedHashMap<String, String>();
+        for (int i = 0; i < kv.length; i += 2) {
+            m.put(kv[i], kv[i + 1]);
+        }
+        return m;
+    }
+
+    /** 既定設定のライタでブックを組み立てる。 */
+    private static Workbook build(TestDataContainer container) {
+        return new XlsFormatWriter().build(container);
+    }
+
+    /** 単一セクションのシートを取り出す。 */
+    private static Sheet onlySheet(Workbook wb, String name) {
+        return wb.getSheet(name);
+    }
+
+    // セル読み出し（cell / line）は XlsFixture の static メソッドを使う（本ファイル冒頭で static import）。
+
+    // ------------------------------------------------------------------ table
+
+    /**
+     * Given: {@code ${...}}・空文字・null セルを含む SETUP_TABLE。
+     * When : build。
+     * Then : 識別行 → カラム名行 → データ行の版面。null はリテラル {@code null}・空文字は空セル。
+     */
+    @Test
+    public void writesTableBlock() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "USERS",
+                row("USER_NAME", "AGE"),
+                Arrays.asList(row("${userName}", ""), row("literal", null)));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=USERS"));
+        assertThat(line(sheet, 1), is(Arrays.asList("USER_NAME", "AGE")));
+        assertThat(line(sheet, 2), is(Arrays.asList("${userName}", "")));
+        // null はリテラル null（空文字 "" と区別して書く）
+        assertThat(line(sheet, 3), is(Arrays.asList("literal", "null")));
+    }
+
+    /**
+     * Given: カラム 2 列に対し値 1 つだけのデータ行を持つ SETUP_TABLE。
+     * When : build。
+     * Then : 足りない列は<b>空セル</b>で埋められ、行はブロック幅どおり 2 列になる。
+     *
+     * <p>
+     * 記法はデータ行のセル数（Excel形式）……が
+     * フィールド数より少ない場合、不足したフィールドは {@code ""} として補完されると定めており、
+     * <b>不足側は正当な形</b>である（余りの側だけが XLS-41 の番人で落ちる）。
+     * 辺④の同じ担保は {@code YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull}。
+     * </p>
+     *
+     * <p>担保する軸要素: D（値の表現）——不足セルの補完。</p>
+     */
+    @Test
+    public void writesEmptyCellsForRowShorterThanBlockWidth() {
+        // Given: カラム 2 列・値 1 つの行
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "SHORT",
+                row("A", "B"), Collections.singletonList(row("x")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then: 不足分は空セルで埋まる（行はブロック幅どおり 2 列）
+        assertThat(line(sheet, 2), is(Arrays.asList("x", "")));
+    }
+
+    /**
+     * Given: 1カラムテーブル（META行の値は1セル）。
+     * When : build。
+     * Then : META行（row 0）は値を持つセルのみ生成される（空の末尾セルは作られない）。
+     */
+    @Test
+    public void metaRowContainsOnlyValueCells() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "ONE_COL",
+                row("A"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then: META行（row 0）は1セルのみ（ブロック幅分に矩形整形されない）
+        assertThat((int) sheet.getRow(0).getLastCellNum(), is(1));
+    }
+
+    /**
+     * Given: グループ ID 付き EXPECTED_TABLE。
+     * When : build。
+     * Then : 識別セルが {@code TYPE[group]=id}。
+     */
+    @Test
+    public void writesTableMarkerWithGroupId() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "g1", "USERS",
+                row("USER_NAME"), Collections.singletonList(row("${u}")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("EXPECTED_TABLE[g1]=USERS"));
+    }
+
+    /**
+     * Given: EXPECTED_COMPLETE_TABLE。
+     * When : build。
+     * Then : 識別セルがデータタイプ名どおり。
+     */
+    @Test
+    public void writesExpectedCompleteTableMarker() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.EXPECTED_COMPLETED, "", "USERS",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("EXPECTED_COMPLETE_TABLE=USERS"));
+    }
+
+    // ------------------------------------------------------------------ list_map
+
+    /**
+     * Given: LIST_MAP。
+     * When : build。
+     * Then : 識別行 → カラム名行 → データ行。
+     */
+    @Test
+    public void writesListMapBlock() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "result",
+                row("ID", "NAME"), Arrays.asList(row("${id}", ""), row("2", "bob")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", listMap)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("LIST_MAP=result"));
+        assertThat(line(sheet, 1), is(Arrays.asList("ID", "NAME")));
+        assertThat(line(sheet, 2), is(Arrays.asList("${id}", "")));
+        assertThat(line(sheet, 3), is(Arrays.asList("2", "bob")));
+    }
+
+    /**
+     * Given: マーカーカラム {@code [NOTE]} を含むテーブル。
+     * When : build。
+     * Then : マーカーカラムのセルにマーカー背景色が付く。
+     */
+    @Test
+    public void tintsMarkerColumn() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("ID", "[NOTE]"), Collections.singletonList(row("1", "memo")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        short marker = ExcelFormatConfig.defaults().getMarkerColumnColorIndex();
+        // データ行のマーカーカラム（列 1）はマーカー背景色
+        assertThat(sheet.getRow(2).getCell(1).getCellStyle().getFillForegroundColor(), is(marker));
+        assertThat(sheet.getRow(2).getCell(1).getCellStyle().getFillPattern(), is(CellStyle.SOLID_FOREGROUND));
+        // 通常データセル（列 0）は背景色なし
+        assertThat(sheet.getRow(2).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
+    }
+
+    // ------------------------------------------------------------------ fixed file
+
+    /**
+     * Given: ディレクティブ＋固定長レコード（型・長さ・{@code -} 含む）の SETUP_FIXED。
+     * When : build。
+     * Then : 識別行 → ディレクティブ行 → 名前行 → 型行 → 長さ行 → データ行。データ行の列 0 は空。
+     */
+    @Test
+    public void writesFixedFileBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("f1", "半角英字", "-"), new FieldDef("f2", "半角英字", "5")),
+                Collections.singletonList(row("abcd", "xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat", map("text-encoding", "UTF-8"),
+                Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("SETUP_FIXED=test.dat"));
+        assertThat(cell(sheet, 1, 0), is("text-encoding"));
+        assertThat(cell(sheet, 1, 1), is("UTF-8"));
+        assertThat(line(sheet, 2), is(Arrays.asList("data", "f1", "f2")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字", "半角英字")));
+        assertThat(line(sheet, 4), is(Arrays.asList("", "-", "5")));
+        assertThat(line(sheet, 5), is(Arrays.asList("", "abcd", "xy")));
+    }
+
+    /**
+     * Given: 可変長ファイル（長さなし）。
+     * When : build。
+     * Then : 長さ行を持たない（名前行 → 型行 → データ行）。
+     *
+     * <p>
+     * フィールド長の番人の<b>範囲</b>も兼ねる。弾くのは固定長ファイルと電文だけであり、
+     * <b>可変長ファイルでは {@code length} が {@code null} であることが正しい</b>
+     * （可変長ファイルでは、フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である）。
+     * 番人の範囲を可変長まで広げるとこのテストが落ちる。
+     * </p>
+     */
+    @Test
+    public void writesVariableFileWithoutLengthRow() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
+                Collections.singletonList(row("${v}")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
+                Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("SETUP_VARIABLE=in.csv"));
+        assertThat(line(sheet, 1), is(Arrays.asList("data", "f1")));
+        assertThat(line(sheet, 2), is(Arrays.asList("", "半角英字")));
+        // 長さ行は無く、3 行目がデータ行
+        assertThat(line(sheet, 3), is(Arrays.asList("", "${v}")));
+    }
+
+    /**
+     * Given: 2 レコードレイアウトを持つ固定長ファイル。
+     * When : build。
+     * Then : 各レコードの名前行（レコード種別が列 0）が独立に書かれる。
+     */
+    @Test
+    public void writesMultipleRecordLayouts() {
+        // Given
+        RecordLayout header = new RecordLayout("header",
+                Collections.singletonList(new FieldDef("h1", "半角英字", "5")),
+                Collections.singletonList(row("AAAAA")));
+        RecordLayout data = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
+                Collections.singletonList(row("xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat", map(),
+                Arrays.asList(header, data));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
+
+        // Then: header: 名前(1)/型(2)/長さ(3)/データ(4)。data: 名前(5)/型(6)/長さ(7)/データ(8)
+        assertThat(line(sheet, 1), is(Arrays.asList("header", "h1")));
+        assertThat(line(sheet, 5), is(Arrays.asList("data", "d1")));
+    }
+
+    /**
+     * Given: 2 レコード目のレコード種別が null の固定長ファイル。
+     * When : build。
+     * Then : IllegalStateException。XLS-06。記法はデータの後ろに新たなレコード種別とフィールド名称を
+     *        書いた時点で、新しいレコードレイアウトとして扱われると定めており
+     *        、レコード種別を書かない
+     *        2 件目以降のレコードレイアウトは Excel 記法では書き表せない。読み戻せない版面を黙って
+     *        書かず早期に失敗する。<b>辺④（YAML）はこの形を書けるため、番人はモデルへ寄せず
+     *        書き出し側に残す</b>（記法、本体スキーマ {@code $defs.record_fragment} の
+     *        {@code required} は {@code record_type} を含まない）。
+     */
+    @Test(expected = IllegalStateException.class)
+    public void rejectsNullRecordTypeOnSecondRecord() {
+        // Given
+        RecordLayout first = new RecordLayout("header",
+                Collections.singletonList(new FieldDef("h1", "半角英字", "5")),
+                Collections.singletonList(row("AAAAA")));
+        RecordLayout second = new RecordLayout(null,   // 2 レコード目はレコード種別必須
+                Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
+                Collections.singletonList(row("xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat", map(),
+                Arrays.asList(first, second));
+
+        // When / Then
+        build(container("book", "sheet", file));
+    }
+
+    /**
+     * Given: カラム名を 1 件も持たない 0 件テーブルブロック。
+     * When : build。
+     * Then : カラム名の行にマーカーカラム {@code [EMPTY]} を 1 つだけ書く。
+     *
+     * <p>
+     * Excel 記法はデータ行が無くてもカラム名の行を省略できない
+     * （記法はデータ行を書かない場合でも、カラム名の行は省略できない。
+     * 識別子行の次の行がカラム名の行として読み込まれるため、カラム名の行を書かないと、
+     * その次に現れた行がカラム名の行になる。{@code 30a8271} 時点）。一方 YAML 記法では
+     * カラム名は {@code rows:} の先頭要素のキーで決まるため、0 件データ
+     * （記法は0 件のデータは、{@code rows:} に空配列 {@code []} を記載する）には
+     * カラム名を書く場所が無い。記法が定めるマーカーカラム（半角角括弧で囲むと
+     * 読み込み対象から除外される。{@code SETUP_TABLE}・{@code EXPECTED_TABLE}・{@code LIST_MAP} で
+     * 使える）を 1 つ置くことが、両方の明文を同時に満たす唯一の書き方である
+     * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19）。
+     * </p>
+     */
+    @Test
+    public void writesMarkerColumnForZeroRowTableBlock() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+
+        // When
+        Sheet sheet = build(container("book", "sheet", table)).getSheetAt(0);
+
+        // Then: 識別子行の次の行はマーカーカラム 1 つだけ
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T"));
+        assertThat(cell(sheet, 1, 0), is("[EMPTY]"));
+        assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
+    }
+
+    /**
+     * Given: カラム名を 1 件も持たない 0 件 {@code LIST_MAP} ブロック。
+     * When : build。
+     * Then : キーの行にマーカーカラム {@code [EMPTY]} を 1 つだけ書く。
+     *
+     * <p>
+     * {@code LIST_MAP} も 記法は 1 行目に {@code LIST_MAP=} に続けて
+     * シート内で一意になる ID を記載する。2行目を Map のキー、3行目以降を Map の値として読み込むの
+     * とおりキー行が構成上必須であり、記法はマーカーカラムが {@code LIST_MAP} でも
+     * 使えることを明記している。
+     * </p>
+     */
+    @Test
+    public void writesMarkerColumnForZeroRowListMapBlock() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "lm",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+
+        // When
+        Sheet sheet = build(container("book", "sheet", listMap)).getSheetAt(0);
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("LIST_MAP=lm"));
+        assertThat(cell(sheet, 1, 0), is("[EMPTY]"));
+        assertThat(sheet.getRow(1).getLastCellNum(), is((short) 1));
+    }
+
+    /**
+     * Given: 2 レコード目のレコード種別が空文字の固定長ファイル。
+     * When : build。
+     * Then : IllegalStateException。XLS-06。空文字もレコード種別を書いたことにならないため
+     *        {@code null} と同様に弾く。
+     */
+    @Test(expected = IllegalStateException.class)
+    public void rejectsEmptyRecordTypeOnSecondRecord() {
+        // Given
+        RecordLayout first = new RecordLayout("header",
+                Collections.singletonList(new FieldDef("h1", "半角英字", "5")),
+                Collections.singletonList(row("AAAAA")));
+        RecordLayout second = new RecordLayout("",   // 空文字も列 0 空＝NG
+                Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
+                Collections.singletonList(row("xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "bad.dat", map(),
+                Arrays.asList(first, second));
+
+        // When / Then
+        build(container("book", "sheet", file));
+    }
+
+    /**
+     * Given: レコード種別が null の単一レコード固定長ファイル。
+     * When : build。
+     * Then : 例外にならない（1 レコード目の列 0 空は本体パーサが位置で名前行を特定でき、誤読しない）。
+     */
+    @Test
+    public void allowsNullRecordTypeOnSingleRecord() {
+        // Given
+        RecordLayout only = new RecordLayout(null,
+                Collections.singletonList(new FieldDef("f1", "半角英字", "2")),
+                Collections.singletonList(row("xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "ok.dat", map(),
+                Collections.singletonList(only));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
+
+        // Then: 名前行の列 0 は空（レコード種別省略）
+        assertThat(line(sheet, 1), is(Arrays.asList("", "f1")));
+    }
+
+    // ------------------------------------------------------------------ message
+
+    /**
+     * Given: FW 制御ヘッダ＋本文を持つ MESSAGE。
+     * When : build。
+     * Then : 識別行 → FW ヘッダ行 → 名前行 → 型行 → 長さ行 → データ行。データ行の列 0 は空。
+     */
+    @Test
+    public void writesMessageBlock() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("body1", "半角英字", "10"), new FieldDef("body2", "半角英字", "5")),
+                Collections.singletonList(row("${b}", "xyz")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                map(), map("requestId", "${rid}"), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("MESSAGE=msg1"));
+        assertThat(line(sheet, 1), is(Arrays.asList("requestId", "${rid}")));
+        assertThat(line(sheet, 2), is(Arrays.asList("data", "body1", "body2")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字", "半角英字")));
+        assertThat(line(sheet, 4), is(Arrays.asList("", "10", "5")));
+        // データ行の列 0 は空（本体は列 0 空をデータ行と判定する）
+        assertThat(line(sheet, 5), is(Arrays.asList("", "${b}", "xyz")));
+    }
+
+    /**
+     * Given: 送信系（EXPECTED_REQUEST_HEADER_MESSAGES・no 列）。
+     * When : build。
+     * Then : 本テストの入力が FW 制御ヘッダを持たない（空 Map）ため識別行の次は名前行になる。
+     *        データ行の列 0 は送信系のため no（連番）になる。
+     */
+    @Test
+    public void writesSendSyncMessageWithSequenceNo() {
+        // Given
+        RecordLayout record = new RecordLayout("no",
+                Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
+                Arrays.asList(row("RM21AA0104_01", "0"), row("RM21AA0104_02", "1")));
+        MessageDataBlock message = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
+                "case1", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
+
+        // Then
+        assertThat(cell(sheet, 0, 0), is("EXPECTED_REQUEST_HEADER_MESSAGES[case1]=RM21AA0104_01"));
+        assertThat(line(sheet, 1), is(Arrays.asList("no", "requestId", "resendFlag")));
+        assertThat(line(sheet, 2), is(Arrays.asList("", "半角", "半角")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "20", "1")));
+        // データ行の列 0 は no（連番）
+        assertThat(line(sheet, 4), is(Arrays.asList("1", "RM21AA0104_01", "0")));
+        assertThat(line(sheet, 5), is(Arrays.asList("2", "RM21AA0104_02", "1")));
+    }
+
+    // ------------------------------------------------------------------ styling
+
+    /**
+     * Given: 既定設定。
+     * When : build。
+     * Then : 識別行は色なし、列名行に背景色、データ行は背景色なし。
+     */
+    @Test
+    public void appliesHeaderBackgroundColor() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        // SETUP_TABLE_DATA は setupHeaderColorIndex を使う
+        short header = ExcelFormatConfig.defaults().getSetupHeaderColorIndex();
+        // 識別行（row 0）は色なし
+        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
+        // 列名行（row 1）に背景色
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(header));
+        // データ行は背景色なし
+        assertThat(sheet.getRow(2).getCell(0).getCellStyle().getFillPattern(), is(CellStyle.NO_FILL));
+    }
+
+    /**
+     * Given: testShots 識別子の LIST_MAP。
+     * When : build（既定設定）。
+     * Then : 列名行に testShots グループの背景色（LIME）が付く。
+     */
+    @Test
+    public void appliesTestShotsHeaderColor() {
+        // Given
+        ListMapBlock testShots = new ListMapBlock("", "testShots",
+                row("no", "description"), Collections.singletonList(row("1", "test")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", testShots)), "sheet");
+
+        // Then
+        short expected = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+    }
+
+    /**
+     * Given: SETUP_TABLE_DATA ブロック。
+     * When : build（既定設定）。
+     * Then : 列名行に SETUP 系グループの背景色（PALE_BLUE）が付く。
+     */
+    @Test
+    public void appliesSetupHeaderColor() {
+        // Given
+        TableDataBlock setup = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", setup)), "sheet");
+
+        // Then
+        short expected = ExcelFormatConfig.defaults().getSetupHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+    }
+
+    /**
+     * Given: EXPECTED_TABLE_DATA ブロック。
+     * When : build（既定設定）。
+     * Then : 列名行に EXPECTED 系グループの背景色（LIGHT_YELLOW）が付く。
+     */
+    @Test
+    public void appliesExpectedHeaderColor() {
+        // Given
+        TableDataBlock expected = new TableDataBlock(DataType.EXPECTED_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", expected)), "sheet");
+
+        // Then
+        short color = ExcelFormatConfig.defaults().getExpectedHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(color));
+    }
+
+    /**
+     * Given: MESSAGE ブロック（その他グループ）。
+     * When : build（既定設定）。
+     * Then : FW ヘッダ行（ディレクティブ）の左列にその他グループの背景色（LAVENDER）が付く。
+     */
+    @Test
+    public void appliesOtherHeaderColorForMessage() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", "5")),
+                Collections.singletonList(row("hello")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg",
+                map(), map("requestId", "R01"), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
+
+        // Then: FW ヘッダ行（row 1）の左列はその他グループ色
+        short expected = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+    }
+
+    /**
+     * Given: 非 testShots 識別子の LIST_MAP（その他グループ）。
+     * When : build（既定設定）。
+     * Then : 列名行にその他グループの背景色（LAVENDER）が付き、testShots 色と異なる。
+     */
+    @Test
+    public void appliesOtherHeaderColorForNonTestShotsListMap() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "result",
+                row("ID"), Collections.singletonList(row("1")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", listMap)), "sheet");
+
+        // Then
+        short expected = ExcelFormatConfig.defaults().getOtherHeaderColorIndex();
+        short notExpected = ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex();
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(expected));
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(not(notExpected)));
+    }
+
+    /**
+     * Given: 4 グループのブロック。
+     * When : build（既定設定）。
+     * Then : 各ブロックの列名行に異なるグループ色が付く（4 色が相互に異なる）。
+     */
+    @Test
+    public void eachGroupHasDistinctDefaultColor() {
+        // Given: 既定値の 4 色を取得
+        ExcelFormatConfig defaults = ExcelFormatConfig.defaults();
+        short testShots = defaults.getTestShotsHeaderColorIndex();
+        short setup = defaults.getSetupHeaderColorIndex();
+        short exp = defaults.getExpectedHeaderColorIndex();
+        short other = defaults.getOtherHeaderColorIndex();
+
+        // Then: 4 色はすべて異なる
+        assertThat(testShots, is(not(setup)));
+        assertThat(testShots, is(not(exp)));
+        assertThat(testShots, is(not(other)));
+        assertThat(setup, is(not(exp)));
+        assertThat(setup, is(not(other)));
+        assertThat(exp, is(not(other)));
+    }
+
+    /**
+     * Given: 既定設定（外枠罫線あり）。
+     * When : build。
+     * Then : ブロックの四隅セルに外枠の罫線が付く。
+     */
+    @Test
+    public void drawsBlockOuterBorder() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("A", "B"), Collections.singletonList(row("1", "2")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        // row 0 は識別行（META）なので罫線なし
+        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
+        // 列名行（row 1）が外枠上辺の先頭：上辺・左辺に罫線
+        CellStyle topLeft = sheet.getRow(1).getCell(0).getCellStyle();
+        assertThat(topLeft.getBorderTop(), is(CellStyle.BORDER_THIN));
+        assertThat(topLeft.getBorderLeft(), is(CellStyle.BORDER_THIN));
+        // 右下セル（row 2 = データ行）：下辺・右辺に罫線
+        CellStyle bottomRight = sheet.getRow(2).getCell(1).getCellStyle();
+        assertThat(bottomRight.getBorderBottom(), is(CellStyle.BORDER_THIN));
+        assertThat(bottomRight.getBorderRight(), is(CellStyle.BORDER_THIN));
+        // 内側（データ行の上辺）にも内部グリッド線が引かれる（drawCellBorder=true がデフォルト）
+        assertThat(sheet.getRow(2).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_THIN));
+    }
+
+    /**
+     * Given: 2 ブロックを持つセクション（既定＝ブロック間 1 空行）。
+     * When : build。
+     * Then : 2 ブロック目の識別行が 1 行空けて始まる。
+     */
+    @Test
+    public void insertsBlankRowBetweenBlocks() {
+        // Given
+        TableDataBlock t1 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T1",
+                row("C"), Collections.singletonList(row("v")));
+        TableDataBlock t2 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T2",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", t1, t2)), "sheet");
+
+        // Then: t1: 行 0,1,2。1 空行（行 3）。t2 の識別行は行 4。
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T1"));
+        assertThat(sheet.getRow(3), is(nullValue()));
+        assertThat(cell(sheet, 4, 0), is("SETUP_TABLE=T2"));
+    }
+
+    /**
+     * Given: 自動列幅オン。
+     * When : build。
+     * Then : 列幅が最長値（＋余白）に応じて設定される。
+     */
+    @Test
+    public void appliesAutoColumnWidth() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("C"), Collections.singletonList(row("abcdefghij")));  // 10 文字
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then: 識別行 "SETUP_TABLE=T"（13 文字）が列 0 最長。(13+2)*256
+        assertThat(sheet.getColumnWidth(0), is((13 + 2) * 256));
+    }
+
+    // ------------------------------------------------------------------ config override
+
+    /**
+     * Given: ブロック間空行 0・罫線なし・自動列幅なし・背景色変更の上書き設定。
+     * When : build。
+     * Then : 各上書きが反映される。
+     */
+    @Test
+    public void honorsConfigOverrides() {
+        // Given
+        short customSetupHeader = org.apache.poi.ss.usermodel.IndexedColors.LIGHT_GREEN.getIndex();
+        ExcelFormatConfig config = ExcelFormatConfig.defaults()
+                .withBlankRowsBetweenBlocks(0)
+                .withBlockBorder(false)
+                .withCellBorder(false)
+                .withAutoColumnWidth(false)
+                .withSetupHeaderColor(customSetupHeader);
+        TableDataBlock t1 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T1",
+                row("C"), Collections.singletonList(row("v")));
+        TableDataBlock t2 = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T2",
+                row("C"), Collections.singletonList(row("v")));
+
+        // When
+        Workbook wb = new XlsFormatWriter(config).build(container("book", "sheet", t1, t2));
+        Sheet sheet = onlySheet(wb, "sheet");
+
+        // Then
+        // 空行 0 → t2 は行 3 から
+        assertThat(cell(sheet, 3, 0), is("SETUP_TABLE=T2"));
+        // 罫線なし
+        assertThat(sheet.getRow(0).getCell(0).getCellStyle().getBorderTop(), is(CellStyle.BORDER_NONE));
+        // 列名行（row 1）の背景色は上書き値（識別行 row 0 は色なし）
+        assertThat(sheet.getRow(1).getCell(0).getCellStyle().getFillForegroundColor(), is(customSetupHeader));
+        // 自動列幅なし → 自動調整時の幅（最長 "SETUP_TABLE=T2" 14 文字＝(14+2)*256）にはならない
+        assertThat(sheet.getColumnWidth(0), is(not((14 + 2) * 256)));
+    }
+
+    /**
+     * Given: 空行数に負数。
+     * When : ExcelFormatConfig 構築。
+     * Then : IllegalArgumentException。
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsNegativeBlankRows() {
+        // When / Then
+        ExcelFormatConfig.defaults().withBlankRowsBetweenBlocks(-1);
+    }
+
+    // ------------------------------------------------------------------ write (I/O) & multi-sheet
+
+    /**
+     * Given: 2 セクションのコンテナ。
+     * When : write。
+     * Then : {@code <basePath>/<コンテナ名>.xlsx} が生成され、各セクション＝シートになる。
+     */
+    @Test
+    public void writesWorkbookFileWithSheetPerSection() throws Exception {
+        // Given
+        TestDataSection s1 = new TestDataSection("Sheet1", Collections.<TestDataBlock>singletonList(
+                new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T", row("C"),
+                        Collections.singletonList(row("v")))));
+        TestDataSection s2 = new TestDataSection("Sheet2", Collections.<TestDataBlock>singletonList(
+                new ListMapBlock("", "lm", row("K"), Collections.singletonList(row("1")))));
+        TestDataContainer c = new TestDataContainer("MyBook", Arrays.asList(s1, s2));
+
+        // When
+        new XlsFormatWriter().write(c, folder.getRoot().getAbsolutePath());
+
+        // Then
+        File xlsx = new File(folder.getRoot(), "MyBook.xlsx");
+        assertTrue(xlsx.exists());
+        try (java.io.InputStream in = new java.io.FileInputStream(xlsx)) {
+            Workbook wb = org.apache.poi.ss.usermodel.WorkbookFactory.create(in);
+            assertThat(wb.getSheet("Sheet1"), is(notNullValue()));
+            assertThat(wb.getSheet("Sheet2"), is(notNullValue()));
+            assertThat(wb.getSheet("Sheet1").getRow(0).getCell(0).getStringCellValue(), is("SETUP_TABLE=T"));
+        }
+    }
+
+    /**
+     * Given: マーカーカラム背景色を上書きした設定。
+     * When : build。
+     * Then : マーカーカラムに上書き色が付く。
+     */
+    @Test
+    public void honorsMarkerColumnColorOverride() {
+        // Given
+        short custom = org.apache.poi.ss.usermodel.IndexedColors.LIGHT_TURQUOISE.getIndex();
+        ExcelFormatConfig config = ExcelFormatConfig.defaults().withMarkerColumnColor(custom);
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("ID", "[NOTE]"), Collections.singletonList(row("1", "memo")));
+
+        // When
+        Workbook wb = new XlsFormatWriter(config).build(container("book", "sheet", table));
+        Sheet sheet = onlySheet(wb, "sheet");
+
+        // Then
+        assertThat(sheet.getRow(2).getCell(1).getCellStyle().getFillForegroundColor(), is(custom));
+    }
+
+    /**
+     * Given: 閉じ括弧の無いカラム名 {@code [half}（マーカーカラムでない）。
+     * When : build。
+     * Then : マーカー背景色は付かない（{@code [...]} の両端一致のみがマーカー）。
+     */
+    @Test
+    public void doesNotTintUnclosedBracketColumn() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("ID", "[half"), Collections.singletonList(row("1", "x")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", table)), "sheet");
+
+        // Then
+        short marker = ExcelFormatConfig.defaults().getMarkerColumnColorIndex();
+        assertThat(sheet.getRow(2).getCell(1).getCellStyle().getFillForegroundColor(), is(not(marker)));
+    }
+
+    /**
+     * Given: 型・長さが空文字のフィールドと、値が空文字のディレクティブを持つ固定長ファイル。
+     * When : build。
+     * Then : 省略は空セルとして書かれる（データ行の null とは区別）。
+     *
+     * <p>
+     * 番人の境界も兼ねる。弾くのはデータ型・フィールド長が {@code null} の場合だけであり、
+     * <b>空文字は弾かない</b>（{@link FieldDef} の契約は「{@code type} は必須（{@code null} 不可）」
+     * 「{@code length} は固定長ファイル・電文では必須（{@code null} 不可）」である）。
+     * </p>
+     *
+     * <p>
+     * <b>入力は #25.5 §1-C（2026-08-18）で長さを {@code null} から空文字へ書き直した。</b>
+     * 固定長ファイルで長さを {@code null} にできた頃の版は「長さセルが空で書かれる」という
+     * XLS-30 の不具合そのものを緑で固定していたため、番人と両立しない
+     * （型を {@code null} から空文字へ書き直した YML-12 4 形目のときと同じ扱い）。
+     * </p>
+     *
+     * <p>
+     * <b>ディレクティブの値も #25.5 §6-H（2026-08-19。XLS-43）で {@code null} から空文字へ書き直した。</b>
+     * {@link FileDataBlock} がディレクティブの値の {@code null} を生成時に拒否するようになったため、
+     * この入力はもう作れない。<b>空文字は拒否しない</b>ので、空セルとして書かれることの担保は
+     * 空文字入力で続けられる。
+     * </p>
+     */
+    @Test
+    public void writesOmittedMetaAndFieldAsEmpty() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "", "")),
+                Collections.singletonList(row("v")));
+        Map<String, String> directives = new LinkedHashMap<String, String>();
+        directives.put("text-encoding", "");
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "f.dat", directives,
+                Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("book", "sheet", file)), "sheet");
+
+        // Then
+        // ディレクティブ値 空文字 → 空セル
+        assertThat(cell(sheet, 1, 0), is("text-encoding"));
+        assertThat(cell(sheet, 1, 1), is(""));
+        // 型・長さ 空文字 → 空セル
+        assertThat(line(sheet, 3), is(Arrays.asList("", "")));   // 型行
+        assertThat(line(sheet, 4), is(Arrays.asList("", "")));   // 長さ行
+        // データ行の値は記法のまま
+        assertThat(line(sheet, 5), is(Arrays.asList("", "v")));
+    }
+
+    /**
+     * Given: 送信系 4 種すべて。
+     * When : build。
+     * Then : いずれもデータ行の列 0 に no（連番）が付く（送信系判定が全種別で成立）。
+     */
+    @Test
+    public void writesSequenceNoForAllSendSyncTypes() {
+        // Given / When / Then (パラメータ化ループ)
+        DataType[] types = {
+                DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
+                DataType.EXPECTED_REQUEST_BODY_MESSAGES,
+                DataType.RESPONSE_HEADER_MESSAGES,
+                DataType.RESPONSE_BODY_MESSAGES};
+        for (DataType type : types) {
+            RecordLayout record = new RecordLayout("no",
+                    Collections.singletonList(new FieldDef("f", "半角", "5")),
+                    Collections.singletonList(row("v")));
+            MessageDataBlock message = new MessageDataBlock(type, "g", "id", map(), map(),
+                    Collections.singletonList(record));
+            Sheet sheet = onlySheet(build(container("book", "sheet", message)), "sheet");
+            // 識別行 → 名前(1) → 型(2) → 長さ(3) → データ(4)。データ行の列 0 は連番 "1"
+            assertThat("type=" + type, cell(sheet, 4, 0), is("1"));
+        }
+    }
+
+    /**
+     * Given: 親ディレクトリを作成できない出力先（既存の通常ファイルを basePath に与える）。
+     * When : write。
+     * Then : {@link java.io.UncheckedIOException} を送出する。
+     */
+    @Test(expected = java.io.UncheckedIOException.class)
+    public void wrapsIoFailure() throws Exception {
+        // Given
+        File blocker = folder.newFile("blocker");  // 通常ファイル。配下にディレクトリは作れない
+        TestDataContainer c = container("Book", "s",
+                new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T", row("C"),
+                        Collections.singletonList(row("v"))));
+
+        // When / Then
+        new XlsFormatWriter().write(c, blocker.getAbsolutePath());
+    }
+
+    // ------------------------------------------------------------------ round-trip
+
+    /** モデルを書き出し、実 {@link XlsFormatReader} で読み戻す。 */
+    private TestDataContainer roundTrip(String book, String sheet, TestDataBlock... blocks) {
+        TestDataContainer container = container(book, sheet, blocks);
+        new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
+        return new XlsFormatReader().read(folder.getRoot().getAbsolutePath(), book + "/" + sheet);
+    }
+
+    /**
+     * Given: テーブルブロック。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : データタイプ・識別子・カラム名・行が一致。
+     */
+    @Test
+    public void roundTripsTable() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "USERS",
+                row("USER_NAME", "AGE"),
+                Arrays.asList(row("${u}", "20"), row("alice", "")));
+
+        // When
+        TestDataBlock read = roundTrip("rt_table", "s", table).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        TableDataBlock actual = (TableDataBlock) read;
+        assertThat(actual.getDataType(), is(DataType.SETUP_TABLE_DATA));
+        assertThat(actual.getIdentifier(), is("USERS"));
+        assertThat(actual.getColumnNames(), is(Arrays.asList("USER_NAME", "AGE")));
+        assertThat(actual.getRows().get(0), is(Arrays.asList("${u}", "20")));
+        assertThat(actual.getRows().get(1), is(Arrays.asList("alice", "")));
+    }
+
+    /**
+     * Given: 0 件テーブルの<b>直後に別のブロック</b>を置いた読み込み単位。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : ブロックは 2 件のまま。0 件テーブルはカラム名の行に書いたマーカーカラム 1 件を保って戻り、
+     *        行は 0 件のまま。後続ブロックは食われない。
+     *
+     * <p>
+     * XLS-27 の本題である。マーカーカラム案を採る前は、カラム名の行を書けないため後続ブロックの
+     * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測。
+     * {@code coverage/issues.md} <b>XLS-27</b>）。カラム名の行がマーカーカラムだけのブロックは
+     * マーカーカラムを保って読み戻すため、書いたマーカーカラムがそのまま戻る。
+     * 行を 1 件も持たない点は書き出し前と変わらない。
+     * </p>
+     */
+    @Test
+    public void roundTripsZeroRowTableWithoutEatingNextBlock() {
+        // Given: 0 件テーブル → 後続テーブル
+        TableDataBlock empty = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "EMPTY_T",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+        TableDataBlock next = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "NEXT_T",
+                row("C1"), Collections.singletonList(row("v1")));
+
+        // When
+        List<TestDataBlock> blocks =
+                roundTrip("rt_zero_table", "s", empty, next).getSections().get(0).getBlocks();
+
+        // Then: 2 件のまま
+        assertThat(blocks.size(), is(2));
+        TableDataBlock first = (TableDataBlock) blocks.get(0);
+        assertThat(first.getIdentifier(), is("EMPTY_T"));
+        assertThat(first.getColumnNames(), is(Arrays.asList("[EMPTY]")));
+        assertThat(first.getRows().isEmpty(), is(true));
+        TableDataBlock second = (TableDataBlock) blocks.get(1);
+        assertThat(second.getIdentifier(), is("NEXT_T"));
+        assertThat(second.getColumnNames(), is(Arrays.asList("C1")));
+        assertThat(second.getRows().get(0), is(Arrays.asList("v1")));
+    }
+
+    /**
+     * Given: 0 件 {@code LIST_MAP} の直後に別の {@code LIST_MAP} を置いた読み込み単位。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : ブロックは 2 件のまま。0 件側はカラム名の行に書いたマーカーカラム 1 件を保って戻り、行は 0 件のまま。
+     */
+    @Test
+    public void roundTripsZeroRowListMapWithoutEatingNextBlock() {
+        // Given
+        ListMapBlock empty = new ListMapBlock("", "EMPTY_LM",
+                Collections.<String>emptyList(), Collections.<List<String>>emptyList());
+        ListMapBlock next = new ListMapBlock("", "NEXT_LM",
+                row("K"), Collections.singletonList(row("v1")));
+
+        // When
+        List<TestDataBlock> blocks =
+                roundTrip("rt_zero_listmap", "s", empty, next).getSections().get(0).getBlocks();
+
+        // Then
+        assertThat(blocks.size(), is(2));
+        ListMapBlock first = (ListMapBlock) blocks.get(0);
+        assertThat(first.getIdentifier(), is("EMPTY_LM"));
+        assertThat(first.getColumnNames(), is(Arrays.asList("[EMPTY]")));
+        assertThat(first.getRows().isEmpty(), is(true));
+        ListMapBlock second = (ListMapBlock) blocks.get(1);
+        assertThat(second.getIdentifier(), is("NEXT_LM"));
+        assertThat(second.getColumnNames(), is(Arrays.asList("K")));
+        assertThat(second.getRows().get(0), is(Arrays.asList("v1")));
+    }
+
+    /**
+     * Given: null セルと空文字セルを持つテーブル。
+     * When : 書き出し → 実 Reader で読み戻し。
+     * Then : null は null のまま、空文字 {@code ""} は空文字のまま戻る。
+     *
+     * <p>
+     * 書きは Java の {@code null} を {@code null} 記法のセルへ写し、読みはそれを Java の {@code null} へ
+     * 戻す（記法は⇄値の対称な写像）。かつては読み戻しが文字列 {@code "null"} になる非可逆があったが、
+     * 読みに {@code NullInterpreter} を掛けたことで解消している。
+     * </p>
+     */
+    @Test
+    public void roundTripsNullCellAsJavaNull() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("A", "B"), Collections.singletonList(row(null, "")));
+
+        // When
+        TestDataBlock read = roundTrip("rt_null", "s", table).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        TableDataBlock actual = (TableDataBlock) read;
+        // null → null 記法を書く → 読み戻しも Java の null
+        assertThat(actual.getRows().get(0).get(0), is(nullValue()));
+        // "" は空文字のまま
+        assertThat(actual.getRows().get(0).get(1), is(""));
+    }
+
+    /**
+     * Given: LIST_MAP ブロック。
+     * When : 往復。
+     * Then : 列順・値が一致。
+     */
+    @Test
+    public void roundTripsListMap() {
+        // Given
+        ListMapBlock listMap = new ListMapBlock("", "result",
+                row("ID", "NAME"), Arrays.asList(row("${id}", ""), row("2", "bob")));
+
+        // When
+        TestDataBlock read = roundTrip("rt_listmap", "s", listMap).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        ListMapBlock actual = (ListMapBlock) read;
+        assertThat(actual.getIdentifier(), is("result"));
+        assertThat(actual.getColumnNames(), is(Arrays.asList("ID", "NAME")));
+        assertThat(actual.getRows().get(0), is(Arrays.asList("${id}", "")));
+        assertThat(actual.getRows().get(1), is(Arrays.asList("2", "bob")));
+    }
+
+    /**
+     * Given: 固定長ファイル（型・長さ・{@code -} 含む）。
+     * When : 往復。
+     * Then : レコード種別・型記法・長さ（{@code -} 含む）・値が原文どおり。
+     */
+    @Test
+    public void roundTripsFixedFile() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("f1", "半角英字", "-"), new FieldDef("f2", "半角英字", "5")),
+                Collections.singletonList(row("abcd", "xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "test.dat", map("text-encoding", "UTF-8"),
+                Collections.singletonList(record));
+
+        // When
+        TestDataBlock read = roundTrip("rt_fixed", "s", file).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        FileDataBlock actual = (FileDataBlock) read;
+        assertThat(actual.getIdentifier(), is("test.dat"));
+        assertThat(actual.getFileType(), is(FileDataBlock.FileType.FIXED));
+        RecordLayout rec = actual.getRecords().get(0);
+        assertThat(rec.getRecordType(), is("data"));
+        assertThat(rec.getFields().get(0).getType(), is("半角英字"));
+        assertThat(rec.getFields().get(0).getLength(), is("-"));
+        assertThat(rec.getFields().get(1).getLength(), is("5"));
+        assertThat(rec.getRows().get(0), is(Arrays.asList("abcd", "xy")));
+    }
+
+    /**
+     * Given: 2 レコードレイアウト（種別非空）を持つ固定長ファイル。
+     * When : 往復。
+     * Then : 2 レコードが各レコード種別・フィールド・値のまま分割復元される
+     *        （番人が弾かない正常側の境界＝複数レコード版面の対称性を実 Reader で固定）。
+     */
+    @Test
+    public void roundTripsMultipleRecordLayouts() {
+        // Given
+        RecordLayout header = new RecordLayout("header",
+                Collections.singletonList(new FieldDef("h1", "半角英字", "5")),
+                Collections.singletonList(row("AAAAA")));
+        RecordLayout data = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("d1", "半角英字", "2")),
+                Collections.singletonList(row("xy")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "multi.dat", map(),
+                Arrays.asList(header, data));
+
+        // When
+        TestDataBlock read = roundTrip("rt_multi", "s", file).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        FileDataBlock actual = (FileDataBlock) read;
+        assertThat(actual.getRecords().size(), is(2));
+        assertThat(actual.getRecords().get(0).getRecordType(), is("header"));
+        assertThat(actual.getRecords().get(0).getRows().get(0), is(Arrays.asList("AAAAA")));
+        assertThat(actual.getRecords().get(1).getRecordType(), is("data"));
+        assertThat(actual.getRecords().get(1).getRows().get(0), is(Arrays.asList("xy")));
+    }
+
+    /**
+     * Given: 可変長ファイル（長さなし）。
+     * When : 往復。
+     * Then : 長さは省略（null）。
+     */
+    @Test
+    public void roundTripsVariableFile() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f1", "半角英字", null)),
+                Collections.singletonList(row("${v}")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "in.csv", map(),
+                Collections.singletonList(record));
+
+        // When
+        TestDataBlock read = roundTrip("rt_var", "s", file).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        FileDataBlock actual = (FileDataBlock) read;
+        assertThat(actual.getFileType(), is(FileDataBlock.FileType.VARIABLE));
+        RecordLayout rec = actual.getRecords().get(0);
+        assertThat(rec.getFields().get(0).getLength(), is(nullValue()));
+        assertThat(rec.getRows().get(0), is(Arrays.asList("${v}")));
+    }
+
+    /**
+     * Given: FW 制御ヘッダ＋本文の MESSAGE。
+     * When : 往復。
+     * Then : FW ヘッダ・本文レコードが記法のまま一致。
+     */
+    @Test
+    public void roundTripsMessage() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("body1", "半角英字", "10"), new FieldDef("body2", "半角英字", "5")),
+                Collections.singletonList(row("${b}", "xyz")));
+        MessageDataBlock message = new MessageDataBlock(DataType.MESSAGE, "", "msg1",
+                map(), map("requestId", "${rid}"), Collections.singletonList(record));
+
+        // When
+        TestDataBlock read = roundTrip("rt_msg", "s", message).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        MessageDataBlock actual = (MessageDataBlock) read;
+        assertThat(actual.getDataType(), is(DataType.MESSAGE));
+        assertThat(actual.getIdentifier(), is("msg1"));
+        assertThat(actual.getFwHeaderFields().get("requestId"), is("${rid}"));
+        RecordLayout rec = actual.getRecords().get(0);
+        assertThat(rec.getFields().get(0).getName(), is("body1"));
+        assertThat(rec.getRows().get(0), is(Arrays.asList("${b}", "xyz")));
+    }
+
+    /**
+     * Given: 送信系（no 列）。
+     * When : 往復。
+     * Then : データタイプ・グループ ID・本文値（no を除く）が一致。FW ヘッダは空。
+     */
+    @Test
+    public void roundTripsSendSyncMessage() {
+        // Given
+        RecordLayout record = new RecordLayout("no",
+                Arrays.asList(new FieldDef("requestId", "半角", "20"), new FieldDef("resendFlag", "半角", "1")),
+                Collections.singletonList(row("RM21AA0104_01", "0")));
+        MessageDataBlock message = new MessageDataBlock(DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
+                "case1", "RM21AA0104_01", map(), map(), Collections.singletonList(record));
+
+        // When
+        TestDataBlock read = roundTrip("rt_sendsync", "s", message).getSections().get(0).getBlocks().get(0);
+
+        // Then
+        MessageDataBlock actual = (MessageDataBlock) read;
+        assertThat(actual.getDataType(), is(DataType.EXPECTED_REQUEST_HEADER_MESSAGES));
+        assertThat(actual.getGroupId(), is("case1"));
+        assertThat(actual.getIdentifier(), is("RM21AA0104_01"));
+        assertTrue(actual.getFwHeaderFields().isEmpty());
+        RecordLayout rec = actual.getRecords().get(0);
+        List<String> fieldNames = new ArrayList<String>();
+        for (FieldDef f : rec.getFields()) {
+            fieldNames.add(f.getName());
+        }
+        assertThat(fieldNames, is(Arrays.asList("requestId", "resendFlag")));
+        assertThat(rec.getRows().get(0), is(Arrays.asList("RM21AA0104_01", "0")));
+    }
+    /**
+     * Given: 前後を同じダブルクォートで囲んだ値と、片側だけがダブルクォートの値。
+     * When : 書き出す。
+     * Then : 前後が同じダブルクォートで囲まれている値だけが、さらに半角ダブルクォートで囲まれて書かれる。
+     *
+     * <p>
+     * 本体の {@code QuotationTrimmer} は先頭と末尾が同じダブルクォート（半角 {@code "} または
+     * 全角 {@code ”}）のときに外側 1 組を外す。囲まずに書くとその 1 組が読み戻しで失われるため、
+     * 書き側で 1 組足す。片側だけがダブルクォートの値は {@code QuotationTrimmer} が触らないので足さない。
+     * </p>
+     *
+     * <p>担保：{@code isQuotationWrapped} の全角側 2 分岐と、半角側の「先頭だけ一致」側。</p>
+     */
+    @Test
+    public void wrapsOnlyValuesQuotedOnBothEnds() {
+        // Given —— 列の並びは辞書順とずらす
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                row("Z_FULL_BOTH", "A_FULL_HEAD", "M_HALF_HEAD", "B_HALF_BOTH"),
+                Collections.singletonList(row("\u201dab\u201d", "\u201dab", "\"ab", "\"ab\"")));
+
+        // When
+        Sheet sheet = onlySheet(build(container("quote_wrap", "s", table)), "s");
+
+        // Then —— 0 行目はマーカー行、1 行目がカラム名行、2 行目がデータ行
+        assertThat(cell(sheet, 0, 0), is("SETUP_TABLE=T"));
+        assertThat(line(sheet, 1),
+                is(Arrays.asList("Z_FULL_BOTH", "A_FULL_HEAD", "M_HALF_HEAD", "B_HALF_BOTH")));
+        assertThat(line(sheet, 2), is(Arrays.asList(
+                "\"\u201dab\u201d\"",   // 全角で前後を囲んだ値 → さらに半角で囲む
+                "\u201dab",            // 全角が先頭だけ → 囲まない
+                "\"ab",             // 半角が先頭だけ → 囲まない
+                "\"\"ab\"\"")));      // 半角で前後を囲んだ値 → さらに半角で囲む
+    }
+    /**
+     * Given: フィールドを持つが、セルを 1 つも持たないデータ行を含む固定長ファイル。
+     * When : 書き出す。
+     * Then : 空文字記法（{@code ""}）を書き込む先が無いため何も足さず、マーカーカラムと
+     *        版面幅ぶんの空セルだけの行を書く。
+     *
+     * <p>
+     * 記法はデータ行のセル数がフィールド数以下であることだけを求める（{@code RecordLayout} の
+     * {@code requireRowsNotLongerThan}）ため、セル 0 個の行は中間モデルとして正しい。
+     * 「全フィールドが空文字なら先頭へ空文字記法を書く」処理は、書き込む先が無い行には掛からない。
+     * </p>
+     *
+     * <p>担保：全空判定の前段にある「セルを 1 つも持たない」側。</p>
+     */
+    @Test
+    public void writesFileDataRowWithNoCellsAsMarkerColumnOnly() {
+        // Given
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("ZF", "半角英字", "2")),
+                Arrays.asList(Collections.<String>emptyList()));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat",
+                map("text-encoding", "UTF-8"), Collections.singletonList(record));
+
+        // When
+        Sheet sheet = onlySheet(build(container("empty_row", "s", file)), "s");
+
+        // Then —— データ行は先頭のマーカーカラムだけ（空文字記法 "" は足さない）
+        assertThat(cell(sheet, 0, 0), is("SETUP_FIXED=t.dat"));
+        assertThat(line(sheet, 2), is(Arrays.asList("data", "ZF")));
+        assertThat(line(sheet, 3), is(Arrays.asList("", "半角英字")));
+        assertThat(line(sheet, 4), is(Arrays.asList("", "2")));
+        // データ行はマーカーカラム＋版面幅ぶんの空セルだけ。空文字記法 "" は書かれない
+        assertThat(line(sheet, 5), is(Arrays.asList("", "")));
+        assertThat(sheet.getLastRowNum(), is(5));
+    }
+}
