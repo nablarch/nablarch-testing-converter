@@ -129,6 +129,12 @@ public class XlsFormatReader implements TestDataFormatReader {
                 if (processed.add(batchKey(type, header.getGroupId()))) {
                     blocks.addAll(readSendSyncBlocks(basePath, resourceName, header.getGroupId(), type));
                 }
+            } else {
+                // 到達しない。readHeaders はマーカー行から取れた DataType だけを返し DataType.DEFAULT は
+                // 返さないため、ここへ届くのは残る 13 種であり、上の 5 分岐がその 13 種を尽くしている。
+                // それでも残すのは、DataType に値が増えたとき、その種別のブロックが黙って変換結果から
+                // 欠落するのを防ぎ、その場で検出するための安全網としてである。
+                throw new IllegalStateException("unhandled DataType: " + type);
             }
         }
         TestDataSection section = new TestDataSection(sheetName(resourceName), blocks);
