@@ -2089,14 +2089,42 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+### #48: カバレッジ基準（未達0）の適用
+
+**Purpose**: 指示書 `ntf-step4-09-converter-coverage.md`（`nablarch-document@origin/ntf-yaml-support`）
+の基準「C0（行）・C1（分岐）の未達は 0」を適用する。未達 1 件ごとに (a) テスト不足 ／ (b) 不要な実装 ／
+(c) 到達不能 を判断し、(a) はテスト追加、(b) は削除、(c) は報告して止まる（コメントは入れない）。
+
+**Prerequisites**: #47
+
+**Steps**:
+
+- [ ] HEAD（`a5f006c`）で計測し、`jacoco.xml` から未達行・未達分岐を機械抽出する
+- [ ] 未達全件を (a)(b)(c) に分類し、根拠を書く
+- [ ] (a) のテストを追加し、1 件ずつ変異で落ちることを実測する
+- [ ] (b) を削除する（削除前に `git grep -n` で呼び出し側を全走査）
+- [ ] 再測定し、残る未達が (c) の一覧と完全一致することを確認する
+- [ ] `checks/task-48.md` に分類・変異・grep・測定ログを記録する
+
+**Completion criteria**:
+
+- 未達全件に (a)(b)(c) の分類と根拠がある
+- (a) は全件テスト追加済みで、再測定で当該未達が消え、実装を壊すと落ちることが 1 件ずつ記録されている
+- (b) は全件削除済みで、呼び出し側全走査の grep 結果がある
+- 再測定で残る未達が (c) の一覧と完全一致し、(c) 全件に「テストで実現できない理由」がある
+- `mvn -o clean test` 全件緑・`@Ignore` 0 件・`git status --short` 空
+- `git grep -rn "nablarch-document\|\.rst" src/` が 0 件
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-08-30
-- **Last completed**: **#47 が承認された（指示書 §10・2026-08-30）。converter の Step 4 第2回はこれで完了で、追加タスクは無い。** 承認の内容と開示 3 件の判定は Decisions「第2回の承認（2026-08-30）」
-- **Next**: **無し。** steering の未チェックタスクは 0 件。次の指示が来るまで着手するものは無い
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は `Tests run: 682, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` 0 件
+- **Status**: not suspended
+- **Date**: -
+- **Last completed**: -
+- **Next**: -
+- **Notes**: -
