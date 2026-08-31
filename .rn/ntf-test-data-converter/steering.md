@@ -2168,8 +2168,14 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: not suspended
-- **Date**: -
-- **Last completed**: -
-- **Next**: -
-- **Notes**: -
+- **Status**: paused
+- **Date**: 2026-08-31
+- **Last completed**: **#49（(c) 判定を受けた第2ラウンド）を実施し `4462b34` で push した。判定はまだ受けていない。**
+  C6 の `else` 節（`throw` 1 文）と (c) 全箇所の理由コメント。正は `checks/task-49.md`
+- **Next**: **#49 の判定待ち。** steering の未チェックタスクは 0 件。判定が出るまで着手するものは無い。
+  差し戻しなら直す先はコメント文面（実行文は C6 の `throw` 1 文だけ）
+- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。`mvn -o clean test` は
+  `Tests run: 710, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。`@Ignore` アノテーション 0 件。
+  未達は 30 行／8 分岐で、内訳は (c) の 29 行 ＋ 新設 `throw` 1 行（`checks/task-49.md` §3 の対応表）。
+  **`ConverterFileFilterTest` の 2 件（`findXlsFilesWrapsWalkFailure` ／ `findYamlDirsWrapsWalkFailure`）は
+  POSIX 権限（`chmod 000`）に依存する。** root 実行や権限を持たないファイルシステムでは前提が崩れる
