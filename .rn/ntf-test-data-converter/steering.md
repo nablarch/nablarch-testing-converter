@@ -2512,6 +2512,22 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 
 ---
 
+### #55・#57 の承認（2026-09-07）
+
+**`#55`（`ntf-step4-14` §3。`878ef9a`）と `#57`（`ntf-step4-18` §3。`223f954`）は、
+ディレクター（`ntf-doc-renewal-b5`）が 2026-09-07 に併せて承認した。**
+
+根拠はディレクター自身の実測である。converter を `223f954` で scratchpad へ clone し
+（`src` は `878ef9a` と差分なし）、yaml `a404126` を複製リポジトリへ install して
+`mvn clean test` を実行し、**732 件・Failures 0・Errors 0** を得た。あわせて jar 内スキーマに
+`$defs.record_fragment.properties.rows` の `minItems` が無いこと、ディレクティブ 7 キーの `type` が
+`["integer","string"]`／`["boolean","string"]` であることも確認している。
+
+`#55` は「全件緑になるまで承認保留」だったが、赤 6 件が yaml `#51`（`a404126`）で解消し、
+`#57` で converter 側の変更なしに全件緑となったことで保留が解けた。
+
+---
+
 # State
 
 (written by /rn:dn, read and reset to this placeholder by /rn:up. `Status` is `paused` while a
@@ -2520,15 +2536,12 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-09-07
-- **Last completed**: **#57（指示書 `ntf-step4-18` §3。yaml `#51` への追随）まで完了。**
-  yaml `feature/ntf-yaml@a404126` を `~/.m2` へ install し、jar 内スキーマに
-  `record_fragment.rows` の `minItems` が無いこと・ディレクティブ 7 つの `type` に `string` が
-  入ったことを確認した。**converter はソースを 1 行も変えずに `mvn clean test` 732 件全緑。**
-  `#55` で残っていた赤 6 件はすべて解消した。ディレクター（`ntf-doc-renewal-b5`）へ報告済み
-- **Next**: **承認待ち 1 件。着手できるものは無い。** `#55`（`878ef9a`）と `#57` の承認を
-  ディレクターが併せて出す（指示書 `ntf-step4-18` §3-3）。`#56` が挙げた 2 件目の GAP
-  （`record-length` が string で出る）は `#51` の 1-B で解消したため、判断待ちから外れた
-- **Notes**: branch `ntf-test-data-converter`（`8e4410c` の後に `#57` の記録コミット。`origin` と一致）。
+- **Last completed**: **#57（指示書 `ntf-step4-18` §3。yaml `#51` への追随）まで完了し、
+  `#55` と `#57` はディレクター（`ntf-doc-renewal-b5`）が 2026-09-07 に承認した**（根拠は
+  上の「#55・#57 の承認」節）。converter はソースを 1 行も変えずに `mvn clean test` 732 件全緑で、
+  `#55` で残っていた赤 6 件はすべて yaml `#51`（`a404126`）で解消した
+- **Next**: **未完了タスク 0 件。承認待ちも無い。**次の指示を待つ
+- **Notes**: branch `ntf-test-data-converter`（`origin` と一致）。
   `mvn clean test` は `Tests run: 732, Failures: 0, Errors: 0`。`~/.m2` の
   `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@a404126` からビルド
   （`mvn -DskipTests install` は jacoco 計装済みクラスが `target/` に残っていると失敗する。`clean` を付ける）。
