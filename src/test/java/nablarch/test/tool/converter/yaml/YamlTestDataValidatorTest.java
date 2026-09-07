@@ -9,11 +9,15 @@ import org.junit.rules.TemporaryFolder;
 import org.snakeyaml.engine.v2.api.Load;
 import org.snakeyaml.engine.v2.api.LoadSettings;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -769,6 +774,40 @@ public class YamlTestDataValidatorTest {
     }
 
     // =========================================================================
+    // サイズ上限が無いこと
+    // =========================================================================
+
+    /**
+     * [Given] snakeyaml-engine の既定のコードポイント上限（3,145,728 code points）を超える
+     *         schema 適合の YAML ファイル 1 件
+     * [When]  validate
+     * [Then]  エラーが 1 件も報告されない
+     *
+     * <p>何を担保するか: テストデータはプロジェクトが自分で書くローカルファイルであり、
+     * NTF がサイズ上限を掛ける理由が無い。上限が残っていると、YAML 解析では
+     * {@code [V-YAML] YAML 解析エラー: The incoming YAML document exceeds the limit} で、
+     * スキーマ検証（networknt が内部で使う別パーサ）では
+     * {@code [V-SCH] スキーマ検証エラー: Invalid input} で落ちる。</p>
+     */
+    @Test
+    public void largeYaml_exceedingDefaultCodePointLimit_reportsNoError() throws Exception {
+        // Given
+        Path dir = newCaseDir();
+        File yamlFile = new File(dir.toFile(), "big.yaml");
+        writeLargeTestShotsYaml(yamlFile, 100000);
+        assertThat("生成した YAML が既定上限 3,145,728 code points を超えていること",
+                countCodePoints(yamlFile), greaterThan(3145728L));
+        assertThat("生成した YAML のファイルサイズ（バイト）が 3,145,728 を超えていること",
+                Files.size(yamlFile.toPath()), greaterThan(3145728L));
+
+        // When
+        List<ValidationError> errors = sut.validate(dir);
+
+        // Then
+        assertThat(errors.toString(), errors.size(), is(0));
+    }
+
+    // =========================================================================
     // ヘルパー
     // =========================================================================
 
@@ -793,5 +832,37 @@ public class YamlTestDataValidatorTest {
 
     private static List<ValidationError> rulesOf(List<ValidationError> errors, String tag) {
         return errors.stream().filter(e -> e.getMessage().contains(tag)).collect(Collectors.toList());
+    }
+
+    /**
+     * {@code list_maps}（{@code id: testShots}）だけを持つ、既定のコードポイント上限を超える
+     * YAML ファイルを書き出す。
+     *
+     * @param yamlFile 書き出し先ファイル
+     * @param rowCount rows の件数
+     */
+    private static void writeLargeTestShotsYaml(File yamlFile, int rowCount) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(yamlFile.toPath(), StandardCharsets.UTF_8)) {
+            writer.write("list_maps:\n  - id: testShots\n    rows:\n");
+            for (int i = 1; i <= rowCount; i++) {
+                writer.write("      - no: \"" + i + "\"\n"
+                        + "        description: \"テストケース " + i + " の説明\"\n"
+                        + "        value: \"value-" + i + "\"\n");
+            }
+        }
+    }
+
+    /** 生成済みファイルを読み直して code point 数を数える。 */
+    private static long countCodePoints(File yamlFile) throws IOException {
+        long count = 0;
+        try (Reader reader = Files.newBufferedReader(yamlFile.toPath(), StandardCharsets.UTF_8)) {
+            int c;
+            while ((c = reader.read()) != -1) {
+                if (!Character.isHighSurrogate((char) c)) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 }

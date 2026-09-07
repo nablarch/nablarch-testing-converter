@@ -655,6 +655,80 @@ force push・`--amend` をしない。
 
 ---
 
+### #55: YAML テストデータの 3MB 上限の撤廃（指示書 `ntf-step4-14` §3）
+
+**Purpose**: 3MB を超える YAML テストデータが読めない。原因は snakeyaml-engine の既定値
+「1 文書 3,145,728 code points」を NTF がそのまま使っていること。テストデータはプロジェクトが
+自分で書くローカルファイルであり、NTF がサイズ上限を掛ける理由が無い。converter 側の 2 箇所
+（`YamlTestDataValidator.parseYaml` の `LoadSettings`／`schema.validate(yamlText, InputFormat.YAML)`）
+から上限を外し、YAML を読むパーサを 1 つに揃える。
+
+**由来**: 指示書 `/home/tie303177/work/cowork/nablarch/ntf-doc-renewal/指示/ntf-step4-14-yaml-code-point-limit.md` §3。
+yaml 側は `nablarch-testing-yaml@e984103`（`YamlLoader.loadSettings()` を追加）で完了済み。
+
+**Prerequisites**: yaml 側 `e984103` の `mvn -DskipTests install`
+（本タスクでは `feature/ntf-yaml@c8180f2`＝`e984103` の直後の docs コミットからビルドした）
+
+**Steps**:
+
+- [x] yaml を pull し `mvn clean -DskipTests install`（`~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` を更新）
+- [x] 3MB 超の YAML を `validate(Path)` に通してエラー 0 件を期待するテストを先に書き、落ちることを確認する
+- [x] `parseYaml` だけを直した中間状態でも落ちることを確認する（3 箇所目が別パーサである証拠）
+- [x] `parseYaml` の `LoadSettings` を `YamlLoader.loadSettings()` へ置き換える
+- [x] `schema.validate(yamlText, InputFormat.YAML)` をやめ、`parseYaml` の `Map` を
+      `ObjectMapper.valueToTree` で `JsonNode` にして `schema.validate(jsonNode)` に渡す
+- [x] `:158-163` のコメント（「networknt が内部で使う parser より厳しいため」）を前提の変化に合わせて書き直す
+- [x] `parseYaml` が `null` を返す入力（トップレベルが Map でない）の扱いが変わっていないことを既存テストで確認する
+
+**検証（実測）**:
+
+- RED 第1段（無修正）:
+  `[V-YAML] YAML 解析エラー: The incoming YAML document exceeds the limit: 3145728 code points.`
+  → `Expected: is <0> but: was <1>`
+- RED 第2段（`parseYaml` だけ修正）:
+  `[V-SCH] スキーマ検証エラー: Invalid input` → `Expected: is <0> but: was <1>`
+- GREEN（両方修正）:
+  `mvn clean test -Dtest=YamlTestDataValidatorTest#largeYaml_exceedingDefaultCodePointLimit_reportsNoError`
+  → `Tests run: 1, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`
+- 全件: `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test`
+  → `Tests run: 732, Failures: 4, Errors: 2, Skipped: 0`
+
+**未達 —— 全件緑にならない（本タスクとは別原因）**:
+
+本タスクの差分を `git stash` して同じコマンドを打つと `Tests run: 731, Failures: 4, Errors: 2` で、
+**落ちる 6 件は本タスクの前後で完全に同じ**である。原因は yaml 側スキーマの
+`$defs.record_fragment.properties.rows.minItems: 1`（`nablarch-testing-yaml@f3620fc`
+`feat: YAML スキーマに rows の minItems とディレクティブの型別限定を入れる`）で、
+converter 側に `rows: []` を持つテスト／フィクスチャが残っているため。
+
+- `SampleConversionTest#convertsClimanSampleIncludingZeroRowTable` —
+  `$.expected_files[2].records[0].rows: 少なくとも 1 個の項目が必要ですが、0 が見つかりました`
+- `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows` — 同上
+- `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` —
+  `Expected: is <[minItems]> but: was <[minItems, minItems]>`
+- `YamlTestDataValidatorTest#vdkey_noDirectivesSection_noError` ／
+  `#vfname_duplicateInSameFragment_reportsError` ／ `#vfname_duplicateInSameFragment_variable_reportsError`
+  —— いずれもフィクスチャが `rows: []`
+
+`f3620fc` は指示書がピンに挙げた `d50ee2b` の先祖であり（`git merge-base --is-ancestor f3620fc d50ee2b` が 0）、
+`e984103` はスキーマを変更していない（`git show e984103 --stat` は steering・`YamlLoader.java`・
+`YamlLoaderTest.java` の 3 ファイルのみ）。よって本タスクにも §2 の 3MB 撤廃にも由来しない。
+State の「731 件 全緑」は、`f3620fc` より前に `~/.m2` へ入っていた yaml jar に対する記録である。
+**是正は指示書 §3 の範囲外**（converter のフィクスチャを直すか yaml のスキーマを戻すかの方針判断が要る）
+のため着手していない。
+
+**Completion criteria**:
+
+- 3MB 超の YAML で `validate(Path)` が空リストを返す
+- `LoadSettings` の組み立てが `YamlLoader.loadSettings()` の 1 箇所に集約されている
+- networknt への入力が YAML 文字列でなく `JsonNode` である
+- `git status --short` 空・push 済み
+
+**タスク番号について**: 指示書は `#50` として記録するよう書いているが、converter の steering では
+`#50`〜`#54` が既出のため `#55` を割り当てた。
+
+---
+
 # Decisions
 
 ## ビルド環境
@@ -2339,15 +2413,16 @@ session is suspended — the signal /rn:up and /rn:dn search for — and resets 
 so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
-- **Date**: 2026-08-31
-- **Last completed**: **#54（締め）まで完了。**解説書 #54（カラム名の行がマーカーカラムだけの
-  データブロックはマーカーカラムとその値を保つ）への追随はこれで全部終わり、報告も出した。
-  報告の正は `checks/step4-54-report.md`
-- **Next**: **無し。** steering の未チェックタスクは 0 件。ディレクター側の独立再実行と
-  integration 再検証の結果を待つ状態で、次の指示が来るまで着手するものは無い
-- **Notes**: branch `ntf-test-data-converter`（push 済み・`origin` と一致）。
-  `mvn clean test` は `Tests run: 731, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`。
-  `@Ignore` アノテーション 0 件。未達 30 行／8 分岐は #49 で承認済みの到達不能箇所と完全一致で、
-  本是正が持ち込んだ未達は 0 件。マージ可否の判断は出さない（Rules）。判断は調整側（ユーザー）が出す。
-  **持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の
-  `build` ＋3 の出所が未確認。**`handover.md` の提出タイミングは調整側の判断**であり、こちらからは出さない
+- **Date**: 2026-09-07
+- **Last completed**: **#55（指示書 `ntf-step4-14` §3 —— YAML テストデータの 3MB 上限の撤廃）まで完了。**
+  `YamlTestDataValidator` から上限を外し、YAML を読むパーサを `parseYaml` の 1 つに揃えた。
+  RED（2 段階）→ GREEN を実測済み。詳細は steering の #55
+- **Next**: **未決 1 件 —— yaml スキーマの `rows.minItems: 1`（`nablarch-testing-yaml@f3620fc`）に
+  converter が追随していない。** `mvn clean test` は `Tests run: 732, Failures: 4, Errors: 2`。
+  落ちる 6 件は #55 の差分を stash しても同じで、原因は converter 側に残る `rows: []` の
+  テスト／フィクスチャ。是正は指示書 §3 の範囲外のため未着手。converter のフィクスチャを直すか
+  yaml のスキーマを戻すかは調整側の判断
+- **Notes**: branch `ntf-test-data-converter`（push 済み）。`~/.m2` の
+  `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@c8180f2`（`e984103` の直後）からビルド。
+  `@Ignore` 0 件。**持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest`
+  内訳の `build` ＋3 の出所が未確認

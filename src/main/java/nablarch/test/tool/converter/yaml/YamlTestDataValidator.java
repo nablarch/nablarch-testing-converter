@@ -1,12 +1,14 @@
 package nablarch.test.tool.converter.yaml;
 
-import com.networknt.schema.InputFormat;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
+import nablarch.test.core.reader.yaml.YamlLoader;
 import org.snakeyaml.engine.v2.api.Load;
-import org.snakeyaml.engine.v2.api.LoadSettings;
 import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
 
 import java.io.File;
@@ -53,6 +55,9 @@ public class YamlTestDataValidator {
     private static final String SCHEMA_RESOURCE = "/nablarch/test/ntf-testdata-yaml-schema.json";
 
     private static final JsonSchema JSON_SCHEMA;
+
+    /** 解析済みの YAML（Map）を JSON スキーマ検証に渡す {@link JsonNode} へ変換するための ObjectMapper。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
         // 以下の失敗経路 2 つ（in == null ／ IOException）は到達しない。SCHEMA_RESOURCE は依存の
@@ -148,17 +153,19 @@ public class YamlTestDataValidator {
             return errors;
         }
 
-        // V-SCH: スキーマ適合検証（解析済みのため安全。parser 差異による例外も握って報告に変える）
+        // V-SCH: スキーマ適合検証（解析済みのため安全。検証器が送出する例外も握って報告に変える）
         try {
-            for (ValidationMessage schemaError : schema.validate(yamlText, InputFormat.YAML)) {
+            JsonNode jsonNode = (yaml == null) ? NullNode.getInstance() : OBJECT_MAPPER.valueToTree(yaml);
+            for (ValidationMessage schemaError : schema.validate(jsonNode)) {
                 errors.add(new ValidationError(filePath,
                         schemaError.getInstanceLocation().toString(),
                         "[V-SCH] スキーマ非適合: " + schemaError.getMessage()));
             }
         } catch (RuntimeException e) {
-            // 到達しない。schema.validate へ届くのは直前の parseYaml を通った入力だけであり、parseYaml が
-            // 使う snakeyaml-engine は networknt が内部で使う parser より厳しいため、壊れた入力は手前で
-            // [V-YAML] として捕まる。それでも残すのは、リンタは全ファイルを走査し切ることが役目であり、
+            // 到達しない。検証へ届くのは直前の parseYaml を通った入力だけであり、壊れた入力は手前で
+            // [V-YAML] として捕まる。YAML テキストを読むのは parseYaml の 1 箇所だけであり、ここは
+            // その結果の Map を JsonNode に写して渡すため、YAML の解析はもう起こらない。
+            // それでも catch を残すのは、リンタは全ファイルを走査し切ることが役目であり、
             // 検証器が送出しうる非チェック例外で途中停止すると残りのファイルが検査されないためである。
             errors.add(new ValidationError(filePath, "", "[V-SCH] スキーマ検証エラー: " + e.getMessage()));
         }
@@ -268,12 +275,14 @@ public class YamlTestDataValidator {
     /**
      * YAML テキストを解析しトップレベル Map を返す。Map でない場合は {@code null}。
      *
+     * <p>読み込み設定は {@link YamlLoader#loadSettings()} を使う。テストデータを読むパーサと
+     * その設定（重複キー禁止・サイズ上限なし）を NTF 全体で 1 箇所に揃えるためである。</p>
+     *
      * @throws YamlEngineException 不正構文・キー重複（呼び出し側が報告に変換する）
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseYaml(String yamlText) {
-        LoadSettings settings = LoadSettings.builder().setAllowDuplicateKeys(false).build();
-        Object loaded = new Load(settings).loadFromString(yamlText);
+        Object loaded = new Load(YamlLoader.loadSettings()).loadFromString(yamlText);
         return (loaded instanceof Map) ? (Map<String, Object>) loaded : null;
     }
 
