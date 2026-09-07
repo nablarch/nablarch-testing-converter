@@ -729,6 +729,51 @@ State の「731 件 全緑」は、`f3620fc` より前に `~/.m2` へ入って�
 
 ---
 
+### #56: ヘッダ行だけの電文ブロック・ファイルブロックの `rows: []` を yaml が拒否する件 —— 調査と案（実装なし）
+
+**Purpose**: `ntf-step4-14` §3（`878ef9a`）で残った赤 6 件と、解説書 `#97` 申し送り (k) は同じ論点である。
+Excel でカラム名の行だけ書いてデータ行を 0 にしたブロックを、変換ツールは `rows: []` で出すが
+yaml のスキーマが `record_fragment.rows` の `minItems: 1` で拒否する。利用者から見た仕様を実測で確かめ、
+案を出して止まる。
+
+**由来**: 指示書 `/home/tie303177/work/cowork/nablarch/ntf-doc-renewal/指示/ntf-step4-17-converter-empty-message-rows.md`（§5 の追記を含む）
+
+**Prerequisites**: #55
+
+**Steps**:
+
+- [x] 本体 `ae989ec` の Excel 経路で、ヘッダ行だけのブロックがどう読まれ検証でどう使われるかを `file:line` で示す
+- [x] 変換ツールが `rows: []` を出す箇所と、yaml が `minItems` を課す箇所を `file:line@hash` で示す
+- [x] scratchpad で (a) 本体で直接読む (b) 変換する (c) yaml に読ませる を実測する
+- [x] `#97` で手で外したブロックが解説書のどこに当たるかを特定する
+- [x] ①〜⑥を電文ブロックとファイルブロックの両方について埋め、⑤に案・根拠・影響範囲と推奨 1 つを出す
+
+**結論（正は `checks/task-56.md`）**:
+
+- **③は不具合。**ヘッダ行だけのブロックには本体が意味を与えており（電文: フォーマッタの供給と
+  「0 通送信」の検証／ファイル: レコードレイアウトを保った 0 行）、`records: []` はレコード定義を
+  捨てるため代替にならない。電文では `records: []` はスキーマ自体が拒否する。
+  **指示書 §5-2 の除外条件（実測で示せた場合だけ GAP にしてよい）に当たる**
+- **推奨は案A**: yaml スキーマの `record_fragment.rows` から `minItems: 1` を外し、
+  `rows: []` を「データ行 0 件」と定義する。`records: []`（0 バイトの空ファイル）とは別物として両方残す。
+  **converter の `src/main` は 1 行も変えなくてよい。**赤 6 件のうち 5 件は案A で緑に戻り、
+  直すのは `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty` の
+  期待値 1 箇所だけ
+- **`minItems: 1` は user 確定（2026-08-31・`.rn/ntf-yaml/steering.md` `#49` Steps A）であり、
+  覆すには user の再判断が要る**
+- **別件で 2 件目の GAP を見つけた**: 変換ツールは `record-length` を `"10"` と文字列で出すが、
+  スキーマは integer を要求する。`record-length` を持つ固定長 Excel は `rows` を直しても読めない。
+  `ntf-step4-17` の射程外。扱いの判断待ち
+
+**Completion criteria**:
+
+- ①〜⑥が電文ブロックとファイルブロックの両方について埋まっている
+- (a)(b)(c) の実測結果が貼られている
+- ⑤に案・根拠・影響範囲が並び、推奨が 1 つ示されている
+- ソースを変更していない・`~/.m2` に install していない・解説書を変更していない
+
+---
+
 # Decisions
 
 ## ビルド環境
@@ -2414,15 +2459,14 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-09-07
-- **Last completed**: **#55（指示書 `ntf-step4-14` §3 —— YAML テストデータの 3MB 上限の撤廃）まで完了。**
-  `YamlTestDataValidator` から上限を外し、YAML を読むパーサを `parseYaml` の 1 つに揃えた。
-  RED（2 段階）→ GREEN を実測済み。詳細は steering の #55
-- **Next**: **未決 1 件 —— yaml スキーマの `rows.minItems: 1`（`nablarch-testing-yaml@f3620fc`）に
-  converter が追随していない。** `mvn clean test` は `Tests run: 732, Failures: 4, Errors: 2`。
-  落ちる 6 件は #55 の差分を stash しても同じで、原因は converter 側に残る `rows: []` の
-  テスト／フィクスチャ。是正は指示書 §3 の範囲外のため未着手。converter のフィクスチャを直すか
-  yaml のスキーマを戻すかは調整側の判断
-- **Notes**: branch `ntf-test-data-converter`（push 済み）。`~/.m2` の
-  `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@c8180f2`（`e984103` の直後）からビルド。
-  `@Ignore` 0 件。**持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest`
-  内訳の `build` ＋3 の出所が未確認
+- **Last completed**: **#56（指示書 `ntf-step4-17` —— `rows: []` 調査）まで完了。**実装はしていない。
+  正は `checks/task-56.md`。推奨は案A（yaml スキーマの `record_fragment.rows` から `minItems: 1` を外す）
+- **Next**: **ディレクター／user の判断待ち 3 件。**(1) 案A を採るか。採るなら yaml 側の是正が先で、
+  その後 converter は install し直しと `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty`
+  の期待値 1 箇所を直せば全件緑になる見込み。(2) `record-length` が string で出る 2 件目の GAP の扱い。
+  (3) `#55`（`878ef9a`）は全件緑になるまで承認保留（ディレクター判断・2026-09-07）
+- **Notes**: branch `ntf-test-data-converter`（push 済み）。`mvn clean test` は
+  `Tests run: 732, Failures: 4, Errors: 2`（赤 6 件はすべて `rows: []`。#55 の差分と無関係）。
+  `~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@c8180f2` からビルド。
+  **持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の
+  `build` ＋3 の出所が未確認
