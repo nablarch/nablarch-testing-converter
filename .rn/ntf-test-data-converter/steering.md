@@ -774,6 +774,67 @@ yaml のスキーマが `record_fragment.rows` の `minItems: 1` で拒否する
 
 ---
 
+### #57: yaml `#51`（YAML スキーマの Excel との対称性の是正）への追随 —— 変更なし・全緑
+
+**Purpose**: yaml が `#51` でスキーマを直した（`record_fragment.rows` の `minItems: 1` を削除、
+ディレクティブ 7 つの `type` に `string` を追加）。converter 側は追随して全件緑になることを確かめる。
+`#56` の推奨（案A）が user 判断 2026-09-07 で採られた結果であり、あわせて `#49` A（`minItems: 1` の追加、
+user 確定 2026-08-31）は上書きされた。
+
+**由来**: 指示書 `/home/tie303177/work/cowork/nablarch/ntf-doc-renewal/指示/ntf-step4-18-schema-excel-parity.md` §3
+
+**Prerequisites**: yaml `feature/ntf-yaml@a404126`（`#51` 完了コミット）の `mvn clean -DskipTests install`
+
+**Steps**:
+
+- [x] `~/work/nablarch/nablarch-testing-yaml` を `feature/ntf-yaml` へ `git pull`（`a404126`。すでに最新で
+      `Already up to date.`）し、`JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean -DskipTests install`
+      で `~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` を更新する
+- [x] `~/.m2` の jar 内 `ntf-testdata-yaml-schema.json` を `unzip -p` で取り出し、
+      `$defs.record_fragment.properties.rows` に `minItems` が無いことを確認する
+- [x] 着手前の全件基準 `mvn clean test` を実行し、件数を記録する
+- [x] ソースは変更しない
+
+**検証（実測 2026-09-07）**:
+
+- **install**: `mvn -DskipTests install` は 1 回目、`target/classes` に残っていた jacoco 計装済みクラスで
+  `Unable to instrument file. ... Cannot process instrumented class nablarch/test/core/reader/yaml/YamlFileBuilder`
+  として失敗した。`mvn clean -DskipTests install` で `BUILD SUCCESS`
+- **jar 内スキーマ**（`unzip -p ~/.m2/.../nablarch-testing-yaml-1.0.0-SNAPSHOT.jar ntf-testdata-yaml-schema.json`
+  を `json.load` して確認）:
+  - `$defs.record_fragment.properties.rows` のキーは `['type', 'description', 'items']` —— **`minItems` は無い**
+  - ディレクティブ 7 つの `type`: `record-length` ＝ `["integer","string"]`／`required-decimal-point` ＝
+    `["boolean","string"]`／`fixed-sign-position` ＝ `["boolean","string"]`／`required-plus-sign` ＝
+    `["boolean","string"]`／`ignore-blank-lines` ＝ `["boolean","string"]`／`requires-title` ＝
+    `["boolean","string"]`／`max-record-length` ＝ `["integer","string"]`
+- **全件**: `JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64 mvn clean test`
+  → `Tests run: 732, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`
+- **`#55` で赤だった 6 件**（surefire XML を `testcase` 単位で読んで確認。すべて PASS）:
+  `SampleConversionTest#convertsClimanSampleIncludingZeroRowTable`／
+  `YamlFormatReaderRealFileTest#readsEmptyRowsFromRecordLayoutWithoutRows`／
+  `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty`／
+  `YamlTestDataValidatorTest#vdkey_noDirectivesSection_noError`／
+  `YamlTestDataValidatorTest#vfname_duplicateInSameFragment_reportsError`／
+  `YamlTestDataValidatorTest#vfname_duplicateInSameFragment_variable_reportsError`
+  - `#56` は `failsWithSchemaValidationExceptionWhenFieldsIsEmpty` だけは期待値 1 箇所の修正が要ると
+    見込んでいたが、**修正は不要だった**。同テストは検証エラーのキーワード列が `[minItems]` であることを
+    期待しており、`rows` の `minItems` が消えたことで `fields` の 1 件だけになり、期待値どおりになる
+
+**変更**: **ソース・テスト・フィクスチャとも 1 行も変更していない。**`git status --short` 空。
+`#55`（`878ef9a`）で残っていた赤 6 件は yaml 側の是正だけで解消した。
+
+**未達**: 無し。`#56` が別件として挙げた 2 件目の GAP（変換ツールが `record-length` を `"10"` と文字列で
+出すのにスキーマが integer を要求する）も、`#51` の 1-B（7 つの `type` に `string` を追加）で解消した。
+
+**Completion criteria**:
+
+- `~/.m2` の jar 内スキーマに `record_fragment.rows` の `minItems` が無い
+- `mvn clean test` が 732 件全緑
+- ソースを変更していない・`git status --short` 空
+
+---
+
+
 # Decisions
 
 ## ビルド環境
@@ -2459,16 +2520,17 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-09-07
-- **Last completed**: **#56（指示書 `ntf-step4-17` の調査）まで完了。**実装はしていない。
-  正は `checks/task-56.md`。推奨は案A（yaml スキーマ `record_fragment.rows` の `minItems: 1` を外す）。
-  ディレクター（`ntf-doc-renewal-b5`）へ報告済み
-- **Next**: **判断待ち 3 件。着手できるものは無い。** (1) 案A の採否。採るなら yaml 側の是正が先で、
-  その後 converter は install し直しと `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty`
-  の期待値 1 箇所で全件緑になる見込み。(2) `record-length` が string で出る 2 件目の GAP の扱い。
-  (3) `#55`（`878ef9a`）は全件緑になるまで承認保留
-- **Notes**: branch `ntf-test-data-converter`（`6a87afa` push 済み・`origin` と一致）。
-  `mvn clean test` は `Tests run: 732, Failures: 4, Errors: 2`（赤 6 件はすべて `rows: []` 由来で
-  `#55` の差分と無関係）。`~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は
-  `feature/ntf-yaml@c8180f2` からビルド。調査ハーネスは scratchpad の `step4-17/`（消えたら
-  `checks/task-56.md` §5 の手順で作り直す）。**持ち越しの未決 1 件（#31 から）**:
+- **Last completed**: **#57（指示書 `ntf-step4-18` §3。yaml `#51` への追随）まで完了。**
+  yaml `feature/ntf-yaml@a404126` を `~/.m2` へ install し、jar 内スキーマに
+  `record_fragment.rows` の `minItems` が無いこと・ディレクティブ 7 つの `type` に `string` が
+  入ったことを確認した。**converter はソースを 1 行も変えずに `mvn clean test` 732 件全緑。**
+  `#55` で残っていた赤 6 件はすべて解消した。ディレクター（`ntf-doc-renewal-b5`）へ報告済み
+- **Next**: **承認待ち 1 件。着手できるものは無い。** `#55`（`878ef9a`）と `#57` の承認を
+  ディレクターが併せて出す（指示書 `ntf-step4-18` §3-3）。`#56` が挙げた 2 件目の GAP
+  （`record-length` が string で出る）は `#51` の 1-B で解消したため、判断待ちから外れた
+- **Notes**: branch `ntf-test-data-converter`（`8e4410c` の後に `#57` の記録コミット。`origin` と一致）。
+  `mvn clean test` は `Tests run: 732, Failures: 0, Errors: 0`。`~/.m2` の
+  `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@a404126` からビルド
+  （`mvn -DskipTests install` は jacoco 計装済みクラスが `target/` に残っていると失敗する。`clean` を付ける）。
+  **持ち越しの未決 1 件（#31 から）**:
   `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所が未確認
