@@ -2459,14 +2459,16 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: paused
 - **Date**: 2026-09-07
-- **Last completed**: **#56（指示書 `ntf-step4-17` —— `rows: []` 調査）まで完了。**実装はしていない。
-  正は `checks/task-56.md`。推奨は案A（yaml スキーマの `record_fragment.rows` から `minItems: 1` を外す）
-- **Next**: **ディレクター／user の判断待ち 3 件。**(1) 案A を採るか。採るなら yaml 側の是正が先で、
+- **Last completed**: **#56（指示書 `ntf-step4-17` の調査）まで完了。**実装はしていない。
+  正は `checks/task-56.md`。推奨は案A（yaml スキーマ `record_fragment.rows` の `minItems: 1` を外す）。
+  ディレクター（`ntf-doc-renewal-b5`）へ報告済み
+- **Next**: **判断待ち 3 件。着手できるものは無い。** (1) 案A の採否。採るなら yaml 側の是正が先で、
   その後 converter は install し直しと `YamlFormatReaderInvalidInputTest#failsWithSchemaValidationExceptionWhenFieldsIsEmpty`
-  の期待値 1 箇所を直せば全件緑になる見込み。(2) `record-length` が string で出る 2 件目の GAP の扱い。
-  (3) `#55`（`878ef9a`）は全件緑になるまで承認保留（ディレクター判断・2026-09-07）
-- **Notes**: branch `ntf-test-data-converter`（push 済み）。`mvn clean test` は
-  `Tests run: 732, Failures: 4, Errors: 2`（赤 6 件はすべて `rows: []`。#55 の差分と無関係）。
-  `~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@c8180f2` からビルド。
-  **持ち越しの未決 1 件（#31 から）**: `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の
-  `build` ＋3 の出所が未確認
+  の期待値 1 箇所で全件緑になる見込み。(2) `record-length` が string で出る 2 件目の GAP の扱い。
+  (3) `#55`（`878ef9a`）は全件緑になるまで承認保留
+- **Notes**: branch `ntf-test-data-converter`（`6a87afa` push 済み・`origin` と一致）。
+  `mvn clean test` は `Tests run: 732, Failures: 4, Errors: 2`（赤 6 件はすべて `rows: []` 由来で
+  `#55` の差分と無関係）。`~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は
+  `feature/ntf-yaml@c8180f2` からビルド。調査ハーネスは scratchpad の `step4-17/`（消えたら
+  `checks/task-56.md` §5 の手順で作り直す）。**持ち越しの未決 1 件（#31 から）**:
+  `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所が未確認
