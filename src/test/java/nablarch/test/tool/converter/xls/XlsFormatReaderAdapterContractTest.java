@@ -408,4 +408,103 @@ public class XlsFormatReaderAdapterContractTest {
         adapter.files.add(file);
         return adapter;
     }
+
+    /**
+     * Given: フィールドが {@code JSON} 1 つだけの器と、先頭にディレクティブ行
+     *        {@code [file-type, JSON]}（先頭セルを除いた残りが単一フィールド名と一致する）を含む生行。
+     * When : {@code read}。
+     * Then : ディレクティブ行を名前行と誤認せず読み飛ばし、本来の名前行（レコード種別 {@code no}）を
+     *        特定して、レコード種別・型・長さを正しい行から復元する。
+     *
+     * <p>
+     * 担保：{@code isNameRow} が「先頭セルがディレクティブ名の行は名前行とみなさない」ことで、
+     * 単一フィールド電文での名前行誤認（修正前はレコード種別 {@code file-type}・
+     * 型 {@code JSON}・長さ {@code 全角} と壊れていた）を防ぐこと。
+     * </p>
+     */
+    @Test
+    public void locatesNameRowAfterDirectiveRowWhenSingleFieldNameCollidesWithDirectiveValue() {
+        // Given
+        String resource = "singleFieldCollidesWithDirectiveValue";
+        StubAdapter adapter = singleFieldFileAdapter(resource, "JSON");
+        adapter.bodyLines = Arrays.asList(
+                Arrays.asList("file-type", "JSON"),  // ディレクティブ行（tail=[JSON] が名前と衝突）
+                Arrays.asList("no", "JSON"),          // 本来の名前行（レコード種別 no）
+                Arrays.asList("", "全角"),            // 型行
+                Arrays.asList("", "-"),               // 長さ行
+                Arrays.asList("", "{\"k\":\"v\"}"));  // 値行
+
+        // When
+        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+
+        // Then
+        FileDataBlock block = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        RecordLayout record = block.getRecords().get(0);
+        assertThat(record.getRecordType(), is("no"));
+        assertThat(record.getFields().size(), is(1));
+        assertThat(record.getFields().get(0).getName(), is("JSON"));
+        assertThat(record.getFields().get(0).getType(), is("全角"));
+        assertThat(record.getFields().get(0).getLength(), is("-"));
+        assertThat(record.getRows().get(0), is(Arrays.asList("{\"k\":\"v\"}")));
+    }
+
+    /**
+     * Given: フィールドが {@code JSON} 1 つだけの器と、ディレクティブ行を含まず名前行から始まる生行。
+     * When : {@code read}。
+     * Then : 注入済みのディレクティブ名（{@code file-type} 等）に惑わされず、先頭の正当な名前行を
+     *        そのまま名前行として特定する（過剰な読み飛ばしをしない）。
+     *
+     * <p>担保：{@code isNameRow} のディレクティブ除外が、先頭セルがディレクティブ名でない正当な
+     * 名前行を誤って読み飛ばさないこと。</p>
+     */
+    @Test
+    public void doesNotSkipLegitimateSingleFieldNameRowWhenNoDirectiveRowPresent() {
+        // Given
+        String resource = "singleFieldNoDirectiveRow";
+        StubAdapter adapter = singleFieldFileAdapter(resource, "JSON");
+        adapter.bodyLines = Arrays.asList(
+                Arrays.asList("no", "JSON"),          // 名前行（レコード種別 no）
+                Arrays.asList("", "全角"),            // 型行
+                Arrays.asList("", "-"),               // 長さ行
+                Arrays.asList("", "{\"k\":\"v\"}"));  // 値行
+
+        // When
+        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+
+        // Then
+        FileDataBlock block = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
+        RecordLayout record = block.getRecords().get(0);
+        assertThat(record.getRecordType(), is("no"));
+        assertThat(record.getFields().size(), is(1));
+        assertThat(record.getFields().get(0).getName(), is("JSON"));
+        assertThat(record.getFields().get(0).getType(), is("全角"));
+        assertThat(record.getFields().get(0).getLength(), is("-"));
+        assertThat(record.getRows().get(0), is(Arrays.asList("{\"k\":\"v\"}")));
+    }
+
+    /**
+     * フィールドが 1 つだけ（{@code fieldName}）の固定長の器を持つアダプタを組み立てる。
+     * 器のディレクティブには {@code file-type}（注入）・{@code text-encoding} が入る。
+     * 生行は呼び出し側が差し替える。器の型・長さは出力に使われない（出力は生行から復元する）ため
+     * 妥当な値を入れておくだけでよい。
+     *
+     * @param resource  リソース名
+     * @param fieldName 単一フィールドの名前
+     * @return アダプタ
+     */
+    private static StubAdapter singleFieldFileAdapter(String resource, String fieldName) {
+        MarkerOnlyReader reader = new MarkerOnlyReader().put(resource,
+                Arrays.asList(Arrays.asList("SETUP_FIXED=" + FILE_ID)));
+        StubAdapter adapter = new StubAdapter(reader);
+
+        FixedLengthFile file = new FixedLengthFile(FILE_ID);
+        file.setDirective("text-encoding", "UTF-8");
+        DataFileFragment fragment = file.getNewFragment();
+        fragment.setNames(Arrays.asList(fieldName));
+        fragment.setTypes(Arrays.asList("半角英字"));
+        fragment.setLengths(Arrays.asList("2"));
+        fragment.addValue(Arrays.asList("{\"k\":\"v\"}"));
+        adapter.files.add(file);
+        return adapter;
+    }
 }

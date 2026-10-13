@@ -323,7 +323,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         if (fragments.isEmpty()) {
             return records;
         }
-        int idx = skipToFirstNameRow(bodyLines, fragments.get(0).getNames());
+        int idx = skipToFirstNameRow(bodyLines, fragments.get(0).getNames(), view.getDirectives().keySet());
         for (FragmentView fragment : fragments) {
             List<String> names = fragment.getNames();
             idx = verifyNameRow(bodyLines, idx, names);
@@ -352,17 +352,44 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 最初の断片の名前行が現れる位置まで生行を読み飛ばす（ディレクティブ行・FW ヘッダ行を除外）。
+     * <p>
+     * 名前行は「先頭セルを除いた残り（{@link #tail(List)}）がフィールド名と一致する行」で特定するが、
+     * 単一フィールドの電文（例: JSON 電文のフィールドが {@code JSON} の 1 つだけ）では、
+     * ディレクティブ行（例: {@code [file-type, JSON]}）の {@code tail} が {@code [JSON]} となり
+     * フィールド名と一致してしまう。NTF 本体は「先頭セルがディレクティブ名なら設定行」と判断して
+     * 名前行と区別するため、ここでも同じ判断を行い、先頭セルがディレクティブ名の行は名前行とみなさない。
+     * </p>
      *
      * @param bodyLines 生のボディ行
      * @param firstNames 最初の断片のフィールド名リスト
+     * @param directiveNames 当該ブロックのディレクティブ名の集合
      * @return 名前行のインデックス（一致する行の位置）
      */
-    private int skipToFirstNameRow(List<List<String>> bodyLines, List<String> firstNames) {
+    private int skipToFirstNameRow(List<List<String>> bodyLines, List<String> firstNames, Set<String> directiveNames) {
         int idx = 0;
-        while (idx < bodyLines.size() && !tail(bodyLines.get(idx)).equals(firstNames)) {
+        while (idx < bodyLines.size() && !isNameRow(bodyLines.get(idx), firstNames, directiveNames)) {
             idx++;
         }
         return idx;
+    }
+
+    /**
+     * 生行が名前行かどうかを判定する。
+     * <p>
+     * 先頭セルがディレクティブ名の行は設定行であり名前行ではない（NTF 本体と同じ判断）。
+     * それ以外で、先頭セルを除いた残りがフィールド名と一致する行を名前行とみなす。
+     * </p>
+     *
+     * @param line           生行
+     * @param names          フィールド名リスト
+     * @param directiveNames ディレクティブ名の集合
+     * @return 名前行なら真
+     */
+    private static boolean isNameRow(List<String> line, List<String> names, Set<String> directiveNames) {
+        if (!line.isEmpty() && directiveNames.contains(line.get(0))) {
+            return false;
+        }
+        return tail(line).equals(names);
     }
 
     /**
