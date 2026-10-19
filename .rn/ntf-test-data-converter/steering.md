@@ -834,6 +834,51 @@ user 確定 2026-08-31）は上書きされた。
 
 ---
 
+### #58: 単一フィールドの電文・ファイルでディレクティブ行を名前行と誤認する不具合（XLS-46）の修正 —— 後追いの記録
+
+**Purpose**: `XlsFormatReader#skipToFirstNameRow` が、フィールドが 1 つだけの電文・ファイルで
+ディレクティブ行（例: `file-type | JSON`）を名前行と誤認し、壊れた YAML（`record_type: "file-type"`／
+`length: "JSON"`）を出力していた。NTF 本体と同じく「先頭セルがディレクティブ名の行は設定行」と判断して直す。
+
+**由来**: 利用者側 `nablarch-example-http-messaging-send` の YAML 移行（2026-10-02 の Task #5 失敗）。
+同 PJ の `.rn/ntf-yaml-support/reports/task-5_json-yaml-incompatibility.md` §0。
+
+**経緯**: 修正 `7a97049`（2026-10-13）は .rn の手順（1 task ＝ 1 commit・`checks/` の記録）の外で先に入った。
+2026-10-19 にユーザー確定で #58 として後追いの記録をした。コミットの作り直しはせず、記録コミットを足す。
+**この修正は #25.5 の作業範囲の外にある要対応であり、Rules の「#25.5 より後に立った要対応には掛からない」に
+従って独立タスクとした。**
+
+**Prerequisites**: なし（`~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は #57 と同じ）
+
+**Steps**:
+
+- [x] `XlsFormatReader#isNameRow` を足し、`skipToFirstNameRow` に当該ブロックのディレクティブ名の集合
+      （`view.getDirectives().keySet()`）を渡す（`7a97049`）
+- [x] 回帰テスト 2 件を `XlsFormatReaderAdapterContractTest` に足す（`7a97049`）
+- [x] `mvn clean test` 全件（2026-10-19 実測 734 件全緑）
+- [x] `coverage/issues.md` に XLS-46 を起票する（要対応・修正済み。件数 57 → 58、要対応 27 → 28）
+- [x] `coverage/inventory.md` に追補その 22 を足す（731 → 734。#55 の未記録 ＋1 を含む）
+- [x] `checks/task-58.md` に記録する
+- [ ] MESSAGE の FW 制御ヘッダ行も除外するか（XLS-46「残る差」）—— **ユーザー判断待ち**
+- push・PR はしない（ユーザー指示・2026-10-19）
+
+**検証（実測 2026-10-19）**:
+
+- `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 mvn -q clean test -Djacoco.skip=true`
+  → `Tests run: 734, Failures: 0, Errors: 0, Skipped: 0`（surefire XML 59 ファイルの集計）／ rc=0
+- `git diff --stat 4a59436 7a97049 -- src/` → `2 files changed, 129 insertions(+), 3 deletions(-)`
+- 利用者側（2026-10-13）: 修正版で再変換した `nablarch-example-http-messaging-send` の YAML に
+  `length: "JSON"`／`record_type: "file-type"` は 0 件。Excel なしで `Tests run: 3` 全パス
+
+**Completion criteria**:
+
+- 単一フィールドでディレクティブ値とフィールド名が衝突しても、本当の名前行から原文を復元する
+- ディレクティブ行が無いとき、正当な名前行を読み飛ばさない
+- `mvn clean test` が全件緑（734 件）
+- XLS-46 が `issues.md` に記録され、件数が導出コマンドと一致する
+
+---
+
 
 # Decisions
 
@@ -2534,16 +2579,16 @@ XLS-27 の 2 段目（本体修正後に「識別子行だけを書く」へ切�
 session is suspended — the signal /rn:up and /rn:dn search for — and resets to `not suspended` here,
 so only a genuinely suspended session reads `paused`.)
 
-- **Status**: paused
-- **Date**: 2026-09-07
-- **Last completed**: **#57（指示書 `ntf-step4-18` §3。yaml `#51` への追随）まで完了し、
-  `#55` と `#57` はディレクター（`ntf-doc-renewal-b5`）が 2026-09-07 に承認した**（根拠は
-  上の「#55・#57 の承認」節）。converter はソースを 1 行も変えずに `mvn clean test` 732 件全緑で、
-  `#55` で残っていた赤 6 件はすべて yaml `#51`（`a404126`）で解消した
-- **Next**: **未完了タスク 0 件。承認待ちも無い。**次の指示を待つ
-- **Notes**: branch `ntf-test-data-converter`（`origin` と一致）。
-  `mvn clean test` は `Tests run: 732, Failures: 0, Errors: 0`。`~/.m2` の
-  `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@a404126` からビルド
+- **Status**: not suspended
+- **Date**: 2026-10-19
+- **Last completed**: **#58（XLS-46 の修正 `7a97049` の後追いの記録）**。`mvn clean test` は 734 件全緑。
+  #55・#57 までは 2026-09-07 に承認済み（上の「#55・#57 の承認」節）
+- **Next**: #58 の user review。XLS-46 の「残る差」（MESSAGE の FW 制御ヘッダ行を名前行の候補から除くか）の
+  ユーザー判断
+- **Notes**: branch `ntf-test-data-converter`。**`7a97049` と #58 の記録コミットは未 push**
+  （push はユーザー側で行う。ユーザー指示・2026-10-19）。
+  `mvn clean test` は `Tests run: 734, Failures: 0, Errors: 0`。本機の JDK は `/usr/lib/jvm/java-17-openjdk-amd64`。
+  `~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@a404126` からビルド
   （`mvn -DskipTests install` は jacoco 計装済みクラスが `target/` に残っていると失敗する。`clean` を付ける）。
   **持ち越しの未決 1 件（#31 から）**:
   `inventory.md` §3.1 の `XlsFormatWriterTest` 内訳の `build` ＋3 の出所が未確認

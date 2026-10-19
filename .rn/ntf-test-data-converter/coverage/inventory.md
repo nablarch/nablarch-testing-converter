@@ -1392,6 +1392,35 @@ Step 4 第2回（#40〜#45・#47）の合計は **656 → 682（＋26）** で�
 到達不能と判断して報告に上げたもので、**user 判断待ちのためコメントは入れていない**
 （一覧と理由は `checks/task-48.md` §6）。
 
+**追補その 22（2026-10-19 実測。#55 の 1 件（未記録だったもの）と #58 の 2 件）**
+
+追補その 21（追跡対象 731 件）から導き直した。**導出コマンドは上の ①〜③ と同じ**（③ の比較対象だけ
+追補その 21 の時点 `e6e5cc0` に置き換える）。
+
+```
+① 734
+② （0 件）
+③ e6e5cc0: 731
+   HEAD: 734
+```
+
+追跡対象は **734** 件（731 ＋ 3）。
+
+**731 → 734（差 ＋3）の内訳** —— 追加 3 件のみ。削除・改名は無い。既存テストの期待値は変えていない。
+ファイル別の増減（`git grep -c '^    @Test' <rev> -- 'src/test/**/*.java'` を `e6e5cc0` と `HEAD` で取り比較）:
+
+| ファイル | e6e5cc0 | HEAD | 増減 | 足したタスク |
+|---|---|---|---|---|
+| `tool/converter/yaml/YamlTestDataValidatorTest.java` | 30 | 31 | ＋1 | #55（`878ef9a`） |
+| `tool/converter/xls/XlsFormatReaderAdapterContractTest.java` | 7 | 9 | ＋2 | #58（`7a97049`） |
+
+**#55 の ＋1 は本台帳に未記録だった**（#55 の時点で件数を導き直していなかった。Rules の #22 規定に従い
+ここで開示する）。
+
+**#58 の 2 件は軸A〜F の担保を増やすものではない。** `XlsFormatReader` が生行から原文を復元する経路
+（`skipToFirstNameRow`）の不具合 XLS-46 の担保であり、同クラスの既存 7 件と同じく `axis-matrix.md` には
+載せない。何を担保したかは `issues.md` XLS-46 と `checks/task-58.md` が正である。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`
