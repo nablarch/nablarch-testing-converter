@@ -235,7 +235,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                     adapter.readBlockBodyLines(basePath, resourceName, groupId, view.getPath(), type);
             result.add(new FileDataBlock(type, groupId, view.getPath(),
                     toStringDirectives(view.getDirectives()),
-                    toRecordLayouts(view, bodyLines, fixed)));
+                    toRecordLayouts(view, bodyLines, fixed, view.getDirectives().keySet())));
         }
         return result;
     }
@@ -264,9 +264,13 @@ public class XlsFormatReader implements TestDataFormatReader {
                         DataType.MESSAGE);
         // FW ヘッダ値は本体 MessageParser が解釈後の値として返すため、変換器側の加工は要らない。
         Map<String, String> fwHeaderFields = new LinkedHashMap<>(message.getFwHeader());
+        // FW ヘッダ行も本体 MessageParser はディレクティブ行と同じく設定行として読む。
+        // 名前行の候補からはディレクティブ名と FW ヘッダ名の両方を除く。
+        Set<String> settingRowNames = new HashSet<>(view.getDirectives().keySet());
+        settingRowNames.addAll(fwHeaderFields.keySet());
         return new MessageDataBlock(DataType.MESSAGE, header.getGroupId(), header.getIdentifier(),
                 toStringDirectives(view.getDirectives()), fwHeaderFields,
-                toRecordLayouts(view, bodyLines, true));
+                toRecordLayouts(view, bodyLines, true, settingRowNames));
     }
 
     /**
@@ -297,7 +301,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             result.add(new MessageDataBlock(type, groupId, identifier,
                     toStringDirectives(view.getDirectives()),
                     new LinkedHashMap<>(),
-                    toRecordLayouts(view, bodyLines, true)));
+                    toRecordLayouts(view, bodyLines, true, view.getDirectives().keySet())));
         }
         return result;
     }
@@ -312,18 +316,21 @@ public class XlsFormatReader implements TestDataFormatReader {
      * ディレクティブ行・FW ヘッダ行を読み飛ばす。
      * </p>
      *
-     * @param view      器のビュー
-     * @param bodyLines 生のボディ行（マーカー行除去済み）
-     * @param fixed     固定長（長さ行を持つ）なら真、可変長なら偽
+     * @param view            器のビュー
+     * @param bodyLines       生のボディ行（マーカー行除去済み）
+     * @param fixed           固定長（長さ行を持つ）なら真、可変長なら偽
+     * @param settingRowNames 本体パーサが設定行として読んだ行の先頭セルの集合（ディレクティブ名。
+     *                        MESSAGE では FW ヘッダ名も含む）
      * @return レコードレイアウト群
      */
-    private List<RecordLayout> toRecordLayouts(FileView view, List<List<String>> bodyLines, boolean fixed) {
+    private List<RecordLayout> toRecordLayouts(FileView view, List<List<String>> bodyLines, boolean fixed,
+                                               Set<String> settingRowNames) {
         List<RecordLayout> records = new ArrayList<>();
         List<FragmentView> fragments = view.getFragments();
         if (fragments.isEmpty()) {
             return records;
         }
-        int idx = skipToFirstNameRow(bodyLines, fragments.get(0).getNames(), view.getDirectives().keySet());
+        int idx = skipToFirstNameRow(bodyLines, fragments.get(0).getNames(), settingRowNames);
         for (FragmentView fragment : fragments) {
             List<String> names = fragment.getNames();
             idx = verifyNameRow(bodyLines, idx, names);
@@ -358,16 +365,18 @@ public class XlsFormatReader implements TestDataFormatReader {
      * ディレクティブ行（例: {@code [file-type, JSON]}）の {@code tail} が {@code [JSON]} となり
      * フィールド名と一致してしまう。NTF 本体は「先頭セルがディレクティブ名なら設定行」と判断して
      * 名前行と区別するため、ここでも同じ判断を行い、先頭セルがディレクティブ名の行は名前行とみなさない。
+     * MESSAGE の FW ヘッダ行（例: {@code [requestId, JSON]}）も本体 {@code MessageParser} は設定行として
+     * 読むため、同じく名前行とみなさない。
      * </p>
      *
      * @param bodyLines 生のボディ行
      * @param firstNames 最初の断片のフィールド名リスト
-     * @param directiveNames 当該ブロックのディレクティブ名の集合
+     * @param settingRowNames 当該ブロックで設定行として読まれた行の先頭セルの集合
      * @return 名前行のインデックス（一致する行の位置）
      */
-    private int skipToFirstNameRow(List<List<String>> bodyLines, List<String> firstNames, Set<String> directiveNames) {
+    private int skipToFirstNameRow(List<List<String>> bodyLines, List<String> firstNames, Set<String> settingRowNames) {
         int idx = 0;
-        while (idx < bodyLines.size() && !isNameRow(bodyLines.get(idx), firstNames, directiveNames)) {
+        while (idx < bodyLines.size() && !isNameRow(bodyLines.get(idx), firstNames, settingRowNames)) {
             idx++;
         }
         return idx;
@@ -376,17 +385,17 @@ public class XlsFormatReader implements TestDataFormatReader {
     /**
      * 生行が名前行かどうかを判定する。
      * <p>
-     * 先頭セルがディレクティブ名の行は設定行であり名前行ではない（NTF 本体と同じ判断）。
-     * それ以外で、先頭セルを除いた残りがフィールド名と一致する行を名前行とみなす。
+     * 先頭セルがディレクティブ名（MESSAGE では FW ヘッダ名も）の行は設定行であり名前行ではない
+     * （NTF 本体と同じ判断）。それ以外で、先頭セルを除いた残りがフィールド名と一致する行を名前行とみなす。
      * </p>
      *
-     * @param line           生行
-     * @param names          フィールド名リスト
-     * @param directiveNames ディレクティブ名の集合
+     * @param line            生行
+     * @param names           フィールド名リスト
+     * @param settingRowNames 設定行として読まれた行の先頭セルの集合
      * @return 名前行なら真
      */
-    private static boolean isNameRow(List<String> line, List<String> names, Set<String> directiveNames) {
-        if (!line.isEmpty() && directiveNames.contains(line.get(0))) {
+    private static boolean isNameRow(List<String> line, List<String> names, Set<String> settingRowNames) {
+        if (!line.isEmpty() && settingRowNames.contains(line.get(0))) {
             return false;
         }
         return tail(line).equals(names);

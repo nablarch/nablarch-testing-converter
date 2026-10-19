@@ -1421,6 +1421,26 @@ Step 4 第2回（#40〜#45・#47）の合計は **656 → 682（＋26）** で�
 （`skipToFirstNameRow`）の不具合 XLS-46 の担保であり、同クラスの既存 7 件と同じく `axis-matrix.md` には
 載せない。何を担保したかは `issues.md` XLS-46 と `checks/task-58.md` が正である。
 
+**追補その 23（2026-10-19 実測。#59 の 2 件）**
+
+追補その 22（追跡対象 734 件）から導き直した。**導出コマンドは上の ①〜③ と同じ**（③ の比較対象だけ
+追補その 22 の時点 `5d6075e` に置き換え、HEAD の代わりに作業ツリーを ① で数える）。
+
+```
+① 736
+② （0 件）
+③ 5d6075e: 734
+```
+
+追跡対象は **736** 件（734 ＋ 2）。
+
+| ファイル | 5d6075e | 作業ツリー | 増減 | 足したタスク |
+|---|---|---|---|---|
+| `tool/converter/xls/XlsFormatReaderTest.java` | 35 | 37 | ＋2 | #59 |
+
+**#59 の 2 件も軸A〜F の担保を増やすものではない。** XLS-46（FW 制御ヘッダ行の側）の担保であり、
+`axis-matrix.md` には載せない。何を担保したかは `issues.md` XLS-46 と `checks/task-59.md` が正である。
+
 ### 0.2 軸A: `DataType` 実定義との突き合わせ
 
 実定義: `/home/tie303177/work/nablarch/nablarch-testing/src/main/java/nablarch/test/core/reader/DataType.java`

@@ -859,7 +859,7 @@ user 確定 2026-08-31）は上書きされた。
 - [x] `coverage/issues.md` に XLS-46 を起票する（要対応・修正済み。件数 57 → 58、要対応 27 → 28）
 - [x] `coverage/inventory.md` に追補その 22 を足す（731 → 734。#55 の未記録 ＋1 を含む）
 - [x] `checks/task-58.md` に記録する
-- [ ] MESSAGE の FW 制御ヘッダ行も除外するか（XLS-46「残る差」）—— **ユーザー判断待ち**
+- [x] MESSAGE の FW 制御ヘッダ行も除外するか（XLS-46「残る差」）—— **ユーザー確定（2026-10-19）: 除外する。#59 で実施**
 - push・PR はしない（ユーザー指示・2026-10-19）
 
 **検証（実測 2026-10-19）**:
@@ -876,6 +876,50 @@ user 確定 2026-08-31）は上書きされた。
 - ディレクティブ行が無いとき、正当な名前行を読み飛ばさない
 - `mvn clean test` が全件緑（734 件）
 - XLS-46 が `issues.md` に記録され、件数が導出コマンドと一致する
+
+---
+
+### #59: MESSAGE の FW 制御ヘッダ行も名前行の候補から除く（XLS-46 の残り）
+
+**Purpose**: #58（`7a97049`）はディレクティブ行だけを名前行の候補から除いた。MESSAGE の FW 制御ヘッダ行
+（`requestId`／`userId` など）も本体 `MessageParser` は設定行として読むが、その値は `fwHeader` に入り
+`view.getDirectives()` に入らないため、本文のフィールドが 1 つで FW ヘッダ値がそのフィールド名と一致すると
+同じ誤認が起きる。これも除く。
+
+**由来**: #58 の「残る差」。ユーザー確定（2026-10-19）。根拠は `notation:1267`（FW 制御ヘッダは名前行より前に
+ディレクティブと同じ「名前・値」形式で書く）と本体 `MessageParser#processDirectives`。
+
+**Prerequisites**: #58
+
+**Steps**:
+
+- [x] 赤: `XlsFormatReaderTest` に回帰テスト 2 件を先に足し、修正前に落ちることを確かめる
+      （レコード種別がそれぞれ `requestId`／`userId` になって 2 件 FAIL）
+- [x] 緑: `toRecordLayouts` が除外の集合（`settingRowNames`）を受け取る形にし、`readMessageBlock` は
+      ディレクティブ名と FW ヘッダ名（`message.getFwHeader().keySet()`）の和集合を渡す。ファイル系・
+      同期送信系 4 種は従来どおりディレクティブ名だけを渡す
+- [x] `mvn clean test` 全件
+- [x] Example 10 PJ の元 Excel（各 PJ の git 履歴から復元した 33 冊）を修正前（`7a97049`）と修正後で変換し、
+      出力を比べる
+- [x] `~/.m2` の `nablarch-testing-converter:1.0.0-SNAPSHOT` を更新する（`mvn clean -DskipTests install`）
+- [x] `coverage/issues.md` XLS-46・`coverage/inventory.md` 追補その 23・`checks/task-59.md` を更新する
+- push・PR はしない（ユーザー指示・2026-10-19）
+
+**検証（実測 2026-10-19）**:
+
+- 赤: `mvn test -Dtest=XlsFormatReaderTest` → `Tests run: 37, Failures: 2`（新設 2 件）
+- 緑: `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 mvn clean test -Djacoco.skip=true`
+  → `Tests run: 736, Failures: 0, Errors: 0, Skipped: 0` ／ `BUILD SUCCESS`
+- 変換結果の比較: 33 冊 → YAML 119 ファイルで、修正前と修正後の出力が `diff -r` で完全一致。
+  `nablarch-example-http-messaging-send` の出力 4 ファイルはコミット済みの YAML ともバイト一致。
+  **Example の再変換は不要**
+- `git diff --stat 5d6075e -- src/` → `2 files changed, 105 insertions(+), 18 deletions(-)`
+
+**Completion criteria**:
+
+- MESSAGE で FW 制御ヘッダの値が単一フィールド名と一致しても、本当の名前行から原文を復元する
+- `mvn clean test` が全件緑（736 件）
+- 既存 Example の変換結果が変わらない
 
 ---
 
@@ -2581,13 +2625,14 @@ so only a genuinely suspended session reads `paused`.)
 
 - **Status**: not suspended
 - **Date**: 2026-10-19
-- **Last completed**: **#58（XLS-46 の修正 `7a97049` の後追いの記録）**。`mvn clean test` は 734 件全緑。
-  #55・#57 までは 2026-09-07 に承認済み（上の「#55・#57 の承認」節）
-- **Next**: #58 の user review。XLS-46 の「残る差」（MESSAGE の FW 制御ヘッダ行を名前行の候補から除くか）の
-  ユーザー判断
-- **Notes**: branch `ntf-test-data-converter`。**`7a97049` と #58 の記録コミットは未 push**
+- **Last completed**: **#59（MESSAGE の FW 制御ヘッダ行も名前行の候補から除く。XLS-46 の残り）**。
+  `mvn clean test` は 736 件全緑。Example 33 冊の変換結果は修正前と完全一致。
+  #58（`7a97049` の後追いの記録）も同日。#55・#57 までは 2026-09-07 に承認済み
+- **Next**: #58・#59 の user review
+- **Notes**: branch `ntf-test-data-converter`。**`7a97049`・#58・#59 のコミットは未 push**
   （push はユーザー側で行う。ユーザー指示・2026-10-19）。
-  `mvn clean test` は `Tests run: 734, Failures: 0, Errors: 0`。本機の JDK は `/usr/lib/jvm/java-17-openjdk-amd64`。
+  `~/.m2` の `nablarch-testing-converter:1.0.0-SNAPSHOT` は #59 の作業ツリーから 2026-10-19 に install 済み。
+  本機の JDK は `/usr/lib/jvm/java-17-openjdk-amd64`。
   `~/.m2` の `nablarch-testing-yaml:1.0.0-SNAPSHOT` は `feature/ntf-yaml@a404126` からビルド
   （`mvn -DskipTests install` は jacoco 計装済みクラスが `target/` に残っていると失敗する。`clean` を付ける）。
   **持ち越しの未決 1 件（#31 から）**:

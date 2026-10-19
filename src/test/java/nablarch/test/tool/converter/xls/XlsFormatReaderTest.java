@@ -550,6 +550,84 @@ public class XlsFormatReaderTest {
         assertThat(record.getRows().get(0), is(Arrays.asList("${b}", "xyz")));
     }
 
+    /**
+     * Given: 本文のフィールドが {@code body1} の 1 つだけで、FW 制御ヘッダ行 {@code [requestId, body1]}
+     *        （先頭セルを除いた残りが単一フィールド名と一致する）を持つ MESSAGE ブロック。
+     * When : {@code read}。
+     * Then : FW 制御ヘッダ行を名前行と誤認せず、本来の名前行（レコード種別 {@code no}）から
+     *        型・長さ・値を復元する。FW ヘッダは記法のまま保持する。
+     *
+     * <p>
+     * 担保：MESSAGE の FW 制御ヘッダ行は、ディレクティブ行と同じく名前行の候補から除くこと
+     * （{@code issues.md} XLS-46 の「残る差」。#59）。
+     * </p>
+     */
+    @Test
+    public void readSkipsFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName() {
+        // Given
+        String resource = "book/readSkipsFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("MESSAGE=msg1"));
+        lines.add(row("requestId", "body1"));
+        lines.add(row("no", "body1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "5"));
+        lines.add(row("", "abcde"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        MessageDataBlock message = (MessageDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(message.getFwHeaderFields().get("requestId"), is("body1"));
+        assertThat(message.getRecords().size(), is(1));
+        RecordLayout record = message.getRecords().get(0);
+        assertThat(record.getRecordType(), is("no"));
+        assertThat(record.getFields().size(), is(1));
+        assertThat(record.getFields().get(0).getName(), is("body1"));
+        assertThat(record.getFields().get(0).getType(), is("半角英字"));
+        assertThat(record.getFields().get(0).getLength(), is("5"));
+        assertThat(record.getRows().get(0), is(Arrays.asList("abcde")));
+    }
+
+    /**
+     * Given: ディレクティブ行と FW 制御ヘッダ行 2 つを持ち、<b>2 つ目</b>の FW 制御ヘッダ行
+     *        {@code [userId, body1]} だけが単一フィールド名と一致する MESSAGE ブロック。
+     * When : {@code read}。
+     * Then : 衝突する行が先頭でなくても名前行と誤認せず、本来の名前行から型・長さを復元する。
+     *
+     * <p>
+     * 担保：除外は {@code requestId} に限らず、本体パーサが FW 制御ヘッダとして読んだ行すべてに掛かること。
+     * </p>
+     */
+    @Test
+    public void readSkipsLaterFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName() {
+        // Given
+        String resource = "book/readSkipsLaterFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName";
+        List<List<String>> lines = new ArrayList<List<String>>();
+        lines.add(row("MESSAGE=msg1"));
+        lines.add(row("text-encoding", "ms932"));
+        lines.add(row("requestId", "RM11AC0101"));
+        lines.add(row("userId", "body1"));
+        lines.add(row("no", "body1"));
+        lines.add(row("", "半角英字"));
+        lines.add(row("", "5"));
+        lines.add(row("", "abcde"));
+
+        // When
+        TestDataContainer container = readerOf(resource, lines).read(DIR, resource);
+
+        // Then
+        MessageDataBlock message = (MessageDataBlock) container.getSections().get(0).getBlocks().get(0);
+        assertThat(message.getFwHeaderFields().get("requestId"), is("RM11AC0101"));
+        assertThat(message.getFwHeaderFields().get("userId"), is("body1"));
+        RecordLayout record = message.getRecords().get(0);
+        assertThat(record.getRecordType(), is("no"));
+        assertThat(record.getFields().get(0).getType(), is("半角英字"));
+        assertThat(record.getFields().get(0).getLength(), is("5"));
+        assertThat(record.getRows().get(0), is(Arrays.asList("abcde")));
+    }
+
     // ------------------------------------------------------------- send-sync messages
 
     /**

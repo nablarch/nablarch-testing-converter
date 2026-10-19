@@ -126,7 +126,7 @@ converter 側で閉じられるようになったためである。XLS-45 の節
 - **#58 で起票し、同時に修正した 1 件（2026-10-19 記録）** —— **XLS-46**（辺① が単一フィールドの電文・ファイルで
   ディレクティブ行を名前行と誤認する）。修正 `7a97049`（2026-10-13）は利用者側の移行で見つかった不具合に
   対するもので、.rn の手順の外で先に入ったため #58 で後追いの記録をした。**MESSAGE の FW 制御ヘッダ行は
-  除外していない**（XLS-46 の「残る差」。ユーザー判断待ち）。
+  #59 で除外の対象に加えた**（ユーザー確定・2026-10-19）。
 
 **対応不要は 2026-08-19 に 27 件になった。同日に 2 つの動きがあった** —— **YML-14 が 1 件増え**（辺②でフィールド定義の
 件数より要素数が多いデータ行の余りの値が黙って捨てられる。**YML-05 から「多い側」を切り出したもの**で、
@@ -4676,7 +4676,7 @@ $ grep -rn 'failsToReadBackRecordWithoutFields\|failsToReadBackFieldWithoutType\
 
 **行番号は `30a8271` 時点の値である**（本書全体と同じ基準）。
 
-### XLS-46 辺① が単一フィールドの電文・ファイルでディレクティブ行を名前行と誤認する（影響度 高・**変換結果が壊れる**。**#58 で起票・修正済み**）
+### XLS-46 辺① が単一フィールドの電文・ファイルでディレクティブ行を名前行と誤認する（影響度 高・**変換結果が壊れる**。**#58 で起票・修正済み。#59 で MESSAGE の FW 制御ヘッダ行も対応**）
 
 **起票の経緯**: 利用者側（`nablarch-example-http-messaging-send`）の YAML 移行で見つかった（2026-10-02 の
 Task #5 失敗。同 PJ の `.rn/ntf-yaml-support/reports/task-5_json-yaml-incompatibility.md` §0）。
@@ -4704,7 +4704,7 @@ Task #5 失敗。同 PJ の `.rn/ntf-yaml-support/reports/task-5_json-yaml-incom
   設定値を記載する」）、`notation:906`（ディレクティブはレコード定義より前に `| キー名 | 値 |` で書く）。
   ディレクティブ行は名前行ではない。
 - 判断: **仕様として不適切**（Excel で正しく読めるデータが、変換で別の意味の YAML になる）。
-- NTF 仕様としての判定: **要対応**（修正済み・#58）。
+- NTF 仕様としての判定: **要対応**（修正済み・#58、FW 制御ヘッダ行は #59）。
 - **converter 側の対応（#58・`7a97049`）**: `XlsFormatReader#isNameRow` を足し、`skipToFirstNameRow` は
   先頭セルがディレクティブ名の生行を名前行の候補から除く。ディレクティブ名の集合は当該ブロックの
   器の `view.getDirectives().keySet()`（本体パーサが設定行として読んだもの）を使う。
@@ -4712,18 +4712,22 @@ Task #5 失敗。同 PJ の `.rn/ntf-yaml-support/reports/task-5_json-yaml-incom
   （衝突するディレクティブ行を読み飛ばし、本当の名前行から型・長さを復元する）／
   `XlsFormatReaderAdapterContractTest#doesNotSkipLegitimateSingleFieldNameRowWhenNoDirectiveRowPresent`
   （ディレクティブ行が無いとき、正当な名前行を読み飛ばさない）。
-- **残る差（ユーザー判断待ち・2026-10-19）**: `MESSAGE`（`setUpMessages`／`expectedMessages`）の
-  **フレームワーク制御ヘッダ行**は除いていない。`notation:1267` は FW 制御ヘッダを「フィールド名称行より前に
-  `| フィールド名 | 値 |`（ディレクティブと同じ『名前・値』形式）で記載する」と定め、本体
-  `MessageParser#processDirectives` も `requestId`／`userId`／`resendFlag`／`resultCode`
-  （`reader.fwHeaderfields` で変更可）の行を設定行として読む。ただしその値は `fwHeader` に入り
-  `view.getDirectives()` には入らないため、`isNameRow` の除外に掛からない。
+- **MESSAGE の FW 制御ヘッダ行（#59 で対応・2026-10-19）**: #58 時点では除いていなかった。`notation:1267` は
+  FW 制御ヘッダを「フィールド名称行より前に `| フィールド名 | 値 |`（ディレクティブと同じ『名前・値』形式）で
+  記載する」と定め、本体 `MessageParser#processDirectives` も `requestId`／`userId`／`resendFlag`／`resultCode`
+  （`reader.fwHeaderfields` で変更可）の行を設定行として読む。その値は `fwHeader` に入り
+  `view.getDirectives()` には入らないため、#58 の除外に掛からなかった。
   発現条件は「`MESSAGE` で本文のフィールドが 1 つ、かつ FW 制御ヘッダの値がそのフィールド名と一致する」
   （例: `requestId | JSON` とフィールド `JSON`）。Example 10 PJ の YAML を走査した範囲では該当 0 件
-  （単一フィールドの `MESSAGE` は `nablarch-example-http-messaging` の 6 ブロックのみで、いずれも
-  `fw_header` 無し。2026-10-19 実測）。発現した場合も、長さ行に取り違えた行の値が数値・`-` でない限り
-  yaml 側のスキーマ検証で落ちる。同期送信系 4 種（`EXPECTED_REQUEST_*`／`RESPONSE_*`）は本体
-  `SendSyncMessageParser` が FW 制御ヘッダを特別扱いしないため対象外。
+  （2026-10-19 実測）。**#59 で、`readMessageBlock` が除外の集合にディレクティブ名と FW ヘッダ名
+  （本体が読んだ `message.getFwHeader().keySet()`）の両方を入れる形にした。**FW ヘッダ名を converter 側で
+  固定値として持たないため、`reader.fwHeaderfields` の設定にも本体と同じく従う。
+  同期送信系 4 種（`EXPECTED_REQUEST_*`／`RESPONSE_*`）は本体 `SendSyncMessageParser` が FW 制御ヘッダを
+  特別扱いしないため、従来どおりディレクティブ名だけを除く。
+- 担保テスト（#59）: `XlsFormatReaderTest#readSkipsFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName`
+  （`requestId` の行が衝突）／`XlsFormatReaderTest#readSkipsLaterFwHeaderRowWhoseValueCollidesWithSingleBodyFieldName`
+  （ディレクティブ行の後、2 つ目の FW ヘッダ行 `userId` が衝突）。どちらも本体パーサを通す経路
+  （`readerOf`）で、修正前はレコード種別が `requestId`／`userId` になって赤だった。
 
 ---
 
