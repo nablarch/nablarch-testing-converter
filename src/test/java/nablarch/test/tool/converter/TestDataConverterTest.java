@@ -1,0 +1,525 @@
+package nablarch.test.tool.converter;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
+import nablarch.test.tool.converter.model.TableDataBlock;
+import nablarch.test.tool.converter.model.TestDataBlock;
+import nablarch.test.tool.converter.model.TestDataContainer;
+import nablarch.test.tool.converter.model.TestDataSection;
+import nablarch.test.tool.converter.xls.XlsFormatReader;
+import nablarch.test.tool.converter.xls.XlsFormatWriter;
+import nablarch.test.tool.converter.yaml.YamlFormatReader;
+import nablarch.test.tool.converter.yaml.YamlFormatWriter;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+/**
+ * {@link TestDataConverter} の入口（4 方向変換）テストクラス。
+ *
+ * <p>
+ * 実 Reader／Writer を用いた end-to-end 検証を中心に据える。入力フィクスチャは Writer で生成し、変換後に
+ * Reader で読み戻して中間モデルの一致（＝意味不変）を確認することで、入口が「リソース走査 → 集約 → 形式選択 →
+ * パス解決 → 出力」を 4 方向（XLS→YAML／YAML→XLS／XLS→XLS／YAML→YAML）で正しく束ねていることを示す。
+ * あわせて複数リソースの 1 コンテナ集約・ネスト構造の保持・上書き可否・include／exclude・入力不在の異常系を検証する。
+ * </p>
+ *
+ * @author kiyobot
+ */
+public class TestDataConverterTest {
+
+    /** 一時ディレクトリ */
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    /** 入力ルート */
+    private Path in;
+
+    /** 出力ルート */
+    private Path out;
+
+    /**
+     * 入出力ルートを初期化する。
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Before
+    public void setUp() throws IOException {
+        in = folder.newFolder("in").toPath();
+        out = folder.newFolder("out").toPath();
+    }
+
+    /**
+     * YamlLoader のファイルキャッシュをクリアし、テスト間の干渉を防ぐ。
+     */
+    @After
+    public void clearLoaderCache() {
+        YamlLoader.clearCacheForTest();
+    }
+
+    // ---- ヘルパ ----
+
+    /**
+     * カラム名・データ行から行リストを作る。
+     *
+     * @param cells セル値
+     * @return 1 行
+     */
+    private static List<String> row(String... cells) {
+        return Arrays.asList(cells);
+    }
+
+    /**
+     * 検証用の SETUP_TABLE ブロックを作る（{@code ${...}} を含み未加工を確認できる）。
+     *
+     * @param name テーブル名
+     * @return テーブルブロック
+     */
+    private static TableDataBlock sampleTable(String name) {
+        return new TableDataBlock(DataType.SETUP_TABLE_DATA, "", name,
+                row("USER_NAME", "ROLE"),
+                Arrays.asList(row("${userName}", "admin"), row("alice", "user")));
+    }
+
+    /**
+     * 1 セクション 1 テーブルのコンテナを作る。
+     *
+     * @param containerName コンテナ名（ブック名／ディレクトリ名）
+     * @param sectionName   セクション名（シート名／ファイル名）
+     * @param table         テーブルブロック
+     * @return コンテナ
+     */
+    private static TestDataContainer oneTable(String containerName, String sectionName, TableDataBlock table) {
+        TestDataSection section = new TestDataSection(sectionName, Collections.<TestDataBlock>singletonList(table));
+        return new TestDataContainer(containerName, Collections.singletonList(section));
+    }
+
+    /**
+     * 入力 Excel ブックを生成する。
+     *
+     * @param container コンテナ
+     * @param baseDir   出力先ディレクトリ
+     */
+    private static void writeXls(TestDataContainer container, Path baseDir) {
+        new XlsFormatWriter().write(container, baseDir.toString());
+    }
+
+    /**
+     * 入力 YAML コンテナ（ディレクトリ）を生成する。
+     *
+     * @param container コンテナ
+     * @param baseDir   コンテナディレクトリ
+     */
+    private static void writeYaml(TestDataContainer container, Path baseDir) {
+        new YamlFormatWriter().write(container, baseDir.toString());
+    }
+
+    /**
+     * コンテナから唯一のブロックを取り出す。
+     *
+     * @param container コンテナ
+     * @return 唯一のブロック
+     */
+    private static TestDataBlock onlyBlock(TestDataContainer container) {
+        assertThat(container.getSections().size(), is(1));
+        List<TestDataBlock> blocks = container.getSections().get(0).getBlocks();
+        assertThat(blocks.size(), is(1));
+        return blocks.get(0);
+    }
+
+    /**
+     * テーブルブロックが期待値と一致することを表明する（データ種別・グループ・名前・カラム・行）。
+     *
+     * @param expected 期待テーブル
+     * @param actual   実テーブルブロック
+     */
+    private static void assertTable(TableDataBlock expected, TestDataBlock actual) {
+        assertThat(actual, is(org.hamcrest.CoreMatchers.instanceOf(TableDataBlock.class)));
+        TableDataBlock table = (TableDataBlock) actual;
+        assertThat(table.getDataType(), is(expected.getDataType()));
+        assertThat(table.getGroupId(), is(expected.getGroupId()));
+        assertThat(table.getIdentifier(), is(expected.getIdentifier()));
+        assertThat(table.getColumnNames(), is(expected.getColumnNames()));
+        assertThat(table.getRows(), is(expected.getRows()));
+    }
+
+    // ---- 4 方向 end-to-end ----
+
+    /**
+     * Given: 入力ルートに Excel ブック 1 件。
+     * When : XLS→YAML 変換。
+     * Then : {@code <out>/<ブック名>/<シート名>.yaml} が生成され、読み戻すと元のテーブルと一致する。
+     */
+    @Test
+    public void convertsXlsToYaml() {
+        // Given
+        TableDataBlock table = sampleTable("USERS");
+        writeXls(oneTable("BookA", "data", table), in);
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        Path yaml = out.resolve("BookA/data.yaml");
+        assertThat(Files.exists(yaml), is(true));
+        TestDataContainer read = new YamlFormatReader().read(out.resolve("BookA").toString(), "data");
+        assertTable(table, onlyBlock(read));
+    }
+
+    /**
+     * Given: 入力ルートに YAML コンテナ 1 件。
+     * When : YAML→XLS 変換。
+     * Then : {@code <out>/<コンテナ名>.xlsx} が生成され、読み戻すと元のテーブルと一致する。
+     */
+    @Test
+    public void convertsYamlToXls() {
+        // Given
+        TableDataBlock table = sampleTable("USERS");
+        writeYaml(oneTable("BookB", "data", table), in.resolve("BookB"));
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.YAML, DataFormat.XLS, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        Path xlsx = out.resolve("BookB.xlsx");
+        assertThat(Files.exists(xlsx), is(true));
+        TestDataContainer read = new XlsFormatReader().read(out.toString(), "BookB/data");
+        assertTable(table, onlyBlock(read));
+    }
+
+    /**
+     * Given: 入力ルートに Excel ブック 1 件。
+     * When : XLS→XLS 変換（同一形式・往復要件）。
+     * Then : {@code <out>/<ブック名>.xlsx} が生成され、読み戻すと元のテーブルと一致する。
+     */
+    @Test
+    public void convertsXlsToXls() {
+        // Given
+        TableDataBlock table = sampleTable("USERS");
+        writeXls(oneTable("BookC", "data", table), in);
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.XLS, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("BookC.xlsx")), is(true));
+        TestDataContainer read = new XlsFormatReader().read(out.toString(), "BookC/data");
+        assertTable(table, onlyBlock(read));
+    }
+
+    /**
+     * Given: 入力ルートに YAML コンテナ 1 件。
+     * When : YAML→YAML 変換（同一形式・往復要件）。
+     * Then : {@code <out>/<コンテナ名>/<ファイル名>.yaml} が生成され、読み戻すと元のテーブルと一致する。
+     */
+    @Test
+    public void convertsYamlToYamlIgnoringNonYamlEntries() throws IOException {
+        // Given
+        TableDataBlock table = sampleTable("USERS");
+        writeYaml(oneTable("BookD", "data", table), in.resolve("BookD"));
+        // YAML コンテナ内の非 YAML ファイル・サブディレクトリは無視される
+        Files.createFile(in.resolve("BookD/notes.txt"));
+        Files.createDirectories(in.resolve("BookD/nested"));
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.YAML, DataFormat.YAML, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        Path yaml = out.resolve("BookD/data.yaml");
+        assertThat(Files.exists(yaml), is(true));
+        assertThat(Files.exists(out.resolve("BookD/notes.txt")), is(false));
+        TestDataContainer read = new YamlFormatReader().read(out.resolve("BookD").toString(), "data");
+        assertTable(table, onlyBlock(read));
+    }
+
+    // ---- 集約・構造・絞り込み・上書き・異常系 ----
+
+    /**
+     * Given: 2 シートを持つ Excel ブック。
+     * When : XLS→YAML 変換。
+     * Then : シートごとに YAML ファイルが出力され、1 コンテナへ集約される。
+     */
+    @Test
+    public void aggregatesMultipleSheetsIntoOneContainer() {
+        // Given
+        TableDataBlock t1 = sampleTable("T1");
+        TableDataBlock t2 = sampleTable("T2");
+        TestDataContainer container = new TestDataContainer("Multi", Arrays.asList(
+                new TestDataSection("s1", Collections.<TestDataBlock>singletonList(t1)),
+                new TestDataSection("s2", Collections.<TestDataBlock>singletonList(t2))));
+        writeXls(container, in);
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("Multi/s1.yaml")), is(true));
+        assertThat(Files.exists(out.resolve("Multi/s2.yaml")), is(true));
+        assertTable(t1, onlyBlock(new YamlFormatReader().read(out.resolve("Multi").toString(), "s1")));
+        assertTable(t2, onlyBlock(new YamlFormatReader().read(out.resolve("Multi").toString(), "s2")));
+    }
+
+    /**
+     * Given: サブディレクトリ配下の Excel ブック。
+     * When : XLS→YAML 変換。
+     * Then : 入力の相対構造が出力側に保たれる。
+     */
+    @Test
+    public void preservesNestedStructure() throws IOException {
+        // Given
+        Path pkg = Files.createDirectories(in.resolve("pkg/sub"));
+        writeXls(oneTable("BookE", "data", sampleTable("USERS")), pkg);
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+
+        // Then
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("pkg/sub/BookE/data.yaml")), is(true));
+    }
+
+    /**
+     * Given: 2 件の Excel ブックと exclude グロブ。
+     * When : ConversionRequest 経由で XLS→YAML 変換。
+     * Then : 除外されたブックは変換されない。
+     */
+    @Test
+    public void appliesExcludeFromRequest() {
+        // Given
+        writeXls(oneTable("Keep", "data", sampleTable("USERS")), in);
+        writeXls(oneTable("Drop", "data", sampleTable("USERS")), in);
+
+        // When
+        int count = TestDataConverter.convert(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(in).outputPath(out)
+                .exclude("Drop.xlsx")
+                .build());
+
+        // Then
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("Keep/data.yaml")), is(true));
+        assertThat(Files.exists(out.resolve("Drop")), is(false));
+    }
+
+    /**
+     * Given: 出力先が既存・overwrite=false。
+     * When : 変換。
+     * Then : ConverterException で衝突を表面化する。
+     */
+    @Test
+    public void failsOnExistingOutputWhenOverwriteFalse() throws IOException {
+        // Given
+        writeXls(oneTable("BookA", "data", sampleTable("USERS")), in);
+        Files.createDirectories(out.resolve("BookA"));
+        Files.createFile(out.resolve("BookA/data.yaml"));
+
+        // When / Then
+        try {
+            TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("output already exists"), is(true));
+        }
+    }
+
+    /**
+     * Given: 出力先が既存・overwrite=true。
+     * When : ConversionRequest 経由で変換。
+     * Then : 上書きして変換成功。
+     */
+    @Test
+    public void overwritesExistingOutputWhenOverwriteTrue() throws IOException {
+        // Given
+        TableDataBlock table = sampleTable("USERS");
+        writeXls(oneTable("BookA", "data", table), in);
+        Files.createDirectories(out.resolve("BookA"));
+        Files.write(out.resolve("BookA/data.yaml"), "stale".getBytes());
+
+        // When
+        int count = TestDataConverter.convert(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(in).outputPath(out)
+                .overwrite(true)
+                .build());
+
+        // Then
+        assertThat(count, is(1));
+        assertTable(table, onlyBlock(new YamlFormatReader().read(out.resolve("BookA").toString(), "data")));
+    }
+
+    /**
+     * Given: 入力ディレクトリが存在しない。
+     * When : 変換。
+     * Then : ConverterException。
+     */
+    @Test
+    public void failsWhenInputMissing() {
+        // When / Then
+        try {
+            TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in.resolve("nope"), out);
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("input directory not found:"), is(true));
+        }
+    }
+
+    /**
+     * Given: 拡張子違いの同名ブックが同居する入力ディレクトリ・overwrite=true。
+     * When : XLS→YAML 変換。
+     * Then : ConverterException で止まり、出力を 1 本も作らない。
+     *
+     * <p>
+     * 記法は同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応と
+     * 定めており、同居は入口で止める。
+     * </p>
+     *
+     * <p>
+     * 本テストの {@code BookA.xls} は中身を持たない同居ファイルであり、修正前は
+     * {@code Your InputStream was neither an OLE2 stream, nor an OOXML stream} で落ちていた
+     * ——{@code .xlsx} を対象にした読み取りでも本体が {@code .xls} を先に開くことの直接証拠である。
+     * 両方が正しいブックのときに「戻り値 2・出力 1 本・中身は {@code .xls} 側・警告なし」となる実測は
+     * {@code issues.md} XLS-28 に記録がある。
+     * </p>
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenSameNameXlsAndXlsxCoexist() throws IOException {
+        // Given: BookA.xlsx は実ブック、BookA.xls は同居するだけの別ファイル
+        writeXls(oneTable("BookA", "data", sampleTable("USERS")), in);
+        Files.createFile(in.resolve("BookA.xls"));
+
+        // When / Then
+        try {
+            TestDataConverter.convert(new ConversionRequest.Builder()
+                    .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                    .inputPath(in).outputPath(out)
+                    .overwrite(true)
+                    .build());
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("same-name Excel books coexist:"), is(true));
+        }
+        assertThat(Files.exists(out.resolve("BookA")), is(false));
+    }
+
+    /**
+     * Given: setup_files／expected_files ブロックを含む YAML コンテナ。
+     * When : YAML→XLS 変換。
+     * Then : Excel が生成され、読み戻すと固定長／可変長ブロックが再現される。
+     *
+     * <p>このテストは nablarch-core-dataformat（scope=test）が実行時クラスパスに存在することを前提とする。
+     * 利用 PJ では nablarch-core-dataformat への依存を持つため問題ない。</p>
+     */
+    @Test
+    public void convertsYamlWithFilesToXls() {
+        // Given: fixed setup_files ブロック
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("file-type", "Fixed");
+        directives.put("text-encoding", "UTF-8");
+        List<FieldDef> fields = Collections.singletonList(new FieldDef("f1", "半角英字", "5"));
+        RecordLayout record = new RecordLayout("data", fields,
+                Collections.singletonList(Collections.singletonList("hello")));
+        FileDataBlock setupFile = new FileDataBlock(DataType.SETUP_FIXED, "", "input.dat", directives,
+                Collections.singletonList(record));
+
+        // Given: variable expected_files ブロック
+        List<FieldDef> outFields = Collections.singletonList(new FieldDef("c1", "半角英字", null));
+        RecordLayout outRecord = new RecordLayout(null, outFields,
+                Collections.singletonList(Collections.singletonList("world")));
+        FileDataBlock expectedFile = new FileDataBlock(DataType.EXPECTED_VARIABLE, "", "out.csv",
+                Collections.<String, String>emptyMap(),
+                Collections.singletonList(outRecord));
+
+        TestDataSection section = new TestDataSection("withFiles",
+                Arrays.<TestDataBlock>asList(setupFile, expectedFile));
+        TestDataContainer container = new TestDataContainer("FileBook",
+                Collections.singletonList(section));
+        writeYaml(container, in.resolve("FileBook"));
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.YAML, DataFormat.XLS, in, out);
+
+        // Then: Excel が生成され、読み戻すとファイルブロックが FileDataBlock として復元される
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("FileBook.xlsx")), is(true));
+        TestDataContainer read = new XlsFormatReader().read(out.toString(), "FileBook/withFiles");
+        List<TestDataBlock> blocks = read.getSections().get(0).getBlocks();
+        assertThat(blocks.size(), is(2));
+        assertThat(blocks.get(0), org.hamcrest.CoreMatchers.instanceOf(FileDataBlock.class));
+        assertThat(blocks.get(1), org.hamcrest.CoreMatchers.instanceOf(FileDataBlock.class));
+        assertThat(((FileDataBlock) blocks.get(0)).getFileType(), is(FileDataBlock.FileType.FIXED));
+        assertThat(((FileDataBlock) blocks.get(1)).getFileType(), is(FileDataBlock.FileType.VARIABLE));
+    }
+
+    /**
+     * Given: 変換対象が 0 件（空の入力ディレクトリ）。
+     * When : 変換。
+     * Then : 0 件で正常終了（出力なし）。
+     */
+    @Test
+    public void convertsNothingWhenNoTargets() {
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+
+        // Then
+        assertThat(count, is(0));
+    }
+
+    /**
+     * Given: 2 シート（data/skip）を持つ Excel ブック・excludeSheet=skip の変換リクエスト。
+     * When : XLS→YAML 変換。
+     * Then : excludeSheets に含まれるシート（skip）は変換されず、data シートのみが出力される
+     *        （{@code XlsFormatHandler} の {@code excludeSheets.contains(sheetName)} 分岐カバー）。
+     */
+    @Test
+    public void skipsExcludedSheetsFromXlsBook() {
+        // Given: 2 セクション（data/skip）を持つコンテナを Excel として書き出す
+        TableDataBlock table = sampleTable("USERS");
+        TestDataSection dataSection = new TestDataSection("data",
+                Collections.<TestDataBlock>singletonList(table));
+        TestDataSection skipSection = new TestDataSection("skip",
+                Collections.<TestDataBlock>singletonList(sampleTable("SKIP_TABLE")));
+        TestDataContainer container = new TestDataContainer("BookExclude",
+                Arrays.asList(dataSection, skipSection));
+        new XlsFormatWriter().write(container, in.toString());
+
+        // When: シート "skip" を除外して変換
+        int count = TestDataConverter.convert(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(in).outputPath(out)
+                .excludeSheet("skip")
+                .build());
+
+        // Then: 変換成功・data シートは YAML として出力、skip シートは生成されない
+        assertThat(count, is(1));
+        assertThat(Files.exists(out.resolve("BookExclude/data.yaml")), is(true));
+        assertThat(Files.exists(out.resolve("BookExclude/skip.yaml")), is(false));
+    }
+}

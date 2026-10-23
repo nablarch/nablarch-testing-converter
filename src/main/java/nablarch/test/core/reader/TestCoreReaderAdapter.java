@@ -1,0 +1,617 @@
+package nablarch.test.core.reader;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import nablarch.test.NablarchTestUtils;
+import nablarch.test.core.db.BasicDefaultValues;
+import nablarch.test.core.db.DbInfo;
+import nablarch.test.core.db.DefaultValues;
+import nablarch.test.core.db.TableData;
+import nablarch.test.core.file.DataFile;
+import nablarch.test.core.file.FixedLengthFile;
+import nablarch.test.core.messaging.MessagePool;
+import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
+import nablarch.test.core.util.interpreter.NullInterpreter;
+import nablarch.test.core.util.interpreter.QuotationTrimmer;
+import nablarch.test.core.util.interpreter.TestDataInterpreter;
+
+/**
+ * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析を
+ * 再利用して生の器を取り出すための薄いアダプタ。
+ * <p>
+ * 本体の各 Parser は取り出し口（{@code getResult}）や一部コンストラクタが
+ * パッケージプライベートで、変換ツールのパッケージから直接呼べない。本クラスを
+ * 本体 Parser と同一パッケージ（{@code nablarch.test.core.reader}）に 1 枚だけ
+ * 相乗りさせ、この可視性の壁を越える。相乗りの影響は本クラスに局所化される。
+ * </p>
+ * <p>
+ * データを持つパーサ（テーブル・{@code LIST_MAP}・固定長／可変長ファイル・電文・送信同期電文）は、
+ * テスティングフレームワークが単体テストで使うのと同じ順のインタープリタ列
+ * （{@code null} 記法 → 引用符記法 → 改行記法）で配線する。値の意味をフレームワークと
+ * 同じにするためであり、変換ツール側で値を解釈し直すことはしない。
+ * {@code ${...}} 等の特殊記法を扱うインタープリタは渡さない（記法のまま運ぶ）。
+ * 生行を原文のまま取り出すコレクタ（ヘッダ行・ボディ行）だけは空の interpreters で配線する。
+ * ただしマーカーカラムだけのブロックの版面（{@link #readMarkerOnlyBlock}）は解釈後の値を要するため、
+ * 同じコレクタを本体パーサと同順のインタープリタ列で配線する。
+ * また {@code getExpectedTableData} のような後処理（デフォルト値補完・期待値マージ）も
+ * 行わない。各メソッドはデータタイプに対応する本体器をそのまま返す。
+ * </p>
+ *
+ * @author kiyobot
+ */
+public class TestCoreReaderAdapter {
+
+    /** 空の interpreters（生行を原文のまま取り出すコレクタ用の配線） */
+    private static final List<TestDataInterpreter> EMPTY_INTERPRETERS = Collections.emptyList();
+
+    /** テスティングフレームワークが単体テストで使うのと同順のインタープリタ列 */
+    private static final List<TestDataInterpreter> INTERPRETERS = Collections.unmodifiableList(
+            Arrays.<TestDataInterpreter>asList(new NullInterpreter(), new QuotationTrimmer(),
+                                               new LineSeparatorInterpreter()));
+
+    /** テストデータリーダ */
+    private final TestDataReader reader;
+
+    /** スタブの{@link DbInfo}（カラム型の取得にのみ使用される） */
+    private final DbInfo dbInfo = new StubDbInfo();
+
+    /** デフォルト値（{@link TableData}生成に必要なだけで、補完は実行しない） */
+    private final DefaultValues defaultValues = new BasicDefaultValues();
+
+    /**
+     * コンストラクタ。
+     *
+     * @param reader テストデータリーダ
+     */
+    public TestCoreReaderAdapter(TestDataReader reader) {
+        this.reader = reader;
+    }
+
+    /**
+     * テーブルデータを取り出す。
+     * <p>
+     * 後処理（デフォルト値補完・期待値マージ）は行わず、指定されたデータタイプの
+     * 生の{@link TableData}一覧をそのまま返す。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       <b>生値の</b>グループID（グループ指定が無い場合は空文字）。上流へ渡す直前に
+     *                 {@link GroupIdNotation#format} で整形する
+     * @param type     データタイプ（{@link DataType#SETUP_TABLE_DATA}／
+     *                 {@link DataType#EXPECTED_TABLE_DATA}／{@link DataType#EXPECTED_COMPLETED}）
+     * @return テーブルデータ一覧
+     * @throws IllegalArgumentException データタイプがテーブル系でない場合
+     */
+    public List<TableData> readTables(String path, String resource, String id, DataType type) {
+        switch (type) {
+            case SETUP_TABLE_DATA:
+            case EXPECTED_TABLE_DATA:
+            case EXPECTED_COMPLETED:
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        "unsupported data type for readTables. type=[" + type + "]");
+        }
+        TableDataParser parser = new TableDataParser(reader, INTERPRETERS, dbInfo, defaultValues, type);
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        parser.parse(path, resource, GroupIdNotation.format(id), false);
+        return parser.getResult();
+    }
+
+    /**
+     * {@code List<Map<String, String>>}形式のデータを取り出す。
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       ID
+     * @return 行データ一覧（キーはヘッダ行のカラム名）
+     */
+    public List<Map<String, String>> readListMap(String path, String resource, String id) {
+        ListMapParser parser = new ListMapParser(reader, INTERPRETERS);
+        parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
+        return parser.getResult();
+    }
+
+    /**
+     * LIST_MAP ブロックのカラム名を Excel 記述順（マーカーカラム除外済み）で取得する。
+     * <p>
+     * {@link ListMapParser} が返す {@code Map<String, String>} は {@link HeaderLine#getMapExcludingMarkerColumns}
+     * の TreeMap 由来のためアルファベット順になる。本メソッドは {@link #readBlockBodyLines} で取り出した
+     * 生ヘッダ行から {@link HeaderLine} を直接構築し、{@link HeaderLine#getEffectiveColumnNames()} で
+     * Excel 記述順（マーカーカラム除外済み）のカラム名列を返す。
+     * </p>
+     * <p>
+     * 対象ブロックが存在しない（生行が空）場合は空リストを返す。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       識別子（{@code =}以降の識別子）
+     * @return Excel 記述順のカラム名一覧（マーカーカラム除外済み）
+     */
+    public List<String> readListMapColumnNames(String path, String resource, String id) {
+        // readBlockBodyLines は マーカー行を除いたボディ行を返す。
+        // LIST_MAP ブロックでは 1 行目がヘッダ行（カラム名行）、2 行目以降がデータ行。
+        List<List<String>> bodyLines = readBlockBodyLines(path, resource, "", id, DataType.LIST_MAP);
+        if (bodyLines.isEmpty()) {
+            return Collections.emptyList();
+        }
+        HeaderLine header = new HeaderLine(bodyLines.get(0));
+        return Arrays.asList(header.getEffectiveColumnNames());
+    }
+
+    /**
+     * ファイル（固定長／可変長）を取り出す。
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       <b>生値の</b>グループID（グループ指定が無い場合は空文字）。上流へ渡す直前に
+     *                 {@link GroupIdNotation#format} で整形する
+     * @param type     データタイプ（{@link DataType#SETUP_FIXED}／{@link DataType#EXPECTED_FIXED}／
+     *                 {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE}）
+     * @return ファイル一覧
+     * @throws IllegalArgumentException データタイプがファイル系でない場合
+     */
+    public List<? extends DataFile> readFiles(String path, String resource, String id, DataType type) {
+        DataFileParser<? extends DataFile> parser;
+        switch (type) {
+            case SETUP_FIXED:
+            case EXPECTED_FIXED:
+                parser = new FixedLengthFileParser(reader, INTERPRETERS, type);
+                break;
+            case SETUP_VARIABLE:
+            case EXPECTED_VARIABLE:
+                parser = new VariableLengthFileParser(reader, INTERPRETERS, type);
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        "unsupported data type for readFiles. type=[" + type + "]");
+        }
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        parser.parse(path, resource, GroupIdNotation.format(id), false);
+        return parser.getResult();
+    }
+
+    /**
+     * メッセージ（{@link DataType#MESSAGE}）を取り出す。
+     * <p>
+     * 変換ツールが中間モデルへ写すのに必要な FW 制御ヘッダと本文（固定長ファイル）を
+     * 併せ持つ{@link MessageData}を返す。本文の{@link FixedLengthFile}は本体
+     * {@link MessageParser#getDelegate()}（同一パッケージからのみ可視）から取り出す。
+     * これは{@link MessagePool#getSource()}が protected で変換ツールのパッケージから
+     * 読めないための相乗りであり、相乗りの影響は本アダプタに局所化される。
+     * 対象が存在しない場合は{@code null}を返す（本体{@link MessageParser}の挙動を踏襲）。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param id       メッセージ ID（{@code =}以降の識別子）
+     * @return メッセージ。対象が存在しない場合は{@code null}
+     */
+    public MessageData readMessage(String path, String resource, String id) {
+        MessageParser parser = new MessageParser(reader, INTERPRETERS, DataType.MESSAGE);
+        parser.parse(path, resource, id, false); // 変換器経路: 本体静的キャッシュを汚染しない
+        List<FixedLengthFile> bodies = parser.getDelegate().getResult();
+        if (bodies.isEmpty()) {
+            return null;
+        }
+        return new MessageData(parser.getFwHeader(), bodies.get(0));
+    }
+
+    /**
+     * 送信同期メッセージ（要求/応答電文の 4 種：{@link DataType#EXPECTED_REQUEST_HEADER_MESSAGES}／
+     * {@link DataType#EXPECTED_REQUEST_BODY_MESSAGES}／{@link DataType#RESPONSE_HEADER_MESSAGES}／
+     * {@link DataType#RESPONSE_BODY_MESSAGES}）のうち、指定グループに属する全ブロックの本文
+     * （固定長ファイル）を取り出す。
+     * <p>
+     * これらのマーカーは {@code TYPE[group]=id} 形式で、本体は {@link GroupMessageParser} が
+     * グループ単位で {@link SendSyncMessageParser} へ委譲して解析する。本体 {@code GroupMessageParser}
+     * は結果を {@link MessagePool} 群へ包んで返すため、変換ツールが必要とする生の
+     * {@link FixedLengthFile} を取り出せない（{@link MessagePool#getSource()} は protected で
+     * 別パッケージから不可視）。そこで本メソッドは {@code GroupMessageParser} と同じ配線
+     * （{@code GroupDataParsingTemplate} ＋ {@code SendSyncMessageParser} 委譲）を本アダプタ内で
+     * 再現し、{@link SendSyncMessageParser#getDelegate()} が持つ {@link FixedLengthFile} 群を
+     * そのまま返す。FW 制御ヘッダは送信系では常に空のため返さない（本体 {@code GroupMessageParser}
+     * も空ヘッダで包む）。
+     * </p>
+     * <p>
+     * 各 {@link FixedLengthFile} の {@link DataFile#getPath()} はマーカー {@code =} 以降の識別子
+     * （本体 {@code GroupMessageParser} が {@code setRequestId(data.getPath())} に用いる値）に
+     * 一致する。同一グループ内に識別子の異なる複数ブロックがある場合は、その数だけ返る。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @param groupId  <b>生値の</b>グループ ID（{@code case1} 等。グループ指定が無い場合は空文字）。
+     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
+     * @param type     データタイプ（送信系 4 種のいずれか）
+     * @return 指定グループに属する本文（固定長ファイル）一覧（記述順。対象が無ければ空）
+     */
+    public List<FixedLengthFile> readSendSyncMessages(String path, String resource, String groupId, DataType type) {
+        SendSyncBodyCollector collector = new SendSyncBodyCollector(reader, type);
+        // 変換器経路: 本体静的キャッシュを汚染しない
+        collector.parse(path, resource, GroupIdNotation.format(groupId), false);
+        return collector.getResult();
+    }
+
+    /**
+     * リソース内に存在する全データブロックの<b>ヘッダ</b>（データタイプ・グループ ID・識別子）を
+     * シート記述順に列挙する。ブロック本体の解析は行わない。
+     * <p>
+     * 変換ツールはアダプタの各 {@code read*} メソッドを (データタイプ, ID) 単位で呼ぶため、
+     * 「リソースにどのブロックが存在するか」を知る手段が要る。本メソッドは本体
+     * {@link TestDataParsingTemplate#getDataType(String)}／{@link TestDataParsingTemplate#getTypeValue(List)}
+     * を再利用してマーカー行を判定するため、行分類のロジックを本体と二重実装しない
+     * （変換ツール側に構造解析を持ち込まない）。グループ ID（{@code [g1]} 等）はデータタイプ名と
+     * {@code =}の間の文字列として切り出す。
+     * </p>
+     *
+     * @param path     取得元パス
+     * @param resource 取得元リソース名
+     * @return ブロックヘッダ一覧（記述順。マーカー行が無ければ空）
+     */
+    public List<BlockHeader> readHeaders(String path, String resource) {
+        HeaderCollector collector = new HeaderCollector(reader);
+        collector.parse(path, resource, "", false); // 変換器経路: 本体静的キャッシュを汚染しない
+        return collector.getResult();
+    }
+
+    /**
+     * 指定したブロック（データタイプ・グループ ID・識別子で特定）の<b>生のボディ行</b>を、
+     * マーカー行を除いて記述順に取り出す。
+     * <p>
+     * 本体の器（{@link DataFile}）は構造解析の過程で一部の値を正規化する（長さ省略 {@code -} の
+     * 実バイト長化・型記法のフレームワーク表記化・レコード種別の private 化）。変換ツールは作成者が
+     * 記述した<b>原文</b>を要するため、正規化前の生行が必要になる。本メソッドは本体
+     * {@link TestDataParsingTemplate}（行の読み込み・コメント/空行除去・マーカー判定）を再利用して
+     * 対象ブロックの生行のみを返し、行種別（名前行／型行／長さ行／値行）の解釈は呼び出し側へ委ねる
+     * （行分類のロジックを二重実装しない）。各行は本体読み込みと同じく
+     * {@link NablarchTestUtils#trimTailCopy(List)} で行末の空セルを除去済みである。
+     * </p>
+     *
+     * @param path       取得元パス
+     * @param resource   取得元リソース名
+     * @param groupId    <b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）。本メソッドは
+     *                   {@link #markerGroupId} の出力と内部で比較するだけで上流の API 境界を越えないため、
+     *                   <b>整形しない</b>（両側とも生値）
+     * @param identifier 識別子（ファイルパス／メッセージ ID 等）
+     * @param type       データタイプ
+     * @return 生のボディ行（記述順。マーカー行は含まない。対象ブロックが無ければ空）
+     */
+    public List<List<String>> readBlockBodyLines(String path, String resource, String groupId,
+                                                 String identifier, DataType type) {
+        BodyLineCollector collector =
+                new BodyLineCollector(reader, EMPTY_INTERPRETERS, type, groupId, identifier, true);
+        collector.parse(path, resource, "", false); // 変換器経路: 本体静的キャッシュを汚染しない
+        return collector.getResult();
+    }
+
+    /**
+     * カラム名の行が<b>マーカーカラムだけ</b>で構成されたブロックの版面（カラム名と各行の値）を取り出す。
+     * <p>
+     * マーカーカラムはフレームワークが読み込み対象から除外するため、器（{@link TableData}／
+     * {@code List<Map>}）にはカラムも値も残らない。変換ツールはこのブロックを版面ごと往復させるため、
+     * 除外前の姿を要する。本メソッドは本体 {@link TestDataParsingTemplate}（行の読み込み・コメント／空行除去・
+     * マーカー判定・<b>セルの解釈</b>）を再利用して対象ブロックの行を取り出し、カラム名の行が
+     * {@link HeaderLine} の有効カラム名を 1 つも残さない場合にだけ版面を返す。
+     * </p>
+     * <p>
+     * <b>値は本体パーサと同じインタープリタ列を通したあとの値である。</b>本体は行の解釈を
+     * マーカーカラムの除外より前に行の全セルへ掛けるため（{@code TestDataParsingTemplate} の
+     * {@code readTestData}）、マーカーカラムの値も他のカラムと同じ解釈を受ける。中間モデルが持つのは
+     * 解釈後の値であり、Excel 形式への書き戻し（{@code XlsFormatWriter} の記法への戻し）はその逆写像である。
+     * </p>
+     * <p>
+     * <b>行末の空セルは取り除かない。</b>{@code null} 記法は解釈の結果 Java {@code null} になり、
+     * 行末の空セル除去（{@link NablarchTestUtils#trimTailCopy(List)}）はこれを空要素として落としてしまう。
+     * 代わりに本体 {@code HeaderLine#excludeMarkerColumns} と同じく、足りない位置を空文字で埋めて
+     * カラム名と同じ要素数へ揃える。
+     * </p>
+     *
+     * @param path       取得元パス
+     * @param resource   取得元リソース名
+     * @param groupId    <b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）
+     * @param identifier 識別子（テーブル名／{@code LIST_MAP} の ID）
+     * @param type       データタイプ（テーブル系／{@code LIST_MAP}）
+     * @return 版面。対象ブロックが無い場合と、カラム名の行に有効なカラム名が 1 つでもある場合は {@code null}
+     */
+    public MarkerOnlyBlock readMarkerOnlyBlock(String path, String resource, String groupId,
+                                               String identifier, DataType type) {
+        BodyLineCollector collector =
+                new BodyLineCollector(reader, INTERPRETERS, type, groupId, identifier, false);
+        collector.parse(path, resource, "", false); // 変換器経路: 本体静的キャッシュを汚染しない
+        List<List<String>> lines = collector.getResult();
+        if (lines.isEmpty()) {
+            return null;
+        }
+        List<String> columnNames = NablarchTestUtils.trimTailCopy(lines.get(0));
+        if (columnNames.isEmpty() || new HeaderLine(columnNames).getEffectiveColumnNames().length > 0) {
+            return null;
+        }
+        List<List<String>> rows = new ArrayList<>(lines.size() - 1);
+        for (int r = 1; r < lines.size(); r++) {
+            List<String> line = lines.get(r);
+            List<String> row = new ArrayList<>(columnNames.size());
+            for (int c = 0; c < columnNames.size(); c++) {
+                row.add(c < line.size() ? line.get(c) : "");
+            }
+            rows.add(row);
+        }
+        return new MarkerOnlyBlock(columnNames, rows);
+    }
+
+    /**
+     * ブロックの識別子を、本体の器が持つ形へ揃える。
+     * <p>
+     * テーブル系だけは本体 {@link TableData} が識別子（テーブル名）を trim して大文字化するため
+     * （{@code TableData#setTableName}）、器から取った識別子でシート上のマーカー行を引き当てるには
+     * 同じ正規化を掛ける必要がある。それ以外のデータタイプは器が識別子を加工しないためそのまま返す。
+     * </p>
+     *
+     * @param type       データタイプ
+     * @param identifier 識別子
+     * @return 揃えた識別子
+     */
+    private static String normalizeIdentifier(DataType type, String identifier) {
+        switch (type) {
+            case SETUP_TABLE_DATA:
+            case EXPECTED_TABLE_DATA:
+            case EXPECTED_COMPLETED:
+                return identifier.trim().toUpperCase();
+            default:
+                return identifier;
+        }
+    }
+
+    /**
+     * マーカー行の先頭セルから<b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）を切り出す。
+     * <p>
+     * 半角角括弧は Excel 形式の書式であって値ではないため、ここで外す
+     * 。付けるのは
+     * {@code XlsFormatWriter#marker} であり、この 2 か所が Excel 版面の書式を知る層である。
+     * </p>
+     * <p>
+     * 先頭セルがデータタイプ名で始まっていても {@code =} を含まない場合（不完全マーカー・
+     * 偶然データタイプ名で始まるデータ行等）はマーカー行でないとみなし {@code null} を返す。
+     * </p>
+     *
+     * @param type      先頭セルから判定済みのデータタイプ（{@link DataType#DEFAULT} 以外）
+     * @param firstCell マーカー行の先頭セル
+     * @return 生値のグループ ID（無指定は空文字）。マーカー行でなければ {@code null}
+     */
+    private static String markerGroupId(DataType type, String firstCell) {
+        String afterName = firstCell.substring(type.getName().length());
+        int eq = afterName.indexOf('=');
+        if (eq < 0) {
+            return null;
+        }
+        String marker = afterName.substring(0, eq);
+        int last = marker.length() - 1;
+        if (last > 0 && marker.charAt(0) == '[' && marker.charAt(last) == ']') {
+            return marker.substring(1, last);
+        }
+        return marker;
+    }
+
+    /**
+     * 送信同期メッセージ（送信系 4 種）の本文（固定長ファイル）をグループ単位で収集する、
+     * 本体 {@link GroupMessageParser} と同型の {@link GroupDataParsingTemplate}。
+     * <p>
+     * {@code GroupMessageParser} は {@link SendSyncMessageParser} へ委譲して解析した結果を
+     * {@link MessagePool} 群へ包んで返すが、変換ツールは生の {@link FixedLengthFile} を要する。
+     * 本クラスは {@code GroupMessageParser} と同じ委譲構成を取りつつ、{@link #getResult()} で
+     * {@link SendSyncMessageParser#getDelegate()} の {@link FixedLengthFile} 群をそのまま返す。
+     * </p>
+     *
+     * @see #readSendSyncMessages(String, String, String, DataType)
+     */
+    private static final class SendSyncBodyCollector extends GroupDataParsingTemplate<List<FixedLengthFile>> {
+
+        /** 解析を委譲する送信同期メッセージパーサ */
+        private final SendSyncMessageParser delegate;
+
+        /**
+         * コンストラクタ。
+         *
+         * @param reader     テストデータリーダ
+         * @param targetType 対象データタイプ（送信系 4 種のいずれか）
+         */
+        SendSyncBodyCollector(TestDataReader reader, DataType targetType) {
+            // セルを解釈するのは読み手であるこのテンプレート側であり、委譲先ではない
+            // （委譲先は onReadLine 以降しか呼ばれず、自身の interpreters を使う機会が無い）。
+            super(reader, INTERPRETERS, targetType);
+            delegate = new SendSyncMessageParser(reader, INTERPRETERS, targetType);
+        }
+
+        @Override
+        void onReadLine(List<String> line) {
+            delegate.onReadLine(line);
+        }
+
+        @Override
+        void onTargetTypeFound(List<String> line) {
+            delegate.onTargetTypeFound(line);
+        }
+
+        @Override
+        List<FixedLengthFile> getResult() {
+            return delegate.getDelegate().getResult();
+        }
+    }
+
+    /**
+     * リソース内のマーカー行を走査してブロックヘッダを収集する、解析を伴わない
+     * {@link TestDataParsingTemplate}。
+     * <p>
+     * 本体のテンプレートが提供する{@code getDataType}／{@code getTypeValue}で
+     * マーカー行の判定・識別子抽出を行い、ブロック本体（カラム・行・型）の解析はしない。
+     * 特定のデータタイプを対象にしないため{@link #isTargetType}は常に偽を返し、
+     * 走査ロジックは{@link #parse(String)}を上書きして実装する。
+     * </p>
+     */
+    private static final class HeaderCollector extends TestDataParsingTemplate<List<BlockHeader>> {
+
+        /** 収集したヘッダ（記述順） */
+        private final List<BlockHeader> headers = new ArrayList<>();
+
+        /**
+         * コンストラクタ。
+         *
+         * @param reader テストデータリーダ
+         */
+        HeaderCollector(TestDataReader reader) {
+            super(reader, EMPTY_INTERPRETERS, DataType.DEFAULT);
+        }
+
+        @Override
+        void parse(String id) {
+            List<String> line;
+            while ((line = readLine()) != null) {
+                String first = line.get(0);
+                DataType type = getDataType(first);
+                if (type == DataType.DEFAULT) {
+                    continue;
+                }
+                String groupId = markerGroupId(type, first);
+                if (groupId == null) {
+                    // データタイプ名で始まるがマーカー行でない（'='なし）＝対象外
+                    continue;
+                }
+                String identifier = getTypeValue(line);
+                headers.add(new BlockHeader(type, groupId, identifier));
+            }
+        }
+
+        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
+        // TestDataParsingTemplate の契約上、実装は必須。
+        @Override
+        void onReadLine(List<String> line) {
+            // ブロック本体は解析しない
+        }
+
+        @Override
+        void onTargetTypeFound(List<String> line) {
+            // 特定タイプを対象にしない
+        }
+
+        @Override
+        boolean isTargetType(List<String> line, String id) {
+            return false;
+        }
+
+        @Override
+        boolean shouldStopOnNextOne() {
+            return false;
+        }
+
+        @Override
+        List<BlockHeader> getResult() {
+            return headers;
+        }
+    }
+
+    /**
+     * 指定した 1 ブロック（データタイプ・グループ ID・識別子）の生のボディ行を収集する、
+     * 解析を伴わない{@link TestDataParsingTemplate}。
+     * <p>
+     * 本体のテンプレートが提供する{@code getDataType}／{@code getTypeValue}でマーカー行を判定し、
+     * 対象ブロックのマーカー行を検出している間だけ後続の非マーカー行を収集する。ブロック本体
+     * （名前・型・長さ・値）の構造解釈はしない。各行は本体読み込みと同じく
+     * {@link NablarchTestUtils#trimTailCopy(List)}で行末の空セルを除去して返す。
+     * </p>
+     */
+    private static final class BodyLineCollector extends TestDataParsingTemplate<List<List<String>>> {
+
+        /** 対象データタイプ */
+        private final DataType targetType;
+
+        /** 対象グループ ID（{@code [g1]} 等。無指定は空文字） */
+        private final String targetGroupId;
+
+        /** 対象識別子 */
+        private final String targetIdentifier;
+
+        /** 収集した生のボディ行（記述順） */
+        private final List<List<String>> bodyLines = new ArrayList<>();
+
+        /** 対象ブロックを検出して収集中か */
+        private boolean collecting = false;
+
+        /** 行末の空セルを取り除くか */
+        private final boolean trimTail;
+
+        /**
+         * コンストラクタ。
+         *
+         * @param reader           テストデータリーダ
+         * @param interpreters     行のセルへ掛ける解釈クラス（原文で取り出すなら空）
+         * @param targetType       対象データタイプ
+         * @param targetGroupId    対象グループ ID（無指定は空文字）
+         * @param targetIdentifier 対象識別子
+         * @param trimTail         行末の空セルを取り除くなら真
+         */
+        BodyLineCollector(TestDataReader reader, List<TestDataInterpreter> interpreters, DataType targetType,
+                          String targetGroupId, String targetIdentifier, boolean trimTail) {
+            super(reader, interpreters, DataType.DEFAULT);
+            this.targetType = targetType;
+            this.targetGroupId = targetGroupId;
+            this.targetIdentifier = normalizeIdentifier(targetType, targetIdentifier);
+            this.trimTail = trimTail;
+        }
+
+        @Override
+        void parse(String id) {
+            List<String> line;
+            while ((line = readLine()) != null) {
+                String first = line.get(0);
+                DataType type = getDataType(first);
+                if (type != DataType.DEFAULT) {
+                    String groupId = markerGroupId(type, first);
+                    if (groupId != null) {
+                        // マーカー行＝新しいブロックの開始。対象ブロックかで収集を切り替える。
+                        String identifier = normalizeIdentifier(targetType, getTypeValue(line));
+                        collecting = type == targetType
+                                && groupId.equals(targetGroupId)
+                                && identifier.equals(targetIdentifier);
+                        continue; // マーカー行自体はボディに含めない
+                    }
+                }
+                if (collecting) {
+                    bodyLines.add(trimTail ? NablarchTestUtils.trimTailCopy(line) : new ArrayList<>(line));
+                }
+            }
+        }
+
+        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
+        // TestDataParsingTemplate の契約上、実装は必須。
+        @Override
+        void onReadLine(List<String> line) {
+            // parse を上書きしているため未使用
+        }
+
+        @Override
+        void onTargetTypeFound(List<String> line) {
+            // 特定タイプを対象にしない
+        }
+
+        @Override
+        boolean isTargetType(List<String> line, String id) {
+            return false;
+        }
+
+        @Override
+        boolean shouldStopOnNextOne() {
+            return false;
+        }
+
+        @Override
+        List<List<String>> getResult() {
+            return bodyLines;
+        }
+    }
+}
