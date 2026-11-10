@@ -98,7 +98,7 @@ public class FieldDefTest {
     @Test
     public void データ型が空文字のフィールド定義は生成できる() {
         // Given: $defs.field_def.type は minLength ＝ 1 だが、中間モデルの契約は null 不可までとする
-        //        （空文字の扱いは記法側の検証に委ねる。既存の辺④テスト
+        //        （空文字の扱いは記法側の検証に委ねる。既存の中間モデル → YAML の書き出しのテスト
         //        YamlFormatWriterTest#serialize_fieldWithEmptyType_emitsEmptyType が type: "" の
         //        書き出しを担保している）
         // When

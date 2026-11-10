@@ -35,13 +35,13 @@ public class RecordLayoutTest {
     }
 
     /**
-     * XLS-22 ／ YML-12 の 3 形目。フィールドを 1 件も持たないレコードレイアウトは生成できない。
+     * フィールドを 1 件も持たないレコードレイアウトは生成できない。
      * 記法はフィールド名称リストまたは
      * データ型リストが未指定または空であるを記述時のエラーに挙げ、本体スキーマ
      * {@code $defs.record_fragment} は {@code fields} を必須かつ {@code minItems} ＝ 1 とする。
      *
      * <p>
-     * <b>データ行も 0 件で確かめる。</b>データ行が 1 件でもあると XLS-41 の番人
+     * <b>データ行も 0 件で確かめる。</b>データ行が 1 件でもあると、行の要素数を見る番人
      * （行の要素数 ≦ フィールド定義の件数）が先に落とすため、フィールド 0 件そのものを
      * 突いたことにならない。
      * </p>
@@ -64,7 +64,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド名称が重複したレコードは生成できない() {
-        // Given: 同一レコード種別内でフィールド名称が重複していることは記述時のエラー（XLS-40）
+        // Given: 同一レコード種別内でフィールド名称が重複していることは記述時のエラー
         List<FieldDef> fields = List.of(
                 new FieldDef("f1", "数値", "5"), new FieldDef("f1", "半角英字", "3"));
         try {
@@ -89,7 +89,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド定義の件数より要素数が多いデータ行を持つレコードは生成できない() {
-        // Given: データ要素数が不正であることはファイルデータの記述時のエラー（XLS-41 の「多い側」）
+        // Given: データ要素数が不正であることはファイルデータの記述時のエラー（要素数がフィールド定義より多い側）
         List<FieldDef> fields = List.of(
                 new FieldDef("f1", "数値", "5"), new FieldDef("f2", "半角英字", "3"));
         List<List<String>> rows = List.of(Arrays.asList("1", "a", "余り"));
@@ -108,7 +108,10 @@ public class RecordLayoutTest {
     public void フィールド定義の件数より要素数が少ないデータ行は保持できる() {
         // Given: 記法は少ない側を正常と定め、不足したフィールドは "" として補完されると書く。
         //        全フィールドを省略した行（YAML では rows: に空配列）も記法として明示的に案内している。
-        //        したがって不変条件は「行の要素数 ≦ fields の件数」であり、一致の強制ではない（XLS-42）。
+        //        したがって不変条件は「行の要素数 ≦ fields の件数」であり、一致の強制ではない。
+        //        なお本体スキーマ $defs.record_fragment.rows は「件数が一致しない場合は NTF がエラーを出す」と
+        //        記法と正反対を書いている。明文どうしの矛盾であり、本ツールは記法の側に立っている
+        //        （スキーマ側に揃えることになった場合、このテストは失敗する）。
         List<FieldDef> fields = List.of(
                 new FieldDef("f1", "数値", "5"), new FieldDef("f2", "半角英字", "3"));
         List<List<String>> rows = List.of(Arrays.asList("1"), Arrays.<String>asList());
@@ -135,7 +138,7 @@ public class RecordLayoutTest {
 
     @Test
     public void フィールド定義群がnullのレコードは生成できない() {
-        // Given: 「無い」ことは 0 件のリストで表す（XLS-38）
+        // Given: 「無い」ことは 0 件のリストで表す（記法に null に当たる書き方が無い）
         try {
             new RecordLayout("data", null, List.of());
             fail("IllegalArgumentException が送出されるべき");
@@ -184,10 +187,10 @@ public class RecordLayoutTest {
      * レコード種別の省略は {@code null} のまま保持し、デフォルト補完しない。
      *
      * <p>
-     * <b>入力のフィールド定義を 0 件から 1 件へ書き直した（XLS-22・2026-08-19）。</b>
+     * <b>入力のフィールド定義を 0 件から 1 件へ書き直した。</b>
      * フィールド 0 件のレコードレイアウトは記法に存在しない形であり生成時に拒否するようにしたため、
      * 0 件のままでは本テストの意図（レコード種別の保持）に届く前に落ちる。
-     * 番人を緩めるのではなく入力を記法どおりの形へ直す扱いは、§1-C ／ YML-12 ／ XLS-43 と同じである。
+     * 番人を緩めるのではなく、テストの入力を記法どおりの形へ直している。
      * </p>
      */
     @Test

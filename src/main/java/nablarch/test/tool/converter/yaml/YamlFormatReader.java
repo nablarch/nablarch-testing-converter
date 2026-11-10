@@ -605,9 +605,10 @@ public class YamlFormatReader implements TestDataFormatReader {
      * 本体器のディレクティブ値は型変換済み（{@code Charset}・整数等）で、順序も {@code HashMap} 由来で
      * 記述順を保たない。YAML 経路も Excel 経路と対称にこの器固有挙動を受容し、値は {@link Object#toString()} で
      * 文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）null のまま保持する。
-     * 区切り文字（{@code record-separator}／{@code field-separator}）は、辺①（Excel）と同じ
+     * 区切り文字（{@code record-separator}／{@code field-separator}）は、Excel の読み込みと同じ
      * {@link DirectiveUtil#normalizeSeparator} で記法どおりの表現へ逆正規化する
-     * （器が実制御文字へ変換して保持するため。{@code issues.md} YML-08）。
+     * （器が実制御文字へ変換して保持するため。実制御文字のまま書き出すと、本体の読み込みが値を
+     * {@code trim()} して区切り文字が失われる）。
      * </p>
      *
      * @param directives 本体ディレクティブ

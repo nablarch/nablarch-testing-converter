@@ -21,8 +21,8 @@ import static org.junit.Assert.fail;
  * </p>
  *
  * <p>
- * 方針は {@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」。
- * 番人は辺③④（書き出し）には置かない。
+ * 不正値は書き出し側でなく中間モデルの生成時に拒否する。書き出し側で落とすのは、持ってはいけない値を
+ * 中間モデルが持てる状態をそのままにする暫定対応にあたるため、番人は書き出し（Excel ／ YAML）には置かない。
  * </p>
  */
 public class TestDataBlockTest {
@@ -81,7 +81,8 @@ public class TestDataBlockTest {
     public void データタイプDEFAULTのブロックは生成できない() {
         // Given: DEFAULT は記法のデータタイプ表に載っているが（記法はフレームワーク内部用
         //        （通常は使用しない））、YAML のトップレベルキー対応表（記法）に行が無く、
-        //        YAML では表現できない。中間モデルの契約は 4 辺すべてが表現できる範囲で定める
+        //        YAML では表現できない。中間モデルの契約は Excel・YAML の読み込みと書き出しのすべてが
+        //        表現できる範囲で定める
         // When
         try {
             new TableDataBlock(DataType.DEFAULT, "", "T", List.of("C1"), List.of(List.of("v1")));
@@ -153,7 +154,7 @@ public class TestDataBlockTest {
 
     @Test
     public void ファイル系でないデータ種別のファイルブロックは生成できない() {
-        // Given: 辺③は SETUP_TABLE_DATA のマーカーでファイルブロックを書けてしまい、
+        // Given: Excel への書き出しは SETUP_TABLE_DATA のマーカーでファイルブロックを書けてしまい、
         //        読み戻すと別種のブロック（テーブル）になる
         // When
         try {
@@ -167,7 +168,7 @@ public class TestDataBlockTest {
 
     @Test
     public void 電文系でないデータ種別の電文ブロックは生成できない() {
-        // Given: 辺④は messages: の配下に table: を書いてしまう（スキーマ違反）
+        // Given: YAML への書き出しは messages: の配下に table: を書いてしまう（スキーマ違反）
         // When
         try {
             new MessageDataBlock(DataType.SETUP_TABLE_DATA, "", "msg1",

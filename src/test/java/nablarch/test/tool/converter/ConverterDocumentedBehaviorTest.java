@@ -33,7 +33,7 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * 4 件（3-1・3-3・3-4・3-11）は<b>負のテスト</b>である。すなわち「起こらないこと」「効かないこと」を
  * 押さえる。負のテストは崩しても落ちないことが起こりやすいため、期待値をわざと崩して落ちることを
- * 特に念入りに確認した（記録は {@code checks/task-38.md}）。
+ * 特に念入りに確認した。
  * </p>
  *
  * @author kiyobot
@@ -144,8 +144,9 @@ public class ConverterDocumentedBehaviorTest {
      *       {@code IllegalArgumentException: Duplicate field names are not permitted in a record.} を投げる</li>
      * </ul>
      * <p>
-     * 本テストは<b>スキーマも本体の解析も通る V-COL</b> で押さえる。V-COL の余りの値が黙って捨てられる
-     * ことは {@code coverage/issues.md} <b>YML-14</b> に記録済みである。
+     * 本テストは<b>スキーマも本体の解析も通る V-COL</b> で押さえる。V-COL の余りの値は、本体の
+     * {@code DataFileFragment#addValue} がフィールド名の件数ぶんしか値を取り出さないため、converter に
+     * 届く前に黙って捨てられる（本ツールの外の挙動である）。
      * </p>
      */
     @Test

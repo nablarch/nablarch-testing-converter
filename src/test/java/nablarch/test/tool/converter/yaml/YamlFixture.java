@@ -20,7 +20,7 @@ import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 
 /**
- * 辺②（YAML→中間モデル）の実ファイル経路テスト用フィクスチャ。
+ * YAML → 中間モデルの読み取りの実ファイル経路テスト用フィクスチャ。
  *
  * <p>
  * YAML テキストを実ファイル（{@code <dir>/testdata.yaml}）へ書き出し、本番配線の
@@ -47,7 +47,7 @@ final class YamlFixture {
      *
      * <p>
      * 本フィクスチャが書き出すファイルの拡張子であると同時に、{@link YamlFormatWriter} が
-     * 出力ファイルに付ける拡張子でもある。辺④の書き出しテスト
+     * 出力ファイルに付ける拡張子でもある。中間モデル → YAML の書き出しテスト
      * （{@code YamlFormatWriterModelTest} ／ {@code YamlFormatWriterInvalidOutputTest}）が
      * 同じ定数を各クラスで重複定義していたため、ここへ寄せた。
      * </p>
@@ -101,8 +101,10 @@ final class YamlFixture {
      * WARNING 以上のログとあわせて返す。
      *
      * <p>
-     * <b>「例外にも警告にもならず値が消える」ことが `issues.md` の主張の核心である課題</b>
-     * （YML-09 ／ YML-10 ／ YML-11）について、警告の不在をアサートするために用いる。
+     * <b>「例外にも警告にもならず値が消える・食い違う」ことが問題の核心である挙動</b>
+     * （同じ {@code group_id} のエントリが離れて書かれるとブロックの並びが原文と食い違う／
+     * テーブル系のカラム名の大文字化で大小だけが違うキーが衝突する／引用符なしスカラーの前後空白と
+     * {@code #} 以降が落ちる）について、警告の不在をアサートするために用いる。
      * 兄弟の {@code XlsFormatReaderInvalidInputTest#readCapturingWarnings} と同じ形である。
      * </p>
      *
@@ -113,12 +115,11 @@ final class YamlFixture {
      * </p>
      *
      * <p>
-     * さらに辺②の読み取り経路（{@link YamlFormatReader}）は JUL のロガーを 1 つも持たないため、
+     * さらに YAML の読み取り経路（{@link YamlFormatReader}）は JUL のロガーを 1 つも持たないため、
      * <b>現状の実装ではこのアサートは落ちようがない</b>。意味を持つのは
      * 「将来 JUL の警告を足したときに気づける」という回帰検知としてである
-     * （辺①の {@code XlsFormatReader} は重複カラム名で実際に JUL の WARNING を出すため、
-     * そちらでは現在の挙動そのものを固定している）。この非対称は
-     * {@code coverage/inventory.md} §2.1-2 の「開示」に記した。
+     * （Excel の読み取りの {@code XlsFormatReader} は重複カラム名で実際に JUL の WARNING を出すため、
+     * そちらでは現在の挙動そのものを固定している）。
      * </p>
      *
      * @param dir      書き出し先ディレクトリ
@@ -225,7 +226,7 @@ final class YamlFixture {
      * </p>
      *
      * <p>
-     * こちらを {@code static} でフィクスチャ側に置いているのは、「唯一のブロック」の検査を辺②の
+     * こちらを {@code static} でフィクスチャ側に置いているのは、「唯一のブロック」の検査を YAML 読み取りの
      * テストクラス 3 つ（{@code YamlFormatReaderInvalidInputTest} ／ {@code YamlFormatReaderRealFileTest} ／
      * {@code YamlFormatReaderScalarTest}）で共有し、同じ失敗がクラスごとに別のメッセージに
      * ならないようにするためである。{@code XlsFixture} が「中間モデルを組み立てるヘルパは引き受けない」と

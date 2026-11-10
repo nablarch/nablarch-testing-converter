@@ -403,8 +403,8 @@ public class TestDataConverterTest {
      * 本テストの {@code BookA.xls} は中身を持たない同居ファイルであり、修正前は
      * {@code Your InputStream was neither an OLE2 stream, nor an OOXML stream} で落ちていた
      * ——{@code .xlsx} を対象にした読み取りでも本体が {@code .xls} を先に開くことの直接証拠である。
-     * 両方が正しいブックのときに「戻り値 2・出力 1 本・中身は {@code .xls} 側・警告なし」となる実測は
-     * {@code issues.md} XLS-28 に記録がある。
+     * 修正前は、両方が正しいブックのとき {@code overwrite=true} で「戻り値 2・出力 1 本・中身は
+     * {@code .xls} 側・警告なし」となり、{@code .xlsx} 側の内容が黙って失われていた。
      * </p>
      *
      * @throws IOException 入出力エラー

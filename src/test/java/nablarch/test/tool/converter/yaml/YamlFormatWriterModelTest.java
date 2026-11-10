@@ -39,30 +39,23 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺④（中間モデル→YAML）の軸A・C・E — {@code YamlFormatWriterTest} が通していない中間モデルの形を
- * 固定するテスト。
+ * 中間モデル → YAML の書き出しについて、{@code YamlFormatWriter} のデータタイプ・中間モデルのフィールド・
+ * 件数のうち {@code YamlFormatWriterTest} が通していない中間モデルの形を固定するテスト。
  *
  * <p>
- * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §4.3 が「要追加」としていた
- * 軸A 2 件（A-07 {@code EXPECTED_FIXED}／A-08 {@code SETUP_VARIABLE}）・軸C 2 件
- * （C-02 {@code sections} 空・複数／C-12 {@code FileDataBlock.records} 空）・軸E 1 件
- * （E-4 コンテナ内セクション数 複数）である。
+ * 対象はデータタイプ 2 件（{@code EXPECTED_FIXED}／{@code SETUP_VARIABLE}）・中間モデルのフィールド 2 件
+ * （{@code sections} 空・複数／{@code FileDataBlock.records} 空）・件数 2 件
+ * （コンテナ内セクション数 1 件・複数）である。セクション数 1 件は、出力ファイルの件数を見るアサートが
+ * YAML の書き出しのテスト全体で複数件側の 1 か所しか無かったため足した。
  * </p>
  *
  * <p>
- * <b>#27 で軸E をもう 1 件足した。</b>E-4(1 件)（コンテナ内セクション数 1）である。
- * {@code axis-matrix.md} §4.5 の総点検で、出力ファイルの件数を見るアサートが辺④のテスト全体で
- * 複数件側の 1 か所しか無く 1 件側が空いていることが判明したため足した。
- * </p>
- *
- * <p>
- * <b>#25 のレビューで、送信同期 3 種（A-12 {@code EXPECTED_REQUEST_BODY_MESSAGES}／
- * A-13 {@code RESPONSE_HEADER_MESSAGES}／A-14 {@code RESPONSE_BODY_MESSAGES}）が
- * #18 以来 ✅ と判定されていながら実際は 🔺 だったことが判明したため、3 件を追加した。</b>
+ * <b>送信同期 3 種（{@code EXPECTED_REQUEST_BODY_MESSAGES}／{@code RESPONSE_HEADER_MESSAGES}／
+ * {@code RESPONSE_BODY_MESSAGES}）のセクションキーは、既存テストが担保しているように見えて実際には
+ * 固定されていなかったため、3 件を追加した。</b>
  * あわせて、キーのクォート判定（{@code YamlFormatWriter#isPlainSafeKey}）が特殊文字集合の
- * ほとんどについて未固定だったため 1 件を、軸D の D4-02／D4-08 を {@code YamlFormatWriter#emitMap}
- * 経路でも観測するため 1 件を追加した。経緯は各メソッドの Javadoc と
- * {@code inventory.md} §4.1-2 の軸A 表・「軸D の測定経路」にある。
+ * ほとんどについて未固定だったため 1 件を、値 {@code "true"}／{@code "2026-08-07"} の記法を
+ * {@code YamlFormatWriter#emitMap} 経路でも観測するため 1 件を追加した。経緯は各メソッドの Javadoc にある。
  * </p>
  *
  * <p>
@@ -70,17 +63,17 @@ import org.junit.rules.TemporaryFolder;
  * （yaml jar 内 {@code nablarch/test/ntf-testdata-yaml-schema.json}）を参照しないため、
  * スキーマが禁じる形の中間モデルを渡すと、例外にならずスキーマ違反の {@code .yaml} を書き出す。
  * 該当する 4 つの形（{@code records} 空 2 種／{@code fields} 空／{@code FieldDef.type} 省略）は
- * いずれも辺②では<b>到達不能</b>と判定済みであり（{@code inventory.md} §2.3）、
- * 辺④からだけ作れる。{@code issues.md} <b>YML-12</b> に記録した。
- * <b>ただし 4 形すべて #25.5 で修正済み</b>であり、本クラスには 1 つも残っていない。
- * <b>2 形目（電文の {@code records} 空）は辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * いずれも YAML の読み取り（スキーマ検証）では<b>到達できず</b>、
+ * 中間モデル → YAML の書き出しからだけ作れる。
+ * <b>ただし 4 形すべて修正済み</b>であり、本クラスには 1 つも残っていない。
+ * <b>2 形目（電文の {@code records} 空）は書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
  * （{@code MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない} ／
  * {@code #本文レコードが0件の送信系電文ブロックも生成できない}。移設は 2026-08-19）。
- * <b>3 形目（{@code fields} 空）は辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
- * （{@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない}。{@code issues.md} <b>XLS-22</b>）。
- * <b>4 形目（{@code FieldDef.type} 省略）だけは辺④の番人ではなく中間モデルの生成時拒否へ移した</b>
- * （{@code FieldDefTest#データ型がnullのフィールド定義は生成できない}。方針は {@code steering.md} Decisions
- * 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * <b>3 形目（{@code fields} 空）は書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * （{@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない}）。
+ * <b>4 形目（{@code FieldDef.type} 省略）だけは書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
+ * （{@code FieldDefTest#データ型がnullのフィールド定義は生成できない}。
+ * 不正値は書き出し側でなく中間モデルの生成時に拒否する方針による）。
  * 1 形目（ファイルブロックの {@code records} 空）だけは記法・スキーマとも<b>合法な形が存在する</b>ため
  * 弾くのではなく {@code records: []} を書くように直してあり、本クラスの
  * {@link #writesEmptyRecordsListForFileBlockWithoutRecords()}と
@@ -104,12 +97,12 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
- * （{@code YML-12}）として記録した。
- * このうち <b>{@code YML-12} の 1 形目</b>（レコードが空のファイルブロックで {@code records:} キー自体が
- * 書かれず、読み戻しがスキーマの {@code required} 違反になる）は <b>#25.5 で修正済み</b>で、該当テストは
+ * 妥当でないと判断した挙動は、スキーマが禁じる形の中間モデルから読み戻せない YAML が黙って書き出される
+ * ことであった。
+ * このうち <b>1 形目</b>（レコードが空のファイルブロックで {@code records:} キー自体が
+ * 書かれず、読み戻しがスキーマの {@code required} 違反になる）は <b>修正済み</b>で、該当テストは
  * 現状の固定ではなく<b>記法どおりの仕様</b>（{@code records: []} を書く）を書いている。
- * <b>3 形目</b>（{@code fields} 欠落）と <b>4 形目</b>（{@code type} 欠落）も #25.5 の追加分で修正済みで、
+ * <b>3 形目</b>（{@code fields} 欠落）と <b>4 形目</b>（{@code type} 欠落）も修正済みで、
  * 書き出し時に送出で弾くようになった
  * （該当テストは本クラスから外し、{@code YamlFormatWriterTest} の番人テストへ置き換えた）。
  * 残る 2 形目（メッセージブロックの {@code records} 欠落）は今回の対象外のため、現状の固定のままである。
@@ -231,12 +224,11 @@ public class YamlFormatWriterModelTest {
      * <b>値は {@code "true"}（真偽値に見える文字列）と {@code "2026-08-07"}（日付に見える文字列）である。</b>
      * レコード断片（{@code records[].rows}）経路は {@code YamlFormatWriter#rowFlow} を通り、
      * {@code setup_tables} の {@code rows} 経路（{@code YamlFormatWriterScalarTest} が測っている経路）とは
-     * 別の呼び出し元である。したがって軸D の D4-02／D4-08 の記法が<b>この経路でも</b>
+     * 別の呼び出し元である。したがって {@code "true"}／{@code "2026-08-07"} の記法が<b>この経路でも</b>
      * アサートされている状態を作るために、素の値（{@code "v"} など）でなくこの 2 値を置いてある。
      * <b>これが示すのは「その 2 値がこの経路でアサートされている」ことまでである</b> ——
      * 当初版（素の値）では「{@code rowFlow} がこの 2 値だけ非クォートで書く」変異が生存したが、
      * 条件を付けない「{@code rowFlow} からクォートを外す」変異なら当初版でも既存テストが落ちる。
-     * 詳細は {@code inventory.md} §4.1-2 の「軸D の測定経路」にある。
      * フィールド名の並び {@code flag} → {@code date} は辞書順の逆である。
      * </p>
      *
@@ -252,8 +244,8 @@ public class YamlFormatWriterModelTest {
      * {@link #record()} の<b>可変長ファイル用</b>。フィールド長だけを落とし、名前・型・値は同じである。
      *
      * <p>
-     * 可変長ファイルではフィールド定義がフィールド長を持てない（#31。{@code coverage/issues.md}
-     * <b>XLS-45</b>。{@code FileDataBlock} の生成時に拒否される）ため、可変長のブロックを組む
+     * 可変長ファイルではフィールド定義がフィールド長を持てない（NTF 仕様として可変長ファイルでは
+     * {@code length} を書けない。{@code FileDataBlock} の生成時に拒否される）ため、可変長のブロックを組む
      * テストは {@link #record()} を使えない。<b>長さ以外を揃えてあるので、固定長側との差は
      * 長さ行／{@code length} キーの有無だけになる。</b>
      * </p>
@@ -280,7 +272,7 @@ public class YamlFormatWriterModelTest {
         return m;
     }
 
-    // ------------------------------------------------------------------ A-07 / A-08
+    // ------------------------------------------------------------------ EXPECTED_FIXED / SETUP_VARIABLE
 
     /**
      * Given: {@code SETUP_VARIABLE}（可変長）と {@code EXPECTED_FIXED}（固定長）を<b>この順</b>で持つセクション。
@@ -288,12 +280,11 @@ public class YamlFormatWriterModelTest {
      * Then : {@code setup_files:} → {@code expected_files:} の順に、空行で区切って書かれる。
      *
      * <p>
-     * 担保する軸要素: A-07（{@code EXPECTED_FIXED} → {@code expected_files}）／
-     * A-08（{@code SETUP_VARIABLE} → {@code setup_files}）。
-     * §4.1 では 2 種とも {@code RoundTripTest} 経由の 🔺 だけだった。
-     * E-1(複数) は既存の {@code YamlFormatWriterTest#serialize_multipleSections_separatedByBlankLineInEncounterOrder}
-     * が通しており、本メソッドは<b>並びを辞書順・定義順とずらした版</b>として足しているだけである
-     * （台帳 §4.1-2 は本クラスの担う軸に E-1 を挙げていない）。
+     * 担保する観点: {@code EXPECTED_FIXED} → {@code expected_files}／
+     * {@code SETUP_VARIABLE} → {@code setup_files}。
+     * それまで 2 種とも {@code RoundTripTest} 経由の往復でしか担保されておらず、出力のキーを直接見ていなかった。
+     * セクション内ブロック数 複数は既存の {@code YamlFormatWriterTest#serialize_multipleSections_separatedByBlankLineInEncounterOrder}
+     * が通しており、本メソッドは<b>並びを辞書順・定義順とずらした版</b>として足しているだけである。
      * </p>
      *
      * <p>
@@ -334,19 +325,21 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
-     * XLS-44。Given: ファイル系 4 種それぞれのファイルブロック。
+     * Given: ファイル系 4 種それぞれのファイルブロック。
      * When : 直列化する。
      * Then : {@code type:} が<b>データ種別から</b>出る
      *        （{@code SETUP_FIXED} ／ {@code EXPECTED_FIXED} → {@code "fixed"}、
      *        {@code SETUP_VARIABLE} ／ {@code EXPECTED_VARIABLE} → {@code "variable"}）。
      *
      * <p>
-     * 担保する軸要素: <b>A-06 ／ A-07 ／ A-08 ／ A-09</b>。辺④のトップレベルキーは
+     * 担保する観点: <b>{@code SETUP_FIXED} ／ {@code EXPECTED_FIXED} ／ {@code SETUP_VARIABLE} ／
+     * {@code EXPECTED_VARIABLE}</b>。YAML の書き出しのトップレベルキーは
      * SETUP 系 → {@code setup_files} ／ EXPECTED 系 → {@code expected_files} の <b>2 対 1</b> であり
      * 、固定長／可変長を分けるのは {@code type:} だけである。
-     * 導出前はその {@code type:} が引数の {@code fileType} から出ていたため、
-     * <b>4 種のデータ種別を区別する出力が辺④に無く</b> 4 行とも ❌ だった
-     * （{@code coverage/issues.md} <b>XLS-44</b>「現れ方（辺④ 軸A の A-06〜A-09）」）。
+     * 中間モデルはかつてファイル種別を {@code DataType} と {@code fileType} の 2 つで持ち、{@code type:} は
+     * 引数の {@code fileType} から出ていた。食い違う組み合わせを検査しなかったため、
+     * <b>4 種のデータ種別を区別する出力が YAML の書き出しに無かった</b>。現在は {@code fileType} を
+     * {@code DataType} から導出する。
      * </p>
      *
      * <p>
@@ -368,14 +361,14 @@ public class YamlFormatWriterModelTest {
     }
 
     /**
-     * XLS-44。Given: ファイル系 4 種それぞれのファイルブロック。
-     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す（辺④→辺②）。
+     * Given: ファイル系 4 種それぞれのファイルブロック。
+     * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す（中間モデル → YAML → 中間モデル）。
      * Then : データ種別が 4 種とも元のまま復元される。
      *
      * <p>
      * 導出前は {@code SETUP_FIXED} のブロックから {@code type: "variable"} が出せたため、
      * 読み戻すと {@code YamlFormatReader#fileDataType} が {@code SETUP_VARIABLE} を作り、
-     * <b>黙って別種のブロックへ化けた</b>（{@code coverage/issues.md} <b>XLS-44</b>「辺④は検出できない」）。
+     * <b>黙って別種のブロックへ化けた</b>。
      * 出力する YAML は本体スキーマに適合してしまうため、この経路は検出できなかった。
      * 導出後はファイル種別を外から渡せないため、この経路が塞がる。
      * </p>
@@ -407,7 +400,7 @@ public class YamlFormatWriterModelTest {
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : {@code EXPECTED_FIXED} のまま復元される（{@code EXPECTED_VARIABLE} と混ざらない）。
      *
-     * <p>担保する軸要素: A-07（往復）。同じ {@code expected_files} キーを共有する
+     * <p>担保する観点: {@code EXPECTED_FIXED}（往復）。同じ {@code expected_files} キーを共有する
      * {@code EXPECTED_VARIABLE} と区別されるのは {@code type: "fixed"} による。</p>
      */
     @Test
@@ -430,7 +423,7 @@ public class YamlFormatWriterModelTest {
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : {@code SETUP_VARIABLE} のまま復元される（{@code SETUP_FIXED} と混ざらない）。
      *
-     * <p>担保する軸要素: A-08（往復）。</p>
+     * <p>担保する観点: {@code SETUP_VARIABLE}（往復）。</p>
      */
     @Test
     public void restoresSetupVariableDataTypeThroughRealReader() {
@@ -447,7 +440,7 @@ public class YamlFormatWriterModelTest {
         assertThat(back.getIdentifier(), is("s.csv"));
     }
 
-    // ------------------------------------------------------------------ A-12 / A-13 / A-14
+    // ------------------------------------------------------------------ 送信同期 3 種のセクションキー
 
     /**
      * 送信同期のメッセージブロックを 1 件組み立てる（4 種で {@code DataType} 以外は同一）。
@@ -490,7 +483,8 @@ public class YamlFormatWriterModelTest {
      * Then : 出力全文が {@code expected_request_body_messages:} 配下の 1 ブロックと一致する。
      *
      * <p>
-     * 担保する軸要素: A-12。<b>#18 は ✅ と判定していたが誤りだった</b>（下記）。
+     * 担保する観点: データタイプ {@code EXPECTED_REQUEST_BODY_MESSAGES}。<b>既存テストで担保済みと
+     * 見ていたが誤りだった</b>（下記）。
      * </p>
      *
      * <p>
@@ -498,9 +492,10 @@ public class YamlFormatWriterModelTest {
      * <b>まとめて 1 つの出力に</b>直列化し、4 つのキー文字列が「どこかに現れる」ことを
      * {@code assertTrue(yaml.contains(...))} で見ているだけで、{@code DataType} → セクションキーの対応を
      * 1 つも固定していない。4 種の写像を入れ替えても 4 キーはすべて現れるため通ってしまう
-     * （#25 レビューの変異で実測）。担保があったのは、単独ブロックの出力全文を完全一致で見ている
-     * {@code #serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField} が通す A-11 だけである。
-     * <b>辺③がまったく同じ形の欠陥を #23 のレビューで見つけている</b>（{@code inventory.md} §3.1-3）。
+     * （変異を入れて実測）。担保があったのは、単独ブロックの出力全文を完全一致で見ている
+     * {@code #serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField} が通す
+     * {@code EXPECTED_REQUEST_HEADER_MESSAGES} だけである。
+     * <b>中間モデル → Excel の書き出しのテストにも、まったく同じ形の欠陥があった</b>。
      * </p>
      */
     @Test
@@ -514,7 +509,7 @@ public class YamlFormatWriterModelTest {
      * When : {@code serialize}。
      * Then : 出力全文が {@code response_header_messages:} 配下の 1 ブロックと一致する。
      *
-     * <p>担保する軸要素: A-13（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
+     * <p>担保する観点: データタイプ {@code RESPONSE_HEADER_MESSAGES}（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
      */
     @Test
     public void writesResponseHeaderMessagesUnderItsOwnSectionKey() {
@@ -527,7 +522,7 @@ public class YamlFormatWriterModelTest {
      * When : {@code serialize}。
      * Then : 出力全文が {@code response_body_messages:} 配下の 1 ブロックと一致する。
      *
-     * <p>担保する軸要素: A-14（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
+     * <p>担保する観点: データタイプ {@code RESPONSE_BODY_MESSAGES}（経緯は {@code #writesExpectedRequestBodyMessagesUnderItsOwnSectionKey}）。</p>
      */
     @Test
     public void writesResponseBodyMessagesUnderItsOwnSectionKey() {
@@ -535,7 +530,7 @@ public class YamlFormatWriterModelTest {
                 is(sendSyncYaml("response_body_messages")));
     }
 
-    // ------------------------------------------------------------------ C-02 / E-4
+    // ------------------------------------------------------------------ sections の件数
 
     /**
      * Given: セクションを 1 件も持たないコンテナ。
@@ -543,9 +538,9 @@ public class YamlFormatWriterModelTest {
      * Then : 例外にならず、<b>ファイルも出力先ディレクトリも作られない</b>。
      *
      * <p>
-     * 担保する軸要素: C-02（{@code sections} 空）。{@link YamlFormatWriter#write} は
+     * 担保する観点: {@code sections} 空。{@link YamlFormatWriter#write} は
      * {@code container.getSections()} をループするだけで、ディレクトリの作成もループの中にあるためである。
-     * 辺③は同じ入力から<b>シート 0 枚のブックを書き出す</b>（{@code issues.md} <b>XLS-23</b>）ため非対称である。
+     * 中間モデル → Excel は同じ入力から<b>シート 0 枚のブックを書き出す</b>ため非対称である。
      * </p>
      */
     @Test
@@ -569,15 +564,15 @@ public class YamlFormatWriterModelTest {
      *        各ファイルの中身はそのセクションを直列化したものになる。
      *
      * <p>
-     * 担保する軸要素: C-02（{@code sections} 複数）／E-4（コンテナ内セクション数 複数）。
-     * 辺②は 1 リソース＝1 セクションであるため到達不能だが（{@code inventory.md} §0.8-6）、
-     * 辺④は {@code write} がセクションをループするため到達できる。
+     * 担保する観点: {@code sections} 複数（コンテナ内セクション数 複数）。
+     * YAML の読み取りは 1 リソース＝1 セクションを返す API であるため到達不能だが、
+     * YAML の書き出しは {@code write} がセクションをループするため到達できる。
      * </p>
      *
      * <p>
      * セクションごとにテーブル識別子を変えてあるため、ファイル名とセクションの対応が入れ替われば落ちる。
      * 期待する中身は<b>リテラルで置いている</b>（{@code writer.serialize(...)} と突き合わせると
-     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけないためである。#25 レビュー指摘）。
+     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけないためである）。
      * </p>
      */
     @Test
@@ -606,14 +601,14 @@ public class YamlFormatWriterModelTest {
      *        中身はそのセクションを直列化したものになる。
      *
      * <p>
-     * 担保する軸要素: E-4(1 件)（コンテナ内セクション数 1）。
+     * 担保する観点: コンテナ内セクション数 1 件。
      * <b>件数は出力側で固定する</b> —— {@code out.list().length} が出力先ディレクトリの実ファイル数を
      * 返すため、2 つ目が書き出されれば落ちる。{@code exists()} では件数を固定できない。
      * </p>
      *
      * <p>
      * 期待する中身は<b>リテラルで置いている</b>（{@code writer.serialize(...)} と突き合わせると
-     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけない。#25 レビュー指摘）。
+     * 実装の出力同士を比べることになり、直列化そのものが壊れても気づけない）。
      * コンテナ名を {@code "book"}、セクション名を {@code "solo"} と別にしてあるので、
      * ファイル名がコンテナ名から作られるようになれば落ちる。
      * </p>
@@ -673,7 +668,7 @@ public class YamlFormatWriterModelTest {
                 Collections.singletonList(Collections.singletonList("1")));
     }
 
-    // ------------------------------------------------------------------ C-12
+    // ------------------------------------------------------------------ FileDataBlock.records 空
 
     /**
      * Given: レコードレイアウトを 1 件も持たないファイルブロック（ディレクティブは 2 件）。
@@ -689,7 +684,7 @@ public class YamlFormatWriterModelTest {
      * </p>
      *
      * <p>
-     * 担保する軸要素: C-12（{@code FileDataBlock.records} 空）。
+     * 担保する観点: {@code FileDataBlock.records} 空。
      * ディレクティブの並び（{@code text-encoding} → {@code file-type}）は辞書順の逆である。
      * </p>
      */
@@ -717,10 +712,10 @@ public class YamlFormatWriterModelTest {
      * Then : どちらの値もダブルクォート付きで書かれる。
      *
      * <p>
-     * 担保する軸要素: D4-02（{@code "true"}）／D4-08（{@code "2026-08-07"}）を
+     * 担保する観点: 値 {@code "true"}／{@code "2026-08-07"} の記法を
      * <b>{@code YamlFormatWriter#emitMap} 経路で</b>。同メソッドは {@code directives} と
      * {@code fw_header} の 2 箇所から呼ばれる唯一の出力経路であり、
-     * {@code YamlFormatWriterScalarTest} が軸D を測っている {@code setup_tables} の {@code rows} 経路
+     * {@code YamlFormatWriterScalarTest} が値の表現を測っている {@code setup_tables} の {@code rows} 経路
      * （{@code YamlSeq#prop}）とは別の呼び出し元である。
      * </p>
      *
@@ -737,7 +732,6 @@ public class YamlFormatWriterModelTest {
      * <p>
      * <b>本メソッドが示すのは「この 2 値がこの経路でアサートされている」ことまでである。</b>
      * {@code emitMap} からクォートを外す変異（条件なし）は本メソッドが無くても既存テストが捉える。
-     * 粒度の議論は {@code inventory.md} §4.1-2 の「軸D の測定経路」にある。
      * </p>
      */
     @Test
@@ -809,14 +803,14 @@ public class YamlFormatWriterModelTest {
      * Then : 20 通りすべてで、そのキーがダブルクォートで囲まれた出力全文になる。
      *
      * <p>
-     * 担保する軸要素: なし（{@code isPlainSafeKey} の判定そのもの。軸D はキーではなく<b>値</b>の表現である）。
+     * 担保する観点: {@code isPlainSafeKey} の判定そのもの（値の表現ではなく<b>キー</b>のクォート）。
      * </p>
      *
      * <p>
      * <b>既存の担保はコロン・空白・空文字・先頭 {@code -} の 4 つだけだった</b>
      * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
      * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}）。
-     * 集合から {@code #} を 1 文字外すだけで全件が通ってしまうこと（生存変異）を #25 レビューが実測しており、
+     * 集合から {@code #} を 1 文字外すだけで全件が通ってしまうこと（生存変異）を実測しており、
      * 実害は大きい —— {@code #} が外れるとカラム名 {@code #x} の行が {@code - #x: "v"} となって
      * <b>行全体が YAML コメント化し、データ行が黙って消える</b>。
      * あわせて JaCoCo で未到達だった「キーに制御文字を含む」枝もここで閉じる。
@@ -824,7 +818,7 @@ public class YamlFormatWriterModelTest {
      *
      * <p>
      * <b>本メソッドは「1 ケース 1 {@code @Test}」の規約から意図して逸脱している。</b>
-     * 規約は {@code XlsFormatWriterInvalidOutputTest} の F3-04 節と
+     * 規約は {@code XlsFormatWriterInvalidOutputTest} のシート名の検査の節と
      * {@code XlsFormatWriterCellTypeTest} のコメントにあり、その理由は
      * 「ループで束ねると最初の 1 文字が落ちた時点で残りが実行されず、どの文字で挙動が違うのかが
      * 分からなくなるため」である。ここでループにしてよいと判断した根拠は 2 つある。
@@ -841,8 +835,6 @@ public class YamlFormatWriterModelTest {
      *       アサートはループ後に 1 回だけ行う。したがって 1 件目が落ちても残り 19 ケースは実行され、
      *       失敗メッセージには落ちた全ケースが出る。</li>
      * </ol>
-     *
-     * <p>この逸脱は {@code inventory.md} §4.1-2 にも記録してある。</p>
      */
     @Test
     public void quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter() {
@@ -882,7 +874,7 @@ public class YamlFormatWriterModelTest {
         return yaml.replace("\n", "\\n");
     }
 
-    // ------------------------------------------------------------------ 書けるが読み戻せない形（YML-12）
+    // ------------------------------------------------------------------ 書けるが読み戻せない形
 
     /**
      * Given: レコードレイアウトを 1 件も持たないファイルブロック。
@@ -917,9 +909,9 @@ public class YamlFormatWriterModelTest {
      * Then : テーブル名・カラム名とも<b>大文字化されて</b>戻る。値と並びはそのまま。
      *
      * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-10</b> の辺④側の現れ方の固定）。
-     * 大文字化するのは本体の器（{@code TableData}）であり converter ではない。
-     * 大小だけが違うカラム名が同居すると値が消えるところまでが YML-10 の課題で、
+     * 担保する観点: テーブル系のカラム名の大文字化が、YAML の書き出し → 読み戻しにどう現れるかの固定。
+     * 大文字化するのは本体の器（{@code TableData}）であり converter ではない（大文字化を止める権限が
+     * converter に無いため修正しない）。大小だけが違うカラム名が同居すると値が消えるところまでが問題の全体で、
      * ここで固定するのは<b>往復でカラム名の大小が保たれない</b>ことである。
      * </p>
      */
@@ -946,9 +938,10 @@ public class YamlFormatWriterModelTest {
      * Then : 書き出しは {@code "\t"} と忠実だが、読み戻しは {@code IllegalArgumentException} で止まる。
      *
      * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-08</b> の辺④側の現れ方の固定）。
-     * 原因は辺②側でディレクティブ値が {@code trim()} されることであり、タブが空文字になるためである。
-     * すなわち<b>タブ区切りの可変長ファイルは辺④→辺②の往復ができない</b>。
+     * 担保する観点: ディレクティブ値の {@code trim()} が、YAML の書き出し → 読み戻しにどう現れるかの固定。
+     * 原因は読み取り側（本体 {@code DataFile#setDirective}）でディレクティブ値が {@code trim()} されることであり、
+     * タブが空文字になるためである。
+     * すなわち<b>リテラルのタブを区切り文字に持つ可変長ファイルは YAML の書き出し → 読み取りの往復ができない</b>。
      * </p>
      */
     @Test

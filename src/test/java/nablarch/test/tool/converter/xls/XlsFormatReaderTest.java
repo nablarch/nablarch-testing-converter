@@ -558,8 +558,10 @@ public class XlsFormatReaderTest {
      *        型・長さ・値を復元する。FW ヘッダは記法のまま保持する。
      *
      * <p>
-     * 担保：MESSAGE の FW 制御ヘッダ行は、ディレクティブ行と同じく名前行の候補から除くこと
-     * （{@code issues.md} XLS-46 の「残る差」。#59）。
+     * 担保：MESSAGE の FW 制御ヘッダ行は、ディレクティブ行と同じく名前行の候補から除くこと。
+     * FW 制御ヘッダは名前行より前に「名前・値」形式で書き、本体パーサも設定行として読むが、
+     * その値は {@code getDirectives()} ではなく FW ヘッダに入るため、ディレクティブ名だけを除く
+     * のでは足りない。修正前はレコード種別が {@code requestId} になっていた。
      * </p>
      */
     @Test
@@ -879,7 +881,7 @@ public class XlsFormatReaderTest {
      * When : {@code read}。
      * Then : errorMode 文字列が本文値として原文のまま保持され、NO（caseNo）は脱落する。
      *        レコード種別は名前行先頭の {@code "no"}（FW_HEADER 扱いされず良性）。
-     *        ＜#6 自身の契約＝原文保持を固定する。runtime 同値の検証は #14 で別途行う＞
+     *        ＜本テストは原文保持を固定する。実行時に同じ値として解釈されるかは本テストの対象外＞
      */
     @Test
     public void readPreservesErrorModeRowInSendSyncMessage() {
@@ -898,7 +900,7 @@ public class XlsFormatReaderTest {
         // Then
         MessageDataBlock message = (MessageDataBlock) container.getSections().get(0).getBlocks().get(0);
         RecordLayout record = message.getRecords().get(0);
-        // レコード種別は名前行先頭の "no"（送信系。steering R3 裏取り結論で良性と確定）
+        // レコード種別は名前行先頭の "no"（送信系。FW 制御ヘッダ扱いされないため良性）
         assertThat(record.getRecordType(), is("no"));
         // no 列は脱落し、本文フィールドは failureCode のみ
         assertThat(record.getFields().size(), is(1));

@@ -16,7 +16,7 @@ import java.util.Set;
  * {@link DataType#RESPONSE_BODY_MESSAGES} のいずれか。識別子はメッセージ ID を保持する。
  * ディレクティブ・FW 制御ヘッダフィールド・本文レコードレイアウト群を記述順で持つ。
  * <b>この 5 種以外のデータ種別では生成できない。生成時点で拒否する</b>
- * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
+ * （根拠は
  * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
  * </p>
  *
@@ -50,10 +50,12 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める（{@code coverage/issues.md} <b>YML-12</b> の
- * 2 形目）。<b>番人はもとは辺③④の書き出し側（{@code XlsFormatWriter#layoutMessage} ／
- * {@code YamlFormatWriter#emitMessage}）にあったが、2026-08-19 に生成時へ移した</b>
- * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める
+ * （本文レコード 0 件の電文を YAML へ書くと、{@code records: []} と書いてもスキーマ違反になり、読み戻せない）。
+ * <b>番人はもとは書き出し側（{@code XlsFormatWriter#layoutMessage} ／
+ * {@code YamlFormatWriter#emitMessage}）にあったが、生成時へ移した</b>
+ * （不正値は書き出し側でなく中間モデルの生成時に拒否する。書き出し側で落とすのは、持ってはいけない値を
+ * 中間モデルが持てる状態をそのままにする暫定対応にあたるためである）。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>

@@ -41,39 +41,38 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺①（Excel→中間モデル）の軸F（異常系）を、<b>実 {@code .xlsx} を入力に</b>固定するテスト。
+ * Excel→中間モデルの異常系を、<b>実 {@code .xlsx} を入力に</b>固定するテスト。
  *
  * <p>
- * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §0.7 の辺① 6 ケース
- * （F1-01 シート不在／F1-02 ブック破損／F1-03 未知のデータタイプ名／F1-04 マーカーカラム欠落／
- * F1-05 カラム名重複／F1-06 行と列の数の不一致）である。F1-05 はタスク #16 が
- * {@code XlsFormatReaderTest} の 4 件で担保しているが、それらは Fake リーダ経路であるため、
- * 本クラスで<b>実 {@code .xlsx} 経路の担保を別に置く</b>（軸E の E-3(複数) と同じ基準）。
+ * 対象は Excel 読み取りの異常系 6 ケース
+ * （シート不在／ブック破損／未知のデータタイプ名／マーカーカラム欠落／
+ * カラム名重複／行と列の数の不一致）である。カラム名重複は
+ * {@code XlsFormatReaderTest} の 4 件でも担保しているが、それらは Fake リーダ経路であるため、
+ * 本クラスで<b>実 {@code .xlsx} 経路の担保を別に置く</b>（ファイル内レコードレイアウト数「複数」と同じ基準）。
  * </p>
  *
  * <p>
- * 軸F のほかに、次の 2 種類の「到達不能の根拠」も本クラスが持つ。いずれも「壊れた入力を流すと
- * 何が起きるか」を確かめるものであり、性質が軸F と同じためここに置く。
+ * 異常系のほかに、次の 2 種類の「到達不能の根拠」も本クラスが持つ。いずれも「壊れた入力を流すと
+ * 何が起きるか」を確かめるものであり、性質が異常系と同じためここに置く。
  * </p>
  * <ul>
- *   <li>軸C の C-17（{@code RecordLayout.fields} 空）・C-20（{@code FieldDef.type} 省略＝{@code null}）。
- *       #20 が実 {@code .xlsx} 経路で到達不能と判定したが根拠は散文の記述しか無く、パーサの挙動が
- *       変わって到達可能になっても検出できない状態だった。下記 4 メソッドが例外型とメッセージを固定する
- *       （{@code issues.md} の「到達不能」表から参照している）。
+ *   <li>中間モデルの {@code RecordLayout.fields} 空・{@code FieldDef.type} 省略（＝{@code null}）。
+ *       いずれも実 {@code .xlsx} 経路では到達不能であり、パーサの挙動が変わって到達可能になったときに
+ *       検出できるよう、下記 4 メソッドが例外型とメッセージを固定する。
  *       <ul>
- *         <li>{@link #failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook} — C-17 の根拠（ファイル系）</li>
- *         <li>{@link #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} — C-17 の根拠（メッセージ系）</li>
- *         <li>{@link #failsWhenTypeRowIsShorterThanNameRowInRealBook} — C-20 の根拠①</li>
- *         <li>{@link #failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook} — C-20 の根拠②</li>
+ *         <li>{@link #failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook} — {@code fields} 空の根拠（ファイル系）</li>
+ *         <li>{@link #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} — {@code fields} 空の根拠（メッセージ系）</li>
+ *         <li>{@link #failsWhenTypeRowIsShorterThanNameRowInRealBook} — {@code type} 省略の根拠①</li>
+ *         <li>{@link #failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook} — {@code type} 省略の根拠②</li>
  *       </ul>
  *   </li>
- *   <li>軸E の E-3（ファイル内レコードレイアウト数）「複数」が<b>メッセージ経路では到達不能</b>である根拠
+ *   <li>ファイル内レコードレイアウト数「複数」が<b>メッセージ経路では到達不能</b>である根拠
  *       （{@link #absorbsSecondNameRowAsDataRowInMessageBodyInRealBook}）。ファイル経路の担保は
  *       {@code XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook} にある。</li>
  * </ul>
  *
  * <p>
- * 正常系（軸A・軸B・軸C・軸E）を扱う {@link XlsFormatReaderRealFileTest} と分けたのは、本クラスの
+ * 正常系（データタイプ・ブロックの種類・中間モデルのフィールド・件数）を扱う {@link XlsFormatReaderRealFileTest} と分けたのは、本クラスの
  * アサーション対象が<b>例外型・例外メッセージ・例外連鎖・警告ログの有無</b>という別種のものであり、
  * 入力も意図的に壊したものだけを置くためである。入力の組み立て（{@link XlsFixture}）と実 {@code .xlsx} を
  * 本番配線の {@link XlsFormatReader}（{@code PoiXlsReader}）へ渡す方針は同じである。
@@ -81,9 +80,10 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題（XLS-10〜XLS-15）
- * として記録してあり、実装（src/main）は変更していない。異常系は<b>例外になるもの</b>
- * （F1-01・F1-02・F1-06 の一部）と<b>例外にならず変換が継続するもの</b>（F1-03・F1-04・F1-05・F1-06 の一部）に
+ * 妥当でないと見える挙動も、記法に明文が無いか入力が記法違反であるため、実装（src/main）は変更していない。
+ * 異常系は<b>例外になるもの</b>
+ * （シート不在・ブック破損・行と列の数の不一致の一部）と<b>例外にならず変換が継続するもの</b>
+ * （未知のデータタイプ名・マーカーカラム欠落・カラム名重複・行と列の数の不一致の一部）に
  * 分かれ、後者は継続時の結果をそのまま固定している。
  * </p>
  *
@@ -103,7 +103,8 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * <b>警告ログのアサートについて。</b>「継続する異常系では警告すら出ない（検出できない）」ことが
- * {@code issues.md} XLS-10／XLS-12／XLS-13／XLS-15 の主張の核心であるため、{@link #readCapturingWarnings}
+ * 未知のデータタイプ名・はみ出したセル・メタ列の欠落・メッセージ本文の 2 つ目のレコードレイアウトの各テストの
+ * 主張の核心であるため、{@link #readCapturingWarnings}
  * で {@code java.util.logging} のルートロガーに届く WARNING 以上のレコードを捕捉し、0 件であることを
  * アサートする。捕捉できるのは JUL 経路だけであり、{@code nablarch-testing} 自身のログ基盤
  * （{@code nablarch.core.log}）への出力は対象外である（変換ツール側で JUL を使うのは
@@ -358,10 +359,10 @@ public class XlsFormatReaderInvalidInputTest {
      * 警告が 1 件も出ていないことをアサートする。
      *
      * @param reading 読み取り結果
-     * @param issueId 根拠づける課題 ID（失敗時の手掛かり）
+     * @param issueId 固定している挙動の説明（失敗時の手掛かり）
      */
     private static void assertNoWarning(Reading reading, String issueId) {
-        assertThat("警告は 1 件も出ない（" + issueId + " の「検出できない」の根拠。実際: " + reading.warnings + "）",
+        assertThat("警告は 1 件も出ない（" + issueId + "。「検出できない」の根拠。実際: " + reading.warnings + "）",
                 reading.warnings, is(Collections.<String>emptyList()));
     }
 
@@ -378,7 +379,7 @@ public class XlsFormatReaderInvalidInputTest {
         return causeOf(thrown);
     }
 
-    // ------------------------------------------------------------------ F1-01 シート不在
+    // ------------------------------------------------------------------ シート不在
 
     /**
      * Given: {@code SETUP_TABLE} を 1 件持つ実 {@code .xlsx}。
@@ -387,7 +388,7 @@ public class XlsFormatReaderInvalidInputTest {
      *        メッセージにはブックの絶対パスと指定したシート名が入る。
      *
      * <p>
-     * 担保する軸要素: F1-01。ブックを開く段階の失敗であり、本体 {@code TestDataParsingTemplate} が
+     * 担保する観点: シート不在。ブックを開く段階の失敗であり、本体 {@code TestDataParsingTemplate} が
      * 解析中の例外に被せる「{@code can't get data.}」には包まれない（{@code reader.open} が
      * その {@code try} の外側で呼ばれるため）。原因例外を持たないことまで固定する。
      * </p>
@@ -411,7 +412,7 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat("can't get data. には包まれない", thrown.getCause(), is(nullValue()));
     }
 
-    // ------------------------------------------------------------------ F1-02 ブック破損
+    // ------------------------------------------------------------------ ブック破損
 
     /**
      * Given: 拡張子だけが {@code .xlsx} で中身が Excel ではないファイル。
@@ -421,9 +422,9 @@ public class XlsFormatReaderInvalidInputTest {
      *        <b>例外連鎖のどのメッセージにもファイル名が現れない</b>。
      *
      * <p>
-     * 担保する軸要素: F1-02。ファイル名が出ないことは、多数のブックを一括変換する経路
-     * （{@code TestDataConverter#convert}）でどのブックが壊れているか分からないという課題であり、
-     * {@code issues.md} の <b>XLS-14</b> に記録した（修正はしない）。本アサートはその根拠である。
+     * 担保する観点: ブック破損。ファイル名が出ないため、多数のブックを一括変換する経路
+     * （{@code TestDataConverter#convert}）ではどのブックが壊れているか分からない。例外を投げるのは本体
+     * {@code PoiXlsReader} であり、記法は例外の型・メッセージを規定していないため修正しない。
      * </p>
      */
     @Test
@@ -441,11 +442,11 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat("原因は POI がストリームを判別できないこと",
                 causeOf(thrown), is(instanceOf(IllegalArgumentException.class)));
         assertThat(causeOf(thrown).getMessage(), containsString("OOXML"));
-        assertThat("どのブックが壊れているかは例外メッセージから分からない（issues.md XLS-14）",
+        assertThat("どのブックが壊れているかは例外メッセージから分からない（本体 PoiXlsReader の挙動）",
                 allMessagesOf(thrown), not(containsString("broken.xlsx")));
     }
 
-    // ------------------------------------------------------------------ F1-03 未知のデータタイプ名
+    // ------------------------------------------------------------------ 未知のデータタイプ名
 
     /**
      * Given: 未知のデータタイプ名のマーカー（{@code UNKNOWN_TYPE=X}）で始まるブロックと、
@@ -455,14 +456,15 @@ public class XlsFormatReaderInvalidInputTest {
      *        中間モデルに現れない</b>。既知タイプのブロックだけが読まれる。警告も出ない。
      *
      * <p>
-     * 担保する軸要素: F1-03。#18 の棚卸しでは {@code XlsFormatReaderTest#readIgnoresDataTypePrefixedLineWithoutMarker}
-     * （データタイプ名で始まるが {@code =} を持たない行の無視）による 🔺 弱い担保しか無かった。
+     * 担保する観点: 未知のデータタイプ名。{@code XlsFormatReaderTest#readIgnoresDataTypePrefixedLineWithoutMarker}
+     * （データタイプ名で始まるが {@code =} を持たない行の無視）は間接的な担保に留まるため、
      * 本テストは「未知の名前そのもの」を実 {@code .xlsx} 経路で固定する。
      * </p>
      *
      * <p>
-     * 変換対象のブロックが警告も無く消えるため、{@code issues.md} の <b>XLS-10</b> に課題として記録した
-     * （修正はしない）。警告が出ないことまでアサートするのが「検出できない」という主張の根拠である。
+     * 変換対象のブロックが警告も無く消える。ただし記法はデータタイプを予約語とし、データタイプ名に
+     * 合致しない先頭セルはそもそもデータブロックではないため、警告を求める明文は無く修正しない。
+     * 警告が出ないことまでアサートするのが「検出できない」という主張の根拠である。
      * </p>
      */
     @Test
@@ -485,9 +487,9 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat(table.getIdentifier(), is("T"));
         assertThat("未知タイプ側のカラム A は取り込まれない",
                 table.getColumnNames(), is(Arrays.asList("B")));
-        assertThat("未知タイプ側のデータ行 a1 も取り込まれない（issues.md XLS-10）",
+        assertThat("未知タイプ側のデータ行 a1 も取り込まれない",
                 table.getRows(), is(Arrays.asList(Arrays.asList("b1"))));
-        assertNoWarning(reading, "issues.md XLS-10");
+        assertNoWarning(reading, "未知のデータタイプ名のブロックは警告なく消える");
     }
 
     /**
@@ -496,19 +498,18 @@ public class XlsFormatReaderInvalidInputTest {
      * Then : 例外にはならず、<b>ブロックが 1 つも作られない</b>（黙って消える）。
      *
      * <p>
-     * 担保する軸要素: F1-03（既知タイプ名を接頭辞に持つ未知の名前）。
+     * 担保する観点: 未知のデータタイプ名（既知タイプ名を接頭辞に持つ未知の名前）。
      * </p>
      *
      * <p>
-     * <b>#34（2-3）で観測できる挙動が変わった。</b>切り出しを行う
+     * 切り出しを行う
      * {@code TestCoreReaderAdapter#markerGroupId}（<b>本リポジトリの
      * {@code src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java}</b>。
      * {@code nablarch-testing} 側ではない）は角括弧の有無を検証せず、データタイプ名の直後から
-     * {@code =} までの文字列（{@code X}）を生値のグループ ID として切り出す。#34 以降、上流へ渡すときに
+     * {@code =} までの文字列（{@code X}）を生値のグループ ID として切り出す。上流へ渡すときに
      * {@code [X]} へ整形するため、版面の {@code SETUP_TABLEX=} とは前方一致せず 0 件になる。
-     * #34 より前は生値をそのまま渡していたため、{@code groupId} ＝ {@code "X"} のテーブルブロックとして
-     * 読まれていた。正しいグループ ID の記法は {@code SETUP_TABLE[g1]=T} であり、
-     * 角括弧の無い形は記法に無い。{@code issues.md} の <b>XLS-11</b> に記録した（修正はしない）。
+     * 正しいグループ ID の記法は {@code SETUP_TABLE[g1]=T} であり、
+     * 角括弧の無い形は記法に無い（記法違反の入力のため修正しない）。
      * </p>
      */
     @Test
@@ -523,11 +524,11 @@ public class XlsFormatReaderInvalidInputTest {
         List<TestDataBlock> blocks = blocksOf(read("typoType"));
 
         // Then
-        assertThat("角括弧の無いグループ ID は上流と前方一致せず、ブロックが作られない（issues.md XLS-11）",
+        assertThat("角括弧の無いグループ ID は上流と前方一致せず、ブロックが作られない",
                 blocks, is(Collections.<TestDataBlock>emptyList()));
     }
 
-    // ------------------------------------------------------------------ F1-04 マーカーカラム欠落
+    // ------------------------------------------------------------------ マーカーカラム欠落
 
     /**
      * Given: マーカーカラムの角括弧を欠いたカラム行（{@code [no]} ではなく {@code no}）を持つ
@@ -536,7 +537,7 @@ public class XlsFormatReaderInvalidInputTest {
      * Then : 例外にはならず、当該カラムは<b>ふつうのデータカラムとして</b>中間モデルに入る。
      *
      * <p>
-     * 担保する軸要素: F1-04。マーカーカラムの判定は本体 {@code HeaderLine} の
+     * 担保する観点: マーカーカラム欠落。マーカーカラムの判定は本体 {@code HeaderLine} の
      * 「{@code [} で始まり {@code ]} で終わる」だけであり、角括弧を欠くと除外されない。
      * 角括弧付きのカラムがフレームワークの除外を受ける側の担保は
      * {@code XlsMarkerOnlyEntryTest#keepsMarkerOnlyEntryInListMapAsFrameworkDoes} にある。
@@ -566,10 +567,10 @@ public class XlsFormatReaderInvalidInputTest {
      *        先頭列の値が捨てられる</b>。警告も出ない。
      *
      * <p>
-     * 担保する軸要素: F1-04（メタ列の欠落）。正しい入力は名前行 {@code no, requestId, userId} である
+     * 担保する観点: マーカーカラム欠落（メタ列の欠落）。正しい入力は名前行 {@code no, requestId, userId} である
      * （{@code XlsFormatReaderRealFileTest#readsAllFourSendSyncMessageTypesFromRealBook} 参照）。
-     * 欠落してもフィールドと値が 1 つずつ静かに失われるだけで警告は出ないため、
-     * {@code issues.md} の <b>XLS-13</b> に記録した（修正はしない）。
+     * 欠落してもフィールドと値が 1 つずつ静かに失われるだけで警告は出ない。記法上メタ列は必須であり
+     * （入力が記法違反）、列をずらすのも本体 {@code SendSyncMessageParser} であるため修正しない。
      * </p>
      */
     @Test
@@ -592,14 +593,14 @@ public class XlsFormatReaderInvalidInputTest {
         RecordLayout record = message.getRecords().get(0);
         assertThat("先頭列はメタ列として扱われ、フィールド名がレコード種別になる",
                 record.getRecordType(), is("requestId"));
-        assertThat("先頭フィールドが脱落する（issues.md XLS-13）",
+        assertThat("先頭フィールドが脱落する",
                 fieldNames(record), is(Arrays.asList("userId")));
-        assertThat("先頭列の値 RM01 も脱落する（issues.md XLS-13）",
+        assertThat("先頭列の値 RM01 も脱落する",
                 record.getRows(), is(Arrays.asList(Arrays.asList("user01"))));
-        assertNoWarning(reading, "issues.md XLS-13");
+        assertNoWarning(reading, "メタ列の欠落で先頭フィールドが警告なく失われる");
     }
 
-    // ------------------------------------------------------------------ F1-05 カラム名重複
+    // ------------------------------------------------------------------ カラム名重複
 
     /**
      * Given: カラム行に同名カラム（{@code COL_A} が 2 回）を持つ {@code LIST_MAP} ブロックの実 {@code .xlsx}。
@@ -608,7 +609,7 @@ public class XlsFormatReaderInvalidInputTest {
      *        ブック名・シート名・ブロック識別子・重複カラム名・採用した列番号を含む。
      *
      * <p>
-     * 担保する軸要素: F1-05（{@link ListMapBlock} 経路）。タスク #16 の
+     * 担保する観点: カラム名重複（{@link ListMapBlock} 経路）。
      * {@code XlsFormatReaderTest#readListMapWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins} は
      * Fake リーダ経路であり、実セル → 文字列行の区間を通らない。本テストは同じ挙動が実 {@code .xlsx}
      * 経路でも成り立つことを固定する。
@@ -643,7 +644,7 @@ public class XlsFormatReaderInvalidInputTest {
      * Then : LIST_MAP 経路と同じく後勝ちで 1 件に絞られ、WARN ログが 1 件出る（経路が別なので個別に固定する）。
      *
      * <p>
-     * 担保する軸要素: F1-05（{@link TableDataBlock} 経路）。#16 の
+     * 担保する観点: カラム名重複（{@link TableDataBlock} 経路）。
      * {@code XlsFormatReaderTest#readTableWithDuplicateColumnEmitsWarnAndDeduplicatesLastWins} の
      * 実 {@code .xlsx} 版である。
      * </p>
@@ -680,8 +681,8 @@ public class XlsFormatReaderInvalidInputTest {
      *        すべて 1 つ目の<b>値行として吸収される</b>。警告も出ない。
      *
      * <p>
-     * 担保する軸要素: E-3（ファイル内レコードレイアウト数「複数」が<b>メッセージ経路では到達不能</b>で
-     * あることの根拠）。ファイル経路の E-3(複数) の担保は
+     * 担保する観点: ファイル内レコードレイアウト数「複数」が<b>メッセージ経路では到達不能</b>で
+     * あることの根拠。ファイル経路の「複数」の担保は
      * {@code XlsFormatReaderRealFileTest#readsMultipleRecordLayoutsFromOneFixedFileInRealBook} にある。
      * </p>
      *
@@ -692,8 +693,9 @@ public class XlsFormatReaderInvalidInputTest {
      * </p>
      *
      * <p>
-     * 構造が黙って崩れる（フィールド名・型・長さがデータ値になる）ため、{@code issues.md} の <b>XLS-15</b> に
-     * 記録した（修正はしない）。本テストはその根拠である。
+     * 構造が黙って崩れる（フィールド名・型・長さがデータ値になる）。ただし記法は 1 つのメッセージブロック内に
+     * 2 つ目のフィールド名称行を置けるとは定めておらず、吸収するのも本体 {@code MessageParser} であるため
+     * 修正しない。本テストはその挙動の根拠である。
      * </p>
      */
     @Test
@@ -720,17 +722,17 @@ public class XlsFormatReaderInvalidInputTest {
         RecordLayout record = message.getRecords().get(0);
         assertThat(record.getRecordType(), is("header"));
         assertThat(fieldNames(record), is(Arrays.asList("h1")));
-        assertThat("2 つ目の名前行・型行・長さ行・値行がすべて値行になる（issues.md XLS-15）",
+        assertThat("2 つ目の名前行・型行・長さ行・値行がすべて値行になる",
                 record.getRows(), is(Arrays.asList(
                         Arrays.asList("HH"),
                         Arrays.asList("d1"),
                         Arrays.asList("半角英字"),
                         Arrays.asList("3"),
                         Arrays.asList("abc"))));
-        assertNoWarning(reading, "issues.md XLS-15");
+        assertNoWarning(reading, "2 つ目のレコードレイアウトは警告なく値行に吸収される");
     }
 
-    // ------------------------------------------------------------------ F1-06 行と列の数の不一致
+    // ------------------------------------------------------------------ 行と列の数の不一致
 
     /**
      * Given: データ行がカラム行より短いテーブル（{@code SHORT}）と長いテーブル（{@code LONG}）を
@@ -740,8 +742,8 @@ public class XlsFormatReaderInvalidInputTest {
      *        （非対称）。警告も出ない。
      *
      * <p>
-     * 担保する軸要素: F1-06（テーブル経路）。はみ出したセルが警告も無く消えることは
-     * {@code issues.md} の <b>XLS-12</b> に記録した（修正はしない）。
+     * 担保する観点: 行と列の数の不一致（テーブル経路）。はみ出したセルは警告も無く消えるが、記法が
+     * 定めているのは値を書かなかった不足側だけで、余り側に警告を求める明文は無いため修正しない。
      * </p>
      */
     @Test
@@ -769,9 +771,9 @@ public class XlsFormatReaderInvalidInputTest {
 
         TableDataBlock longRow = blockOf(blocks, "LONG", TableDataBlock.class);
         assertThat(longRow.getColumnNames(), is(Arrays.asList("C", "D")));
-        assertThat("カラム行よりも右のセル e1 は黙って捨てられる（issues.md XLS-12）",
+        assertThat("カラム行よりも右のセル e1 は黙って捨てられる",
                 longRow.getRows(), is(Arrays.asList(Arrays.asList("c1", "d1"))));
-        assertNoWarning(reading, "issues.md XLS-12");
+        assertNoWarning(reading, "はみ出したセルは警告なく捨てられる");
     }
 
     /**
@@ -782,8 +784,8 @@ public class XlsFormatReaderInvalidInputTest {
      *        はみ出したセルは捨てられる</b>。警告も出ない。
      *
      * <p>
-     * 担保する軸要素: F1-06（ファイル経路の値行）。はみ出したセルの消失は {@code issues.md} の
-     * <b>XLS-12</b> に記録した（修正はしない）。
+     * 担保する観点: 行と列の数の不一致（ファイル経路の値行）。はみ出したセルの消失はテーブル経路と同じ
+     * 挙動であり、修正しない。
      * </p>
      */
     @Test
@@ -815,9 +817,9 @@ public class XlsFormatReaderInvalidInputTest {
 
         RecordLayout longRow = blockOf(blocks, "long.dat", FileDataBlock.class).getRecords().get(0);
         assertThat(fieldNames(longRow), is(Arrays.asList("g1")));
-        assertThat("名前行よりも右のセル extra は黙って捨てられる（issues.md XLS-12）",
+        assertThat("名前行よりも右のセル extra は黙って捨てられる",
                 longRow.getRows(), is(Arrays.asList(Arrays.asList("xyz"))));
-        assertNoWarning(reading, "issues.md XLS-12");
+        assertNoWarning(reading, "はみ出したセルは警告なく捨てられる");
     }
 
     /**
@@ -828,7 +830,7 @@ public class XlsFormatReaderInvalidInputTest {
      *        の {@code IllegalArgumentException} である。
      *
      * <p>
-     * 担保する軸要素: F1-06（長さ行の要素数不一致）。値行の不一致（空文字埋め・切り捨て）とは異なり、
+     * 担保する観点: 行と列の数の不一致（長さ行の要素数不一致）。値行の不一致（空文字埋め・切り捨て）とは異なり、
      * <b>型行・長さ行の不一致は本体パーサが弾く</b>という非対称を固定する。
      * </p>
      */
@@ -852,7 +854,7 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat(cause.getMessage(), containsString("field name size is 2. but lengths size is 1."));
     }
 
-    // ------------------------------------------------------------------ C-17／C-20「到達不能」の根拠
+    // ------------------------------------------------------------------ fields 空／type 省略「到達不能」の根拠
 
     /**
      * Given: 名前行がレコード種別セル 1 列だけの {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
@@ -862,11 +864,10 @@ public class XlsFormatReaderInvalidInputTest {
      *        {@code IllegalStateException: directive or data names row must have two columns at least.} である。
      *
      * <p>
-     * <b>C-17（{@code RecordLayout.fields} 空）が実 {@code .xlsx} 経路で到達不能であることの根拠（ファイル系）。</b>
+     * <b>{@code RecordLayout.fields} 空が実 {@code .xlsx} 経路で到達不能であることの根拠（ファイル系）。</b>
      * フィールドを 0 件にするには名前行をレコード種別セルだけにするしかないが、本体パーサが
      * 名前行を 2 列以上と要求するため器が組み立たない。メッセージ系は
-     * {@link #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} が別に確かめる
-     * （{@code issues.md} の「到達不能」表から両メソッドを参照している）。
+     * {@link #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} が別に確かめる。
      * </p>
      */
     @Test
@@ -893,7 +894,7 @@ public class XlsFormatReaderInvalidInputTest {
      * Then : ファイル系と同じ例外・同じメッセージになる（経路が別なので個別に確かめる）。
      *
      * <p>
-     * <b>C-17 が到達不能であることの根拠（メッセージ系）。</b>
+     * <b>{@code RecordLayout.fields} 空が到達不能であることの根拠（メッセージ系）。</b>
      * </p>
      */
     @Test
@@ -916,7 +917,7 @@ public class XlsFormatReaderInvalidInputTest {
     }
 
     /**
-     * 名前行が 2 列未満で弾かれたことをアサートする（C-17 の根拠 2 件で共有する）。
+     * 名前行が 2 列未満で弾かれたことをアサートする（{@code fields} 空の根拠 2 件で共有する）。
      *
      * @param thrown 送出された例外
      */
@@ -936,7 +937,7 @@ public class XlsFormatReaderInvalidInputTest {
      *        {@code IllegalArgumentException} である。
      *
      * <p>
-     * <b>C-20（{@code FieldDef.type} 省略＝{@code null}）が到達不能であることの根拠①。</b>
+     * <b>{@code FieldDef.type} 省略（＝{@code null}）が到達不能であることの根拠①。</b>
      * {@link XlsFormatReader} には型行が名前行より短いときに {@code null} を入れるフォールバックが
      * あるが、そこへ届く前に本体パーサが器の組み立てに失敗する。型セルが<b>末尾</b>で空の場合も、
      * 空セルは行の使用範囲から外れるため同じ経路になる。
@@ -970,7 +971,7 @@ public class XlsFormatReaderInvalidInputTest {
      *        {@code IllegalArgumentException: can't convert value []. convert table =...} である。
      *
      * <p>
-     * <b>C-20（{@code FieldDef.type} 省略＝{@code null}）が到達不能であることの根拠②。</b>
+     * <b>{@code FieldDef.type} 省略（＝{@code null}）が到達不能であることの根拠②。</b>
      * 中間位置の空セルは要素数が一致するため {@code assertSameSizeAsNames} は通るが、空文字を
      * フレームワーク表記へ変換できずに弾かれる。すなわち型の欠落は<b>2 通りの機構</b>で弾かれる。
      * </p>

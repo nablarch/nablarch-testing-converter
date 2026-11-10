@@ -28,16 +28,16 @@ public final class DirectiveUtil {
      * ただし<b>保持はされない</b>——戻り値を受け取る {@code FileDataBlock} ／ {@code MessageDataBlock} が
      * 生成時に {@code ModelPreconditions#requireNoNulls(String, Map)} で拒否するため、
      * 最終的には {@code IllegalArgumentException} になる（本体スキーマ {@code $defs.directives} の値型は
-     * string ／ boolean ／ integer だけで {@code null} を許す定義が無い。{@code coverage/issues.md}
-     * <b>XLS-43</b>）。
+     * string ／ boolean ／ integer だけで {@code null} を許す定義が無い。記法もディレクティブを
+     * 「キー名と値の 2 要素」で記述すると定めており、{@code null} に当たる書き方が無い）。
      * 非 null 値は {@code valueMapper} を介して文字列へ変換する。
      * </p>
      *
      * @param directives  本体ディレクティブ
      * @param valueMapper キーと {@link Object#toString()} 済みの値文字列を受け取り、
      *                    最終的な文字列値へ変換する関数。区切り文字ディレクティブについては
-     *                    辺①（Excel）・辺②（YAML）とも {@link #normalizeSeparator} による逆正規化を
-     *                    行う。辺①はそれ以外のキーで {@code QuotationTrimmer} 相当のクォート剥がしも
+     *                    Excel の読み込み・YAML の読み込みとも {@link #normalizeSeparator} による逆正規化を
+     *                    行う。Excel の読み込みはそれ以外のキーで {@code QuotationTrimmer} 相当のクォート剥がしも
      *                    行うため、両者は同一ではない
      * @return 文字列ディレクティブ（{@link LinkedHashMap} 順）
      */
@@ -64,8 +64,8 @@ public final class DirectiveUtil {
      * 書き出した値を本体が読み戻せない（{@code DataFile#setDirective} の {@code trim()} で失われる）。
      * </p>
      * <p>
-     * 辺①（Excel）と辺②（YAML）で同じ入力表記が同じ中間モデル値になるよう、両者から呼ぶ
-     * （{@code issues.md} YML-08）。区切り文字以外のキーは値をそのまま返す。
+     * Excel の読み込み（Excel → 中間モデル）と YAML の読み込み（YAML → 中間モデル）で、同じ入力表記が
+     * 同じ中間モデル値になるよう、両者から呼ぶ。区切り文字以外のキーは値をそのまま返す。
      * </p>
      *
      * @param key   ディレクティブキー

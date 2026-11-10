@@ -36,15 +36,15 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺③（中間モデル→Excel）の軸F — 出力先とシート名の異常系を固定するテスト。
+ * 中間モデル→Excel の異常系 — 出力先とシート名の異常系を固定するテスト。
  *
  * <p>
- * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §0.7 の辺③ 4 ケースのうち 3 件
- * （F3-01 出力先不在／F3-03 書き込み権限なし／F3-04 シート名が Excel 制約違反）である。
- * 残る <b>F3-02（同名ファイル既存かつ {@code overwrite=false}）は辺③の対象外</b>とする。
+ * 対象は Excel への書き出しの異常系 4 ケースのうち 3 件
+ * （出力先不在／書き込み権限なし／シート名が Excel 制約違反）である。
+ * 残る <b>同名ファイル既存かつ {@code overwrite=false} は本クラスの対象外</b>とする。
  * {@link XlsFormatWriter} は {@code overwrite} を保持せず（保持するのは {@code ConversionRequest} /
  * {@code TestDataConverter} / {@code ConverterMojo}）、衝突検査は {@code XlsFormatWriter} を呼ぶ前に
- * 上位層で完結するためである（棚卸し §0.8-5）。
+ * 上位層で完結するためである。
  * </p>
  *
  * <p>
@@ -68,34 +68,35 @@ import org.junit.rules.TemporaryFolder;
  * （実測 2026-08-13: この分岐を {@code .xlsx} のときだけ {@code AssertionError} に変異させても 0 failures）。
  * すなわち共通処理 {@code checkOverwrite} の分岐自体は通っているが、
  * <b>{@code .xlsx} を出力側とする衝突は未担保</b>である。
- * これは辺③（{@code XlsFormatWriter} 単体）の責務ではなく上位層側の穴であり、本クラスでは埋めない。
+ * これは {@code XlsFormatWriter} 単体の責務ではなく上位層側の穴であり、本クラスでは埋めない。
  * </p>
  *
  * <p>
- * 異常系は<b>例外になるもの</b>（F3-03・F3-04 の禁止文字・空文字・31 文字超）と
- * <b>例外にならず書けてしまうもの</b>（F3-01）に分かれる。後者は「書けてしまった結果」をそのまま固定する。
+ * 異常系は<b>例外になるもの</b>（書き込み権限なし・シート名の禁止文字・空文字・31 文字超）と
+ * <b>例外にならず書けてしまうもの</b>（出力先不在）に分かれる。後者は「書けてしまった結果」をそのまま固定する。
  * シート名の 31 文字超は、かつて POI が黙って切り詰めていた（切り詰めを禁止文字検査より先に適用するため、
  * 禁止文字が index 31 以降にある 32 文字以上の名前は検査に到達しなかった）が、
- * {@code issues.md} <b>XLS-16</b> の修正で {@link XlsFormatWriter} が {@code createSheet} の前に
+ * {@link XlsFormatWriter} が {@code createSheet} の前に
  * 文字数を検査するようになり、いずれも例外になる
  * （{@code #rejectsSheetNameLongerThanExcelLimit}／
  * {@code #rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation}）。
  * </p>
  *
  * <p>
- * <b>F3-04 で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
+ * <b>シート名の Excel 制約で本クラスが担保する範囲</b>は、31 文字超・禁止文字（{@code / \ ? * [ ] :}）・空文字・
  * 31 文字ちょうど（正常側の境界）・重複判定（同名／大文字小文字だけが違う名前）である。
- * シート名のアポストロフィ（先頭／末尾）はタスク #22 のスコープ外であり、<b>未担保</b>である。
+ * シート名のアポストロフィ（先頭／末尾）は本クラスの対象外であり、<b>未担保</b>である。
  * {@code null} は<b>本クラスの担保対象ではない</b> —— {@link nablarch.test.tool.converter.model.TestDataSection}
- * が生成時に拒否するため辺③へ届かず、担保は
+ * が生成時に拒否するため {@link XlsFormatWriter} へ届かず、担保は
  * {@code TestDataContainerTest#名前がnullの読み込み単位は生成できない} にある
- * （{@code issues.md} <b>XLS-33</b>）。
+ * （読み込み単位の名前は Excel 形式ではシート名、YAML 形式ではファイル名にあたる引き当てキーであり、
+ * どちらの形式でも {@code null} を許す根拠が無いため、中間モデルの生成時点で拒否する）。
  * </p>
  *
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>
- * ただしシート名の文字数上限だけは例外で、{@code issues.md} の課題（XLS-16）として
- * {@link XlsFormatWriter} を修正したうえで、仕様どおりの期待値を置いている。
+ * ただしシート名の文字数上限だけは例外で、31 文字超を黙って切り詰めていた挙動を
+ * {@link XlsFormatWriter} で修正したうえで、仕様どおりの期待値を置いている。
  * </p>
  *
  * @author kiyobot
@@ -264,7 +265,7 @@ public class XlsFormatWriterInvalidOutputTest {
         return false;
     }
 
-    // ------------------------------------------------------------------ F3-01 出力先不在
+    // ------------------------------------------------------------------ 出力先不在
 
     /**
      * Given: 存在しない多階層の出力先ディレクトリ。
@@ -272,7 +273,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * Then : 例外にならず、ディレクトリが作られてブックが書き出される。
      *
      * <p>
-     * 担保する軸要素: F3-01。既存の {@code XlsFormatWriterTest#wrapsIoFailure} は
+     * 担保する観点: 出力先不在。既存の {@code XlsFormatWriterTest#wrapsIoFailure} は
      * 「親に通常ファイルが居座り<b>ディレクトリを作れない</b>」ケース（{@code UncheckedIOException}）であり、
      * 「出力先が単に無い」ケースはこちらが担う。作成は {@link XlsFormatWriter#write} の
      * {@code Files.createDirectories} による。
@@ -302,7 +303,7 @@ public class XlsFormatWriterInvalidOutputTest {
         assertThat(cell.getStringCellValue(), is("SETUP_TABLE=T"));
     }
 
-    // ------------------------------------------------------------------ F3-03 書き込み権限なし
+    // ------------------------------------------------------------------ 書き込み権限なし
 
     /**
      * Given: 書き込み権限を落とした出力先ディレクトリ。
@@ -311,7 +312,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        原因は {@code java.nio.file.AccessDeniedException}。ファイルは作られない。
      *
      * <p>
-     * 担保する軸要素: F3-03。権限が効かない環境（root 実行など）では
+     * 担保する観点: 書き込み権限なし。権限が効かない環境（root 実行など）では
      * {@link Assume} でスキップする（緑にごまかさない）。
      * </p>
      */
@@ -335,7 +336,7 @@ public class XlsFormatWriterInvalidOutputTest {
         assertFalse("ファイルは作られない", writtenBook(readOnly, book).exists());
     }
 
-    // ------------------------------------------------------------------ F3-04 シート名が Excel 制約違反
+    // ------------------------------------------------------------------ シート名が Excel 制約違反
 
     /*
      * 禁止文字は文字ごとに 1 メソッドへ分けてある（姉妹クラス XlsFormatReaderCellTypeTest が
@@ -345,7 +346,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * 以下 7 件（/ \ ? * [ ] :）はいずれも Excel がシート名に禁じる文字である。
      * write すると POI の IllegalArgumentException が送出され、どの文字がどの位置で不正かが
      * メッセージに入る。ブックは作られない。検査は POI の WorkbookUtil が行う。
-     * 担保する軸要素: F3-04（禁止文字）。
+     * 担保する観点: シート名の Excel 制約（禁止文字）。
      */
 
     /**
@@ -355,7 +356,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (/) found at index (1)} と {@code in sheet name 'a/b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingSlash() {
@@ -369,7 +370,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (\) found at index (1)} と {@code in sheet name 'a\b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingBackslash() {
@@ -383,7 +384,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (?) found at index (1)} と {@code in sheet name 'a?b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingQuestionMark() {
@@ -397,7 +398,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (*) found at index (1)} と {@code in sheet name 'a*b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingAsterisk() {
@@ -411,7 +412,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char ([) found at index (1)} と {@code in sheet name 'a[b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingOpeningBracket() {
@@ -425,7 +426,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (]) found at index (1)} と {@code in sheet name 'a]b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingClosingBracket() {
@@ -439,7 +440,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        {@code Invalid char (:) found at index (1)} と {@code in sheet name 'a:b'} を伴って送出され、
      *        ブックは作られない。
      *
-     * <p>担保する軸要素: F3-04（禁止文字）。</p>
+     * <p>担保する観点: シート名の Excel 制約（禁止文字）。</p>
      */
     @Test
     public void rejectsSheetNameContainingColon() {
@@ -451,7 +452,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * When : {@code write}。
      * Then : POI の {@code IllegalArgumentException}（文字数が 1 以上 31 以下でない）が送出される。
      *
-     * <p>担保する軸要素: F3-04（文字数の下限）。</p>
+     * <p>担保する観点: シート名の Excel 制約（文字数の下限）。</p>
      */
     @Test
     public void rejectsEmptySheetName() {
@@ -475,7 +476,7 @@ public class XlsFormatWriterInvalidOutputTest {
      *        元の名前でシートを引ける。
      *
      * <p>
-     * 担保する軸要素: F3-04（文字数の上限の正常側の境界）。超過側
+     * 担保する観点: シート名の Excel 制約（文字数の上限の正常側の境界）。超過側
      * （{@code #rejectsSheetNameLongerThanExcelLimit}）と対にして、
      * 許容と拒否の境界が 31／32 のどちらであるかを固定する。
      * </p>
@@ -506,11 +507,10 @@ public class XlsFormatWriterInvalidOutputTest {
      * シート名は呼び出し側が渡す引き当てキーである（読み込み単位の名前（Excel 形式ではシート名、YAML 形式ではファイル名）と ID を指定して
      * List 形式または Map 形式でデータを取得できる、
      * 続く {@code TestSupport#getListMap(String sheetName, String id)}）。
-     * 黙って別名へ切り詰めると呼び出し側から引けなくなるため、切り詰めずに落とす
-     * （{@code issues.md} <b>XLS-16</b>）。
+     * 黙って別名へ切り詰めると呼び出し側から引けなくなるため、切り詰めずに落とす。
      * </p>
      *
-     * <p>担保する軸要素: F3-04（文字数の上限）。正常側の境界は
+     * <p>担保する観点: シート名の Excel 制約（文字数の上限）。正常側の境界は
      * {@code #writesSheetNameOfExcelLimitLengthAsIs} が担保する。</p>
      */
     @Test
@@ -538,11 +538,11 @@ public class XlsFormatWriterInvalidOutputTest {
      * Then : {@code IllegalArgumentException}（文字数超過）で失敗する。<b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（切り詰めが禁止文字検査を無効化する抜けが閉じていること）。
+     * 担保する観点: シート名の Excel 制約（切り詰めが禁止文字検査を無効化する抜けが閉じていること）。
      * POI 3.8 の {@code XSSFWorkbook#createSheet(String)} は {@code substring(0, 31)} による
      * 切り詰めを {@code WorkbookUtil.validateSheetName} <b>より先に</b>適用するため、
-     * 禁止文字が index 31 以降にある 32 文字以上の名前は検査に到達せず黙って書き出されていた
-     * （{@code issues.md} <b>XLS-16</b>）。{@link XlsFormatWriter} が {@code createSheet} の前に
+     * 禁止文字が index 31 以降にある 32 文字以上の名前は検査に到達せず黙って書き出されていた。
+     * {@link XlsFormatWriter} が {@code createSheet} の前に
      * 文字数を検査するようにしたため、この形は {@code createSheet} へ渡る前に落ちる。
      * </p>
      */
@@ -570,7 +570,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * Then : {@code IllegalArgumentException} で失敗する。メッセージは文字と位置を示す。
      *
      * <p>
-     * 担保する軸要素: F3-04（禁止文字の検査が上限ちょうどの長さでも効くこと）。
+     * 担保する観点: シート名の Excel 制約（禁止文字の検査が上限ちょうどの長さでも効くこと）。
      * {@code #rejectsSheetNameWhoseForbiddenCharacterWouldBeRemovedByTruncation} の対照であり、
      * 文字数検査を通る名前では POI の禁止文字検査に到達することを示す。
      * 文字数が 31 なので切り詰めは起こらず、メッセージのシート名は渡した名前そのものである。
@@ -601,9 +601,9 @@ public class XlsFormatWriterInvalidOutputTest {
      *        <b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（シート名の重複判定）。
+     * 担保する観点: シート名の Excel 制約（シート名の重複判定）。
      * 元は「先頭 31 文字が同じで 32 文字目だけが違う 2 名が切り詰めで衝突する」ことを固定していたが、
-     * 31 文字超を {@link XlsFormatWriter} が拒否するようになった（{@code issues.md} <b>XLS-16</b>）ため
+     * 31 文字超を {@link XlsFormatWriter} が拒否するようになったため
      * その前提が無くなった。上限ちょうどの長さでの重複検出として書き直してある。
      * </p>
      *
@@ -637,9 +637,8 @@ public class XlsFormatWriterInvalidOutputTest {
      * Then : 重複と判定され、{@code IllegalArgumentException} で失敗する。<b>ブックは作られない。</b>
      *
      * <p>
-     * 担保する軸要素: F3-04（シート名の重複判定）。{@code issues.md} <b>XLS-16</b> は原因として
-     * POI 3.8 の {@code Workbook#containsSheet} が「両辺を 31 文字へ切り詰めてから
-     * {@code equalsIgnoreCase} で比べる」ことを挙げている。
+     * 担保する観点: シート名の重複判定。POI 3.8 の {@code Workbook#containsSheet} は「両辺を 31 文字へ
+     * 切り詰めてから {@code equalsIgnoreCase} で比べる」。
      * {@code #failsWhenSameSheetNameOfLimitLengthIsUsedTwice} が担保するのは<b>完全同名</b>だけなので、
      * 本メソッドが<b>大文字小文字を区別しない</b>側を担保する。
      * シート名は 3 文字で切り詰めが走らないため、衝突の理由が {@code equalsIgnoreCase} だけに絞られる。
@@ -647,8 +646,8 @@ public class XlsFormatWriterInvalidOutputTest {
      *
      * <p>
      * これは Excel 自身の制約（Excel もシート名の大文字小文字を区別しない）と一致するため、
-     * <b>課題ではなく妥当な挙動</b>として記録している（{@code issues.md} の「課題としないと判断した観測結果」）。
-     * 固定する意味は、XLS-16 が原因として引用している機構の両輪を実測で押さえておくことにある。
+     * <b>不具合ではなく妥当な挙動</b>である。
+     * 固定する意味は、31 文字超の切り詰めと重複判定を担う POI の機構の両輪を実測で押さえておくことにある。
      * </p>
      */
     @Test

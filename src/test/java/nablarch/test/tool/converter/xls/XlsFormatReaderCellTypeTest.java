@@ -25,7 +25,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺①（Excel→中間モデル）の軸D — セル種別 8 ケースが中間モデルへどう入るかを固定するテスト。
+ * Excel→中間モデルの値の表現 — セル種別 8 ケースが中間モデルへどう入るかを固定するテスト。
  *
  * <p>
  * {@code XlsFormatReaderTest} が Fake リーダ（{@code List<List<String>>} の canned 行）で駆動するのに対し、
@@ -38,7 +38,7 @@ import org.junit.rules.TemporaryFolder;
  * 「全セルが文字列書式であること」を前提として明示しているため、それを外れる入力
  * （表示形式を持たない数値セル・日付／時刻／日時書式セル・数式セル・真偽値セル・エラー値セル）は
  * 担保対象にしない。<b>値が数値で表示形式が {@code @}（文字列書式）のセル</b>も同じく仕様外である
- * （{@code coverage/issues.md} <b>XLS-01</b>）。ただし作成者から見れば文字列書式であり
+ * （セル種別が数値であり、本体の読み手は表示形式を見ずに {@code double} の文字列表現にする）。ただし作成者から見れば文字列書式であり
  * 参照フィクスチャの実物にも存在する形であるため、
  * {@link #readsTextFormattedNumericCellAsDoubleString()} を<b>実挙動の記録として</b>残す
  * （担保ではない。同テストの Javadoc を参照）。
@@ -48,14 +48,13 @@ import org.junit.rules.TemporaryFolder;
  * 各ケースは {@code SETUP_TABLE} の 1 データ行（{@code KEY} 列＝ケース識別・{@code V} 列＝検証対象セル）
  * として与える。{@code V} 列だけのシートにすると、空セルのケースで行全体が空行となり
  * {@code PoiXlsReader} に読み飛ばされてしまうため、行を空にしない {@code KEY} 列を必ず置く
- * （全カラムが空のデータ行が黙って消えること自体は課題として
- * {@code .rn/ntf-test-data-converter/coverage/issues.md} の XLS-05 に記録した）。
+ * （全カラムが空のデータ行が読み飛ばされるのは、記法が「全要素が null または空文字のエントリは
+ * 読み飛ばされる」と定めている挙動であり、読み飛ばすのも本体の {@code PoiXlsReader} である）。
  * </p>
  *
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として
- * 記録してあり、実装（src/main）は変更していない。
+ * 妥当でないと判断した挙動も現状のまま固定しており、実装（src/main）は変更していない。
  * </p>
  *
  * @author kiyobot
@@ -140,7 +139,7 @@ public class XlsFormatReaderCellTypeTest {
         return sheet;
     }
 
-    // ------------------------------------------------------------------ D1-01・D1-05
+    // ------------------------------------------------------------------ 文字列セル
 
     /**
      * Given: 文字列セル {@code abc}。
@@ -162,7 +161,7 @@ public class XlsFormatReaderCellTypeTest {
         assertThat(readValue(text("007")), is("007"));
     }
 
-    // ------------------------------------------------------------------ D1-12〜D1-13（空セル）
+    // ------------------------------------------------------------------ 空セル
 
     /**
      * Given: 行末（最終列）にセルが存在しない行。
@@ -241,7 +240,7 @@ public class XlsFormatReaderCellTypeTest {
         assertThat(readValue(blank()), is(""));
     }
 
-    // ------------------------------------------------------------------ D1-14〜D1-16
+    // ------------------------------------------------------------------ 前後空白・改行・null 記法
 
     /**
      * Given: 前後に半角空白を持つ文字列セル。
@@ -281,7 +280,7 @@ public class XlsFormatReaderCellTypeTest {
         assertThat("引用符で囲んだ null", readValue(text("\"null\"")), is("null"));
     }
 
-    // ------------------------------------------------------------------ D1-17
+    // ------------------------------------------------------------------ 表示形式 @ の数値セル
 
     /**
      * Given: 値が数値 {@code 1}・表示形式が {@code @}（文字列書式）のセル。
@@ -290,7 +289,7 @@ public class XlsFormatReaderCellTypeTest {
      *        （画面表示 {@code 1} と一致しない）。
      *
      * <p>
-     * <b>これは仕様外入力であり、converter は対応しない（{@code coverage/issues.md} <b>XLS-01</b>）。</b>
+     * <b>これは仕様外入力であり、converter は対応しない。</b>
      * 記法は、Excel のセルの書式を必ず文字列書式に統一しておく必要があると定めている。
      * 文字列以外の書式でデータを書くと Excel がセルの値を自動的に変換してしまい
      * （数値書式では先頭の {@code 0} が消えて {@code 0001} が {@code 1} になる、

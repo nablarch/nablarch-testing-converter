@@ -186,7 +186,7 @@ public class YamlFormatReaderTest {
      * <b>この入力は記法に適合しない。</b>記法は
      * 「固定長ファイルでは、フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」と定め、
      * 記法は記述時のエラーとして「フィールド名称・データ型・フィールド長リストのサイズが
-     * 一致していない」を挙げる（{@code coverage/issues.md} <b>XLS-30</b>）。
+     * 一致していない」を挙げる。
      * </p>
      *
      * <p>
@@ -200,7 +200,7 @@ public class YamlFormatReaderTest {
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
      * {@link FileDataBlock} の生成時へ移したため、失敗する場所が書き出し時から読み込み時へ前倒しになった
      * （変換が失敗すること自体は移設の前後で変わらない）。移設前は
      * {@code readFile_fixed_mapsRawFieldDefsAndValues} が {@code f2} の長さを {@code null} のまま
@@ -378,12 +378,11 @@ public class YamlFormatReaderTest {
      * {@code required} ＝ {@code ["id", "records"]} かつ {@code records.minItems} ＝ 1 であり、
      * {@code records:} を省いても {@code records: []} と書いても通らない。記法にも電文の
      * レコード 0 件を表す書き方が無く、電文が存在しない場合は 記法
-     * のとおり<b>データブロックごと省略する</b>
-     * （{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * のとおり<b>データブロックごと省略する</b>。
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
      * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
      * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
      * {@code readMessage_emptyBody_isStillMapped} で、レコード 0 件のブロックが生成されることを
@@ -496,7 +495,7 @@ public class YamlFormatReaderTest {
         //          $defs.group_message_data の required はいずれも ["id","records"] である。
         //          省略時の意味は記法が定めている
         //          「グループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が
-        //          対象になる」。issues.md YML-02）
+        //          対象になる」）
         Map<String, Object> yaml = map(
                 "response_body_messages", list(
                         map("group_id", "g1", "id", "KEEP",

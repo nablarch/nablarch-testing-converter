@@ -20,15 +20,15 @@ package nablarch.test.tool.converter.model;
  * {@code $defs.field_def} が {@code required} ＝ {@code ["name", "type"]} とする）。
  * <b>空文字は拒否しない</b>——{@code $defs.field_def.name} に {@code minLength} が無いため
  * {@code name: ""} はスキーマに適合する。
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。
+ * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める。
  * </p>
  *
  * <p>
  * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>NTF 仕様に合わない Excel ／ YAML が
  * 読み取りで落ちるのは従来どおり正しい。それとは別に、中間モデルへ {@code null} が入ることは呼び出し側の
  * バグであり、生成時点で露見させる。したがって書き出し側（{@code XlsFormatWriter} ／
- * {@code YamlFormatWriter}）には番人を置かない（{@code coverage/issues.md} <b>XLS-31</b> ／ <b>YML-12</b>。
- * 方針は {@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * {@code YamlFormatWriter}）には番人を置かない。書き出し側で落とすのは、持ってはいけない値を
+ * 中間モデルが持てる状態をそのままにする暫定対応にあたるためである。
  * </p>
  *
  * <p>
@@ -44,23 +44,24 @@ package nablarch.test.tool.converter.model;
  * 共用されるため、必須か否かを {@code required} では表せないからである。ただし同スキーマ自身が
  * {@code length} の説明に「固定長ファイルでは実質必須（省略すると NTF が record-length を計算できない）。
  * 可変長ファイルでは不要（省略可）」と書いており、記法の明文と食い違ってはいない。
- * 中間モデルの契約は 4 辺すべてが表現できる範囲で定める。<b>ただし固定長か可変長かは本クラス単体では
+ * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める。
+ * <b>ただし固定長か可変長かは本クラス単体では
  * 判らないため、{@code length} は本クラスの生成時には拒否できない。</b>文脈を持つ側が生成時に拒否する——
  * {@link nablarch.test.tool.converter.model.FileDataBlock}（固定長系のデータ種別のとき）と
  * {@link nablarch.test.tool.converter.model.MessageDataBlock}（常に）が
- * {@code ModelPreconditions#requireLengths} を呼ぶ（{@code coverage/issues.md} <b>XLS-30</b>。
- * <b>2026-08-19 の §6-J-3（{@code b762438}）で書き出し側から移設した</b>ので、
+ * {@code ModelPreconditions#requireLengths} を呼ぶ（長さの無い固定長フィールドは本体がレコード長を
+ * 計算できない。<b>この検査は {@code b762438} で書き出し側から移設した</b>ので、
  * {@code XlsFormatWriter} ／ {@code YamlFormatWriter} に {@code length} の番人は無い。
  * 上の段落「書き出し側には番人を置かない」と揃っている）。
  * </p>
  *
  * <p>
- * <b>可変長ファイルでは逆向きの検査が掛かる——{@code length} を持ってはならない</b>
- * （{@code coverage/issues.md} <b>XLS-45</b>。ユーザー確定・2026-08-24）。
+ * <b>可変長ファイルでは逆向きの検査が掛かる——{@code length} を持ってはならない。</b>
  * 可変長ファイルではフィールド長が不要であり、固定長との違いはフィールド長行を書かない点だけである。
  * すなわち <b>Excel 記法に可変長のフィールド長行が無く、書き出す先が無い</b>
  * （本体スキーマ {@code $defs.field_def.properties.length} は可変長で {@code length} を禁じていないが、
- * NTF 仕様として禁止で確定した）。
+ * NTF 仕様として禁止で確定した。可変長では数値の長さは NTF の実行時に使われず、効くのは {@code "-"} による
+ * 値の整形（改行コードと前後空白の除去）だけであり、それはフィールド長の枠に相乗りした結果にすぎない）。
  * これも文脈を持つ側が拒否する——{@link nablarch.test.tool.converter.model.FileDataBlock} が
  * 可変長系のデータ種別のとき {@code ModelPreconditions#requireNoLengths} を呼ぶ。
  * <b>弾くのは {@code null} 以外のすべてであり、{@code "-"} も空文字も弾く</b>（固定長側と境界が逆である）。

@@ -346,8 +346,9 @@ public class XlsFormatReader implements TestDataFormatReader {
      * <p>
      * 空セルは {@code PoiXlsReader} が {@code ""} を返すが、中間モデルの
      * {@link RecordLayout}（同クラスのコンストラクタ Javadoc「レコード種別（省略時は {@code null}）」）は
-     * 省略を {@code null} で表す。辺②（YAML）も省略時は {@code null} を入れる。
-     * 辺①だけ {@code ""} になる非対称を無くす（{@code issues.md} XLS-06）。
+     * 省略を {@code null} で表す。YAML の読み込みも省略時は {@code null} を入れる。
+     * Excel の読み込みだけ {@code ""} になる非対称を無くす（放置すると、Excel 由来のレコード種別の省略が
+     * YAML へ {@code record_type: ""} として書き出され、YAML 由来の省略（キー自体が無い）と食い違う）。
      * </p>
      *
      * @param recordType レコード種別セルの値
@@ -534,7 +535,7 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 本体ディレクティブ値を、YAML へ書き出す表現（仕様 DR-09/DR-10 のシンボル）へ逆正規化する。
-     * 区切り文字（record-separator／field-separator）の逆正規化は辺②（YamlFormatReader）と共有する
+     * 区切り文字（record-separator／field-separator）の逆正規化は YAML の読み込み（YamlFormatReader）と共有する
      * {@link DirectiveUtil#normalizeSeparator} が行う。それ以外のキーは値をそのまま返す。
      */
     private static String normalizeDirectiveValue(String key, String value) {

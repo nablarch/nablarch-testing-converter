@@ -30,19 +30,19 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺④（中間モデル→YAML）の軸F — 出力先の異常系を固定するテスト。
+ * 中間モデル → YAML の書き出しについて、出力先の異常系を固定するテスト。
  *
  * <p>
- * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §0.7 の辺④ 3 ケースのうち 2 件
- * （F4-01 出力先不在／F4-03 書き込み権限なし）である。残る <b>F4-02（同名ファイル既存かつ
- * {@code overwrite=false}）は辺④の対象外</b>とする。{@link YamlFormatWriter} は {@code overwrite} を
+ * 対象は出力先の異常系 3 ケースのうち 2 件
+ * （出力先不在／書き込み権限なし）である。残る <b>同名ファイル既存かつ
+ * {@code overwrite=false} は本クラスの対象外</b>とする。{@link YamlFormatWriter} は {@code overwrite} を
  * 保持しないためである（実測: {@code grep -rln overwrite src/main/java} が挙げるのは
  * {@code ConversionRequest} ／ {@code TestDataConverter} ／ {@code ConverterMojo} の 3 クラスだけで、
  * {@code YamlFormatWriter} は 0 ヒット）。
  * </p>
  *
  * <p>
- * <b>辺④については上位層の既存テストが衝突検査を通している。</b>衝突を検査するのは
+ * <b>YAML の書き出しについては上位層の既存テストが衝突検査を通している。</b>衝突を検査するのは
  * {@code TestDataConverter#checkOverwrite} で、{@code request.isOverwrite()} が偽のとき
  * {@code target.outputPaths(...)} が返すパスの存在を見て {@code ConverterException} を送出する。
  * {@code TestDataConverterTest#failsOnExistingOutputWhenOverwriteFalse} と
@@ -53,11 +53,12 @@ import org.junit.rules.TemporaryFolder;
  * すなわち {@code checkOverwrite} が呼ぶ {@code FormatHandler#outputPaths} の実体は
  * {@code YamlFormatHandler#outputPaths}（セクション名 ＋ {@code .yaml} を並べる）であり、
  * <b>{@code .yaml} を出力側とする衝突は担保されている</b>。
- * 辺③（{@code .xlsx} 出力）が未担保である（{@code inventory.md} §0.8-5 の訂正）のとは対照的である。
+ * {@code .xlsx} を出力側とする衝突（{@code checkOverwrite} の {@code Files.exists(output)} から
+ * {@code ConverterException} へ進む分岐）を通すテストが 1 件も無いのとは対照的である。
  * </p>
  *
  * <p>
- * F4-01（出力先不在）は<b>例外にならない</b>。{@link YamlFormatWriter#write} が
+ * 出力先不在は<b>例外にならない</b>。{@link YamlFormatWriter#write} が
  * {@code Files.createDirectories} でディレクトリを作るためである。既存の
  * {@code YamlFormatWriterTest#write_ioError_throwsUncheckedIOException} が扱うのは
  * 「親に通常ファイルが居座り<b>ディレクトリを作れない</b>」ケースであり、別の入力である。
@@ -161,14 +162,14 @@ public class YamlFormatWriterInvalidOutputTest {
         return false;
     }
 
-    // ------------------------------------------------------------------ F4-01 出力先不在
+    // ------------------------------------------------------------------ 出力先不在
 
     /**
      * Given: 存在しない多階層の出力先ディレクトリ。
      * When : {@code write}。
      * Then : 例外にならず、ディレクトリが作られて YAML が書き出される。
      *
-     * <p>担保する軸要素: F4-01。作成は {@link YamlFormatWriter#write} の {@code Files.createDirectories} による。</p>
+     * <p>担保する観点: 出力先不在。作成は {@link YamlFormatWriter#write} の {@code Files.createDirectories} による。</p>
      */
     @Test
     public void createsMissingOutputDirectoriesAndWritesYaml() throws IOException {
@@ -190,7 +191,7 @@ public class YamlFormatWriterInvalidOutputTest {
                 + "      - C: \"v\"\n"));
     }
 
-    // ------------------------------------------------------------------ F4-03 書き込み権限なし
+    // ------------------------------------------------------------------ 書き込み権限なし
 
     /**
      * Given: 書き込み権限を落とした出力先ディレクトリ。
@@ -199,7 +200,7 @@ public class YamlFormatWriterInvalidOutputTest {
      *        原因は {@code java.nio.file.AccessDeniedException}。ファイルは作られない。
      *
      * <p>
-     * 担保する軸要素: F4-03。権限が効かない環境（root 実行など）では {@link Assume} でスキップする
+     * 担保する観点: 書き込み権限なし。権限が効かない環境（root 実行など）では {@link Assume} でスキップする
      * （緑にごまかさない）。
      * </p>
      */

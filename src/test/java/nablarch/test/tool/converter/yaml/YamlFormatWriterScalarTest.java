@@ -21,24 +21,23 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺④（中間モデル→YAML）の軸D — 中間モデルの値が YAML へどの記法で書かれるかと、それを辺②で
- * 読み戻したときに元の文字列へ戻るかを固定するテスト。
+ * 中間モデル → YAML の書き出しについて、値の表現 — 中間モデルの値が YAML へどの記法で書かれるかと、
+ * それを YAML → 中間モデルで読み戻したときに元の文字列へ戻るかを固定するテスト。
  *
  * <p>
- * 対象は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §0.5 の辺④ 9 ケース
- * （D4-01 {@code "100"}／D4-02 {@code "true"}／D4-03 {@code "null"}／D4-04 {@code null}／
- * D4-05 {@code ""}／D4-06 {@code "007"}／D4-07 改行含む／D4-08 {@code "2026-08-07"}／
- * D4-09 コロン・ハイフン・{@code #} 含む）である。
+ * 対象は値の表現 9 ケース
+ * （{@code "100"}／{@code "true"}／{@code "null"}／{@code null}／
+ * {@code ""}／{@code "007"}／改行含む／{@code "2026-08-07"}／
+ * コロン・ハイフン・{@code #} 含む）である。
  * </p>
  *
  * <p>
  * <b>本クラスが担うのは、既存の {@code YamlFormatWriterTest} が通していない分だけである。</b>
- * D4-03／D4-04（{@code YamlFormatWriterTest#serialize_distinguishesNullFromNullString} が記法を、
+ * {@code "null"}／{@code null}（{@code YamlFormatWriterTest#serialize_distinguishesNullFromNullString} が記法を、
  * {@code #roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader} が往復を通す）と
- * D4-05（{@code #serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation} が記法を、
- * {@code #roundTrip_table_isPreservedThroughRealReader} が往復を通す）、および D4-07 の記法
+ * {@code ""}（{@code #serializeTable_setupNoGroup_quotesValuesAndKeepsNullEmptyAndNotation} が記法を、
+ * {@code #roundTrip_table_isPreservedThroughRealReader} が往復を通す）、および改行含むの記法
  * （{@code #serialize_escapesQuotesBackslashAndControlChars}）は既に担保があるため重複させない。
- * 対応は {@code inventory.md} §4.1-2 の表に全 9 ケースぶん載せてある。
  * </p>
  *
  * <p>
@@ -49,14 +48,14 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 往復（{@code write} → 実 {@link YamlFormatReader}）は<b>実ファイルを経由する</b>。
- * すなわち辺④の書き出しと辺②の読み取り（スカラー解決・スキーマ検証）の双方を実行する。
- * 辺②側の単独の担保は {@code YamlFormatReaderScalarTest}（D2-01〜D2-12）にある。
+ * すなわち YAML の書き出しと読み取り（スカラー解決・スキーマ検証）の双方を実行する。
+ * 読み取り側の単独の担保は {@code YamlFormatReaderScalarTest}（YAML スカラー 12 ケース）にある。
  * </p>
  *
  * <p>
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題
- * （{@code YML-13}）として記録してあり、実装（src/main）は変更していない。
+ * 妥当でないと判断した挙動（折り返しの起きるキーを書き出すと YAML として読めなくなる）もあるが、
+ * 実装（src/main）は変更していない。理由は {@link #foldsLongEscapedKeyWithBackslashContinuation} に記す。
  * </p>
  *
  * @author kiyobot
@@ -97,7 +96,7 @@ public class YamlFormatWriterScalarTest {
      *
      * <p>
      * カラム名を大文字 {@code V} にしているのは、テーブル系のカラム名が読み戻しで大文字化されるため
-     * （{@code issues.md} <b>YML-10</b>）。小文字にすると往復判定が「値が戻るか」ではなく
+     * （大文字化するのは本体の {@code TableData}）。小文字にすると往復判定が「値が戻るか」ではなく
      * 「カラム名が戻るか」に引きずられる。カラム名側の挙動は
      * {@code YamlFormatWriterModelTest#uppercasesTableAndColumnNamesWhenReadBack} が固定する。
      * </p>
@@ -172,7 +171,7 @@ public class YamlFormatWriterScalarTest {
         return table.getRows().get(0).get(0);
     }
 
-    // ------------------------------------------------------------------ D4-01 "100"
+    // ------------------------------------------------------------------ "100"
 
     /**
      * Given: 数値に見える文字列 {@code 100}。
@@ -180,10 +179,9 @@ public class YamlFormatWriterScalarTest {
      * Then : ダブルクォート付きの {@code "100"} として書かれる。
      *
      * <p>
-     * 担保する軸要素: D4-01。既存の
+     * 担保する観点: {@code "100"}。既存の
      * {@code YamlFormatWriterTest#roundTrip_nullAndNullStringAndNumeric_areDistinguishedThroughRealReader} は
-     * 往復で文字列として戻ることだけを見ており、<b>出力記法をアサートしていない</b>
-     * （{@code inventory.md} §4.1 でも 🔺 としている）。
+     * 往復で文字列として戻ることだけを見ており、<b>出力記法をアサートしていない</b>。
      * </p>
      */
     @Test
@@ -196,21 +194,21 @@ public class YamlFormatWriterScalarTest {
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : 文字列 {@code "100"} として復元される（数値にならない）。
      *
-     * <p>担保する軸要素: D4-01（往復）。辺②側は {@code YamlFormatReaderScalarTest#readsQuotedNumberAsString}。</p>
+     * <p>担保する観点: {@code "100"}（往復）。読み取り側は {@code YamlFormatReaderScalarTest#readsQuotedNumberAsString}。</p>
      */
     @Test
     public void restoresNumberLookingStringThroughRealReader() {
         assertThat(writeAndReadBack("100"), is("100"));
     }
 
-    // ------------------------------------------------------------------ D4-02 "true"
+    // ------------------------------------------------------------------ "true"
 
     /**
      * Given: 真偽値に見える文字列 {@code true}。
      * When : {@code serialize}。
      * Then : ダブルクォート付きの {@code "true"} として書かれる。
      *
-     * <p>担保する軸要素: D4-02。</p>
+     * <p>担保する観点: {@code "true"}。</p>
      */
     @Test
     public void writesBooleanLookingStringAsDoubleQuotedScalar() {
@@ -223,7 +221,7 @@ public class YamlFormatWriterScalarTest {
      * Then : 文字列 {@code "true"} として復元される（真偽値にならない）。
      *
      * <p>
-     * 担保する軸要素: D4-02（往復）。辺②側は {@code YamlFormatReaderScalarTest#readsQuotedTrueAsString}。
+     * 担保する観点: {@code "true"}（往復）。読み取り側は {@code YamlFormatReaderScalarTest#readsQuotedTrueAsString}。
      * 引用符を落とすと本体スキーマが {@code rows} の値を {@code ["string","null"]} に限るため
      * 読み戻しがスキーマ違反で止まる（{@code YamlFormatReaderScalarTest} のクラス Javadoc）。
      * すなわちここで確かめているのは「全値クォート方針が往復を成立させている」ことである。
@@ -234,14 +232,14 @@ public class YamlFormatWriterScalarTest {
         assertThat(writeAndReadBack("true"), is("true"));
     }
 
-    // ------------------------------------------------------------------ D4-06 "007"
+    // ------------------------------------------------------------------ "007"
 
     /**
      * Given: 先頭ゼロの数値に見える文字列 {@code 007}。
      * When : {@code serialize}。
      * Then : ダブルクォート付きの {@code "007"} として書かれる（先頭ゼロが落ちない）。
      *
-     * <p>担保する軸要素: D4-06。</p>
+     * <p>担保する観点: {@code "007"}。</p>
      */
     @Test
     public void writesLeadingZeroNumberAsDoubleQuotedScalar() {
@@ -253,14 +251,14 @@ public class YamlFormatWriterScalarTest {
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : 文字列 {@code "007"} として復元される。
      *
-     * <p>担保する軸要素: D4-06（往復）。辺②側は {@code YamlFormatReaderScalarTest#readsLeadingZeroNumberAsString}。</p>
+     * <p>担保する観点: {@code "007"}（往復）。読み取り側は {@code YamlFormatReaderScalarTest#readsLeadingZeroNumberAsString}。</p>
      */
     @Test
     public void restoresLeadingZeroNumberThroughRealReader() {
         assertThat(writeAndReadBack("007"), is("007"));
     }
 
-    // ------------------------------------------------------------------ D4-07 改行含む
+    // ------------------------------------------------------------------ 改行含む
 
     /**
      * Given: 改行を含む短い値 {@code "l1\nl2"}。
@@ -269,7 +267,7 @@ public class YamlFormatWriterScalarTest {
      *        {@code \n} へエスケープ</b>して書かれる。
      *
      * <p>
-     * 担保する軸要素: D4-07。既存の
+     * 担保する観点: 改行含む。既存の
      * {@code YamlFormatWriterTest#serialize_escapesQuotesBackslashAndControlChars} は
      * {@code \n}／{@code \r}／{@code \t}／{@code \x01}／{@code "}／{@code \} をまとめた 1 つの値で
      * エスケープを固定している。本メソッドは<b>改行だけを含む値でも複数行記法にならない</b>ことを
@@ -287,9 +285,9 @@ public class YamlFormatWriterScalarTest {
      * Then : 改行を含んだまま復元される。
      *
      * <p>
-     * 担保する軸要素: D4-07（往復）。辺②側でブロックスカラーを読む担保は
+     * 担保する観点: 改行含む（往復）。読み取り側でブロックスカラーを読む担保は
      * {@code YamlFormatReaderScalarTest#readsLiteralBlockScalarKeepingNewlines} にあるが、
-     * <b>辺④が書くのはブロックスカラーではない</b>ため往復の経路が違う。
+     * <b>YAML の書き出しが書くのはブロックスカラーではない</b>ため往復の経路が違う。
      * </p>
      */
     @Test
@@ -304,7 +302,7 @@ public class YamlFormatWriterScalarTest {
      *        <b>継続行の字下げは半角空白 2 個で、周囲のインデント（{@code V} は 9 桁目）に揃わない。</b>
      *
      * <p>
-     * 担保する軸要素: D4-07（複数行記法）。{@link YamlFormatWriter#q} は値を単独で
+     * 担保する観点: 改行含む（複数行記法）。{@link YamlFormatWriter#q} は値を単独で
      * {@code Dump#dumpToString} し、その結果を行へ差し込むだけであるため、折り返しの字下げは
      * 差し込み先の深さを知らない。
      * </p>
@@ -326,8 +324,8 @@ public class YamlFormatWriterScalarTest {
      * Then : 折り返されていても元の文字列へ復元される。
      *
      * <p>
-     * 担保する軸要素: D4-07（折り返しの往復）。<b>値側の折り返しは往復を壊さない。</b>
-     * 壊れるのはキー側である（{@code #failsToReadBackFoldedKey}／{@code issues.md} <b>YML-13</b>）。
+     * 担保する観点: 改行含む（折り返しの往復）。<b>値側の折り返しは往復を壊さない。</b>
+     * 壊れるのはキー側である（{@code #failsToReadBackFoldedKey}）。
      * </p>
      */
     @Test
@@ -335,14 +333,14 @@ public class YamlFormatWriterScalarTest {
         assertThat(writeAndReadBack(FOLDED_VALUE), is(FOLDED_VALUE));
     }
 
-    // ------------------------------------------------------------------ D4-08 "2026-08-07"
+    // ------------------------------------------------------------------ "2026-08-07"
 
     /**
      * Given: 日付に見える文字列 {@code 2026-08-07}。
      * When : {@code serialize}。
      * Then : ダブルクォート付きの {@code "2026-08-07"} として書かれる。
      *
-     * <p>担保する軸要素: D4-08。</p>
+     * <p>担保する観点: {@code "2026-08-07"}。</p>
      */
     @Test
     public void writesDateLookingStringAsDoubleQuotedScalar() {
@@ -354,14 +352,14 @@ public class YamlFormatWriterScalarTest {
      * When : {@code write} → 実 {@link YamlFormatReader} で読み戻す。
      * Then : 文字列 {@code "2026-08-07"} として復元される（日付にならない）。
      *
-     * <p>担保する軸要素: D4-08（往復）。辺②側は {@code YamlFormatReaderScalarTest#readsDateLikeStringAsIs}。</p>
+     * <p>担保する観点: {@code "2026-08-07"}（往復）。読み取り側は {@code YamlFormatReaderScalarTest#readsDateLikeStringAsIs}。</p>
      */
     @Test
     public void restoresDateLookingStringThroughRealReader() {
         assertThat(writeAndReadBack("2026-08-07"), is("2026-08-07"));
     }
 
-    // ------------------------------------------------------------------ D4-09 コロン・ハイフン・#
+    // ------------------------------------------------------------------ コロン・ハイフン・#
 
     /**
      * Given: コロン・ハイフン・{@code #} を含む値 {@code "a: b - c #d"}。
@@ -369,16 +367,15 @@ public class YamlFormatWriterScalarTest {
      * Then : ダブルクォート付きで 1 値として書かれる（コロンでキーに割れず、{@code #} 以降も残る）。
      *
      * <p>
-     * 担保する軸要素: D4-09（<b>値側</b>）。キー側のクォートは別の要素であり、本メソッドは見ていない。
+     * 担保する観点: コロン・ハイフン・{@code #} 含む（<b>値側</b>）。キー側のクォートは別の要素であり、本メソッドは見ていない。
      * </p>
      *
      * <p>
      * <b>キー側の担保は、既存テストだけではコロン・空白・空文字・先頭 {@code -} の 4 つに限られていた</b>
      * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
-     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}。
-     * {@code inventory.md} §4.1 の 15・16・23 行目）。
+     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}）。
      * {@code YamlFormatWriter#isPlainSafeKey} が持つ特殊文字集合 18 文字のうち残る 17 文字と制御文字は
-     * #25 のレビューまで未固定であり（{@code #} を集合から外しても全件が通る生存変異として実測された）、
+     * 未固定であり（{@code #} を集合から外しても全件が通る生存変異として実測された）、
      * {@code YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter} で閉じた。
      * </p>
      */
@@ -393,9 +390,9 @@ public class YamlFormatWriterScalarTest {
      * Then : そのまま復元される（{@code #} 以降がコメントとして落ちない）。
      *
      * <p>
-     * 担保する軸要素: D4-09（往復）。辺②側は
+     * 担保する観点: コロン・ハイフン・{@code #} 含む（往復）。読み取り側は
      * {@code YamlFormatReaderScalarTest#readsColonContainingStringAsIs} ／ {@code #readsHashContainingStringAsIs}。
-     * 引用符が落ちれば {@code issues.md} <b>YML-11</b> のとおり値が黙って変わる。
+     * 引用符が落ちれば、引用符なしスカラーの {@code #} 以降がコメントとして落ちるため値が黙って変わる。
      * </p>
      */
     @Test
@@ -403,7 +400,7 @@ public class YamlFormatWriterScalarTest {
         assertThat(writeAndReadBack("a: b - c #d"), is("a: b - c #d"));
     }
 
-    // ------------------------------------------------------------------ 折り返したキー（YML-13）
+    // ------------------------------------------------------------------ 折り返したキー
 
     /**
      * Given: 出力幅を超え、かつ改行を含むカラム名（＝キー）。
@@ -411,9 +408,11 @@ public class YamlFormatWriterScalarTest {
      * Then : 値と同じく行末の {@code \} で折り返され、<b>キーが 2 行にまたがる</b>。
      *
      * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-13</b> の現状挙動の固定）。
+     * 担保する観点: 折り返したキーの現状挙動の固定。
      * YAML の simple key は 1 行に収まらなければならないため、この出力は読み戻せない
-     * （{@code #failsToReadBackFoldedKey}）。
+     * （{@code #failsToReadBackFoldedKey}）。修正しない。NTF の記法はキーに使える文字種・長さを定めておらず、
+     * 到達には「キーにエスケープ対象の文字を含む」かつ「出力幅（80 桁）を超える」の両方が要り、
+     * 踏んだ場合も読み戻しが例外で止まる（黙ってデータが変わることはない）ためである。
      * </p>
      */
     @Test
@@ -436,7 +435,7 @@ public class YamlFormatWriterScalarTest {
      *        スキーマ検証には到達しない。
      *
      * <p>
-     * 担保する軸要素: なし（{@code issues.md} <b>YML-13</b>）。書き出しは成功するため、
+     * 担保する観点: 折り返したキーの読み戻し。書き出しは成功するため、
      * <b>壊れていることが分かるのは読み戻しのときである</b>。
      * </p>
      */

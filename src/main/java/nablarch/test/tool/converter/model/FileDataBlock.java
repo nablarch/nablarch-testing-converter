@@ -17,13 +17,12 @@ import java.util.Set;
  * その値は<b>データ種別から導出する</b>。
  * ディレクティブとレコードレイアウト群（FW_HEADER レコードもスキップせず保持）を記述順で持つ。
  * <b>この 4 種以外のデータ種別では生成できない。生成時点で拒否する</b>
- * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
+ * （根拠は
  * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
  * </p>
  *
  * <p>
- * <b>{@code fileType} は保持せず、{@code dataType} から導出する</b>
- * （{@code coverage/issues.md} <b>XLS-44</b>）。NTF 仕様はファイル種別をひとつの概念としてしか持たず、
+ * <b>{@code fileType} は保持せず、{@code dataType} から導出する。</b>NTF 仕様はファイル種別をひとつの概念としてしか持たず、
  * 4 種のデータ種別それぞれに固定長／可変長のどちらか一方を一意に割り当てている —— 本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.file_data.properties.type} の
  * description が「fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
@@ -38,10 +37,12 @@ import java.util.Set;
  * <p>
  * <b>導出にしたことで、食い違う組（例: {@code SETUP_FIXED} かつ可変長）は型として表現できない。</b>
  * 以前は {@code dataType} と {@code fileType} を別々に引数で受け取り、食い違う組を検査せずに保持していた
- * ため、同じモデルから辺③と辺④が別のファイル種別を書いた（{@code coverage/issues.md} <b>XLS-44</b>）。
- * <b>これに伴い {@code fileType} ＝ {@code null} を拒否していた番人（XLS-29）は到達不能になり撤去した。</b>
+ * ため、同じモデルから Excel への書き出しと YAML への書き出しが別のファイル種別を書いた（たとえば
+ * {@code SETUP_FIXED} かつ可変長のモデルは、Excel へは {@code SETUP_FIXED} のマーカーで書かれる一方、
+ * YAML へは {@code type: "variable"} と書かれた）。
+ * <b>これに伴い {@code fileType} ＝ {@code null} を拒否していた番人は到達不能になり撤去した。</b>
  * 退行ではなく、不正な状態を型が表現できなくなったため番人が不要になったものである
- * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」の一段強い形）。
+ * （不正値は書き出し側でなく中間モデルの生成時に拒否するという方針の、さらに一段強い形である）。
  * <b>{@link FileType} と {@link #getFileType()} は残す</b> —— 消えたのは概念ではなく二つ目の真実の
  * 置き場であり、NTF 仕様はファイル種別を名前つきの 2 値として持つ（YAML スキーマの {@code type} は
  * {@code required} かつ {@code enum} ＝ {@code ["fixed", "variable"]}、Excel は
@@ -49,14 +50,14 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * <b>可変長ファイルではフィールド定義がフィールド長を持てない。生成時点で拒否する</b>
- * （{@code coverage/issues.md} <b>XLS-45</b>。ユーザー確定・2026-08-24）。
+ * <b>可変長ファイルではフィールド定義がフィールド長を持てない。生成時点で拒否する。</b>
  * Excel 記法に可変長のフィールド長行が無いためである（固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
  * 点のみである。／可変長ファイルでは、フィールド名称・データ型の2リストが
  * 同サイズで必須であり、フィールド長は不要である。）。
- * <b>保持できると辺③（中間モデル → Excel）で例外にも警告にもならずに落ちる</b>ため、
- * 書き出し側に番人を置くのではなく、そもそも作れなくする
- * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * <b>保持できると Excel への書き出し（中間モデル → Excel）で例外にも警告にもならずに落ちる</b>ため、
+ * 書き出し側に番人を置くのではなく、そもそも作れなくする（不正値は書き出し側でなく中間モデルの
+ * 生成時に拒否する。書き出し側で落とすのは、持ってはいけない値を中間モデルが持てる状態を
+ * そのままにする暫定対応にあたるためである）。
  * 拒否の詳細（{@code "-"} も空文字も弾くこと、その根拠）は
  * {@link ModelPreconditions#requireNoLengths} の Javadoc にある。
  * </p>
@@ -89,9 +90,8 @@ public final class FileDataBlock extends TestDataBlock {
      *
      * <p>
      * <b>フィールド長の不変条件は導出したファイル種別で分かれる。</b>固定長系ではすべてのフィールド定義が
-     * フィールド長を持たなければならず（{@link ModelPreconditions#requireLengths}。
-     * {@code coverage/issues.md} <b>XLS-30</b>）、<b>可変長系ではひとつも持ってはならない</b>
-     * （{@link ModelPreconditions#requireNoLengths}。{@code coverage/issues.md} <b>XLS-45</b>）。
+     * フィールド長を持たなければならず（{@link ModelPreconditions#requireLengths}）、
+     * <b>可変長系ではひとつも持ってはならない</b>（{@link ModelPreconditions#requireNoLengths}）。
      * </p>
      *
      * @param dataType   データ種別
@@ -127,12 +127,13 @@ public final class FileDataBlock extends TestDataBlock {
      * </p>
      *
      * <p>
-     * <b>導出の対応が定まっているのはこの 4 種だけであり、それ以外のデータ種別は受け口で拒否する</b>
-     * （{@code coverage/issues.md} <b>XLS-44</b>）。検査はコンストラクタと同じ
+     * <b>導出の対応が定まっているのはこの 4 種だけであり、それ以外のデータ種別は受け口で拒否する。</b>
+     * 検査はコンストラクタと同じ
      * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} による
      * （コンストラクタ経由では二重に走るが、それでよい）。<b>{@code null} も同じ検査が
      * {@link IllegalArgumentException} で拒否する</b> —— データタイプの無いブロックはどちらの形式でも
-     * 書けず（{@code coverage/issues.md} <b>XLS-34</b>）、{@link TestDataBlock} のコンストラクタが
+     * 書けず（Excel ではマーカー行の先頭、YAML ではトップレベルキーがデータタイプで決まる）、
+     * {@link TestDataBlock} のコンストラクタが
      * 同じ入力を拒否しているため、<b>受け口によって例外の種類が分かれる状態は残さない</b>。
      * </p>
      *

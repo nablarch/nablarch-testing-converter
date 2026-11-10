@@ -157,11 +157,11 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * {@code substring(0, 31)} で黙って切り詰めてから禁止文字を検査する。シート名は呼び出し側が
      * データを引き当てるためのキーであり、別名へ変わると引けなくなる。
      * また切り詰めが先に走ることで、禁止文字が 32 文字目以降にある名前は禁止文字検査に到達しない。
-     * どちらも {@code createSheet} の前に文字数を検査すれば閉じる（{@code issues.md} XLS-16）。
+     * どちらも {@code createSheet} の前に文字数を検査すれば閉じる。
      * </p>
      * <p>
-     * null は検査しない。{@link TestDataSection} が生成時に拒否するため、ここへは届かない
-     * （{@code issues.md} XLS-33）。<b>31 文字上限は Excel 形式固有の制約であり中間モデルの
+     * null は検査しない。{@link TestDataSection} が生成時に拒否するため、ここへは届かない。
+     * <b>31 文字上限は Excel 形式固有の制約であり中間モデルの
      * 不変条件ではないため、この番人は書き出し側に残す。</b>
      * </p>
      *
@@ -230,7 +230,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>カラム名を 1 件も持たない 0 件テーブルには、カラム名の行へマーカーカラム
      * {@value #EMPTY_BLOCK_MARKER_COLUMN} を 1 つだけ書く。</b>3 つの明文を同時に満たす唯一の書き方だからである
-     * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19。いずれも {@code 30a8271} 時点）。
+     * （以下の明文はいずれも解説書 {@code 30a8271} 時点）。
      * </p>
      * <ul>
      *   <li>Excel 記法では、データ行を書かない場合でもカラム名の行を省略できない。
@@ -240,7 +240,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *       キー行が構成上必須である</li>
      *   <li>YAML 記法では、カラム名は最初の行（{@code rows:} の先頭要素）のキーで決まり、
      *       0 件のデータは {@code rows:} に空配列 {@code []} を書く——
-     *       <b>YAML の 0 件テーブルにはカラム名を書く場所が無い</b>ため、辺②は
+     *       <b>YAML の 0 件テーブルにはカラム名を書く場所が無い</b>ため、YAML の読み込みは
      *       仕様適合入力からカラム名 0 件のブロックを正当に作る</li>
      *   <li>カラム名を半角角括弧 {@code [ ]} で囲むと、そのカラムはマーカーカラムとして
      *       読み込み対象から除外される…Excel 形式の {@code SETUP_TABLE}・{@code EXPECTED_TABLE}・
@@ -249,16 +249,16 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * </ul>
      * <p>
      * <b>黙ってカラム名行を落とすと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、
-     * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測。
-     * {@code coverage/issues.md} <b>XLS-27</b>）。<b>読み戻すと、書いたマーカーカラムがそのまま
-     * {@code columnNames} に入る</b>——カラム名の行がマーカーカラムだけのブロックは、マーカーカラムの名前と
-     * 値を保って読むためである（{@link XlsFormatReader} の XLS-08 の決着）。行は 0 件のままである
+     * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測）。
+     * <b>読み戻すと、書いたマーカーカラムがそのまま
+     * {@code columnNames} に入る</b>——{@link XlsFormatReader} は、カラム名の行がマーカーカラムだけの
+     * ブロックをマーカーカラムの名前と値を保って読むためである。行は 0 件のままである
      * （担保は {@code XlsFormatWriterTest#roundTripsZeroRowTableWithoutEatingNextBlock}）。
      * </p>
      * <p>
      * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>どちらの記法にも書けない形であり、
-     * {@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>（{@code coverage/issues.md} <b>XLS-21</b>。
-     * 番人の移設は 2026-08-19、セルを 1 つも持たない行まで拒否対象を広げたのは 2026-08-31）。
+     * {@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>（この形を書き出すと、空セルだけの
+     * カラム名の行が空行として読み飛ばされ、読み戻しで先頭のデータ行がカラム名へ昇格して値が消える）。
      * </p>
      *
      * @param block カラム・行ブロック
@@ -290,9 +290,9 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <b>ファイル種別 {@code null} はここでは検査しない。</b>Excel 記法はファイルデータを固定長と
      * 可変長の 2 種類に尽くしており（固定長ファイルと可変長ファイルにはそれぞれ固有の制約があり、
      * 固定長は長さ行を持ち可変長は持たない）、
-     * どちらとも決まっていないファイルデータブロックは Excel 記法に存在しない形である
-     * （{@code coverage/issues.md} <b>XLS-29</b>）。{@link FileDataBlock} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（番人の移設は 2026-08-19）。
+     * どちらとも決まっていないファイルデータブロックは Excel 記法に存在しない形である。
+     * {@link FileDataBlock} はファイル種別をデータ種別から導出し、データ種別の {@code null} は
+     * <b>生成時点で拒否する</b>ため、ここへは届かない。
      * </p>
      *
      * @param block ファイルブロック
@@ -316,7 +316,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * 電文を表す書き方は明文が無い。本体スキーマも {@code $defs.message_data} ／
      * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} が
      * {@code records.minItems} ＝ 1 とする）が、{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
+     * ここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
      * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり
      * （スキーマも {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）、こちらは拒否しない。
      * </p>
@@ -344,30 +344,30 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * レコード種別を書かなければ新しいレコードレイアウトにならない。したがって 2 レコード目以降で
      * レコード種別が空（{@code null}／空文字）のレコードレイアウトは、<b>Excel 記法では書き表せない</b>。
      * 読み戻せない版面を黙って書かず、前提崩れとして即座に失敗させる
-     * （{@link XlsFormatReader} の番人と同じ思想。{@code coverage/issues.md} <b>XLS-06</b>）。
+     * （{@link XlsFormatReader} の番人と同じ思想）。
      * </p>
      * <p>
      * <b>この番人は中間モデルへ寄せない。</b>YAML 記法にはこの制約が無く（{@code rows:} の
      * 各行は配列形式で、{@code fields:} と同じ順序・同じ件数で値を並べる。<b>先頭を空にするという Excel 形式の
      * 制約はない</b>）、本体スキーマ {@code $defs.record_fragment} の {@code required} も
      * {@code ["fields", "rows"]} だけで {@code record_type} を含まない。レコード種別を持たない 2 件目以降の
-     * レコードレイアウトは辺④（YAML 書き出し）では正しく書けるため、中間モデルが保持できてよい形である。
+     * レコードレイアウトは YAML への書き出しでは正しく書けるため、中間モデルが保持できてよい形である。
      * 31 文字上限（{@link #requireValidSheetNameLength}）と同じく、Excel 形式固有の書き出し不能として
      * 書き出し側に残す。
      * </p>
      * <p>
      * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>Excel 記法に存在しない形であり
      * （フィールドが無いと名前行がレコード種別セル 1 個だけになり、
-     * 本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない。
-     * {@code coverage/issues.md} <b>XLS-22</b>）、{@link RecordLayout} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（番人の移設は 2026-08-19）。
+     * 本体 {@code DataFileParser} が名前行に 2 列以上を要求するため読み戻せない）、
+     * {@link RecordLayout} が<b>生成時点で拒否する</b>ため
+     * ここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
      * </p>
      * <p>
      * <b>データ型が {@code null} のフィールド定義もここでは検査しない。</b>Excel 記法はフィールド名称・
      * データ型のリストを必須としており（フィールド名称リストまたはデータ型リストが未指定または空であることを
-     * 記述時のエラーに挙げる）、データ型を持たないフィールド定義は Excel 記法に存在しない形だが
-     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）、{@link FieldDef} が<b>生成時点で拒否する</b>
-     * ためここへは届かない（番人の移設は §1-D）。
+     * 記述時のエラーに挙げる）、データ型を持たないフィールド定義は Excel 記法に存在しない形だが、
+     * {@link FieldDef} が<b>生成時点で拒否する</b>
+     * ためここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
      * </p>
      * <p>
      * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>Excel 記法は固定長ファイルに
@@ -375,11 +375,11 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * （3 リストのサイズが一致していないことを記述時のエラーに挙げる）、
      * 電文のメッセージボディもフィールド名称・データ型・フィールド長・データという
      * ファイルデータと同じ構成を持つため、同じ制約に掛かる
-     * （{@code coverage/issues.md} <b>XLS-30</b>）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
+     * （長さの無い固定長フィールドは本体がレコード長を計算できない）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
      * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
      * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
      * 正しい</b>ため拒否しない（可変長ファイルではフィールド名称・データ型の 2 リストが
-     * 同サイズで必須であり、フィールド長は不要である）。番人の移設は 2026-08-19。
+     * 同サイズで必須であり、フィールド長は不要である）。もとはここに番人を置いていたが、生成時へ移した。
      * </p>
      *
      * @param l          版面
@@ -572,7 +572,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * 半角角括弧で囲んであるため、本体は読み込み対象から除外する。
      * カラム名の行そのものは記法により省略できないため、意味を持たないカラムを 1 つ置いて
-     * 行の存在だけを満たす（{@code coverage/issues.md} <b>XLS-27</b>）。
+     * 行の存在だけを満たす（カラム名の行を書かないと、読み戻したとき次のブロックの識別子行がカラム名の行として
+     * 吸収され、そのブロックが消える）。
      * </p>
      */
     static final String EMPTY_BLOCK_MARKER_COLUMN = "[EMPTY]";

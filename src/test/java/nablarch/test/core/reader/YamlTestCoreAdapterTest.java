@@ -235,8 +235,8 @@ public class YamlTestCoreAdapterTest {
      * 記法（グループ ID を省略した場合はデフォルトグループが
      * 対象になる）どおりの挙動である。本体ビルダは {@code group_id} が非 null のエントリしか
      * 返さないため、{@link YamlTestCoreAdapter} 側の前処理
-     * （{@code defaultGroupOnlyYaml}）でしか実現できない。この前処理の直接の担保
-     * （{@code issues.md} YML-02）。
+     * （{@code defaultGroupOnlyYaml}）でしか実現できない。この前処理の直接の担保である
+     * （前処理が無いと、{@code group_id} を省略したエントリが黙って消える）。
      * </p>
      */
     @Test

@@ -47,7 +47,7 @@ public class MessageDataBlockTest {
 
     @Test
     public void ディレクティブがnullの電文ブロックは生成できない() {
-        // Given: 「無い」ことは空 Map で表す（XLS-38）
+        // Given: 「無い」ことは空 Map で表す（記法に null に当たる書き方が無い）
         try {
             new MessageDataBlock(DataType.MESSAGE, "", "RM11AC0101",
                     null, new LinkedHashMap<>(), List.of());
@@ -69,8 +69,9 @@ public class MessageDataBlockTest {
     }
 
     /**
-     * XLS-43。ディレクティブのキー・値が {@code null} の電文ブロックは生成できない。
-     * 根拠は 記法・記法と本体スキーマ {@code $defs.directives}。
+     * ディレクティブのキー・値が {@code null} の電文ブロックは生成できない。
+     * 根拠は、ディレクティブを「キー名と値の 2 要素」で記述すると定め、要素数が 2 未満のディレクティブを
+     * 記述時のエラーに挙げる記法と、{@code null} を許す定義を持たない本体スキーマ {@code $defs.directives}。
      */
     @Test
     public void ディレクティブのキーまたは値がnullの電文ブロックは生成できない() {
@@ -98,7 +99,7 @@ public class MessageDataBlockTest {
     }
 
     /**
-     * XLS-43。FW 制御ヘッダも同じ「名前・値」形式で記述するため、
+     * FW 制御ヘッダも同じ「名前・値」形式で記述するため、
      * キー・値の {@code null} を同様に拒否する。
      */
     @Test
@@ -190,7 +191,7 @@ public class MessageDataBlockTest {
     }
 
     /**
-     * YML-12 の 2 形目。本文レコードを 1 件も持たない電文ブロックは生成できない。
+     * 本文レコードを 1 件も持たない電文ブロックは生成できない。
      * 記法に電文のレコード 0 件を表す書き方が無く、電文が存在しない場合は
      * 記法のとおり<b>データブロックごと省略する</b>。
      * 本体スキーマの電文系 3 定義（{@code $defs.message_data} ／
@@ -214,7 +215,7 @@ public class MessageDataBlockTest {
     }
 
     /**
-     * XLS-30。フィールド長が {@code null} の電文ブロックは生成できない。
+     * フィールド長が {@code null} の電文ブロックは生成できない。
      * 記法はフレームワーク制御ヘッダ以降の
      * メッセージボディは、フィールド名称・データ型・フィールド長・データという、前述のファイルデータと
      * 同じ構成を持つにより、電文は固定長ファイルと同じ 3 リスト同サイズの制約に掛かる

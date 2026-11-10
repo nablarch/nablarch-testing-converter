@@ -53,8 +53,8 @@ public class TestDataContainerTest {
     public void 名前がnullの器は生成できない() {
         // Given: 器の名前はテストクラスと 1 対 1 に対応する引き当てキーであり
         //        （記法は同名の1つのExcelファイル（.xls または .xlsx）がテストクラスに対応し、
-        //        1シートが読み込み単位に対応する）、辺③はこれをそのままブック名にする。
-        //        null では null.xlsx というファイルが黙って作られる（XLS-37）
+        //        1シートが読み込み単位に対応する）、Excel への書き出しはこれをそのままブック名にする。
+        //        null では null.xlsx というファイルが黙って作られる
         // When
         try {
             new TestDataContainer(null, List.of());
@@ -67,7 +67,7 @@ public class TestDataContainerTest {
 
     @Test
     public void セクション群がnullの器は生成できない() {
-        // Given: 「無い」ことは 0 件のリストで表す。記法に null に当たる書き方が無い（XLS-38）
+        // Given: 「無い」ことは 0 件のリストで表す。記法に null に当たる書き方が無い
         try {
             new TestDataContainer("book", null);
             fail("IllegalArgumentException が送出されるべき");

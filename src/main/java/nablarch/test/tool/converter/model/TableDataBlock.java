@@ -18,7 +18,7 @@ import java.util.Set;
  *
  * <p>
  * <b>この 3 種以外のデータ種別では生成できない。生成時点で拒否する</b>
- * （{@code coverage/issues.md} <b>XLS-36</b>。根拠は
+ * （根拠は
  * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
  * </p>
  *

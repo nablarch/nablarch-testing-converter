@@ -21,8 +21,8 @@ import java.util.Set;
  * <b>中間モデルのコレクション・Map と、その要素は {@code null} を取らない。</b>
  * 記法は空であることと無いことを区別せず、カラム 0 個・行 0 件・ディレクティブなしは
  * すべて<b>要素 0 件</b>で表す。{@code null} に対応する書き方が記法に無いため、
- * {@code null} を保持できると 4 辺のどこにも書き出せない中間モデルができてしまう
- * （{@code coverage/issues.md} <b>XLS-38</b>）。生成時点で拒否する。
+ * {@code null} を保持できると Excel にも YAML にも書き出せない中間モデルができてしまう
+ * （書き出し側で手掛かりの無い {@code NullPointerException} になる）。生成時点で拒否する。
  * </p>
  *
  * <p>
@@ -89,11 +89,11 @@ final class ModelPreconditions {
      * 要素数が 2 未満のディレクティブを記述時のエラーに挙げている。本体スキーマ {@code $defs.directives} も
      * 各キーの値を {@code string} ／ {@code boolean} ／ {@code integer} と定めるだけで
      * {@code null} を許す定義を持たず、{@code additionalProperties} が {@code false} であるため
-     * {@code null} のキーはそもそも書けない（{@code coverage/issues.md} <b>XLS-43</b>）。
+     * {@code null} のキーはそもそも書けない。
      * </p>
      *
      * <p>
-     * <b>空文字は拒否しない。</b>空文字を禁じる明文が無いためである（ユーザー確定・2026-08-19）。
+     * <b>空文字は拒否しない。</b>空文字を禁じる明文が無いためである。
      * </p>
      *
      * @param label 呼び出し側が例外メッセージに出す項目名
@@ -124,8 +124,8 @@ final class ModelPreconditions {
      * ファイルデータの記述時のエラーに挙げ、
      * 本体スキーマ {@code $defs.record_fragment} は {@code fields} を必須かつ {@code minItems} ＝ 1 とする。
      * したがってフィールド 0 件のレコードレイアウトは<b>どちらの記法にも存在しない形</b>であり、
-     * 生成時点で拒否する（{@code coverage/issues.md} <b>XLS-22</b> ／ <b>YML-12</b> の 3 形目。
-     * もとは辺③④の書き出し側に置いていたが、2026-08-19 に生成時へ移した）。
+     * 生成時点で拒否する（Excel へ書くと読み戻せないブックになり、YAML へ書くとスキーマ違反の
+     * {@code fields: []} になる。もとは書き出し側に置いていたが、生成時へ移した）。
      * </p>
      *
      * @param label 呼び出し側が例外メッセージに出す項目名
@@ -148,16 +148,15 @@ final class ModelPreconditions {
      * 記法は固定長ファイルについて、フィールド名称・データ型・フィールド長の 3 リストが
      * 同サイズで必須であると定め、3 リストのサイズが一致していないことを記述時のエラーに挙げる。
      * 電文のメッセージボディもフィールド名称・データ型・フィールド長・データというファイルデータと
-     * 同じ構成を持つため、同じ制約に掛かる（{@code coverage/issues.md} <b>XLS-30</b>。もとは辺③④の書き出し側に置いていたが、
-     * 2026-08-19 に生成時へ移した）。
+     * 同じ構成を持つため、同じ制約に掛かる（長さの無い固定長フィールドは本体がレコード長を計算できない。
+     * もとは書き出し側に置いていたが、生成時へ移した）。
      * </p>
      *
      * <p>
      * <b>可変長ファイルは呼び出さない。</b>記法は可変長ファイルについて、フィールド名称・データ型の
      * 2 リストが同サイズで必須でありフィールド長は不要と定めており、{@code null} が正しい形である。
      * 電文にはこの逃げ道が無いため常に必須となる。<b>可変長ファイルは代わりに
-     * {@link #requireNoLengths(List, String)} を呼ぶ</b>——「不要」ではなく<b>書けない</b>ためである
-     * （{@code coverage/issues.md} <b>XLS-45</b>）。
+     * {@link #requireNoLengths(List, String)} を呼ぶ</b>——「不要」ではなく<b>書けない</b>ためである。
      * </p>
      *
      * <p>
@@ -191,14 +190,13 @@ final class ModelPreconditions {
      *
      * <p>
      * 呼び出し元は<b>可変長</b>の {@link FileDataBlock} だけである。
-     * <b>NTF 仕様として、可変長ファイルでは {@code length} を書けない</b>（ユーザー確定・2026-08-24。
-     * {@code coverage/issues.md} <b>XLS-45</b>）。Excel 記法に可変長のフィールド長行が無いためである
+     * <b>NTF 仕様として、可変長ファイルでは {@code length} を書けない</b>。Excel 記法に可変長のフィールド長行が無いためである
      * （固定長との違いは可変長ファイルがフィールド長行を書かない点だけであり、
      * 可変長ファイルではフィールド名称・データ型の 2 リストが同サイズで必須で、フィールド長は不要である）。
-     * 書ける先の無い値を中間モデルが保持できると、辺③（中間モデル → Excel）で例外にも警告にもならずに
+     * 書ける先の無い値を中間モデルが保持できると、Excel への書き出し（中間モデル → Excel）で例外にも警告にもならずに
      * 落ちる（{@code XlsFormatWriter#appendRecord} は長さ行を {@code if (fixed)} の中でしか作らない）。
-     * <b>生成時点で拒否し、書き出し側には番人を置かない</b>
-     * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+     * <b>生成時点で拒否し、書き出し側には番人を置かない</b>（書き出し側で落とすのは、持ってはいけない値を
+     * 中間モデルが持てる状態をそのままにする暫定対応にあたるためである）。
      * </p>
      *
      * <p>
@@ -210,7 +208,7 @@ final class ModelPreconditions {
      * {@code isOndemandCalcFieldSizeList} に立て、{@code addValue} が当該フィールドの値から改行と
      * 前後空白を除去するため、可変長でも NTF の格納値が変わる。しかしこれは<b>長さの指定ではなく
      * 値の整形であり、フィールド長の枠に相乗りしている</b>だけであって、追認すべき仕様ではない
-     * （ユーザー確定・2026-08-24）。数値の {@code length} は
+     * 数値の {@code length} は
      * {@code VariableLengthFileFragment#createFieldDefinition} が {@code lengths} を一度も読まないため、
      * 可変長では NTF 実行時に使われない。
      * </p>
@@ -252,7 +250,7 @@ final class ModelPreconditions {
      * 「データ行のセル数（Excel形式）または ``rows:`` の各要素の長さ（YAML形式）がフィールド数より
      * 少ない場合、不足したフィールドは ``""`` として補完される」と書く（逐語）。
      * したがって不変条件は<b>「行の要素数 ≦ フィールド定義の件数」</b>であって、
-     * <b>一致の強制ではない</b>（{@code coverage/issues.md} <b>XLS-41</b>）。
+     * <b>一致の強制ではない</b>。
      * </p>
      *
      * @param label 呼び出し側が例外メッセージに出す項目名
@@ -278,15 +276,15 @@ final class ModelPreconditions {
      * <p>
      * 現在の呼び出し元は {@link RecordLayout} のフィールド名称だけである。
      * 記法は同一レコード種別内でフィールド名称が
-     * 重複しているが記述時のエラーとして明文で禁じている（{@code coverage/issues.md} <b>XLS-40</b>）。
+     * 重複していることを記述時のエラーとして明文で禁じている。
      * </p>
      *
      * <p>
-     * <b>テーブル系のカラム名には使っていない。</b>辺②が重複したカラム名を持つブロックを実際に作る
-     * ためである（<b>YML-10</b>。本体 {@code TableData} の大文字化により {@code id} と {@code ID} が
+     * <b>テーブル系のカラム名には使っていない。</b>YAML の読み込みが重複したカラム名を持つブロックを
+     * 実際に作るためである（本体 {@code TableData} の大文字化により {@code id} と {@code ID} が
      * {@code [ID, ID]} になる）。番人を置くと仕様適合入力を変換できなくなるため、
-     * <b>カラム名側は他責として扱い、番人も WARN も置かない</b>（ユーザー確定・2026-08-19。
-     * 根拠は {@link ColumnRowDataBlock} の Javadoc）。
+     * <b>カラム名側は converter の外（nablarch-testing の {@code TableData}）の挙動として扱い、
+     * 番人も WARN も置かない</b>（根拠は {@link ColumnRowDataBlock} の Javadoc）。
      * </p>
      *
      * <p>

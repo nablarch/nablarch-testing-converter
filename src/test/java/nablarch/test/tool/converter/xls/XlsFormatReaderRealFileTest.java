@@ -36,9 +36,9 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 辺①（Excel→中間モデル）の軸A（{@link DataType} 14 種）・軸B（{@code TestDataBlock} の具象 4 種）・
- * 軸C（中間モデル 21 フィールド）と、軸E の多重度のうち #21 が埋めたもの
- * （E-2 ブロック内行数 0 件／E-3 ファイル内レコードレイアウト数 0 件・複数件）を、
+ * Excel→中間モデルの読み取りについて、データタイプ（{@link DataType} 14 種）・ブロックの種類
+ * （{@code TestDataBlock} の具象 4 種）・中間モデルのフィールドと、件数のうち
+ * ブロック内行数 0 件／ファイル内レコードレイアウト数 0 件・複数件を、
  * <b>実 {@code .xlsx} を入力に</b>固定するテスト。
  *
  * <p>
@@ -51,82 +51,83 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 各テストの Javadoc には、そのテストが担保する軸要素の ID
- * （{@code .rn/ntf-test-data-converter/coverage/inventory.md} の A-01〜A-14／B-1〜B-4／C-01〜C-21／E-1〜E-4）を記す。
+ * 各テストの Javadoc には、そのテストが担保する観点（データタイプ・ブロックの具象クラス・
+ * 中間モデルのフィールド・件数）を記す。
  * </p>
  *
  * <p>
  * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動は {@code .rn/ntf-test-data-converter/coverage/issues.md} に課題として記録した。
- * このうち <b>XLS-06</b>（レコード種別を省略したセルが {@code null} ではなく {@code ""} になる）は
- * <b>#25.5 で修正済み</b>で、該当テストは現状の固定ではなく<b>記法どおりの仕様</b>を書いている。
+ * ただしレコード種別を省略したセルが {@code null} ではなく {@code ""} になっていた挙動は
+ * <b>修正済み</b>で、該当テストは現状の固定ではなく<b>記法どおりの仕様</b>（中間モデル
+ * {@code RecordLayout} が定める省略時の表現 {@code null}）を書いている。
  * </p>
  *
  * <p>
- * <b>本クラスが扱わない軸要素と理由（テストコード側の索引。根拠の本文は
- * {@code coverage/inventory.md} §1.3 と {@code coverage/issues.md} の「到達不能」表にあり、そちらが原本）:</b>
+ * <b>本クラスが扱わない観点と理由:</b>
  * </p>
  * <table border="1">
- *   <caption>実 {@code .xlsx} 経路で到達不能な軸要素</caption>
- *   <tr><th>軸要素</th><th>扱い</th><th>理由</th></tr>
+ *   <caption>実 {@code .xlsx} 経路で到達不能な観点</caption>
+ *   <tr><th>観点</th><th>扱い</th><th>理由</th></tr>
  *   <tr>
- *     <td>A-01 {@code DEFAULT}</td><td>到達不能</td>
+ *     <td>データタイプ {@code DEFAULT}</td><td>到達不能</td>
  *     <td>{@link TestCoreReaderAdapter} の {@code HeaderCollector} が {@code DEFAULT} と判定した行を
  *         {@code continue} でスキップするため、ヘッダ一覧に {@code DEFAULT} のブロックが載らない。
  *         {@link XlsFormatReader#read} はヘッダ一覧の各要素しか見ないため、リーダ経路では
  *         {@code DEFAULT} のブロックが生成されない。</td>
  *   </tr>
  *   <tr>
- *     <td>C-02 {@code sections} の「空」「複数」</td><td>到達不能</td>
+ *     <td>{@code TestDataContainer.sections} の「空」「複数」</td><td>到達不能</td>
  *     <td>{@link XlsFormatReader#read} は必ず {@code Collections.singletonList(section)} を返すため
  *         常に 1 件。</td>
  *   </tr>
  *   <tr>
- *     <td>C-11 {@code FileDataBlock.directives} 空 ／ C-13 {@code MessageDataBlock.directives} 空</td>
+ *     <td>{@code FileDataBlock.directives} 空 ／ {@code MessageDataBlock.directives} 空</td>
  *     <td>到達不能</td>
  *     <td>本体 {@code DataFile} のコンストラクタが必ず {@code setDirective("file-type", getFileType())}
- *         を実行するため、Excel にディレクティブ行が 1 行も無くても空 Map にならない（{@code issues.md}
- *         XLS-07）。根拠は {@link #readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook}
- *         （C-11）と {@link #readsAllFourSendSyncMessageTypesFromRealBook}（C-13）がテストで示す。</td>
+ *         を実行するため、Excel にディレクティブ行が 1 行も無くても空 Map にならない（値は器の既定値そのものであり、
+ *         テスト実行時の解釈は変わらない）。根拠は {@link #readsExpectedFixedFileBlockWithOnlyInjectedDirectiveFromRealBook}
+ *         （{@code FileDataBlock}）と {@link #readsAllFourSendSyncMessageTypesFromRealBook}（{@code MessageDataBlock}）
+ *         がテストで示す。</td>
  *   </tr>
  *   <tr>
- *     <td>C-16 {@code RecordLayout.recordType} 省略（{@code null}）</td><td>到達可能</td>
+ *     <td>{@code RecordLayout.recordType} 省略（{@code null}）</td><td>到達可能</td>
  *     <td>空セルは {@code PoiXlsReader} が {@code ""} を返すが、{@link XlsFormatReader} が
- *         {@code null} へ直して中間モデルへ入れる（{@code issues.md} XLS-06 の修正）。根拠は
+ *         {@code null} へ直して中間モデルへ入れる。根拠は
  *         {@link #readsOmittedRecordTypeAsNullFromRealBook} がテストで示す。</td>
  *   </tr>
  *   <tr>
- *     <td>C-17 {@code RecordLayout.fields} 空</td><td>到達不能</td>
+ *     <td>{@code RecordLayout.fields} 空</td><td>到達不能</td>
  *     <td>フィールドを 0 件にするには名前行を 1 列（レコード種別セルのみ）にするしかないが、本体
  *         {@code DataFileParser} が「{@code directive or data names row must have two columns at least.}」で
- *         弾く（{@code issues.md} の「到達不能」表）。根拠は
+ *         弾く。根拠は
  *         {@code XlsFormatReaderInvalidInputTest#failsWhenFixedFileNameRowHasOnlyRecordTypeCellInRealBook}
  *         と {@code #failsWhenMessageNameRowHasOnlyRecordTypeCellInRealBook} がテストで示す
  *         （固定長とメッセージは経路が別のため 2 メソッドに分かれている）。</td>
  *   </tr>
  *   <tr>
- *     <td>C-20 {@code FieldDef.type} 省略（{@code null}）</td><td>到達不能</td>
+ *     <td>{@code FieldDef.type} 省略（{@code null}）</td><td>到達不能</td>
  *     <td>型行が名前行より短いと {@code DataFileFragment#assertSameSizeAsNames} が、型セルが中間位置で
  *         空だと {@code BasicDataTypeMapping#convertToFrameworkExpression} が、それぞれ
- *         {@code IllegalArgumentException} を投げる（{@code issues.md} の「到達不能」表）。根拠は
+ *         {@code IllegalArgumentException} を投げる。根拠は
  *         {@code XlsFormatReaderInvalidInputTest#failsWhenTypeRowIsShorterThanNameRowInRealBook} と
  *         {@code #failsWhenTypeCellIsBlankInMiddleOfTypeRowInRealBook} がテストで示す。</td>
  *   </tr>
  *   <tr>
- *     <td>E-4 コンテナ内セクション数「複数」</td><td>到達不能</td>
+ *     <td>コンテナ内セクション数「複数」</td><td>到達不能</td>
  *     <td>{@link XlsFormatReader#read} は {@code "ブック名/シート名"} の 1 シート単位 API であり、
- *         必ず 1 セクションだけを返す（C-02 と同じ根拠）。</td>
+ *         必ず 1 セクションだけを返す（{@code TestDataContainer.sections} と同じ根拠）。</td>
  *   </tr>
  * </table>
  *
  * <p>
- * なお C-08 {@code columnNames} 空は #21 送りではなく<b>本クラスで担保する</b>
- * （{@link #keepsMarkerOnlyColumnAndValuesInRealBook} ほか）。マーカー列だけのテーブルで
- * 到達でき、軸E の 4 観点（E-1〜E-4）に対応する要素を持たないためである。
+ * なお {@code ColumnRowDataBlock.columnNames} 空は<b>本クラスで担保する</b>
+ * （{@link #keepsMarkerOnlyColumnAndValuesInRealBook} ほか）。マーカー列だけのテーブルで到達でき、
+ * 件数の観点（セクション内ブロック数／ブロック内行数／ファイル内レコードレイアウト数／
+ * コンテナ内セクション数）のどれにも当たらないためである。
  * </p>
  *
  * <p>
- * <b>軸F（異常系）は本クラスでは扱わない。</b>{@code XlsFormatReaderInvalidInputTest}（タスク #21）が、
+ * <b>異常系は本クラスでは扱わない。</b>{@code XlsFormatReaderInvalidInputTest} が、
  * 壊れた入力・欠けた入力に対する例外と継続時の結果を固定する。
  * </p>
  *
@@ -236,7 +237,7 @@ public class XlsFormatReaderRealFileTest {
         return names;
     }
 
-    // ------------------------------------------------------------------ 軸A テーブル系・LIST_MAP
+    // ------------------------------------------------------------------ データタイプ テーブル系・LIST_MAP
 
     /**
      * Given: グループ ID を持たない {@code SETUP_TABLE} ブロック 1 件を含む実 {@code .xlsx}。
@@ -244,7 +245,9 @@ public class XlsFormatReaderRealFileTest {
      * Then : {@link TableDataBlock} が生成され、データタイプ・識別子・列名・行が入る。
      *        グループ ID は省略時の表現である空文字になる。
      *
-     * <p>担保する軸要素: A-02／B-1／C-05／C-06（省略）／C-07／C-08（非空）／C-09（非空）。</p>
+     * <p>担保する観点: {@code SETUP_TABLE}／{@code TableDataBlock}／{@code TestDataBlock.dataType}／
+     * {@code TestDataBlock.groupId}（省略）／{@code TestDataBlock.identifier}／
+     * {@code ColumnRowDataBlock.columnNames}（非空）／{@code ColumnRowDataBlock.rows}（非空）。</p>
      */
     @Test
     public void readsSetupTableBlockFromRealBook() {
@@ -273,7 +276,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : データタイプが {@code EXPECTED_TABLE_DATA}、グループ ID が<b>生値</b>（角括弧を外した {@code g1}）で入る。
      *
-     * <p>担保する軸要素: A-03／C-06（値あり）。</p>
+     * <p>担保する観点: {@code EXPECTED_TABLE}／{@code TestDataBlock.groupId}（値あり）。</p>
      */
     @Test
     public void readsExpectedTableBlockWithGroupIdFromRealBook() {
@@ -299,7 +302,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : データタイプ {@code EXPECTED_COMPLETED} の {@link TableDataBlock} が生成される。
      *
-     * <p>担保する軸要素: A-04。</p>
+     * <p>担保する観点: {@code EXPECTED_COMPLETE_TABLE}。</p>
      */
     @Test
     public void readsExpectedCompletedTableBlockFromRealBook() {
@@ -323,7 +326,9 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@link ListMapBlock} が生成され、列名が Excel の記述順（アルファベット順ではない）で入る。
      *
-     * <p>担保する軸要素: A-05／B-2／C-05／C-07／C-08（非空）／C-09（非空）。</p>
+     * <p>担保する観点: {@code LIST_MAP}／{@code ListMapBlock}／{@code TestDataBlock.dataType}／
+     * {@code TestDataBlock.identifier}／{@code ColumnRowDataBlock.columnNames}（非空）／
+     * {@code ColumnRowDataBlock.rows}（非空）。</p>
      */
     @Test
     public void readsListMapBlockFromRealBook() {
@@ -344,7 +349,7 @@ public class XlsFormatReaderRealFileTest {
         assertThat(listMap.getRows(), is(Arrays.asList(Arrays.asList("z1", "a1", "m1"))));
     }
 
-    // ------------------------------------------------------------------ 軸C マーカーカラムだけのブロック
+    // ------------------------------------------------------------------ 中間モデルのフィールド マーカーカラムだけのブロック
 
     /**
      * Given: マーカー列 {@code [no]} だけを持つ（データ列が 1 つも無い）{@code SETUP_TABLE} の実 {@code .xlsx}。
@@ -352,9 +357,9 @@ public class XlsFormatReaderRealFileTest {
      * Then : マーカー列の名前と各行の値が保たれる。
      *
      * <p>
-     * 担保する軸要素: C-08（空）。本タスクの当初分類では「軸E の 0 件と重なる」として #21 送りにしていたが、
-     * 軸E の 4 観点（E-1 セクション内ブロック数／E-2 ブロック内行数／E-3 ファイル内レコードレイアウト数／
-     * E-4 コンテナ内セクション数）に「列名 0 件」に対応する要素は無い。本クラスで担保する。
+     * 担保する観点: {@code ColumnRowDataBlock.columnNames}（空）。件数の観点（セクション内ブロック数／
+     * ブロック内行数／ファイル内レコードレイアウト数／コンテナ内セクション数）に「列名 0 件」に対応する
+     * ものは無いため、本クラスで担保する。
      * </p>
      *
      * <p>
@@ -367,7 +372,7 @@ public class XlsFormatReaderRealFileTest {
      *
      * <p>
      * 本体の読みを正解にした担保は {@code XlsMarkerOnlyBlockTest} にある。本テストは
-     * 実 {@code .xlsx} 起点の軸C 棚卸しとして版面の見え方を固定する。
+     * 実 {@code .xlsx} 起点で、中間モデルのフィールドへの入り方として版面の見え方を固定する。
      * </p>
      */
     @Test
@@ -394,7 +399,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : テーブル系と同じくマーカー列の名前と値が保たれる（経路が別なので個別に固定する）。
      *
-     * <p>担保する軸要素: C-08（空。{@link ListMapBlock} 側の経路）。</p>
+     * <p>担保する観点: {@code ColumnRowDataBlock.columnNames}（空。{@link ListMapBlock} 側の経路）。</p>
      */
     @Test
     public void keepsMarkerOnlyColumnAndValuesInListMapInRealBook() {
@@ -413,7 +418,7 @@ public class XlsFormatReaderRealFileTest {
         assertThat("各行の値も保つ", listMap.getRows(), is(Arrays.asList(Arrays.asList("1"))));
     }
 
-    // ------------------------------------------------------------------ 軸A ファイル系
+    // ------------------------------------------------------------------ データタイプ ファイル系
 
     /**
      * Given: ディレクティブ行・レコード種別・型行・長さ行を持つ {@code SETUP_FIXED} ブロックの
@@ -424,8 +429,10 @@ public class XlsFormatReaderRealFileTest {
      *        本体器が既定で注入する {@code file-type} が現れる。
      *
      * <p>
-     * 担保する軸要素: A-06／B-3／C-10（FIXED）／C-11（非空）／C-12（非空）／C-16（値あり）／
-     * C-17（非空）／C-18（非空）／C-19／C-20（値あり）／C-21（値あり）。
+     * 担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／ファイル種別（FIXED）／{@code FileDataBlock.directives}（非空）／
+     * {@code FileDataBlock.records}（非空）／{@code RecordLayout.recordType}（値あり）／
+     * {@code RecordLayout.fields}（非空）／{@code RecordLayout.rows}（非空）／{@code FieldDef.name}／
+     * {@code FieldDef.type}（値あり）／{@code FieldDef.length}（値あり）。
      * </p>
      */
     @Test
@@ -447,7 +454,7 @@ public class XlsFormatReaderRealFileTest {
         assertThat(file.getIdentifier(), is("test.dat"));
         assertThat(file.getFileType(), is(FileDataBlock.FileType.FIXED));
         assertThat(file.getDirectives().get("text-encoding"), is("UTF-8"));
-        // Excel に書いていない file-type が器の既定値として現れる（issues.md XLS-07）。
+        // Excel に書いていない file-type が器の既定値として現れる（値は既定値そのものなので実行時の解釈は変わらない）。
         assertThat(file.getDirectives().get("file-type"), is("Fixed"));
         assertDirectiveCount(file.getDirectives(), 2);
 
@@ -469,7 +476,7 @@ public class XlsFormatReaderRealFileTest {
      *        <b>生行の原文 {@code "-"}</b> が入る。
      *
      * <p>
-     * 担保する軸要素: C-21（値あり・省略記法 {@code -}）。原文復元ロジック
+     * 担保する観点: {@code FieldDef.length}（値あり・省略記法 {@code -}）。原文復元ロジック
      * （{@link XlsFormatReader} が生行から型・長さ・レコード種別を取り直す経路）は
      * {@code -} のケースこそが要であり、それを実 {@code .xlsx} 入力で通す唯一のテストである
      * （Fake リーダ経路の {@code XlsFormatReaderTest#readRestoresOriginalRecordTypeTypeAndOmittedLengthFromRawLines}
@@ -508,7 +515,8 @@ public class XlsFormatReaderRealFileTest {
      *        ディレクティブ行が無くてもディレクティブは空にならず、器が注入する {@code file-type} だけを持つ。
      *
      * <p>
-     * 担保する軸要素: A-07／C-11（非空。「空 Map」が到達不能であることの根拠でもある。
+     * 担保する観点: {@code EXPECTED_FIXED}／{@code FileDataBlock.directives}（非空。「空 Map」が到達不能で
+     * あることの根拠でもある。
      * 本体 {@code DataFile} のコンストラクタが必ず {@code setDirective("file-type", getFileType())} を
      * 実行するため、Excel 由来のディレクティブ行が 0 行でも空 Map にならない）。
      * </p>
@@ -543,7 +551,7 @@ public class XlsFormatReaderRealFileTest {
      * Then : {@link FileDataBlock}（{@code VARIABLE}）が生成され、長さは省略時の表現である
      *        {@code null} になる。
      *
-     * <p>担保する軸要素: A-08／C-10（VARIABLE）／C-21（省略＝{@code null}）。</p>
+     * <p>担保する観点: {@code SETUP_VARIABLE}／ファイル種別（VARIABLE）／{@code FieldDef.length}（省略＝{@code null}）。</p>
      */
     @Test
     public void readsSetupVariableFileBlockWithoutFieldLengthFromRealBook() {
@@ -575,7 +583,8 @@ public class XlsFormatReaderRealFileTest {
      *        {@code record-separator} はシンボル {@code CRLF} へ逆正規化された値で入る。
      *        可変長では {@code field-separator} も器の既定値として現れる。
      *
-     * <p>担保する軸要素: A-09／C-06（値あり）／C-11（非空）。</p>
+     * <p>担保する観点: {@code EXPECTED_VARIABLE}／{@code TestDataBlock.groupId}（値あり）／
+     * {@code FileDataBlock.directives}（非空）。</p>
      */
     @Test
     public void readsExpectedVariableFileBlockWithGroupIdFromRealBook() {
@@ -596,13 +605,13 @@ public class XlsFormatReaderRealFileTest {
         assertThat(file.getIdentifier(), is("out.csv"));
         assertThat(file.getFileType(), is(FileDataBlock.FileType.VARIABLE));
         assertThat(file.getDirectives().get("record-separator"), is("CRLF"));
-        // Excel に書いていない file-type / field-separator が器の既定値として現れる（issues.md XLS-07）。
+        // Excel に書いていない file-type / field-separator が器の既定値として現れる（実行時の解釈は変わらない）。
         assertThat(file.getDirectives().get("file-type"), is("Variable"));
         assertThat(file.getDirectives().get("field-separator"), is(","));
         assertDirectiveCount(file.getDirectives(), 3);
     }
 
-    // ------------------------------------------------------------------ 軸A メッセージ系
+    // ------------------------------------------------------------------ データタイプ メッセージ系
 
     /**
      * Given: ディレクティブ行・FW 制御ヘッダ行・本文を持つ {@code MESSAGE} ブロックの実 {@code .xlsx}。
@@ -612,8 +621,11 @@ public class XlsFormatReaderRealFileTest {
      *        {@code file-type} が現れる（本文は固定長ファイルとして読まれるため）。
      *
      * <p>
-     * 担保する軸要素: A-10／B-4／C-13（非空）／C-14（非空）／C-15（非空）／C-16（値あり）／
-     * C-17（非空）／C-18（非空）／C-19／C-20（値あり）／C-21（値あり）。
+     * 担保する観点: {@code MESSAGE}／{@code MessageDataBlock}／{@code MessageDataBlock.directives}（非空）／
+     * {@code MessageDataBlock.fwHeaderFields}（非空）／{@code MessageDataBlock.records}（非空）／
+     * {@code RecordLayout.recordType}（値あり）／
+     * {@code RecordLayout.fields}（非空）／{@code RecordLayout.rows}（非空）／{@code FieldDef.name}／
+     * {@code FieldDef.type}（値あり）／{@code FieldDef.length}（値あり）。
      * </p>
      */
     @Test
@@ -636,7 +648,7 @@ public class XlsFormatReaderRealFileTest {
         assertThat(message.getGroupId(), is(""));
         assertThat(message.getIdentifier(), is("msg1"));
         assertThat(message.getDirectives().get("text-encoding"), is("UTF-8"));
-        // Excel に書いていない file-type が器の既定値として現れる（issues.md XLS-07）。
+        // Excel に書いていない file-type が器の既定値として現れる（値は既定値そのものなので実行時の解釈は変わらない）。
         assertThat(message.getDirectives().get("file-type"), is("Fixed"));
         assertDirectiveCount(message.getDirectives(), 2);
         assertThat(message.getFwHeaderFields().get("requestId"), is("R1"));
@@ -660,8 +672,13 @@ public class XlsFormatReaderRealFileTest {
      *        ディレクティブ行が 1 行も無くても {@code directives} は空にならず {@code {file-type=Fixed}} になる。
      *        要求ヘッダ 1 種については {@link #readsMessageBlockFromRealBook} と同水準まで内容を固定する。
      *
-     * <p>担保する軸要素: A-11／A-12／A-13／A-14／C-06（値あり）／C-07／C-13（非空）／C-14（空）／
-     * C-15（非空）／C-16（値あり）／C-17（非空）／C-18（非空）／C-19／C-20（値あり）／C-21（値あり）。</p>
+     * <p>担保する観点: {@code EXPECTED_REQUEST_HEADER_MESSAGES}／{@code EXPECTED_REQUEST_BODY_MESSAGES}／
+     * {@code RESPONSE_HEADER_MESSAGES}／{@code RESPONSE_BODY_MESSAGES}／{@code TestDataBlock.groupId}（値あり）／
+     * {@code TestDataBlock.identifier}／{@code MessageDataBlock.directives}（非空）／
+     * {@code MessageDataBlock.fwHeaderFields}（空）／
+     * {@code MessageDataBlock.records}（非空）／{@code RecordLayout.recordType}（値あり）／
+     * {@code RecordLayout.fields}（非空）／{@code RecordLayout.rows}（非空）／{@code FieldDef.name}／
+     * {@code FieldDef.type}（値あり）／{@code FieldDef.length}（値あり）。</p>
      *
      * <p>
      * この経路（{@code XlsFormatReader#readSendSyncBlocks}）は識別子に本体器の {@code DataFile#getPath()}
@@ -718,7 +735,7 @@ public class XlsFormatReaderRealFileTest {
             assertThat("送信同期 " + message.getDataType() + " の FW 制御ヘッダ",
                     message.getFwHeaderFields(), is(Collections.<String, String>emptyMap()));
             // ディレクティブ行を 1 行も書いていないが、器が注入する file-type だけは必ず現れる
-            // （issues.md XLS-07。C-13「MessageDataBlock.directives 空」が到達不能である根拠）。
+            // （MessageDataBlock.directives が空にならない＝空 Map が到達不能である根拠）。
             assertThat("送信同期 " + message.getDataType() + " の file-type",
                     message.getDirectives().get("file-type"), is("Fixed"));
             assertDirectiveCount(message.getDirectives(), 1);
@@ -744,14 +761,16 @@ public class XlsFormatReaderRealFileTest {
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("RM01"))));
     }
 
-    // ------------------------------------------------------------------ 軸B
+    // ------------------------------------------------------------------ ブロックの種類
 
     /**
      * Given: テーブル・LIST_MAP・固定長ファイル・MESSAGE が 1 シートに混在する実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : {@code TestDataBlock} の具象 4 種が 1 セクションに揃い、各ブロックが自分の識別子を持つ。
      *
-     * <p>担保する軸要素: B-1／B-2／B-3／B-4（実ファイル経由での生成）／C-04（非空）／C-07。</p>
+     * <p>担保する観点: {@code TableDataBlock}／{@code ListMapBlock}／{@code FileDataBlock}／
+     * {@code MessageDataBlock}（実ファイル経由での生成）／{@code TestDataSection.blocks}（非空）／
+     * {@code TestDataBlock.identifier}。</p>
      *
      * <p>
      * {@link XlsFormatReader#read} は (データタイプ, グループ) 単位で本体 API を一括呼び出しし、
@@ -802,14 +821,15 @@ public class XlsFormatReaderRealFileTest {
         assertThat("MessageDataBlock の識別子", identifiers.get(MessageDataBlock.class), is("m"));
     }
 
-    // ------------------------------------------------------------------ 軸C コンテナ・セクション
+    // ------------------------------------------------------------------ 中間モデルのフィールド コンテナ・セクション
 
     /**
      * Given: ブック名 {@code MyBook}・シート名 {@code MySheet} の実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : コンテナ名がブック名、セクション名がシート名になり、セクションは 1 件になる。
      *
-     * <p>担保する軸要素: C-01／C-02（1 件）／C-03。</p>
+     * <p>担保する観点: {@code TestDataContainer.name}／{@code TestDataContainer.sections}（1 件）／
+     * {@code TestDataSection.name}。</p>
      */
     @Test
     public void readsContainerAndSectionNamesFromRealBookAndSheetNames() {
@@ -834,7 +854,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : ブロックが空のセクションを 1 件持つコンテナになる。
      *
-     * <p>担保する軸要素: C-04（空）。</p>
+     * <p>担保する観点: {@code TestDataSection.blocks}（空）。</p>
      */
     @Test
     public void readsEmptyBlockListFromRealSheetWithoutMarkers() {
@@ -850,7 +870,7 @@ public class XlsFormatReaderRealFileTest {
                 container.getSections().get(0).getBlocks(), is(Collections.<TestDataBlock>emptyList()));
     }
 
-    // ------------------------------------------------------------------ 軸C レコード種別の省略
+    // ------------------------------------------------------------------ 中間モデルのフィールド レコード種別の省略
 
     /**
      * Given: 名前行の先頭セル（レコード種別）が空白セルの {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
@@ -858,12 +878,12 @@ public class XlsFormatReaderRealFileTest {
      * Then : レコード種別は {@code null} になる。
      *
      * <p>
-     * 担保する軸要素: C-16（省略）。中間モデル {@code RecordLayout} の Javadoc（同クラス 26 行目
-     * 「レコード種別（省略時は {@code null}。FW_HEADER 等もそのまま保持）」）が省略時の表現を
-     * {@code null} と定めており、YAML 経路（辺②）も {@code null} を入れる
+     * 担保する観点: {@code RecordLayout.recordType}（省略）。中間モデル {@code RecordLayout} の Javadoc
+     * 「レコード種別（省略時は {@code null}。FW_HEADER 等もそのまま保持）」が省略時の表現を
+     * {@code null} と定めており、YAML 経路も {@code null} を入れる
      * （{@code YamlFormatReaderTest#readFile_recordTypeOmitted_keepsNullRecordType}）。
-     * 実 {@code .xlsx} 経路ではセル値が空文字として読まれるため以前は {@code null} にならなかった
-     * （{@code coverage/issues.md} の XLS-06）。
+     * 実 {@code .xlsx} 経路ではセル値が空文字として読まれるため以前は {@code null} にならず、
+     * Excel 由来の省略が YAML に {@code record_type: ""} として現れていた。
      * </p>
      */
     @Test
@@ -885,14 +905,14 @@ public class XlsFormatReaderRealFileTest {
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abc"))));
     }
 
-    // ------------------------------------------------------------------ 軸C 空コレクション／軸E 0 件
+    // ------------------------------------------------------------------ 中間モデルのフィールド 空コレクション／件数 0 件
 
     /**
      * Given: カラム行だけを持ち、データ行を 1 行も持たない {@code SETUP_TABLE} ブロックの実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : 列名は入るが行は 0 件になる。例外にはならない。
      *
-     * <p>担保する軸要素: C-09（空。テーブル経路）／E-2（ブロック内行数 0 件）。</p>
+     * <p>担保する観点: {@code ColumnRowDataBlock.rows}（空。テーブル経路）／ブロック内行数 0 件。</p>
      */
     @Test
     public void readsEmptyRowsFromTableWithoutDataRowsInRealBook() {
@@ -915,7 +935,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : テーブル経路と同じく列名は入り行は 0 件になる（経路が別なので個別に固定する）。
      *
-     * <p>担保する軸要素: C-09（空。{@link ListMapBlock} 経路）／E-2（ブロック内行数 0 件）。</p>
+     * <p>担保する観点: {@code ColumnRowDataBlock.rows}（空。{@link ListMapBlock} 経路）／ブロック内行数 0 件。</p>
      */
     @Test
     public void readsEmptyRowsFromListMapWithoutDataRowsInRealBook() {
@@ -939,7 +959,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : ブロックは生成され、ディレクティブは入るがレコードレイアウトは 0 件になる。例外にはならない。
      *
-     * <p>担保する軸要素: C-12（空）／E-3（ファイル内レコードレイアウト数 0 件）。</p>
+     * <p>担保する観点: {@code FileDataBlock.records}（空）／ファイル内レコードレイアウト数 0 件。</p>
      */
     @Test
     public void readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook() {
@@ -975,15 +995,15 @@ public class XlsFormatReaderRealFileTest {
      * 本文レコード 0 件の電文を表す書き方は記法に無い。電文が存在しない場合は 記法
      * 応答不要メッセージ受信では…{@code expectedMessages} のデータブロックを記述する必要はないの
      * とおり<b>データブロックごと省略する</b>。本体スキーマの電文系 3 定義も {@code records} を必須かつ
-     * {@code minItems} ＝ 1 とする（{@code coverage/issues.md} <b>YML-12</b> の 2 形目）。
+     * {@code minItems} ＝ 1 とする。
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を辺③④の書き出し側から
+     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
      * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
      * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
      * {@code readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook} で、レコード 0 件のブロックが
-     * 生成されることを固定していた。<b>これにより軸要素 C-15（空）／E-3（0 件）の
+     * 生成されることを固定していた。<b>これにより {@code MessageDataBlock.records}（空）／ファイル内レコードレイアウト数 0 件の
      * {@link MessageDataBlock} 経路は到達不能になった</b>（{@link FileDataBlock} 経路は
      * {@link #readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook()} が担保しており、
      * そちらは記法上も合法である）。
@@ -1012,7 +1032,7 @@ public class XlsFormatReaderRealFileTest {
      * When : 実 {@code .xlsx} を {@code read}。
      * Then : レコードレイアウトは 1 件生成され、フィールド定義は入るが値行は 0 件になる。
      *
-     * <p>担保する軸要素: C-18（空）。</p>
+     * <p>担保する観点: {@code RecordLayout.rows}（空）。</p>
      */
     @Test
     public void readsEmptyRowsFromRecordLayoutWithoutValueRowsInRealBook() {
@@ -1037,7 +1057,7 @@ public class XlsFormatReaderRealFileTest {
                 record.getRows(), is(Collections.<List<String>>emptyList()));
     }
 
-    // ------------------------------------------------------------------ 軸E 複数（1 ファイルに複数レコードレイアウト）
+    // ------------------------------------------------------------------ 件数 複数（1 ファイルに複数レコードレイアウト）
 
     /**
      * Given: 断片（レコードレイアウト）を 2 つ持つ {@code SETUP_FIXED} ブロックの実 {@code .xlsx}。
@@ -1046,8 +1066,8 @@ public class XlsFormatReaderRealFileTest {
      * Then : レコードレイアウトが 2 件に分かれ、レコード種別・フィールド定義・値行が断片ごとに独立して入る。
      *
      * <p>
-     * 担保する軸要素: E-3（ファイル内レコードレイアウト数 複数）／C-12（非空・2 件）／C-18（非空・断片ごとに別）／
-     * C-21（値あり。2 断片目の省略記法 {@code -} も原文のまま）。
+     * 担保する観点: ファイル内レコードレイアウト数 複数／{@code FileDataBlock.records}（非空・2 件）／{@code RecordLayout.rows}（非空・断片ごとに別）／
+     * {@code FieldDef.length}（値あり。2 断片目の省略記法 {@code -} も原文のまま）。
      * </p>
      *
      * <p>
@@ -1060,8 +1080,10 @@ public class XlsFormatReaderRealFileTest {
      *
      * <p>
      * なお {@code MESSAGE} 本文では断片を 2 つ以上作れない（2 つ目の名前行が値行として吸収される）。
-     * 根拠と課題は {@code coverage/issues.md} の <b>XLS-15</b> と
-     * {@code XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook} にある。
+     * 本体 {@code MessageParser} の固定長パーサは、送信同期の {@code no} 列（先頭セルが非空のデータ行）と
+     * 両立させるため空行以外を常に値行として扱う。記法も 1 つのメッセージブロックに 2 つ目のフィールド名称行を
+     * 置けるとは定めていないため、本ツールでは直さない。挙動は
+     * {@code XlsFormatReaderInvalidInputTest#absorbsSecondNameRowAsDataRowInMessageBodyInRealBook} が固定する。
      * </p>
      */
     @Test

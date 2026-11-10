@@ -63,7 +63,7 @@ public class FileDataBlockTest {
 
     @Test
     public void ディレクティブがnullのファイルブロックは生成できない() {
-        // Given: ディレクティブなしは空 Map で表す（XLS-38）
+        // Given: ディレクティブなしは空 Map で表す（記法に null に当たる書き方が無い）
         try {
             new FileDataBlock(DataType.SETUP_FIXED, "", "t.dat", null, List.of());
             fail("IllegalArgumentException が送出されるべき");
@@ -73,7 +73,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-43。ディレクティブのキーが {@code null} のブロックは生成できない。
+     * ディレクティブのキーが {@code null} のブロックは生成できない。
      * 記法はキー名と値の 2 要素で記述することを定めており、
      * 本体スキーマ {@code $defs.directives} は {@code additionalProperties: false} でキーを列挙しているため、
      * {@code null} のキーはそもそも書けない。
@@ -94,7 +94,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-43。ディレクティブの値が {@code null} のブロックは生成できない。
+     * ディレクティブの値が {@code null} のブロックは生成できない。
      * 本体スキーマ {@code $defs.directives} の値型は string ／ boolean ／ integer だけで、
      * {@code null} を許す定義が 1 つも無い。
      */
@@ -114,7 +114,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-43。<b>空文字は拒否しない</b>（空文字を禁じる明文が無いため。ユーザー確定・2026-08-19）。
+     * <b>空文字は拒否しない</b>（空文字を禁じる明文が無いため）。
      */
     @Test
     public void ディレクティブのキーと値が空文字のファイルブロックは生成できる() {
@@ -156,7 +156,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-44。ファイル種別は<b>データ種別から導出される</b>。
+     * ファイル種別は<b>データ種別から導出される</b>。
      * <p>
      * 本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
      * {@code $defs.file_data.properties.type} の description が「fixed = 固定長
@@ -168,8 +168,8 @@ public class FileDataBlockTest {
      * </p>
      * <p>
      * 導出にしたことで、食い違う組（例: {@code SETUP_FIXED} かつ可変長）は<b>型として表現できない</b>。
-     * 以前はコンストラクタが両方を引数で受け取り、食い違う組を検査せずに保持していた
-     * （{@code coverage/issues.md} <b>XLS-44</b>）。
+     * 以前はコンストラクタが両方を引数で受け取り、食い違う組を検査せずに保持していたため、
+     * 同じモデルから Excel への書き出しと YAML への書き出しが別のファイル種別を書いた。
      * </p>
      */
     @Test
@@ -182,7 +182,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-44。導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
+     * 導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
      * <b>ファイル系 4 種以外のデータ種別を拒否する</b>。
      * <p>
      * 導出の対応が定まっているのは {@code SETUP_FIXED} ／ {@code EXPECTED_FIXED}（固定長）と
@@ -191,7 +191,7 @@ public class FileDataBlockTest {
      * 記法）、
      * それ以外のデータ種別に対する固定長／可変長の別は<b>NTF 仕様に無い</b>。
      * {@code public static} の受け口が黙って {@link FileType#VARIABLE} を返すと、
-     * 「不正な状態を型で表現できなくする」という XLS-44 の修正の趣旨が受け口の側で崩れる。
+     * 「ファイル種別をデータ種別から導出し、不正な状態を型で表現できなくする」という趣旨が受け口の側で崩れる。
      * 拒否は生成時と同じ検査（{@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)}）による。
      * </p>
      * <p>
@@ -199,7 +199,7 @@ public class FileDataBlockTest {
      * 渡すと、通してよい種別が増える向きの誤りを取り逃がす。補集合で回せば
      * {@code DataType} に定数が増えても自動で追随する。ただし補集合が空になるとループが 0 回になり
      * 無条件に緑になるため、<b>要素数そのものも主張する</b>。
-     * メッセージは XLS-36 の {@code requireDataTypeOf} のものであることまで主張する
+     * メッセージは生成時の系統検査 {@code requireDataTypeOf} のものであることまで主張する
      * （{@code "が取りうるデータ種別="} は同メソッド固有の断片で、{@code fileTypeOf} が独自の
      * メッセージで投げる実装に差し替わると落ちる）。
      * </p>
@@ -225,19 +225,19 @@ public class FileDataBlockTest {
                 assertThat("ブロック名がメッセージに出るべき: " + notFileType,
                         e.getMessage(), containsString("FileDataBlock"));
                 // 生成時と同じ検査（TestDataBlock#requireDataTypeOf）による拒否であること
-                assertThat("XLS-36 の検査によるメッセージであるべき: " + notFileType,
+                assertThat("requireDataTypeOf の検査によるメッセージであるべき: " + notFileType,
                         e.getMessage(), containsString("が取りうるデータ種別="));
             }
         }
     }
 
     /**
-     * XLS-44 ／ XLS-34。導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
+     * 導出の受け口である {@link FileDataBlock#fileTypeOf(DataType)} は、
      * <b>{@code null} を {@link IllegalArgumentException} で拒否する</b>。
      * <p>
      * データブロックは必ず 1 つのデータタイプを持つ（Excel 形式はマーカー、YAML 形式は
      * トップレベルキーがデータタイプから決まるため、<b>データタイプの無いブロックはどちらの形式でも
-     * 書けない</b> —— {@code coverage/issues.md} <b>XLS-34</b>）。{@code null} に対する答えは
+     * 書けない</b>）。{@code null} に対する答えは
      * そこで確定しており、{@link TestDataBlock} のコンストラクタは同じ入力を
      * {@link IllegalArgumentException} で拒否している。<b>受け口によって
      * {@link NullPointerException} と {@link IllegalArgumentException} に分かれてよい理由は無い。</b>
@@ -257,8 +257,8 @@ public class FileDataBlockTest {
         } catch (IllegalArgumentException e) {
             assertThat("データ種別が null である旨がメッセージに出るべき",
                     e.getMessage(), containsString("データ種別が null"));
-            // XLS-34 の趣旨（データタイプの無いブロックはどちらの形式でも書けない）であること
-            assertThat("XLS-34 の趣旨がメッセージに出るべき",
+            // 拒否の趣旨（データタイプの無いブロックはどちらの形式でも書けない）であること
+            assertThat("データタイプの無いブロックはどちらの形式でも書けない旨がメッセージに出るべき",
                     e.getMessage(), containsString("どちらの形式でも書けません"));
             assertThat("ブロック名がメッセージに出るべき",
                     e.getMessage(), containsString("FileDataBlock"));
@@ -294,11 +294,11 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-30。固定長ファイルでフィールド長が {@code null} のブロックは生成できない。
+     * 固定長ファイルでフィールド長が {@code null} のブロックは生成できない。
      * 記法は固定長ファイルについて
      * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須であり」と定め（逐語）、
      * 記法は記述時エラーとして「フィールド名称・データ型・フィールド長リストのサイズが
-     * 一致していない」を挙げる。長さを持たないフィールドは 4 辺のどこにも記法どおりには書き出せない。
+     * 一致していない」を挙げる。長さを持たないフィールドは Excel にも YAML にも記法どおりには書き出せない。
      */
     @Test
     public void 固定長ファイルでフィールド長がnullのフィールド定義は保持できない() {
@@ -316,11 +316,11 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-44 ／ XLS-30。フィールド長の検査は<b>データ種別を起点に</b>走る。
+     * フィールド長の検査は<b>データ種別を起点に</b>走る。
      * <p>
      * 導出前は末尾の検査が {@code fileType} だけを見ていたため、データ種別 ＝ {@code SETUP_FIXED} でも
-     * 引数の {@code fileType} に {@code VARIABLE} を渡せば XLS-30 の番人が走らなかった
-     * （{@code coverage/issues.md} <b>XLS-44</b>「既存の不変条件も素通りする」。実測 2026-08-21）。
+     * 引数の {@code fileType} に {@code VARIABLE} を渡せば、固定長でフィールド長を要求する検査が走らなかった
+     * （ファイル種別の食い違いが、既存の不変条件まで素通りさせていた）。
      * 導出後はファイル種別を外から渡せないため、固定長系のデータ種別なら必ず走る。
      * </p>
      */
@@ -349,7 +349,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-30。<b>可変長ファイルではフィールド長 {@code null} が正しい</b>ため拒否しない
+     * <b>可変長ファイルではフィールド長 {@code null} が正しい</b>ため拒否しない
      * （記法は可変長ファイルでは、フィールド名称・データ型の2リストが
      * 同サイズで必須であり、フィールド長は不要である）。
      */
@@ -365,14 +365,14 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-45。<b>可変長ファイルでフィールド長を持つフィールド定義のブロックは生成できない。</b>
+     * <b>可変長ファイルでフィールド長を持つフィールド定義のブロックは生成できない。</b>
      * <p>
-     * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24）。
+     * NTF 仕様として、可変長ファイルでは {@code length} を書けない。
      * Excel 記法に可変長のフィールド長行が無い（固定長との違いは、可変長ファイルの場合はフィールド長行を記載しない
      * 点のみである。／可変長ファイルでは、フィールド名称・データ型の2リストが
      * 同サイズで必須であり、フィールド長は不要である。）ためであり、書ける先の無い値を
-     * 中間モデルが保持できると辺③で黙って落ちる。<b>生成時点で拒否する</b>
-     * （{@code steering.md} Decisions「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+     * 中間モデルが保持できると Excel への書き出しで黙って落ちる。<b>生成時点で拒否する</b>
+     * （不正値は書き出し側でなく中間モデルの生成時に拒否する）。
      * </p>
      */
     @Test
@@ -391,7 +391,7 @@ public class FileDataBlockTest {
     }
 
     /**
-     * XLS-45。拒否は<b>可変長系のデータ種別すべて</b>に掛かり、<b>{@code null} 以外のすべての表記</b>を弾く。
+     * 拒否は<b>可変長系のデータ種別すべて</b>に掛かり、<b>{@code null} 以外のすべての表記</b>を弾く。
      * <p>
      * <b>{@code "-"} も弾く。</b>{@code "-"}（オンデマンド計算）は本体
      * {@code DataFileFragment#setLengths} が {@code isOndemandCalcFieldSizeList} に立て、
@@ -399,7 +399,7 @@ public class FileDataBlockTest {
      * 同ファイル。数値の {@code length} は {@code VariableLengthFileFragment#createFieldDefinition} が
      * {@code lengths} を一度も読まないため可変長では使われない）。<b>これは長さの指定ではなく値の整形で
      * あり、フィールド長の枠に相乗りしている。</b>可変長でこれが効くのは相乗りの結果であって、
-     * 追認すべき仕様ではない（ユーザー確定・2026-08-24）。
+     * 追認すべき仕様ではない。
      * </p>
      * <p>
      * <b>空文字も弾く。</b>固定長側（{@code ModelPreconditions#requireLengths}）が「弾くのは

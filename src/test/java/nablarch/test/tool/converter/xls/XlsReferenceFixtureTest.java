@@ -38,7 +38,7 @@ import org.junit.rules.TemporaryFolder;
  * 組み立てた {@code .xlsx} が同じ読み取り結果になることを確認するテスト。
  *
  * <p>
- * 辺①のフィクスチャは原則 POI 生成方式（テスト実行時に組み立て、バイナリを静的同梱しない）だが、
+ * Excel 読み取り（Excel → 中間モデル）のフィクスチャは原則 POI 生成方式（テスト実行時に組み立て、バイナリを静的同梱しない）だが、
  * POI 生成物と Excel 保存物の読み取り結果が同一である保証はない。そこで実物 {@code .xlsx} を 1 本だけ
  * 参照フィクスチャとして同梱し、同一性をこのテストで裏付ける。
  * </p>
@@ -50,7 +50,7 @@ import org.junit.rules.TemporaryFolder;
  * {@code AppVersion 16.0300} を持つ真正な Excel 保存物である。検証に使う {@code downloadNormal} シートは、
  * 実プロジェクトの Excel テストデータで唯一「データ列に置かれた数値セル」
  * （{@code COST_OF_GOODS_SOLD} 列。ブック XML 上 {@code <c r="M14" s="55"><v>2000</v>} ＝ {@code t} 属性を持たない
- * 数値セル）を含み、課題 XLS-01 が実データで再現する。同シートは表示形式 {@code @}（{@code numFmtId="49"}）
+ * 数値セル）を含み、数値セルが {@code double} の文字列表現になる挙動が実データで再現する。同シートは表示形式 {@code @}（{@code numFmtId="49"}）
  * 付きの数値セル（{@code [no]} マーカー列の {@code <c r="A19" s="37"><v>1</v>}）も併せ持つ。
  * </p>
  *
@@ -76,7 +76,7 @@ import org.junit.rules.TemporaryFolder;
  * 検証したのは {@code downloadNormal} シート 1 枚（LIST_MAP 3 ブロック・SETUP_TABLE 1 ブロック・
  * EXPECTED_VARIABLE 1 ブロック）であり、参照ブックの残り 25 シートは対象外である。実データに存在しない
  * セル種別（日付・時刻・日時・数式・真偽値・エラー）は参照フィクスチャに含まれないため、
- * それらの POI 生成物と Excel 保存物の同一性は未確認である（{@code coverage/issues.md}「未確認」参照）。
+ * それらの POI 生成物と Excel 保存物の同一性は未確認である。
  * </p>
  *
  * @author kiyobot
@@ -137,7 +137,7 @@ public class XlsReferenceFixtureTest {
      * Then : 直書きした期待値どおりの中間モデルになる。とくに
      *        {@code COST_OF_GOODS_SOLD} 列（Excel 上は数値セル）だけが {@code "2000.0"} になり、
      *        同じ行の他の金額列（文字列セル）は {@code "1000"} / {@code "3000"} / {@code "4000"} のままである
-     *        （課題 XLS-01 が実データで再現することの記録）。
+     *        （数値セルが {@code double} の文字列表現になる挙動が実データで再現することの記録）。
      */
     @Test
     public void readsExcelSavedWorkbookIntoIntermediateModel() {
@@ -358,9 +358,9 @@ public class XlsReferenceFixtureTest {
      * </p>
      * <p>
      * 値が {@code "1.0"} なのは、この {@code [no]} のセルが表示形式 {@code @} 付きの<b>数値セル</b>で
-     * あるためである。本体の読み手は表示形式を見ないため数値として文字列化される
-     * （{@code coverage/issues.md} <b>XLS-01</b>。実挙動の記録は
-     * {@code XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString}）。
+     * あるためである。本体の読み手は表示形式を見ないため数値として文字列化される。
+     * NTF の記法はセルを文字列書式で書くことを求めており、数値セルは記法の外の入力として値を保証しない
+     * （実挙動の記録は {@code XlsFormatReaderCellTypeTest#readsTextFormattedNumericCellAsDoubleString}）。
      * </p>
      *
      * @return 期待ブロック

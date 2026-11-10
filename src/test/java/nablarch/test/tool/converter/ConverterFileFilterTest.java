@@ -27,7 +27,7 @@ import org.junit.rules.TemporaryFolder;
  * <p>
  * 実ディレクトリ（{@link TemporaryFolder}）に対し、Excel ブック／YAML コンテナディレクトリの列挙、
  * 一時ロックファイル・非対象拡張子の除外、include／exclude グロブ、再現性のためのソート、
- * 入力ディレクトリ不在時の例外、拡張子違いの同名ブック同居の検出（XLS-28）を検証する。
+ * 入力ディレクトリ不在時の例外、拡張子違いの同名ブック同居の検出を検証する。
  * </p>
  *
  * @author kiyobot

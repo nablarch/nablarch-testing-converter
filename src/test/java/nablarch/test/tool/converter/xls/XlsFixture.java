@@ -74,7 +74,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * </p>
  *
  * <p>
- * <b>本クラスが引き受けるヘルパの範囲（#22 から持ち越した判断を #23 で確定。2026-08-13）。</b>
+ * <b>本クラスが引き受けるヘルパの範囲。</b>
  * 引き受けるのは<b>POI のブック・シートを直接触る</b>ユーティリティだけである
  * （{@link #open}／{@link #cell}／{@link #line}）。
  * <b>中間モデルを組み立てるヘルパ（{@code row} / {@code map} / {@code container}）は引き受けない。</b>
@@ -93,11 +93,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  *       （例: {@code XlsFormatWriterModelTest#container} はシート名を定数 {@code SHEET} に固定した 2 引数版で、
  *       共有版に合わせると呼び出し 17 か所すべてがシート名を書くことになる）。</li>
  * </ul>
- *
- * <p>
- * 判断の根拠になった実測値（写しの数・定義の位置・引数の形）は
- * {@code .rn/ntf-test-data-converter/coverage/issues.md} の「ヘルパ抽出の要否」節に記録した。
- * </p>
  *
  * @author kiyobot
  */

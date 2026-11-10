@@ -52,7 +52,8 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * 各辺の単体の担保は {@code XlsMarkerOnlyBlockTest}（辺①）と {@code YamlMarkerOnlyBlockTest}（辺②）にある。
+ * 読み込みごとの単体の担保は {@code XlsMarkerOnlyBlockTest}（Excel → 中間モデル）と
+ * {@code YamlMarkerOnlyBlockTest}（YAML → 中間モデル）にある。
  * 本クラスは<b>形式をまたいだ通し</b>だけを扱う。
  * </p>
  */

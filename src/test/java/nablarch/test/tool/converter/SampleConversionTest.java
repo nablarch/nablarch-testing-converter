@@ -17,8 +17,8 @@ import org.junit.Test;
  * <p>
  * nablarch-system-development-guide のサンプルプロジェクトから抜粋した YAML ファイルを
  * テストリソースに配置し、実プロジェクトのテストデータに対する YAML→XLS 変換の挙動を確認する。
- * <b>0 件テーブル（{@code rows: []}）を含むファイルも変換できる</b>（{@code issues.md} <b>XLS-27</b>。
- * マーカーカラム案の採用は 2026-08-19）。
+ * <b>0 件テーブル（{@code rows: []}）を含むファイルも変換できる</b>（カラム名の行へマーカーカラム
+ * {@code [EMPTY]} を書く）。
  * </p>
  *
  * <p>
@@ -48,7 +48,7 @@ public class SampleConversionTest {
      * {@code setup_tables} 配下の 0 件テーブルである。YAML 記法ではカラム名が {@code rows:} の
      * 先頭要素のキーで決まるため、
      * 0 件テーブルにはカラム名を書く場所が無く、中間モデルはカラム名 0 件になる。
-     * 辺③は Excel の「データ行を書かない場合でも、カラム名の行は省略できない」制約を
+     * Excel への書き出しは Excel の「データ行を書かない場合でも、カラム名の行は省略できない」制約を
      * 満たすため、カラム名の行へマーカーカラム {@code [EMPTY]} を 1 つ書く。
      * 残る {@code ExportProjectsInPeriodActionRequestTest/testNormalEnd.yaml:173}／記法の
      * {@code rows: []} は綴りは同じでも別物で、{@code expected_files} 配下のファイルデータの
@@ -57,10 +57,11 @@ public class SampleConversionTest {
      *
      * <p>
      * <b>本テストは 2026-08-18〜19 の間、変換が中止されることを固定していた</b>
-     * （{@code stopsClimanSampleConversionBecauseOfZeroRowTable}）。当時の辺③は
+     * （{@code stopsClimanSampleConversionBecauseOfZeroRowTable}）。当時の Excel への書き出しは
      * カラム名 0 件のブロックを {@code IllegalArgumentException} で弾いており、
      * 0 件テーブルを含む YAML を Excel へ変換できないという実運用上の制約があった
-     * （{@code issues.md} <b>XLS-27</b>）。
+     * （カラム名の行を空のまま書くと、読み戻しで直後のブロックの識別子行をカラム名の行と取り違え、
+     * ブロックが 1 つ消えるため）。
      * </p>
      */
     @Test

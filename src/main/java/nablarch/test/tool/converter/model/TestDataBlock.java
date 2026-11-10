@@ -39,7 +39,8 @@ import java.util.Set;
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} も {@code $defs.table_data} の
  * {@code required} に {@code table} を含め、{@code {"type": "string"}} としている。
  * <b>空文字は拒否しない</b>（Excel は {@code id=[]} として往復し、YAML の {@code table: ""} は
- * スキーマに適合する）。{@code coverage/issues.md} <b>XLS-35</b>。
+ * スキーマに適合する）。{@code null} を許すと、Excel へは {@code SETUP_TABLE=null} と書かれて
+ * 読み戻すと {@code NULL} という名前のテーブルになり、YAML へはスキーマ違反の {@code table: null} が書かれる。
  * </p>
  *
  * <p>
@@ -47,17 +48,17 @@ import java.util.Set;
  * データブロックは必ず 1 つのデータタイプを持つ。Excel 形式はマーカー
  * （記法の {@code データタイプ=識別子の値}）、
  * YAML 形式はトップレベルキーがデータタイプから決まるため、
- * <b>データタイプの無いブロックはどちらの形式でも書けない</b>
- * （{@code coverage/issues.md} <b>XLS-34</b>）。
+ * <b>データタイプの無いブロックはどちらの形式でも書けない</b>。
  * </p>
  *
  * <p>
  * <b>{@code dataType} に {@link DataType#DEFAULT} を持たせてはならない。生成時点で拒否する。</b>
  * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（フレームワーク内部用（通常は使用しない））、YAML のトップレベルキー
  * 対応表（「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」）
- * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は 4 辺すべてが
- * 表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
- * （{@code coverage/issues.md} <b>XLS-20</b>）。**根拠が「対応表に行が無い」という不在である点に注意。**
+ * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は、Excel・YAML の
+ * 読み込みと書き出しのすべてが表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
+ * （Excel へは {@code DEFAULT=識別子} と書けてしまうが、本体の読み込みは {@code DEFAULT} の行を読み飛ばすため、
+ * 読み戻すとブロックが黙って消える）。**根拠が「対応表に行が無い」という不在である点に注意。**
  * </p>
  *
  * <p>
@@ -73,18 +74,18 @@ import java.util.Set;
  * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）。
  * <b>いずれも {@code additionalProperties} ＝ {@code false}</b> であり、系統の違うデータ種別を持つ
  * ブロックはスキーマ違反の YAML にしかならない。Excel 形式も同じで、系統の違う組は書けてしまうが
- * 読み戻すと別種のブロックになる（{@code coverage/issues.md} <b>XLS-36</b>）。
+ * 読み戻すと別種のブロックになる（例: データ種別 {@code SETUP_TABLE_DATA} のファイルブロックは
+ * テーブルブロックとして読み戻される）。
  * {@link ListMapBlock} は {@link DataType#LIST_MAP} をコンストラクタで固定するため検査の対象外である。
  * </p>
  *
  * <p>
  * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>両リーダーは {@code null} を作らない
- * （辺①は {@code TestCoreReaderAdapter} がマーカー行でない行をブロックごと読み飛ばすため
- * {@code BlockHeader.groupId} が必ず非 null、辺②は {@code YamlFormatReader} が省略時に空文字を返す）。
+ * （Excel の読み込みは {@code TestCoreReaderAdapter} がマーカー行でない行をブロックごと読み飛ばすため
+ * {@code BlockHeader.groupId} が必ず非 null、YAML の読み込みは {@code YamlFormatReader} が省略時に空文字を返す）。
  * したがって {@code null} が入るのは呼び出し側のバグであり、生成時点で露見させる。書き出し側
- * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）には番人を置かない
- * （{@code coverage/issues.md} <b>XLS-32</b>。方針は {@code steering.md} Decisions
- * 「不正値は書き出し側でなく中間モデルの生成時に拒否する」）。
+ * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）には番人を置かない。書き出し側で落とすのは、
+ * 持ってはいけない値を中間モデルが持てる状態をそのままにする暫定対応にあたるためである。
  * </p>
  *
  * @author kiyotis
@@ -165,17 +166,18 @@ public abstract sealed class TestDataBlock
      * 具体ブロックのコンストラクタは {@code super(...)} の直後にこれを呼ぶ。その経路では
      * {@code dataType} が {@code null} ／ {@link DataType#DEFAULT} の場合ここへ届かない ——
      * どちらも {@link #TestDataBlock(DataType, String, String)} が先に拒否し、その専用のメッセージが
-     * そのまま残る（{@code coverage/issues.md} <b>XLS-34</b>／<b>XLS-20</b>）。
+     * そのまま残る。
      * </p>
      *
      * <p>
      * <b>ただしコンストラクタ以外（{@link FileDataBlock#fileTypeOf(DataType)}）からも直接呼ばれるため、
      * {@code null} ／ {@link DataType#DEFAULT} がここへ届く経路がある。</b>
-     * その場合 {@link DataType#DEFAULT} は XLS-20 の専用メッセージにならず、このメソッドの
-     * {@code IllegalArgumentException}（XLS-36 のメッセージ）になる。
+     * その場合 {@link DataType#DEFAULT} はコンストラクタの専用メッセージ（YAML 形式で表現できない旨）に
+     * ならず、このメソッドの {@code IllegalArgumentException}（クラスの系統に属さないデータ種別である旨の
+     * メッセージ）になる。
      * <b>{@code null} はこのメソッド自身が {@link IllegalArgumentException} で拒否する</b> ——
      * データブロックは必ず 1 つのデータタイプを持ち、データタイプの無いブロックはどちらの形式でも
-     * 書けない（{@code coverage/issues.md} <b>XLS-34</b>）。答えは
+     * 書けない。答えは
      * {@link #TestDataBlock(DataType, String, String)} で確定しており、<b>受け口によって
      * {@link NullPointerException} と {@link IllegalArgumentException} に分かれる状態は残さない</b>
      * （メッセージの趣旨はコンストラクタと同じで、文面は本メソッド専用のもの）。

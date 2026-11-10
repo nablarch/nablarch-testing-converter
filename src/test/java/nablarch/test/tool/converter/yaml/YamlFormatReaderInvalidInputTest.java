@@ -36,7 +36,7 @@ import org.junit.rules.TemporaryFolder;
 import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
 
 /**
- * 辺②（YAML→中間モデル）の軸F — 異常系 5 ケース（F2-01〜F2-05）の挙動を固定するテスト。
+ * YAML → 中間モデルの読み取りについて、異常系 5 ケースの挙動を固定するテスト。
  *
  * <p>
  * すべて {@link YamlFixture} が書き出した実 {@code .yaml} を入力とし、本番配線の
@@ -45,17 +45,17 @@ import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
  * </p>
  *
  * <table border="1">
- * <caption>本クラスが固定する軸F の要素</caption>
+ * <caption>本クラスが固定する異常系の要素</caption>
  * <tr><th>要素</th><th>観測した挙動</th></tr>
- * <tr><td>F2-01 スキーマ違反</td><td>{@code YamlSchemaValidationException}</td></tr>
- * <tr><td>F2-02 YAML として不正</td><td>{@code IllegalStateException}（原因は {@code YamlEngineException}）</td></tr>
- * <tr><td>F2-03 未知のキー</td><td>{@code YamlSchemaValidationException}（トップレベルは {@code additionalProperties: false}）</td></tr>
- * <tr><td>F2-04 必須構造の欠落</td><td>{@code YamlSchemaValidationException}</td></tr>
- * <tr><td>F2-05 空ファイル</td><td>例外にならず、ブロック 0 件のコンテナになる</td></tr>
+ * <tr><td>スキーマ違反</td><td>{@code YamlSchemaValidationException}</td></tr>
+ * <tr><td>YAML として不正</td><td>{@code IllegalStateException}（原因は {@code YamlEngineException}）</td></tr>
+ * <tr><td>未知のキー</td><td>{@code YamlSchemaValidationException}（トップレベルは {@code additionalProperties: false}）</td></tr>
+ * <tr><td>必須構造の欠落</td><td>{@code YamlSchemaValidationException}</td></tr>
+ * <tr><td>空ファイル</td><td>例外にならず、ブロック 0 件のコンテナになる</td></tr>
  * </table>
  *
  * <p>
- * <b>F2-01 の入力に、{@code rows} の値として仕様外とした引用符なしスカラー記法（{@code true} /
+ * <b>スキーマ違反の入力に、{@code rows} の値として仕様外とした引用符なしスカラー記法（{@code true} /
  * {@code 123} / {@code 1.50} / {@code .inf} / {@code .nan}）は使わない。</b>それらは
  * 「NTF が実行できるテストデータ」の外側にあり、例外の形を固定する対象にしないことが確定しているためである。
  * ここでは仕様内の記法（引用符付き文字列）で書きながらスキーマに反する入力 —— {@code type} の列挙違反と
@@ -69,7 +69,7 @@ import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
  * </p>
  *
  * <p>
- * <b>例外メッセージのアサートについて。</b>次の 3 類型で使い分ける（辺①の
+ * <b>例外メッセージのアサートについて。</b>次の 3 類型で使い分ける（Excel → 中間モデルの
  * {@code XlsFormatReaderInvalidInputTest} と同じ考え方）。
  * </p>
  * <ul>
@@ -86,23 +86,25 @@ import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
  * </ul>
  *
  * <p>
- * <b>本クラスは軸F の 5 ケースに加えて、「スキーマが構造を縛っていない箇所を突いた入力」の現状挙動も固定する</b>
- * （後半の「掃引で見つけた現状挙動の固定」節。{@code coverage/issues.md} の
- * <b>YML-04</b>〜<b>YML-08</b>）。それらの入力は<b>スキーマ検証を通る仕様内の入力</b>であって異常系ではないが、
- * 例外にならず値や行が消える／中間モデルが原文と食い違うため、辺①の
- * {@code XlsFormatReaderInvalidInputTest}（XLS-10〜XLS-15 を同居させている）と同じ置き方に揃えた。
+ * <b>本クラスは異常系の 5 ケースに加えて、「スキーマが構造を縛っていない箇所を突いた入力」の現状挙動も固定する</b>
+ * （後半の「掃引で見つけた現状挙動の固定」節）。それらの入力は<b>スキーマ検証を通る仕様内の入力</b>であって
+ * 異常系ではないが、例外にならず値や行が消える／中間モデルが原文と食い違うため、Excel → 中間モデルの
+ * {@code XlsFormatReaderInvalidInputTest}（未知のデータタイプ名のブロックが消える等の同種の挙動を同居させている）と
+ * 同じ置き方に揃えた。
  * </p>
  *
  * <p>
  * <b>本クラスのアサーションは原則として「実行して観測した現状の挙動」である。</b>
- * ただし <b>YML-08</b>（区切り文字ディレクティブの値が辺①と非対称になり、実制御文字のまま中間モデルへ
- * 入って本体が読み戻せない）は <b>#25.5 で修正済み</b>で、該当テストは現状の固定ではなく
- * <b>記法どおりの仕様</b>を書いている。<b>YML-04 は #36 で一部だけ解消した</b> —— 依存先
- * {@code nablarch-testing-yaml} の Step 4 是正で空マッピング {@code {}} の行がカラム解決より前に
+ * ただし<b>区切り文字ディレクティブの値</b>（Excel 側と非対称に {@code trim()} され、実制御文字のまま
+ * 中間モデルへ入って本体が読み戻せなかった）は修正済みで、該当テストは現状の固定ではなく
+ * <b>記法どおりの仕様</b>を書いている。<b>「カラムが先頭行のキー集合だけで決まる」挙動は一部だけ解消した</b> ——
+ * 依存先 {@code nablarch-testing-yaml} の修正で空マッピング {@code {}} の行がカラム解決より前に
  * 読み飛ばされるようになり、{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable} ／
  * {@link #skipsEmptyObjectRowAndKeepsFollowingRowInListMap} の 2 件は記法どおりの仕様を書いている。
- * <b>YML-04 の中心（カラムが先頭行のキー集合だけで決まる）は残っており</b>、
- * YML-05〜YML-07・YML-10・YML-11 とともに現状の固定のままである。
+ * <b>中心（後続行にしかないカラムが消える）は残っており</b>、レコード断片の不足要素の空文字補完・
+ * {@code id} 重複・長さ省略記法の {@code NullPointerException}・カラム名の大文字化による衝突・
+ * 引用符なしスカラーの空白と {@code #} 以降の脱落とともに現状の固定のままである
+ * （いずれも NTF の記法の明文に反しないか、原因が本ツールの外にあるため修正しない。理由は各テストに記す）。
  * </p>
  *
  * @author kiyobot
@@ -200,7 +202,7 @@ public class YamlFormatReaderInvalidInputTest {
         return block.getRecords().get(0);
     }
 
-    // ------------------------------------------------------------------ F2-01 スキーマ違反
+    // ------------------------------------------------------------------ スキーマ違反
 
     /**
      * Given: {@code setup_files} の {@code type} に列挙外の値 {@code "text"} を書いた YAML
@@ -209,7 +211,7 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code YamlSchemaValidationException} で止まり、違反は {@code enum} キーワード・
      *        位置 {@code $.setup_files[0].type} として報告される。
      *
-     * <p>担保する軸要素: F2-01（スキーマ違反）。</p>
+     * <p>担保する観点: 異常系のスキーマ違反。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFileTypeIsNotInEnum() {
@@ -244,7 +246,7 @@ public class YamlFormatReaderInvalidInputTest {
      * {@code Set} であり反復順は契約されていないため）。
      * </p>
      *
-     * <p>担保する軸要素: F2-01（スキーマ違反）。</p>
+     * <p>担保する観点: 異常系のスキーマ違反。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldLengthDoesNotMatchPattern() {
@@ -264,7 +266,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("2 件とも同じ位置に対する違反であること", locations(e), is(Arrays.asList(location, location)));
     }
 
-    // ------------------------------------------------------------------ F2-02 YAML として不正
+    // ------------------------------------------------------------------ YAML として不正
 
     /**
      * Given: インデントが揃わずフローシーケンスも閉じていない、YAML として解析できないテキスト。
@@ -273,7 +275,7 @@ public class YamlFormatReaderInvalidInputTest {
      *        原因例外は SnakeYAML Engine の {@code YamlEngineException} である。
      *        スキーマ検証はパースが通らないため実行されない（{@code YamlSchemaValidationException} ではない）。
      *
-     * <p>担保する軸要素: F2-02（YAML として不正）。</p>
+     * <p>担保する観点: 異常系のYAML として不正。</p>
      */
     @Test
     public void failsWithParseErrorWhenYamlIsMalformed() {
@@ -289,7 +291,7 @@ public class YamlFormatReaderInvalidInputTest {
                 is(instanceOf(YamlEngineException.class)));
     }
 
-    // ------------------------------------------------------------------ F2-03 未知のキー
+    // ------------------------------------------------------------------ 未知のキー
 
     /**
      * Given: 既知セクションに加えて未知のトップレベルキー {@code unknown_section} を書いた YAML。
@@ -307,7 +309,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 同メソッドの分岐 11 本が完全に一致しており、分岐に落ちない既知キーは存在しない。
      * </p>
      *
-     * <p>担保する軸要素: F2-03（未知のキー）。</p>
+     * <p>担保する観点: 異常系の未知のキー。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenTopLevelKeyIsUnknown() {
@@ -323,7 +325,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(locations(e), is(Arrays.asList("$")));
     }
 
-    // ------------------------------------------------------------------ F2-04 必須構造の欠落
+    // ------------------------------------------------------------------ 必須構造の欠落
 
     /**
      * Given: {@code setup_tables} のエントリに必須の {@code rows} を書かない YAML。
@@ -331,7 +333,7 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code YamlSchemaValidationException} で止まり、違反は {@code required} キーワード・
      *        位置 {@code $.setup_tables[0]}・欠落プロパティ {@code rows} として報告される。
      *
-     * <p>担保する軸要素: F2-04（必須構造の欠落）。</p>
+     * <p>担保する観点: 異常系の必須構造の欠落。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenRequiredRowsIsMissing() {
@@ -348,12 +350,12 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code YamlSchemaValidationException}（{@code minItems}）で止まる。
      *
      * <p>
-     * 本テストは軸C の <b>C-17（{@code RecordLayout.fields} 空）が辺②で到達不能である根拠</b>でもある。
+     * 本テストは <b>YAML の読み取りでは {@code RecordLayout.fields} が空の中間モデルに到達できないことの根拠</b>でもある。
      * スキーマ {@code $defs.record_fragment.properties.fields.minItems} が 1 であるため、
      * フィールド 0 件のレコードは中間モデルへ到達しない。
      * </p>
      *
-     * <p>担保する軸要素: F2-04（必須構造の欠落）／C-17（到達不能の根拠）。</p>
+     * <p>担保する観点: 異常系の必須構造の欠落／{@code RecordLayout.fields} 空が到達不能であることの根拠。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldsIsEmpty() {
@@ -375,12 +377,12 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code YamlSchemaValidationException}（{@code required}）で止まる。
      *
      * <p>
-     * 本テストは軸C の <b>C-20（{@code FieldDef.type} 省略）が辺②で到達不能である根拠</b>でもある。
+     * 本テストは <b>YAML の読み取りでは {@code FieldDef.type} を省略した中間モデルに到達できないことの根拠</b>でもある。
      * スキーマ {@code $defs.field_def.required} が {@code type} を必須とするため、
      * 型を持たないフィールド定義は中間モデルへ到達しない。
      * </p>
      *
-     * <p>担保する軸要素: F2-04（必須構造の欠落）／C-20（到達不能の根拠）。</p>
+     * <p>担保する観点: 異常系の必須構造の欠落／{@code FieldDef.type} 省略が到達不能であることの根拠。</p>
      */
     @Test
     public void failsWithSchemaValidationExceptionWhenFieldTypeIsMissing() {
@@ -399,7 +401,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(e.getErrors().get(0).getProperty(), is("type"));
     }
 
-    // ------------------------------------------------------------------ F2-05 空ファイル
+    // ------------------------------------------------------------------ 空ファイル
 
     /**
      * Given: 中身が空の {@code .yaml}。
@@ -417,7 +419,7 @@ public class YamlFormatReaderInvalidInputTest {
      * （入力は {@code setup_tables: []}）の役目である。
      * </p>
      *
-     * <p>担保する軸要素: F2-05（空ファイル）。</p>
+     * <p>担保する観点: 異常系の空ファイル。</p>
      */
     @Test
     public void readsEmptyFileAsContainerWithoutBlocks() {
@@ -435,14 +437,13 @@ public class YamlFormatReaderInvalidInputTest {
     // 掃引で見つけた現状挙動の固定
     //
     // 以下はいずれも「本体スキーマが構造を縛っていない箇所」を突いた入力であり、
-    // スキーマ検証を通る（＝仕様内の）入力である。軸F の 5 ケースには属さない。
-    // 課題は coverage/issues.md の YML-04〜YML-08・YML-10 に記録した。
-    // このうち YML-08 は #25.5 で修正済みで、該当テストは現状の固定ではなく記法どおりの仕様を書いている。
-    // YML-04 は #36 で一部だけ解消した（空マッピング {} の行の読み飛ばし。中心は残っている）。
-    // 残る YML-05〜YML-07・YML-10 は未修正のため現状の固定のままである。
+    // スキーマ検証を通る（＝仕様内の）入力である。異常系の 5 ケースには属さない。
+    // このうち区切り文字ディレクティブの値は修正済みで、該当テストは現状の固定ではなく記法どおりの仕様を書いている。
+    // 「カラムが先頭行のキー集合だけで決まる」挙動は、空マッピング {} の行の読み飛ばしだけが依存先の修正で
+    // 解消した（中心は残っている）。それ以外は修正しないため現状の固定のままであり、修正しない理由は各テストに記す。
     // ==================================================================
 
-    // ------------------------------------------------------------------ ローダの他の失敗経路（軸F の 5 ケース外）
+    // ------------------------------------------------------------------ ローダの他の失敗経路（異常系の 5 ケース外）
 
     /**
      * Given: ルートがマッピングでない YAML（シーケンス）。
@@ -450,13 +451,13 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code IllegalStateException}（メッセージは {@code "YAML root must be a mapping, but was "} で始まる）。
      *
      * <p>
-     * <b>F2-02（YAML として不正）とは別の分岐である。</b>F2-02 はパース自体が失敗する経路
+     * <b>「YAML として不正」とは別の分岐である。</b>そちらはパース自体が失敗する経路
      * （{@link #failsWithParseErrorWhenYamlIsMalformed}。原因例外は {@code YamlEngineException}）だが、
      * こちらはパースには成功したうえで型を弾く経路であり、原因例外を持たない。
      * どちらも {@code IllegalStateException} であるため、<b>メッセージの先頭で分岐を区別する</b>。
      * </p>
      *
-     * <p>担保する軸要素: なし（軸F の 5 ケースには属さない。ローダの分岐の固定）。</p>
+     * <p>担保する観点: ローダの分岐の固定（異常系の 5 ケースには属さない）。</p>
      */
     @Test
     public void failsWhenYamlRootIsNotMapping() {
@@ -476,16 +477,16 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * ローダが {@code LoadSettings} に {@code setAllowDuplicateKeys(false)} を設定しているため、
-     * パース段階で弾かれる。<b>辺①とは結果が正反対である</b> —— 辺①の実 {@code .xlsx} 経路では
-     * カラム名の重複は WARN ＋ 後勝ちで<b>変換が継続する</b>（F1-05。steering #16）。
+     * パース段階で弾かれる。<b>Excel → 中間モデルとは結果が正反対である</b> —— Excel の実 {@code .xlsx} 経路では
+     * カラム名の重複は WARN ＋ 後勝ちで<b>変換が継続する</b>。
      * </p>
      *
      * <p>
-     * なお辺②で「大小だけが違うキー」（`id` と `ID`）は YAML としては別キーであるため
-     * この検査には掛からず、器の大文字化で衝突して値が消える（<b>YML-10</b>）。
+     * なお YAML で「大小だけが違うキー」（`id` と `ID`）は YAML としては別キーであるため
+     * この検査には掛からず、器の大文字化で衝突して値が消える（{@link #dropsValueWhenTableColumnNamesDifferOnlyByCase}）。
      * </p>
      *
-     * <p>担保する軸要素: なし（軸F の 5 ケースには属さない。ローダの分岐の固定）。</p>
+     * <p>担保する観点: ローダの分岐の固定（異常系の 5 ケースには属さない）。</p>
      */
     @Test
     public void failsWhenSameKeyAppearsTwiceInOneMapping() {
@@ -503,7 +504,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(thrown.getCause(), is(instanceOf(YamlEngineException.class)));
     }
 
-    // ------------------------------------------------------------------ YML-04 先頭行のキー集合だけがカラムになる
+    // ------------------------------------------------------------------ 先頭行のキー集合だけがカラムになる
 
     /**
      * Given: {@code setup_tables} の 2 行目にだけ現れるカラム {@code B} を持つ YAML
@@ -512,7 +513,11 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : <b>例外にならず</b>、カラムは先頭行のキー集合 {@code [A]} だけになり、
      *        2 行目の {@code B: "x"} が黙って消える。
      *
-     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト。</p>
+     * <p>
+     * 値が黙って消えるが、修正しない。NTF の記法は「YAML 形式では {@code rows:} の先頭行のキーの一部を
+     * 後続の行が持たない場合、そのカラムは {@code null} を明示的に指定したのと同じ扱いになる」と定めており、
+     * カラム集合が先頭行のキーで決まることを前提にしている。後続行にだけあるキーを拾えという定めは無い。
+     * </p>
      */
     @Test
     public void dropsColumnThatAppearsOnlyInSecondRowOfTable() {
@@ -537,7 +542,7 @@ public class YamlFormatReaderInvalidInputTest {
      * When : 実 {@code .yaml} を {@code read}。
      * Then : テーブル経路と同じく、2 行目の {@code B: "x"} が黙って消える。
      *
-     * <p>{@code coverage/issues.md} <b>YML-04</b> の根拠テスト（LIST_MAP 経路）。</p>
+     * <p>{@link #dropsColumnThatAppearsOnlyInSecondRowOfTable} の LIST_MAP 経路版である。</p>
      */
     @Test
     public void dropsColumnThatAppearsOnlyInSecondRowOfListMap() {
@@ -562,7 +567,7 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : 逆向き（キー不足）は値が消えず、Java {@code null} で埋められる。
      *
      * <p>
-     * YML-04 が<b>非対称</b>であることの根拠。カラム集合は先頭行だけで決まるため、
+     * 先頭行基準のカラム決定が<b>非対称</b>であることの根拠。カラム集合は先頭行だけで決まるため、
      * 「先頭行に無いキー」は消え、「先頭行にあって後続行に無いキー」は {@code null} で救われる。
      * </p>
      */
@@ -598,9 +603,9 @@ public class YamlFormatReaderInvalidInputTest {
      * </p>
      *
      * <p>
-     * <b>{@code coverage/issues.md} の YML-04 は解消済みである。</b>以前は先頭の {@code {}} が
+     * <b>この挙動は解消済みである。</b>以前は先頭の {@code {}} が
      * カラム名を空にしてしまい 2 行目のデータごと消えていた。依存先 {@code nablarch-testing-yaml} の
-     * Step 4 是正で直った（#36）。
+     * 修正で直った。
      * </p>
      */
     @Test
@@ -627,8 +632,7 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * <b>テーブル経路（{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable}）と同じ結果になる。</b>
      * 以前は同じ入力でも経路によって結果が違い（テーブルは行ごと消える／LIST_MAP は値を持たない行が残る）、
-     * それが {@code coverage/issues.md} <b>YML-04</b> であった。依存先 {@code nablarch-testing-yaml} の
-     * Step 4 是正で両経路とも 記法どおりになった（#36）。
+     * 依存先 {@code nablarch-testing-yaml} の修正で両経路とも記法どおりになった。
      * 実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}（2026-08-28）。
      * </p>
      */
@@ -656,8 +660,8 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * カラム名の行がマーカーカラムだけのデータブロックは例外として、マーカーカラムとその値を保ったまま
      * 変換する。各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
-     * エントリの数と並びが意味を持つためである。<b>辺①（{@code coverage/issues.md} <b>XLS-08</b>）と
-     * 同じ扱いであり、2 辺は対称である。</b>
+     * エントリの数と並びが意味を持つためである。<b>Excel → 中間モデルと同じ扱いであり、
+     * 両形式は対称である。</b>
      * </p>
      *
      * <p>
@@ -683,7 +687,7 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList(Arrays.asList("1"), Arrays.asList("2"))));
     }
 
-    // ------------------------------------------------------------------ YML-14 フィールド数より値が多い行（余りが黙って消える）
+    // ------------------------------------------------------------------ フィールド数より値が多い行（余りが黙って消える）
 
     /**
      * Given: フィールド 1 件に対して値を 3 個書いたレコード断片
@@ -696,7 +700,7 @@ public class YamlFormatReaderInvalidInputTest {
      * <b>読み込みでエラーにすることは定められていない</b>。フィールド数と要素数の一致に触れるのは
      * {@code YamlTestDataValidator} の検査だけであり、その検証は変換の処理経路に組み込まれておらず、
      * 変換の実行時に自動では呼び出されない。
-     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
+     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは削除した</b>
      * （記法に無い書き方は追わない）。
      * </p>
      *
@@ -705,11 +709,8 @@ public class YamlFormatReaderInvalidInputTest {
      * {@code nablarch/test/core/file/DataFileFragment.java} の {@code addValue} が
      * {@code String value = i < line.size() ? line.get(i) : "";} としてフィールド名の件数ぶんだけ値を取り出すため、
      * <b>余った要素は converter に届く前に器が捨てている</b>。{@code YamlFormatReader#toRecordLayouts} は
-     * 器が持つ値 Map を並べ直すだけで原文の要素数を見ない。したがって converter 側に番人も WARN も置かない
-     * （ユーザー確定・2026-08-19。{@code coverage/issues.md} <b>YML-14</b>）。
+     * 器が持つ値 Map を並べ直すだけで原文の要素数を見ない。したがって converter 側に番人も WARN も置かない。
      * </p>
-     *
-     * <p>担保する軸要素: なし（YML-14 の根拠テスト）。</p>
      */
     @Test
     public void dropsRecordFragmentValuesBeyondFieldCount() {
@@ -732,7 +733,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("JUL 経路にも警告が出ない", reading.warnings(), is(Collections.<String>emptyList()));
     }
 
-    // ------------------------------------------------------------------ YML-05 フィールド数より値が少ない行（不足が空文字で埋まる）
+    // ------------------------------------------------------------------ フィールド数より値が少ない行（不足が空文字で埋まる）
 
     /**
      * Given: フィールド 3 件に対して値が足りない行（1 個だけの行と、2 個目に明示 {@code null} を書いた行）。
@@ -742,8 +743,10 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * すなわち<b>「書かれた空文字」と「要素数不足で埋められた欠損」が中間モデル上で区別できない</b>。
-     * 軸D の D2-11 で固定した「空文字と Java {@code null} は区別される」は<b>書かれた値についてのみ</b>成り立つ。
-     * {@code coverage/issues.md} <b>YML-05</b> の根拠テスト。
+     * {@link YamlFormatReaderScalarTest} で固定した「空文字と Java {@code null} は区別される」は
+     * <b>書かれた値についてのみ</b>成り立つ。
+     * 修正しない。NTF の記法が「{@code rows:} の各要素の長さがフィールド数より少ない場合、不足したフィールドは
+     * {@code ""} として補完される」と定めており、そのとおりの挙動である。
      * </p>
      *
      * <p>
@@ -787,10 +790,10 @@ public class YamlFormatReaderInvalidInputTest {
      * {@link YamlFormatReaderScalarTest#readsEmptyStringAsIsInRecordFragmentPath} は
      * {@code rows: - [""]} を読んで同じ {@code [""]} を得る。本テストは {@code rows: - []}
      * ——すなわち<b>何も書かなかった行</b>——が同じ結果になることを示す。
-     * したがってレコード断片経路では「書いた空文字が保たれた」ことをテストで示せない（<b>YML-05</b>）。
+     * したがってレコード断片経路では「書いた空文字が保たれた」ことをテストで示せない。
      * </p>
      *
-     * <p>担保する軸要素: なし（YML-05 の根拠テスト。D2-11 の担保の限界を示す）。</p>
+     * <p>担保する観点: 空文字と Java {@code null} の区別の担保がレコード断片経路では届かないこと（担保の限界）。</p>
      */
     @Test
     public void fillsEmptyRecordFragmentRowWithEmptyStringIndistinguishableFromWrittenOne() {
@@ -810,7 +813,7 @@ public class YamlFormatReaderInvalidInputTest {
                 onlyRecord(container).getRows(), is(Arrays.asList(Arrays.asList(""))));
     }
 
-    // ------------------------------------------------------------------ YML-06 id 重複
+    // ------------------------------------------------------------------ id 重複
 
     /**
      * Given: 同じ {@code id} を持つ {@code list_maps} エントリ 2 件（値は別）。
@@ -821,7 +824,9 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * スキーマは {@code id} に一意制約を持たず、{@code $defs.list_map_data} の description も
      * 「id が重複した場合は最初の1件のみ有効（2件目以降は無視）」と重複を仕様内として扱っている。
-     * {@code coverage/issues.md} <b>YML-06</b> の根拠テスト。
+     * 原文に無い組み合わせのブロックができるが、修正しない。NTF の記法は取得側で「ID が完全一致する最初の1件を
+     * 取得」と定めるだけで、実行時に有効なのは 1 件目だけである。変換結果に無効な 2 件目以降が残ることを
+     * 禁じる定めは無い。
      * </p>
      */
     @Test
@@ -850,7 +855,7 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : <b>例外にならず</b>ブロックは 2 件生成されるが、2 件目はフィールド定義だけが自分のもので、
      *        データ行は<b>1 件目の本文</b>になる。2 件目に書いた値 {@code "b"} は中間モデルに現れない。
      *
-     * <p>{@code coverage/issues.md} <b>YML-06</b> の根拠テスト（メッセージ経路）。</p>
+     * <p>{@link #reusesFirstEntryRowsForDuplicateListMapId} のメッセージ経路版である。</p>
      */
     @Test
     public void reusesFirstEntryBodyForDuplicateMessageId() {
@@ -880,7 +885,7 @@ public class YamlFormatReaderInvalidInputTest {
                 is(Arrays.asList(Arrays.asList("a"))));
     }
 
-    // ------------------------------------------------------------------ YML-07 長さ省略記法
+    // ------------------------------------------------------------------ 長さ省略記法
 
     /**
      * Given: 長さ省略記法 {@code "-"} を使い、{@code text-encoding} を書かないファイルエントリ
@@ -891,7 +896,8 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * 器がオンデマンド長を求めるために値のバイト長を計算する際、ディレクティブ由来の文字セットが
-     * {@code null} のままだからである。{@code coverage/issues.md} <b>YML-07</b> の根拠テスト。
+     * {@code null} のままだからである。例外が本体 {@code DataFileFragment} で生じ、NTF の記法は例外の型・
+     * メッセージを定めていないため修正しない（どのファイルのどのフィールドかを添えて包み直すのは改善提案に留まる）。
      * </p>
      *
      * <p>
@@ -936,7 +942,7 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * {@link #failsWithNullPointerExceptionWhenOndemandLengthIsUsedWithoutTextEncoding} との差は
-     * {@code text-encoding} の有無だけである（YML-07 の切り分け）。
+     * {@code text-encoding} の有無だけである（{@code NullPointerException} の原因の切り分け）。
      * </p>
      */
     @Test
@@ -960,7 +966,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("abcd"))));
     }
 
-    // ------------------------------------------------------------------ YML-08 ディレクティブ値
+    // ------------------------------------------------------------------ ディレクティブ値
 
     /**
      * Given: {@code record-separator} をスキーマ description が推奨するリテラル記法
@@ -970,15 +976,15 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * 記法が定めるのはシンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意の
-     * リテラル文字列である。中間モデルには辺①
+     * リテラル文字列である。中間モデルには Excel → 中間モデル
      * （{@code XlsFormatReader#normalizeDirectiveValue}）と同じ逆正規化を通した値を入れる。
      * </p>
      *
      * <p>
      * <b>書いた改行そのものは本体で失われる。</b>本体 {@code DataFile#setDirective} が
      * 値へ {@code String#trim()} を掛けるため、制御文字だけの値は converter へ届く前に空になる。
-     * 空を {@code NONE} と読むのは辺①と同じ規則である。改行が消えること自体は本リポジトリの外
-     * （nablarch-testing）に原因があり、ここでは直せない。{@code coverage/issues.md} <b>YML-08</b>。
+     * 空を {@code NONE} と読むのは Excel → 中間モデルと同じ規則である。改行が消えること自体は本リポジトリの外
+     * （nablarch-testing）に原因があり、ここでは直せない。
      * </p>
      */
     @Test
@@ -998,7 +1004,7 @@ public class YamlFormatReaderInvalidInputTest {
 
         // Then
         FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
-        assertThat("本体の trim() で空になった値を、辺①と同じ規則でシンボルへ戻す",
+        assertThat("本体の trim() で空になった値を、Excel 側と同じ規則でシンボルへ戻す",
                 block.getDirectives().get("record-separator"), is("NONE"));
     }
 
@@ -1009,10 +1015,10 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * 本体の器は {@code LineSeparator.evaluate} でシンボルを実改行へ変換するが、
-     * 辺①（{@code XlsFormatReader#normalizeDirectiveValue}）も辺②
+     * Excel 側（{@code XlsFormatReader#normalizeDirectiveValue}）も YAML 側
      * （{@code YamlFormatReader#toStringDirectives}）も同じ逆正規化でシンボルへ戻すため、
-     * 同じ入力表記が同じ中間モデル値になる。記法どおりである。
-     * （{@code record-separator CRLF}）。{@code coverage/issues.md} <b>YML-08</b>。
+     * 同じ入力表記が同じ中間モデル値になる。記法どおりである
+     * （{@code record-separator CRLF}）。
      * </p>
      */
     @Test
@@ -1049,7 +1055,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 「タブは {@code field-separator: "\\t"} と記述する」と書いており、**この挙動と一致している**
      * （2026-08-19 実測。以前この Javadoc が引いていた「{@code "\t"} と記述するとタブ文字に変換される」は
      * 現行スキーマに存在しない）。
-     * {@code coverage/issues.md} <b>YML-08</b> の根拠テスト。
+     * 実タブで書いた区切り文字は本体の {@code trim()} で失われるが、例外で止まるため値が黙って変わることはない。
      * </p>
      */
     @Test
@@ -1073,7 +1079,7 @@ public class YamlFormatReaderInvalidInputTest {
                 thrown.getMessage(), containsString("field-separator must be one character"));
     }
 
-    // ------------------------------------------------------------------ YML-11 引用符なしスカラーの値落ち
+    // ------------------------------------------------------------------ 引用符なしスカラーの値落ち
 
     /**
      * Given: 前後に空白を付けた値を<b>引用符なし</b>で書いた YAML（{@code - V:   pad  }）。
@@ -1085,15 +1091,14 @@ public class YamlFormatReaderInvalidInputTest {
      * 引用符なしのプレーンスカラーも文字列として通る。空白が消えるのは YAML の仕様
      * （プレーンスカラーは前後の空白を含まない）だが、変換ツールから見ると
      * <b>作成者が書いた値と中間モデルの値が食い違う</b>。
-     * {@code coverage/issues.md} に <b>YML-11</b> として記録した（{@code src/main} は無変更）。
+     * NTF の記法は YAML ファイルが YAML 1.2 に準拠すると定めており、プレーンスカラーの前後空白除去は
+     * YAML 1.2 そのものの規定であるため修正しない（{@code src/main} は無変更）。
      * </p>
      *
      * <p>
-     * 引用符付きの {@code "  pad  "}（D2-11）は空白が保たれる
+     * 引用符付きの {@code "  pad  "} は空白が保たれる
      * （{@link YamlFormatReaderScalarTest#readsSurroundingWhitespacePreserved}）。
      * </p>
-     *
-     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-11 の根拠テスト）。</p>
      */
     @Test
     public void dropsSurroundingSpacesFromUnquotedScalar() {
@@ -1117,12 +1122,10 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * {@link #dropsSurroundingSpacesFromUnquotedScalar} と同じく YAML の仕様どおりだが、
-     * 書いた値の一部が黙って消える点は同じである（{@code coverage/issues.md} <b>YML-11</b>）。
-     * 引用符付きの {@code "a #b"}（D2-12）はそのまま入る
+     * 書いた値の一部が黙って消える点は同じである（{@code #} 以降をコメントとして扱うのも YAML 1.2 の規定）。
+     * 引用符付きの {@code "a #b"} はそのまま入る
      * （{@link YamlFormatReaderScalarTest#readsHashContainingStringAsIs}）。
      * </p>
-     *
-     * <p>担保する軸要素: なし（YML-11 の根拠テスト）。</p>
      */
     @Test
     public void dropsCommentPartFromUnquotedScalarContainingHash() {
@@ -1143,18 +1146,18 @@ public class YamlFormatReaderInvalidInputTest {
      * Given: {@code field-separator} を<b>バックスラッシュと {@code t} の 2 文字</b>で書いた可変長ファイル
      *        （YAML のシングルクォート記法 {@code '\t'}。エスケープが働かないためリテラル 2 文字になる）。
      * When : 実 {@code .yaml} を {@code read}。
-     * Then : 器がタブ 1 文字へ変換したうえで、中間モデルには辺①と同じ 2 文字記法（{@code \t}）が入る。
+     * Then : 器がタブ 1 文字へ変換したうえで、中間モデルには Excel 側と同じ 2 文字記法（{@code \t}）が入る。
      *
      * <p>
      * <b>{@link #failsWhenFieldSeparatorIsWrittenAsActualTab} との切り分けである。</b>
      * 実タブ 1 文字を渡すと器の {@code trim()} で失われて例外になるのに対し、
      * 2 文字記法（スキーマの description が推奨する形）は通る。
-     * YML-08 の record-separator 側が {@code readsRecordSeparatorWrittenAsLiteralNewlineAsNoneSymbol} と
+     * record-separator 側が {@code readsRecordSeparatorWrittenAsLiteralNewlineAsNoneSymbol} と
      * {@code readsRecordSeparatorSymbolAsSymbol} の対で書かれているのに合わせ、
      * field-separator 側にも「通る側」を置く。
      * </p>
      *
-     * <p>担保する軸要素: なし（YML-08 の切り分け）。</p>
+     * <p>担保する観点: 区切り文字ディレクティブの記法の切り分け。</p>
      */
     @Test
     public void readsFieldSeparatorWrittenAsEscapedTabNotation() {
@@ -1177,7 +1180,7 @@ public class YamlFormatReaderInvalidInputTest {
                 block.getDirectives().get("field-separator"), is("\\t"));
     }
 
-    // ------------------------------------------------------------------ YML-10 カラム名の大小衝突
+    // ------------------------------------------------------------------ カラム名の大小衝突
 
     /**
      * Given: テーブル系の {@code rows} に、大小だけが違う 2 つのキー {@code id} と {@code ID} を書いた YAML。
@@ -1196,19 +1199,15 @@ public class YamlFormatReaderInvalidInputTest {
      * （値の格納時）をそれぞれ {@code toUpperCase()} することである。大文字化後に同名となった
      * 2 カラムは 1 つの Map エントリへ潰れ、後勝ちの値だけが残る。
      * {@code YamlFormatReader#addTableBlocks} は器が返した列名でそのまま値を引くため、
-     * 同じ値が 2 回並ぶ。{@code coverage/issues.md} に <b>YML-10</b> として記録した
-     * （{@code src/main} は無変更）。
+     * 同じ値が 2 回並ぶ（{@code src/main} は無変更）。
      * </p>
      *
      * <p>
      * <b>本テストは他責の現状を固定したものである。</b>記法はテーブル系のカラム名の大小の扱いに
-     * いっさい触れていない。converter に大文字化を止める権限も無いため、現状を記録に留めている
-     * （{@code coverage/issues.md} <b>XLS-40</b> のカラム名側）。
-     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは #35 で削除した</b>
+     * いっさい触れていない。converter に大文字化を止める権限も無いため、現状を記録に留めている。
+     * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは削除した</b>
      * （記法に無い書き方は追わない）。
      * </p>
-     *
-     * <p>担保する軸要素: なし（軸A〜F のどの要素にも新しい担保を与えない。YML-10 の根拠テスト）。</p>
      */
     @Test
     public void dropsValueWhenTableColumnNamesDifferOnlyByCase() {
@@ -1223,7 +1222,7 @@ public class YamlFormatReaderInvalidInputTest {
                 + "        ID: \"4\"\n");
 
         // Then
-        assertThat("JUL 経路にも警告が出ない（辺①は同じ重複で WARNING を出す）",
+        assertThat("JUL 経路にも警告が出ない（Excel 側は同じ重複で WARNING を出す）",
                 reading.warnings(), is(Collections.<String>emptyList()));
         TableDataBlock block = YamlFixture.onlyBlock(reading.container(), TableDataBlock.class);
         assertThat("テーブル名も大文字化される", block.getIdentifier(), is("MY_TABLE"));
@@ -1243,7 +1242,7 @@ public class YamlFormatReaderInvalidInputTest {
      * {@code YamlSection#resolveColumns} の生キーをそのまま使うため大文字化されない。
      * </p>
      *
-     * <p>担保する軸要素: なし（YML-10 の対比。テーブル系との非対称を示す）。</p>
+     * <p>担保する観点: カラム名の大小衝突の対比（テーブル系との非対称を示す）。</p>
      */
     @Test
     public void keepsOriginalColumnCaseInListMap() {
@@ -1260,7 +1259,7 @@ public class YamlFormatReaderInvalidInputTest {
         assertThat("原文の大小がそのまま残る", block.getColumnNames(), is(Arrays.asList("id", "ID")));
         assertThat("どちらの値も失われない", block.getRows(), is(Arrays.asList(Arrays.asList("1", "2"))));
     }
-    // ------------------------------------------------------------------ XLS-45 可変長ファイルの length
+    // ------------------------------------------------------------------ 可変長ファイルの length
 
     /**
      * Given: 可変長ファイルのフィールド定義に {@code length} を書いた YAML。
@@ -1268,11 +1267,10 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : {@code IllegalArgumentException} で止まる。
      *
      * <p>
-     * NTF 仕様として、可変長ファイルでは {@code length} を書けない（ユーザー確定・2026-08-24。
-     * {@code coverage/issues.md} <b>XLS-45</b>）。Excel 記法に可変長のフィールド長行が無く
+     * NTF 仕様として、可変長ファイルでは {@code length} を書けない。Excel 記法に可変長のフィールド長行が無く
      * （記法は固定長との違いは、可変長ファイルの
      * 場合はフィールド長行を記載しない点のみである。）、書ける先の無い値を中間モデルが保持できると
-     * 辺③で黙って落ちるためである。拒否するのは<b>中間モデルの生成時</b>であって書き出し側ではない。
+     * 中間モデル → Excel の書き出しで黙って落ちるためである。拒否するのは<b>中間モデルの生成時</b>であって書き出し側ではない。
      * </p>
      *
      * <p>
@@ -1301,7 +1299,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 書き替える。</b>
      * </p>
      *
-     * <p>担保する軸要素: なし（XLS-45 の根拠テスト。辺②の実ファイル経路で落ちることの担保）。</p>
+     * <p>担保する観点: YAML の実ファイル経路でも中間モデルの生成時に落ちること。</p>
      */
     @Test
     public void rejectsVariableFileFieldWithLengthFromRealYaml() {

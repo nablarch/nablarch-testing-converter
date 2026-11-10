@@ -71,7 +71,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * </p>
      * <p>
      * セクション名の {@code null} は検査しない。かつては {@code null.yaml} というファイルを黙って
-     * 作っていたが（{@code issues.md} <b>XLS-33</b>）、{@link TestDataSection} が生成時に
+     * 作っていたが、{@link TestDataSection} が生成時に
      * {@code null} を拒否するようになったためここへは届かない。番人は置かない。
      * </p>
      */
@@ -182,9 +182,9 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * ブロックは読み戻せる形に書けない。記法にも
      * 記法
      * {@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
-     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになるとある
-     * （{@code coverage/issues.md} <b>XLS-29</b>）。{@link FileDataBlock} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（番人の移設は 2026-08-19）。
+     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになるとある。
+     * {@link FileDataBlock} はファイル種別をデータ種別から導出し、データ種別の {@code null} は
+     * <b>生成時点で拒否する</b>ため、ここへは届かない。
      * </p>
      *
      * @param sb    出力先
@@ -212,7 +212,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@code records: []} と書いても読み戻せない。記法にも電文のレコード 0 件を表す書き方の
      * 明文が無く、電文が存在しない場合は 記法の
      * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（{@code coverage/issues.md} <b>YML-12</b> の 2 形目。番人の移設は 2026-08-19）。
+     * ここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
      * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり、
      * {@link #emitFile} 経由で {@code records: []} を出す正当な経路である
      * （スキーマも
@@ -261,9 +261,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>キーを 1 つも持たない行は
      * {@code - &#123;&#125;} と書くしかなく、読み戻すと行として存在しないものとして取り除かれる
      * ——書き出せてはならない形である。{@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>
-     * （{@code coverage/issues.md} <b>XLS-21</b>。セルを 1 つも持たない行まで拒否対象を広げたのは
-     * 2026-08-31。カラム名の行がマーカーカラムだけのブロックがマーカーの名前と値を保つようになり、
-     * どちらの読みからもこの形が作られなくなったためである）。
+     * （セルを 1 つも持たない行まで拒否対象に含むのは、カラム名の行がマーカーカラムだけのブロックが
+     * マーカーの名前と値を保つようになり、どちらの読みからもこの形が作られなくなったためである）。
      * </p>
      *
      * @param sb      出力先
@@ -295,19 +294,20 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
      * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
      * {@link MessageDataBlock} が 0 件を<b>生成時点で拒否する</b>（{@code $defs.message_data} の
-     * {@code records} は {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため。番人の移設は 2026-08-19）。
+     * {@code records} は {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。
      * </p>
      * <p>
      * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>{@code $defs.record_fragment} は
      * {@code fields} を必須かつ {@code minItems} ＝ 1 とするため、どう書いても読み戻せない形だが
-     * （{@code coverage/issues.md} <b>YML-12</b> の 3 形目。辺③の同じ形は <b>XLS-22</b>）、
-     * {@link RecordLayout} が<b>生成時点で拒否する</b>ためここへは届かない（番人の移設は 2026-08-19）。
+     * （Excel へ書いても、名前行がレコード種別セル 1 個だけになり読み戻せない）、
+     * {@link RecordLayout} が<b>生成時点で拒否する</b>ためここへは届かない
+     * （もとはここに番人を置いていたが、生成時へ移した）。
      * </p>
      * <p>
      * <b>データ型が {@code null} のフィールド定義もここでは検査しない。</b>{@code $defs.field_def} は
-     * {@code required} ＝ {@code ["name", "type"]} であり {@code type} を省略した形は読み戻せないが
-     * （{@code coverage/issues.md} <b>YML-12</b> の 4 形目）、{@link FieldDef} が<b>生成時点で拒否する</b>
-     * ためここへは届かない（番人の移設は §1-D）。
+     * {@code required} ＝ {@code ["name", "type"]} であり {@code type} を省略した形は読み戻せないが、
+     * {@link FieldDef} が<b>生成時点で拒否する</b>
+     * ためここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
      * </p>
      * <p>
      * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>記法は固定長ファイルについて
@@ -315,11 +315,11 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * （「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
      * 電文も 記法はフレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
      * フィールド長・データという、前述のファイルデータと同じ構成を持つで同じ制約に掛かる
-     * （{@code coverage/issues.md} <b>XLS-30</b>）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
+     * （長さの無い固定長フィールドは本体がレコード長を計算できない）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
      * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
      * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
      * 正しい</b>ため拒否しない（記法は可変長ファイルでは…フィールド長は不要である）。
-     * 番人の移設は 2026-08-19。
+     * もとはここに番人を置いていたが、生成時へ移した。
      * </p>
      *
      * @param sb      出力先
@@ -489,7 +489,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * {@code default:} は switch の網羅のために残しているだけで<b>到達しない</b>。写せないのは
      * {@link DataType#DEFAULT} だけであり、{@code TestDataBlock} が生成時に拒否するようになったため
-     * ここへは届かない（{@code issues.md} <b>XLS-20</b>）。番人としては置いていない。
+     * ここへは届かない（{@code DEFAULT} は YAML のトップレベルキー対応表に行が無く、YAML 形式では
+     * 表現できない）。番人としては置いていない。
      * </p>
      *
      * @param type データ種別
@@ -511,7 +512,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             case RESPONSE_HEADER_MESSAGES:         return YamlSection.KEY_RESPONSE_HEADER_MESSAGES;
             case RESPONSE_BODY_MESSAGES:           return YamlSection.KEY_RESPONSE_BODY_MESSAGES;
             default:
-                // 到達不能。DEFAULT は TestDataBlock が生成時に拒否し（issues.md XLS-20）、
+                // 到達不能。DEFAULT は TestDataBlock が生成時に拒否し（YAML のトップレベルキー対応表に行が無い）、
                 // 残る 13 個の DataType は上ですべて分岐しているため。DataType が増えたときの安全網として残す。
                 throw new IllegalArgumentException("unsupported DataType: " + type);
         }

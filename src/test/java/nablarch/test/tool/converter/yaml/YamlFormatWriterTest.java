@@ -140,11 +140,12 @@ public class YamlFormatWriterTest {
     // ------------------------------------------------------------------------
 
     /**
-     * <b>本メソッドは #25.5 §1-C（2026-08-18）で
-     * {@code serializeFile_fixedWithDirectivesAndOmittedLength} から書き直した。</b>
+     * <b>本メソッドは {@code serializeFile_fixedWithDirectivesAndOmittedLength} から書き直した。</b>
      * 旧版は固定長ファイルの 2 レコード目に {@code length} を持たないフィールドを置き、
      * {@code - {name: "f2", type: "数値"}} と<b>長さを落として書かれる</b>ことを緑で固定していた。
-     * これは XLS-30 の不具合そのものであり、番人（固定長ファイル・電文で {@code length} が
+     * これは「固定長ファイル・電文でフィールド長 {@code null} のフィールド定義が黙って長さ無しで書き出される」
+     * 不具合そのものであり（NTF の記法は固定長ではフィールド名称・データ型・フィールド長の 3 リストが
+     * 同サイズで必須と定める）、番人（固定長ファイル・電文で {@code length} が
      * {@code null} なら送出）と両立しないため、長さを与えた形へ改めた。
      * {@code length} 省略の担保は可変長ファイルの
      * {@link #serializeFile_variableOmitsDirectivesAndRecordTypeAndLength} が持つ。
@@ -422,7 +423,7 @@ public class YamlFormatWriterTest {
      *
      * <p>
      * カラム名 0 件で<b>行を持つ</b>ブロックは {@code ColumnRowDataBlock} が生成時点で拒否するため、
-     * 辺④が扱うカラム名 0 件はこの形だけである
+     * YAML の書き出しが扱うカラム名 0 件はこの形だけである
      * （{@code TableDataBlockTest#カラムなしで行を持つブロックは生成できない}）。
      * </p>
      */
@@ -504,7 +505,7 @@ public class YamlFormatWriterTest {
 
     @Test
     public void serialize_groupId_isWrittenVerbatim() {
-        // Given: 生値のグループ ID（#34 以降、中間モデルが持つのは生値。書き出し側は推測で加工しない）
+        // Given: 生値のグループ ID（中間モデルが持つのは生値。書き出し側は推測で加工しない）
         TableDataBlock block = new TableDataBlock(DataType.SETUP_TABLE_DATA, "raw", "T",
                 list("C"), rows(row("1")));
 
@@ -573,9 +574,9 @@ public class YamlFormatWriterTest {
     }
 
     /**
-     * <b>{@code f2} のフィールド長は #25.5 §1-C（2026-08-18）で {@code null} から {@code "5"} へ改めた。</b>
+     * <b>{@code f2} のフィールド長は {@code null} から {@code "5"} へ改めた。</b>
      * 旧版は固定長ファイルで {@code length} を持たないフィールドが往復しても {@code null} のまま残ることを
-     * 緑で固定しており、XLS-30 の番人（固定長ファイル・電文で {@code length} が {@code null} なら送出）と
+     * 緑で固定しており、番人（固定長ファイル・電文で {@code length} が {@code null} なら送出）と
      * 両立しなかったためである。{@code length} 省略の担保は可変長ファイルの
      * {@link #serializeFile_variableOmitsDirectivesAndRecordTypeAndLength} が持つ。
      */

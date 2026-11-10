@@ -57,7 +57,6 @@ import org.junit.rules.TemporaryFolder;
  * </ul>
  *
  * <p>
- * 件数の導出コマンドと実測は {@code .rn/ntf-test-data-converter/coverage/inventory.md} §3.1 の末尾にある。
  * 本体パーサのキャッシュ衝突を避けるため、往復テストはテストごとに一意のブック名・
  * {@link TemporaryFolder} を使う。
  * </p>
@@ -149,11 +148,12 @@ public class XlsFormatWriterTest {
      * <p>
      * 記法はデータ行のセル数（Excel形式）……が
      * フィールド数より少ない場合、不足したフィールドは {@code ""} として補完されると定めており、
-     * <b>不足側は正当な形</b>である（余りの側だけが XLS-41 の番人で落ちる）。
-     * 辺④の同じ担保は {@code YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull}。
+     * <b>不足側は正当な形</b>である（余りの側だけが、記法が「データ要素数が不正である」をエラーと
+     * 定めていることに従い番人で落ちる）。
+     * YAML への書き出しの同じ担保は {@code YamlFormatWriterTest#serialize_rowShorterThanColumns_fillsMissingWithNull}。
      * </p>
      *
-     * <p>担保する軸要素: D（値の表現）——不足セルの補完。</p>
+     * <p>担保する観点: 値の表現——不足セルの補完。</p>
      */
     @Test
     public void writesEmptyCellsForRowShorterThanBlockWidth() {
@@ -357,11 +357,11 @@ public class XlsFormatWriterTest {
     /**
      * Given: 2 レコード目のレコード種別が null の固定長ファイル。
      * When : build。
-     * Then : IllegalStateException。XLS-06。記法はデータの後ろに新たなレコード種別とフィールド名称を
+     * Then : IllegalStateException。記法はデータの後ろに新たなレコード種別とフィールド名称を
      *        書いた時点で、新しいレコードレイアウトとして扱われると定めており
      *        、レコード種別を書かない
      *        2 件目以降のレコードレイアウトは Excel 記法では書き表せない。読み戻せない版面を黙って
-     *        書かず早期に失敗する。<b>辺④（YAML）はこの形を書けるため、番人はモデルへ寄せず
+     *        書かず早期に失敗する。<b>YAML はこの形を書けるため、番人はモデルへ寄せず
      *        書き出し側に残す</b>（記法、本体スキーマ {@code $defs.record_fragment} の
      *        {@code required} は {@code record_type} を含まない）。
      */
@@ -395,8 +395,7 @@ public class XlsFormatWriterTest {
      * （記法は0 件のデータは、{@code rows:} に空配列 {@code []} を記載する）には
      * カラム名を書く場所が無い。記法が定めるマーカーカラム（半角角括弧で囲むと
      * 読み込み対象から除外される。{@code SETUP_TABLE}・{@code EXPECTED_TABLE}・{@code LIST_MAP} で
-     * 使える）を 1 つ置くことが、両方の明文を同時に満たす唯一の書き方である
-     * （{@code coverage/issues.md} <b>XLS-27</b>。採用は 2026-08-19）。
+     * 使える）を 1 つ置くことが、両方の明文を同時に満たす唯一の書き方である。
      * </p>
      */
     @Test
@@ -444,7 +443,7 @@ public class XlsFormatWriterTest {
     /**
      * Given: 2 レコード目のレコード種別が空文字の固定長ファイル。
      * When : build。
-     * Then : IllegalStateException。XLS-06。空文字もレコード種別を書いたことにならないため
+     * Then : IllegalStateException。空文字もレコード種別を書いたことにならないため
      *        {@code null} と同様に弾く。
      */
     @Test(expected = IllegalStateException.class)
@@ -891,14 +890,14 @@ public class XlsFormatWriterTest {
      * </p>
      *
      * <p>
-     * <b>入力は #25.5 §1-C（2026-08-18）で長さを {@code null} から空文字へ書き直した。</b>
-     * 固定長ファイルで長さを {@code null} にできた頃の版は「長さセルが空で書かれる」という
-     * XLS-30 の不具合そのものを緑で固定していたため、番人と両立しない
-     * （型を {@code null} から空文字へ書き直した YML-12 4 形目のときと同じ扱い）。
+     * <b>入力は長さを {@code null} から空文字へ書き直してある。</b>
+     * 固定長ファイルで長さを {@code null} にできた頃の版は「固定長ファイルでフィールド長 {@code null} の
+     * フィールド定義が、黙って長さセルを空にして書かれる」という不具合そのものを緑で固定していたため、
+     * 番人と両立しない（型を {@code null} から空文字へ書き直したときと同じ扱い）。
      * </p>
      *
      * <p>
-     * <b>ディレクティブの値も #25.5 §6-H（2026-08-19。XLS-43）で {@code null} から空文字へ書き直した。</b>
+     * <b>ディレクティブの値も {@code null} から空文字へ書き直してある。</b>
      * {@link FileDataBlock} がディレクティブの値の {@code null} を生成時に拒否するようになったため、
      * この入力はもう作れない。<b>空文字は拒否しない</b>ので、空セルとして書かれることの担保は
      * 空文字入力で続けられる。
@@ -1011,9 +1010,8 @@ public class XlsFormatWriterTest {
      *        行は 0 件のまま。後続ブロックは食われない。
      *
      * <p>
-     * XLS-27 の本題である。マーカーカラム案を採る前は、カラム名の行を書けないため後続ブロックの
-     * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測。
-     * {@code coverage/issues.md} <b>XLS-27</b>）。カラム名の行がマーカーカラムだけのブロックは
+     * 0 件テーブルの書き出しの本題である。マーカーカラムを書く前は、カラム名の行を書けないため後続ブロックの
+     * 識別子行がカラム名の行として吸われ、<b>後続ブロックが丸ごと消えていた</b>（実測）。カラム名の行がマーカーカラムだけのブロックは
      * マーカーカラムを保って読み戻すため、書いたマーカーカラムがそのまま戻る。
      * 行を 1 件も持たない点は書き出し前と変わらない。
      * </p>

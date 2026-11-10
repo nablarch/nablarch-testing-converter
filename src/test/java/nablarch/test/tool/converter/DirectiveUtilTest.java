@@ -14,7 +14,7 @@ import org.junit.Test;
 /**
  * {@link DirectiveUtil#toStringDirectives} のテストクラス。
  * <p>
- * {@link DirectiveUtil#normalizeSeparator} は辺①・辺②の各リーダのテストが実入力で通しているため、
+ * {@link DirectiveUtil#normalizeSeparator} は Excel・YAML の各リーダのテストが実入力で通しているため、
  * ここでは {@code toStringDirectives} の写しかた——キーの順序保持と、{@code null} 値を
  * {@code valueMapper} に渡さず {@code null} のまま通すこと——だけを担保する。
  * </p>
