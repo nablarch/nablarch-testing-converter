@@ -20,6 +20,7 @@ import nablarch.test.core.file.DataFile;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.FrameworkOracle;
 import nablarch.test.core.reader.YamlFrameworkOracle;
+import nablarch.test.tool.converter.FrameworkReadDump;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -194,97 +195,129 @@ public class SpecialNotationRoundTripTest {
      * （末尾の null が空文字にならない等）を検知できない。
      */
 
+    /**
+     * 1 つの形式を本体に読ませる読み手。
+     *
+     * <p>
+     * {@code values} は値（テーブル・{@code LIST_MAP} は全体、ファイル・電文はパス・フィールド名・値）を、
+     * {@code layout} はファイル・電文の値以外（ディレクティブ・レコード種別・型・長さ）を写す。
+     * テーブル・{@code LIST_MAP} の {@code layout} は空文字を返す。
+     * </p>
+     *
+     * <p>
+     * 変換ツールが読んだ値と突き合わせるのは {@code values} だけである（変換ツールの中間モデルは
+     * ディレクティブを本体と同じ型で持たないため）。往復の前後の比較には {@link #full(Path)} を使い、
+     * 値以外の写し間違い（レコード種別・型の表記・長さ・ディレクティブの表記）も検知する。
+     * </p>
+     */
+    private static final class Oracle {
+
+        /** 値を写す関数。 */
+        private final Function<Path, String> values;
+
+        /** 値以外を写す関数。 */
+        private final Function<Path, String> layout;
+
+        /**
+         * コンストラクタ。
+         *
+         * @param values 値を写す関数
+         * @param layout 値以外を写す関数
+         */
+        private Oracle(Function<Path, String> values, Function<Path, String> layout) {
+            this.values = values;
+            this.layout = layout;
+        }
+
+        /**
+         * テーブル・{@code LIST_MAP} の読み手を作る（値以外の情報を持たない）。
+         *
+         * @param values 値を写す関数
+         * @return 読み手
+         */
+        static Oracle of(Function<Path, String> values) {
+            return new Oracle(values, d -> "");
+        }
+
+        /**
+         * ファイル・電文の読み手を作る。
+         *
+         * @param read 本体に読ませる関数
+         * @return 読み手
+         */
+        static Oracle ofFiles(Function<Path, List<? extends DataFile>> read) {
+            return new Oracle(d -> FrameworkReadDump.files(read.apply(d)),
+                    d -> FrameworkReadDump.fileLayouts(read.apply(d)));
+        }
+
+        /**
+         * 値を写す。
+         *
+         * @param dir ディレクトリ
+         * @return 表現
+         */
+        String values(Path dir) {
+            return values.apply(dir);
+        }
+
+        /**
+         * 値と値以外をあわせて写す。
+         *
+         * @param dir ディレクトリ
+         * @return 表現
+         */
+        String full(Path dir) {
+            return values.apply(dir) + layout.apply(dir);
+        }
+    }
+
     /** {@code SETUP_TABLE} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_SETUP_TABLES =
-            d -> dumpTables(FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_TABLE_DATA));
+    private static final Oracle XLS_SETUP_TABLES = Oracle.of(
+            d -> FrameworkReadDump.tables(
+                    FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_TABLE_DATA)));
 
     /** {@code setup_tables} を YAML 読み込みに読ませる。 */
-    private static final Function<Path, String> YAML_SETUP_TABLES =
-            d -> dumpTables(YamlFrameworkOracle.setupTables(d.toAbsolutePath().toString(), SHEET));
+    private static final Oracle YAML_SETUP_TABLES = Oracle.of(
+            d -> FrameworkReadDump.tables(YamlFrameworkOracle.setupTables(d.toAbsolutePath().toString(), SHEET)));
 
     /** {@code EXPECTED_TABLE} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_EXPECTED_TABLES =
-            d -> dumpTables(FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "",
-                    DataType.EXPECTED_TABLE_DATA));
+    private static final Oracle XLS_EXPECTED_TABLES = Oracle.of(
+            d -> FrameworkReadDump.tables(
+                    FrameworkOracle.tables(d.toString(), BOOK + "/" + SHEET, "", DataType.EXPECTED_TABLE_DATA)));
 
     /** {@code expected_tables} を YAML 読み込みに読ませる。 */
-    private static final Function<Path, String> YAML_EXPECTED_TABLES =
-            d -> dumpTables(YamlFrameworkOracle.expectedTables(d.toAbsolutePath().toString(), SHEET));
+    private static final Oracle YAML_EXPECTED_TABLES = Oracle.of(
+            d -> FrameworkReadDump.tables(YamlFrameworkOracle.expectedTables(d.toAbsolutePath().toString(), SHEET)));
 
     /** {@code SETUP_VARIABLE} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_SETUP_VARIABLE =
-            d -> dumpFiles(FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_VARIABLE));
+    private static final Oracle XLS_SETUP_VARIABLE = Oracle.ofFiles(
+            d -> FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_VARIABLE));
 
-    /** {@code setup_files}（可変長）を YAML 読み込みに読ませる。 */
-    private static final Function<Path, String> YAML_SETUP_FILES =
-            d -> dumpFiles(YamlFrameworkOracle.setupFiles(d.toAbsolutePath().toString(), SHEET));
+    /** {@code setup_files}（可変長・固定長）を YAML 読み込みに読ませる。 */
+    private static final Oracle YAML_SETUP_FILES = Oracle.ofFiles(
+            d -> YamlFrameworkOracle.setupFiles(d.toAbsolutePath().toString(), SHEET));
 
     /** {@code SETUP_FIXED} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_SETUP_FIXED =
-            d -> dumpFiles(FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_FIXED));
+    private static final Oracle XLS_SETUP_FIXED = Oracle.ofFiles(
+            d -> FrameworkOracle.files(d.toString(), BOOK + "/" + SHEET, "", DataType.SETUP_FIXED));
 
     /** {@code MESSAGE} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_MESSAGE =
-            d -> dumpFiles(FrameworkOracle.messageBodies(d.toString(), BOOK + "/" + SHEET, MESSAGE_ID));
+    private static final Oracle XLS_MESSAGE = Oracle.ofFiles(
+            d -> FrameworkOracle.messageBodies(d.toString(), BOOK + "/" + SHEET, MESSAGE_ID));
 
     /** {@code messages} を YAML 読み込みに読ませる。 */
-    private static final Function<Path, String> YAML_MESSAGE =
-            d -> dumpFiles(Collections.singletonList(
+    private static final Oracle YAML_MESSAGE = Oracle.ofFiles(
+            d -> Collections.singletonList(
                     YamlFrameworkOracle.messageBody(d.toAbsolutePath().toString(), SHEET, MESSAGE_ID)));
 
     /** {@code LIST_MAP} を本体に読ませる。 */
-    private static final Function<Path, String> XLS_LIST_MAP =
-            d -> dumpListMap(FrameworkOracle.listMap(d.toString(), BOOK + "/" + SHEET, LIST_MAP_ID));
+    private static final Oracle XLS_LIST_MAP = Oracle.of(
+            d -> FrameworkReadDump.listMap(FrameworkOracle.listMap(d.toString(), BOOK + "/" + SHEET, LIST_MAP_ID)));
 
     /** {@code list_maps} を YAML 読み込みに読ませる。 */
-    private static final Function<Path, String> YAML_LIST_MAP =
-            d -> dumpListMap(YamlFrameworkOracle.listMap(d.toAbsolutePath().toString(), SHEET, LIST_MAP_ID));
-
-    /**
-     * テーブル器の一覧を、突き合わせ用の文字列へ写す。
-     *
-     * @param tables テーブル器の一覧
-     * @return 表現
-     */
-    private static String dumpTables(List<TableData> tables) {
-        StringBuilder sb = new StringBuilder();
-        for (TableData table : tables) {
-            sb.append(table.getTableName())
-                    .append(' ').append(java.util.Arrays.asList(table.getColumnNames()))
-                    .append(' ').append(YamlFrameworkOracle.rowsOf(table)).append('\n');
-        }
-        return sb.toString();
-    }
-
-    /**
-     * ファイル器の一覧を、突き合わせ用の文字列へ写す。
-     *
-     * @param files ファイル器の一覧
-     * @return 表現
-     */
-    private static String dumpFiles(List<? extends DataFile> files) {
-        StringBuilder sb = new StringBuilder();
-        for (DataFile file : files) {
-            sb.append(file.getPath())
-                    .append(' ').append(nablarch.test.core.file.DataFileInspector.fieldNames(file))
-                    .append(' ').append(nablarch.test.core.file.DataFileInspector.values(file)).append('\n');
-        }
-        return sb.toString();
-    }
-
-    /**
-     * {@code LIST_MAP} の行一覧を、突き合わせ用の文字列へ写す。
-     *
-     * @param rows 行一覧
-     * @return 表現
-     */
-    private static String dumpListMap(List<Map<String, String>> rows) {
-        List<String> dump = new ArrayList<>();
-        for (Map<String, String> row : rows) {
-            dump.add(new java.util.TreeMap<>(row).toString());
-        }
-        return dump.toString();
-    }
+    private static final Oracle YAML_LIST_MAP = Oracle.of(
+            d -> FrameworkReadDump.listMap(
+                    YamlFrameworkOracle.listMap(d.toAbsolutePath().toString(), SHEET, LIST_MAP_ID)));
 
     // ------------------------------------------------------------------ 変換ツールが読んだ値（突き合わせ対象）
 
@@ -293,7 +326,7 @@ public class SpecialNotationRoundTripTest {
      *
      * <p>
      * 正解（フレームワークが読んだ値）とそのまま突き合わせるためのものである。
-     * ブロックの種別ごとに、上の {@code dumpTables} ／ {@code dumpListMap} ／ {@code dumpFiles} と
+     * ブロックの種別ごとに、{@link FrameworkReadDump} の {@code tables} ／ {@code listMap} ／ {@code files} と
      * 同じ並べ方をする。
      * </p>
      *
@@ -315,7 +348,7 @@ public class SpecialNotationRoundTripTest {
                 }
                 rows.add(map);
             }
-            return dumpListMap(rows);
+            return FrameworkReadDump.listMap(rows);
         }
         if (block instanceof TableDataBlock) {
             TableDataBlock table = (TableDataBlock) block;
@@ -489,6 +522,9 @@ public class SpecialNotationRoundTripTest {
         // 経路 4: YAML → XLS → YAML
         new XlsFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(7).toString());
+        // 途中の Excel を本体に読ませる。変換ツールのリーダで読み戻すだけでは、書き出しと読み戻しが
+        // 同じ写し間違いをしたときに見逃すため（YAML→XLS 方向の品質担保）。
+        assertThat("YAML→XLS の Excel を本体が読んだ値", readXls(dir(7)), is(fromYaml));
         new YamlFormatWriter().write(rewrap(new XlsFormatReader().read(dir(7).toString(), BOOK + "/" + SHEET)),
                 dir(8).toString());
         assertThat("YAML→XLS→YAML", readYaml(dir(8)), is(fromYaml));
@@ -989,31 +1025,35 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 記載例を 4 経路で往復させ、いずれも中間モデルのブロックが往復前と等しいことを確かめる。
+     * 記載例を 4 経路で往復させ、いずれも本体が読んだ値が往復前と等しいことを確かめる。
      *
      * <p>
      * 呼び出す前に、Excel 形式の記載例を {@link #dir(int) dir(1)} へ、YAML 形式の記載例を
      * {@code dir(5)} へ書き出しておくこと。
      * </p>
      */
-    private void assertExampleFourRoutes(Function<Path, String> xlsOracle, Function<Path, String> yamlOracle) {
+    private void assertExampleFourRoutes(Oracle xlsOracle, Oracle yamlOracle) {
         assertExampleFourRoutes(xlsOracle, yamlOracle, true);
     }
 
     /**
      * 記載例を 4 経路で往復させる。
      *
-     * @param xlsOracle            Excel 形式を本体に読ませる関数
-     * @param yamlOracle           YAML 形式を YAML 読み込みに読ませる関数
+     * <p>
+     * 往復の前後の比較には、値に加えて値以外（ファイル・電文のディレクティブ・レコード種別・型・長さ）も使う
+     * （{@link Oracle#full(Path)}）。2 つの記載例どうしの比較と、変換ツールが読んだ値との比較は、値だけで行う。
+     * </p>
+     *
+     * @param xlsOracle            Excel 形式を本体に読ませる読み手
+     * @param yamlOracle           YAML 形式を YAML 読み込みに読ませる読み手
      * @param compareConverterRead 変換ツールが読んだ値を正解と突き合わせるか。
      *                             {@code ${binaryFile:パス}} を含む母集合では偽にする ——
      *                             変換ツールはこの記法を解決せず記法のまま運ぶ仕様であり、
      *                             フレームワークが解決した値とは一致しないためである（往復の担保は残る）
      */
-    private void assertExampleFourRoutes(Function<Path, String> xlsOracle, Function<Path, String> yamlOracle,
-                                         boolean compareConverterRead) {
-        String fromXls = xlsOracle.apply(dir(1));
-        String fromYaml = yamlOracle.apply(dir(5));
+    private void assertExampleFourRoutes(Oracle xlsOracle, Oracle yamlOracle, boolean compareConverterRead) {
+        String fromXls = xlsOracle.values(dir(1));
+        String fromYaml = yamlOracle.values(dir(5));
 
         // 2 つの記載例が同じ意味を表していること
         assertThat("Excel 形式の例と YAML 形式の例が同じ値を表す", fromXls, is(fromYaml));
@@ -1024,28 +1064,35 @@ public class SpecialNotationRoundTripTest {
             assertThat("変換ツールの YAML 読みが本体と一致する", converterReadYaml(dir(5)), is(fromYaml));
         }
 
+        String fullFromXls = xlsOracle.full(dir(1));
+        String fullFromYaml = yamlOracle.full(dir(5));
+
         // 経路 1: XLS → XLS
         new XlsFormatWriter().write(rewrap(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET)),
                 dir(2).toString());
-        assertThat("XLS→XLS", xlsOracle.apply(dir(2)), is(fromXls));
+        assertThat("XLS→XLS", xlsOracle.full(dir(2)), is(fullFromXls));
 
         // 経路 2: XLS → YAML → XLS
         new YamlFormatWriter().write(rewrap(new XlsFormatReader().read(dir(1).toString(), BOOK + "/" + SHEET)),
                 dir(3).toString());
         new XlsFormatWriter().write(rewrap(new YamlFormatReader().read(dir(3).toAbsolutePath().toString(), SHEET)),
                 dir(4).toString());
-        assertThat("XLS→YAML→XLS", xlsOracle.apply(dir(4)), is(fromXls));
+        assertThat("XLS→YAML→XLS", xlsOracle.full(dir(4)), is(fullFromXls));
 
         // 経路 3: YAML → YAML
         new YamlFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(6).toString());
-        assertThat("YAML→YAML", yamlOracle.apply(dir(6)), is(fromYaml));
+        assertThat("YAML→YAML", yamlOracle.full(dir(6)), is(fullFromYaml));
 
         // 経路 4: YAML → XLS → YAML
         new XlsFormatWriter().write(rewrap(new YamlFormatReader().read(dir(5).toAbsolutePath().toString(), SHEET)),
                 dir(7).toString());
+        // 途中の Excel を本体に読ませ、元の YAML を YAML 読み込みが読んだ結果と比べる。変換ツールのリーダで
+        // 読み戻すだけでは、書き出しと読み戻しが同じ写し間違い（レコード種別・型の表記・長さ・ディレクティブの
+        // 表記など、変換ツールが原文から取り直す部分）をしたときに見逃すため（YAML→XLS 方向の品質担保）。
+        assertThat("YAML→XLS の Excel を本体が読んだ結果", xlsOracle.full(dir(7)), is(fullFromYaml));
         new YamlFormatWriter().write(rewrap(new XlsFormatReader().read(dir(7).toString(), BOOK + "/" + SHEET)),
                 dir(8).toString());
-        assertThat("YAML→XLS→YAML", yamlOracle.apply(dir(8)), is(fromYaml));
+        assertThat("YAML→XLS→YAML", yamlOracle.full(dir(8)), is(fullFromYaml));
     }
 }

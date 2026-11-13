@@ -1,5 +1,6 @@
 package nablarch.test.core.file;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,66 @@ public final class DataFileInspector {
      */
     public static Map<String, Object> directives(DataFile file) {
         return new TreeMap<String, Object>(file.directives);
+    }
+
+    /**
+     * ファイルが保持する断片（レコードレイアウト）ごとのレコード種別を、記述順に返す。
+     *
+     * <p>
+     * レコード種別は {@code DataFileFragment} の private フィールドで、取り出し口が無いためリフレクションで読む。
+     * </p>
+     *
+     * @param file 本体が読んだファイル
+     * @return 断片ごとのレコード種別
+     */
+    public static List<String> recordTypes(DataFile file) {
+        List<String> recordTypes = new ArrayList<String>();
+        try {
+            Field field = DataFileFragment.class.getDeclaredField("recordType");
+            field.setAccessible(true);
+            for (DataFileFragment fragment : file.all) {
+                recordTypes.add((String) field.get(fragment));
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("failed to read recordType of DataFileFragment", e);
+        }
+        return recordTypes;
+    }
+
+    /**
+     * ファイルが保持する断片ごとの型を、記述順に返す。
+     *
+     * <p>
+     * 本体が保持している型の表記（{@code dataTypeMapping} で写したあとの記号）である。
+     * </p>
+     *
+     * @param file 本体が読んだファイル
+     * @return 断片ごとの型
+     */
+    public static List<List<String>> types(DataFile file) {
+        List<List<String>> types = new ArrayList<List<String>>();
+        for (DataFileFragment fragment : file.all) {
+            types.add(fragment.types == null ? null : new ArrayList<String>(fragment.types));
+        }
+        return types;
+    }
+
+    /**
+     * ファイルが保持する断片ごとのフィールド長を、記述順に返す。
+     *
+     * <p>
+     * 記述したときの表記のまま（長さ省略の {@code -} を含む）である。可変長ファイルは長さを持たず {@code null} になる。
+     * </p>
+     *
+     * @param file 本体が読んだファイル
+     * @return 断片ごとのフィールド長
+     */
+    public static List<List<String>> lengths(DataFile file) {
+        List<List<String>> lengths = new ArrayList<List<String>>();
+        for (DataFileFragment fragment : file.all) {
+            lengths.add(fragment.lengths == null ? null : new ArrayList<String>(fragment.lengths));
+        }
+        return lengths;
     }
 
     /**
