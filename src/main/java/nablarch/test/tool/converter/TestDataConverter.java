@@ -62,7 +62,7 @@ public final class TestDataConverter {
      * @param request 変換リクエスト
      * @return 変換したコンテナ（テストクラス相当）の件数
      * @throws ConverterException 入力ディレクトリが存在しない／出力が入力のファイル自身になる／
-     *                            上書き禁止下で出力が衝突した場合
+     *                            出力先に同名の {@code .xls} がある／上書き禁止下で出力が衝突した場合
      */
     public static int convert(ConversionRequest request) {
         FormatHandler source = request.getSourceFormat().handler();
@@ -75,6 +75,7 @@ public final class TestDataConverter {
             Path outputBase = target.resolveOutputBase(request, src);
             List<Path> outputs = target.outputPaths(container, outputBase);
             checkNotInput(source.inputPaths(src), outputs);
+            checkNotShadowed(target.shadowingPaths(container, outputBase));
             checkOverwrite(request, outputs);
             writer.write(container, outputBase.toString());
             converted++;
@@ -106,6 +107,29 @@ public final class TestDataConverter {
                             + " converting in place would lose comments that the conversion drops."
                             + " Specify an output directory different from the input: " + output);
                 }
+            }
+        }
+    }
+
+    /**
+     * 出力先に、書き出したファイルの代わりに NTF に読まれてしまうファイルが無いことを検証する。
+     *
+     * <p>
+     * Excel 形式へは常に {@code .xlsx} で書くため、{@code .xls} を変換して同じディレクトリへ戻すと、
+     * 同名の {@code .xls} と {@code .xlsx} が並ぶ。本体は {@code .xls} を先に読むので、書き出した
+     * {@code .xlsx} は読まれない。{@code .xlsx} を上書きしても {@code .xls} が残る限り同じなので、
+     * {@code overwrite} によらず止める。
+     * </p>
+     *
+     * @param shadowing 出力先にあってはならないファイル
+     * @throws ConverterException いずれかのファイルが存在する場合
+     */
+    private static void checkNotShadowed(List<Path> shadowing) {
+        for (Path path : shadowing) {
+            if (Files.exists(path)) {
+                throw new ConverterException("same-name .xls book exists in the output directory: " + path
+                        + " (NTF reads the .xls book before the .xlsx book to be written;"
+                        + " remove the .xls book or specify another output directory)");
             }
         }
     }

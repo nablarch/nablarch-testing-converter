@@ -79,4 +79,15 @@ interface FormatHandler {
      * @return 出力ファイルパスのリスト
      */
     List<Path> outputPaths(TestDataContainer container, Path outputBase);
+
+    /**
+     * 出力先にあると、書き出したファイルの代わりに NTF に読まれてしまうファイルを列挙する。
+     *
+     * <p>列挙したファイルが 1 つでも存在すれば、{@code overwrite} によらず変換を止める。</p>
+     *
+     * @param container  出力するコンテナ
+     * @param outputBase 出力先ディレクトリ
+     * @return 出力先にあってはならないファイルのリスト
+     */
+    List<Path> shadowingPaths(TestDataContainer container, Path outputBase);
 }

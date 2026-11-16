@@ -5,6 +5,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,6 +29,9 @@ import nablarch.test.tool.converter.xls.XlsFormatWriter;
 import nablarch.test.tool.converter.yaml.YamlFormatReader;
 import nablarch.test.tool.converter.yaml.YamlFormatWriter;
 
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -507,6 +511,78 @@ public class TestDataConverterTest {
         // Then
         assertThat(count, is(1));
         assertThat(Files.exists(in.resolve("BookA/data.yaml")), is(true));
+    }
+
+    /**
+     * Given: 出力先に、出力するブックと同名の {@code .xls} がある。
+     * When : YAML→XLS 変換（{@code overwrite=true}）。
+     * Then : ConverterException で止まり、{@code .xlsx} は作られない。
+     *
+     * <p>
+     * 本体は同名の {@code .xls} を先に読むため、{@code .xlsx} を書いても読まれない。
+     * {@code .xlsx} を上書きしても {@code .xls} が残る限り同じなので、{@code overwrite} によらず止める。
+     * </p>
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenSameNameXlsExistsInXlsOutputDirectory() throws IOException {
+        // Given
+        writeYaml(oneTable("BookA", "data", sampleTable("USERS")), in.resolve("BookA"));
+        Files.createFile(out.resolve("BookA.xls"));
+
+        // When / Then
+        try {
+            TestDataConverter.convert(new ConversionRequest.Builder()
+                    .sourceFormat(DataFormat.YAML).targetFormat(DataFormat.XLS)
+                    .inputPath(in).outputPath(out)
+                    .overwrite(true)
+                    .build());
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith(
+                    "same-name .xls book exists in the output directory: " + out.resolve("BookA.xls")), is(true));
+        }
+        assertThat(Files.exists(out.resolve("BookA.xlsx")), is(false));
+    }
+
+    /**
+     * Given: 入力ルートに {@code .xls} のブック 1 件。
+     * When : XLS→XLS 変換で、出力先に入力と同じディレクトリを指定する。
+     * Then : 出力の {@code .xlsx} は入力の {@code .xls} と別のファイルだが、同名の {@code .xls} と並ぶため止まる。
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenXlsBookIsConvertedToXlsIntoSameDirectory() throws IOException {
+        // Given
+        writeHssfBook(in.resolve("BookA.xls"));
+
+        // When / Then
+        try {
+            TestDataConverter.convert(DataFormat.XLS, DataFormat.XLS, in, in);
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("same-name .xls book exists in the output directory"), is(true));
+        }
+        assertThat(Files.exists(in.resolve("BookA.xlsx")), is(false));
+    }
+
+    /**
+     * {@code .xls} 形式（HSSF）で、1 テーブルだけのブックを書く。
+     *
+     * @param book 書き出すファイル
+     * @throws IOException 入出力エラー
+     */
+    private static void writeHssfBook(Path book) throws IOException {
+        Workbook workbook = new HSSFWorkbook();
+        Sheet sheet = workbook.createSheet("data");
+        sheet.createRow(0).createCell(0).setCellValue("SETUP_TABLE=USERS");
+        sheet.createRow(1).createCell(0).setCellValue("USER_NAME");
+        sheet.createRow(2).createCell(0).setCellValue("alice");
+        try (OutputStream os = Files.newOutputStream(book)) {
+            workbook.write(os);
+        }
     }
 
     /**

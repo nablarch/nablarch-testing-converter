@@ -23,6 +23,9 @@ final class XlsFormatHandler implements FormatHandler {
     /** Excel ブックの拡張子（小文字） */
     private static final String XLSX_EXTENSION = ".xlsx";
 
+    /** 本体が {@code .xlsx} より先に読む Excel ブックの拡張子。 */
+    private static final String XLS_EXTENSION = ".xls";
+
     @Override
     public List<Path> findSources(ConversionRequest request) {
         return ConverterFileFilter.findXlsFiles(request.getInputPath(), request.getIncludes(), request.getExcludes());
@@ -83,6 +86,19 @@ final class XlsFormatHandler implements FormatHandler {
      * @param file ファイル
      * @return 親ディレクトリパス文字列
      */
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Excel 形式へは常に {@code .xlsx} で書くが、本体は同名の {@code .xls} があればそちらを先に読む。
+     * 出力先に同名の {@code .xls} があると、書き出した {@code .xlsx} は読まれず、テストは古い内容で動く。
+     * </p>
+     */
+    @Override
+    public List<Path> shadowingPaths(TestDataContainer container, Path outputBase) {
+        return Collections.singletonList(outputBase.resolve(container.getName() + XLS_EXTENSION));
+    }
+
     private static String parentOf(Path file) {
         Path parent = file.getParent();
         return parent == null ? "." : parent.toString();

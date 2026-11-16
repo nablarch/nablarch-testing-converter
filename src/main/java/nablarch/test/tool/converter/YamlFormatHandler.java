@@ -6,6 +6,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TreeMap;
@@ -84,6 +85,16 @@ final class YamlFormatHandler implements FormatHandler {
      * @param yamlDir YAML コンテナディレクトリ
      * @return YAML ファイルのリスト（ファイル名辞書順）
      */
+    /**
+     * {@inheritDoc}
+     *
+     * <p>YAML 形式には、書き出したファイルの代わりに読まれるファイルが無い。</p>
+     */
+    @Override
+    public List<Path> shadowingPaths(TestDataContainer container, Path outputBase) {
+        return Collections.emptyList();
+    }
+
     private static List<Path> listYamlFiles(Path yamlDir) {
         TreeMap<String, Path> byName = new TreeMap<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(yamlDir)) {
