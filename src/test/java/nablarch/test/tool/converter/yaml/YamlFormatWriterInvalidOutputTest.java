@@ -188,7 +188,7 @@ public class YamlFormatWriterInvalidOutputTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - C: \"v\"\n"));
+                + "      - \"C\": \"v\"\n"));
     }
 
     // ------------------------------------------------------------------ 書き込み権限なし

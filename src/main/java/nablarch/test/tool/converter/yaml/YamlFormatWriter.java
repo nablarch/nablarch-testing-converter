@@ -272,7 +272,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      */
     private void emitMapRows(StringBuilder sb, YamlSeq parent, List<String> columns, List<List<String>> rows) {
         if (rows.isEmpty()) {
-            parent.line(key("rows") + ": []");
+            parent.line("rows: []");
             return;
         }
         parent.header("rows");
@@ -280,7 +280,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         for (List<String> row : rows) {
             YamlSeq item = new YamlSeq(sb, rowLevel);
             for (int i = 0; i < columns.size(); i++) {
-                item.prop(columns.get(i), i < row.size() ? row.get(i) : null);
+                item.userProp(columns.get(i), i < row.size() ? row.get(i) : null);
             }
         }
     }
@@ -328,7 +328,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      */
     private void emitRecords(StringBuilder sb, YamlSeq parent, List<RecordLayout> records) {
         if (records.isEmpty()) {
-            parent.line(key("records") + ": []");
+            parent.line("records: []");
             return;
         }
         parent.header("records");
@@ -358,7 +358,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         parent.header(keyName);
         String indent = ind(parent.childLevel());
         for (Map.Entry<String, String> e : map.entrySet()) {
-            sb.append(indent).append(key(e.getKey())).append(": ").append(q(e.getValue())).append('\n');
+            sb.append(indent).append(userKey(e.getKey())).append(": ").append(q(e.getValue())).append('\n');
         }
     }
 
@@ -376,7 +376,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     private <T> void emitFlowList(StringBuilder sb, YamlSeq parent, String keyName, List<T> items,
                                   Function<T, String> renderer) {
         if (items.isEmpty()) {
-            parent.line(key(keyName) + ": []");
+            parent.line(keyName + ": []");
             return;
         }
         parent.header(keyName);
@@ -396,10 +396,10 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      */
     private static String fieldFlow(FieldDef field) {
         StringBuilder b = new StringBuilder("{");
-        b.append(key("name")).append(": ").append(q(field.getName()));
-        b.append(", ").append(key("type")).append(": ").append(q(field.getType()));
+        b.append("name: ").append(q(field.getName()));
+        b.append(", type: ").append(q(field.getType()));
         if (field.getLength() != null) {
-            b.append(", ").append(key("length")).append(": ").append(q(field.getLength()));
+            b.append(", length: ").append(q(field.getLength()));
         }
         return b.append('}').toString();
     }
@@ -441,32 +441,20 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * キーを整形する。YAML 特殊文字・空白・空文字を含む場合のみダブルクォートで囲む。
+     * 利用者が書くキー（テーブルのカラム名、{@code LIST_MAP} のキー、ディレクティブ名、
+     * FW 制御ヘッダ名）を、値と同じく常にダブルクォートで囲む。
+     *
+     * <p>
+     * 囲まないキーは、{@code null} なら null、{@code true}・{@code false} なら真偽値、{@code 1}・{@code 1.5}
+     * なら数値として読まれ、文字列のキーに戻らない。値を囲むのと同じ理由である。
+     * 構造のキー（{@code rows}・{@code name} など）は本クラスが決める識別子なので、そのまま書く。
+     * </p>
      *
      * @param k キー
      * @return キー文字列
      */
-    static String key(String k) {
-        return isPlainSafeKey(k) ? k : q(k);
-    }
-
-    /**
-     * キーをクォートなしで安全に書けるか判定する。
-     *
-     * @param k キー
-     * @return クォート不要なら真
-     */
-    private static boolean isPlainSafeKey(String k) {
-        if (k.isEmpty()) {
-            return false;
-        }
-        for (int i = 0; i < k.length(); i++) {
-            char c = k.charAt(i);
-            if (c < 0x20 || c == ' ' || "\"'#:,[]{}&*!|>%@`?".indexOf(c) >= 0) {
-                return false;
-            }
-        }
-        return "-?:".indexOf(k.charAt(0)) < 0;
+    static String userKey(String k) {
+        return q(k);
     }
 
     /**

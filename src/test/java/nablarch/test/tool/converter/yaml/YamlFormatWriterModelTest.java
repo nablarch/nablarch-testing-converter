@@ -53,8 +53,7 @@ import org.junit.rules.TemporaryFolder;
  * <b>送信同期 3 種（{@code EXPECTED_REQUEST_BODY_MESSAGES}／{@code RESPONSE_HEADER_MESSAGES}／
  * {@code RESPONSE_BODY_MESSAGES}）のセクションキーは、既存テストが担保しているように見えて実際には
  * 固定されていなかったため、3 件を追加した。</b>
- * あわせて、キーのクォート判定（{@code YamlFormatWriter#isPlainSafeKey}）が特殊文字集合の
- * ほとんどについて未固定だったため 1 件を、値 {@code "true"}／{@code "2026-08-07"} の記法を
+ * あわせて、YAML の特殊文字を含むキーが囲まれて書かれることを確かめる 1 件を、値 {@code "true"}／{@code "2026-08-07"} の記法を
  * {@code YamlFormatWriter#emitMap} 経路でも観測するため 1 件を追加した。経緯は各メソッドの Javadoc にある。
  * </p>
  *
@@ -644,7 +643,7 @@ public class YamlFormatWriterModelTest {
                 + "setup_tables:\n"
                 + "  - table: \"" + name + "\"\n"
                 + "    rows:\n"
-                + "      - C: \"1\"\n";
+                + "      - \"C\": \"1\"\n";
     }
 
     /**
@@ -706,8 +705,8 @@ public class YamlFormatWriterModelTest {
                 + "  - path: \"n.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    directives:\n"
-                + "      text-encoding: \"UTF-8\"\n"
-                + "      file-type: \"Fixed\"\n"
+                + "      \"text-encoding\": \"UTF-8\"\n"
+                + "      \"file-type\": \"Fixed\"\n"
                 + "    records: []\n"));
     }
 
@@ -755,10 +754,10 @@ public class YamlFormatWriterModelTest {
                 + "messages:\n"
                 + "  - id: \"RM01\"\n"
                 + "    directives:\n"
-                + "      text-encoding: \"UTF-8\"\n"
+                + "      \"text-encoding\": \"UTF-8\"\n"
                 + "    fw_header:\n"
-                + "      resendFlag: \"true\"\n"
-                + "      dateSent: \"2026-08-07\"\n"
+                + "      \"resendFlag\": \"true\"\n"
+                + "      \"dateSent\": \"2026-08-07\"\n"
                 + "    records:\n"
                 + "      - fields:\n"
                 + "          - {name: \"f\", type: \"半角英字\", length: \"1\"}\n"
@@ -773,8 +772,8 @@ public class YamlFormatWriterModelTest {
      *
      * <p>
      * 1 列目は生のキー（{@code x} ＋ 対象文字）、2 列目は {@code directives:} 配下に現れるはずの表記である。
-     * 対象文字は {@code YamlFormatWriter#isPlainSafeKey} の特殊文字集合
-     * {@code "'#:,[]{}&*!|>%@`?}（<b>18 文字</b>）の全部と、制御文字（{@code < 0x20}）2 種である。
+     * 対象文字は YAML の特殊文字 {@code "'#:,[]{}&*!|>%@`?}（<b>18 文字</b>）の全部と、
+     * 制御文字（{@code < 0x20}）2 種である。
      * 期待表記は<b>実行して観測した結果</b>であり、実装から導出していない。
      * </p>
      */
@@ -802,23 +801,19 @@ public class YamlFormatWriterModelTest {
     };
 
     /**
-     * Given: {@code YamlFormatWriter#isPlainSafeKey} の特殊文字集合 18 文字と制御文字 2 種を
+     * Given: YAML の特殊文字 18 文字と制御文字 2 種を
      *        1 文字ずつ含む {@code directives} のキー。
      * When : {@code serialize}。
      * Then : 20 通りすべてで、そのキーがダブルクォートで囲まれた出力全文になる。
      *
      * <p>
-     * 担保する観点: {@code isPlainSafeKey} の判定そのもの（値の表現ではなく<b>キー</b>のクォート）。
+     * 担保する観点: 利用者が書くキーのクォート（{@code YamlFormatWriter#userKey}。値の表現ではなく<b>キー</b>）。
+     * 利用者が書くキーは常に囲むので、これらの文字を含むキーも囲まれる。
      * </p>
      *
      * <p>
-     * <b>既存の担保はコロン・空白・空文字・先頭 {@code -} の 4 つだけだった</b>
-     * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
-     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}）。
-     * 集合から {@code #} を 1 文字外すだけで全件が通ってしまうこと（生存変異）を実測しており、
-     * 実害は大きい —— {@code #} が外れるとカラム名 {@code #x} の行が {@code - #x: "v"} となって
+     * 囲まずに書くと実害は大きい —— たとえばカラム名 {@code #x} の行が {@code - #x: "v"} となって
      * <b>行全体が YAML コメント化し、データ行が黙って消える</b>。
-     * あわせて JaCoCo で未到達だった「キーに制御文字を含む」枝もここで閉じる。
      * </p>
      *
      * <p>
@@ -831,9 +826,7 @@ public class YamlFormatWriterModelTest {
      *
      * <ol>
      *   <li><b>20 ケースは 1 つの振る舞いである。</b>いずれも
-     *       {@code YamlFormatWriter#isPlainSafeKey} の同一の判定 1 つ
-     *       （特殊文字集合の {@code indexOf} と {@code c < 0x20} の制御文字ガード）を通り、
-     *       通れば一律に {@code q(k)} でクォートされる。Xls 側の禁止文字 7 件のように
+     *       {@code YamlFormatWriter#userKey} を通り、一律に {@code q(k)} でクォートされる。Xls 側の禁止文字 7 件のように
      *       <b>文字ごとに違うメッセージ・違う挙動</b>（例外になる／切り詰めで黙って書けてしまう）を
      *       持つわけではない。</li>
      *   <li><b>失敗を集約したので規約の理由が成立しない。</b>ループ内では判定するだけで、
@@ -955,7 +948,7 @@ public class YamlFormatWriterModelTest {
         FileDataBlock block = new FileDataBlock(DataType.SETUP_VARIABLE, "", "s.csv", map("field-separator", "\t"),
                 Collections.singletonList(variableRecord()));
         assertThat("書き出しはタブをエスケープして忠実に書く",
-                serialize(block), containsString("field-separator: \"\\t\""));
+                serialize(block), containsString("\"field-separator\": \"\\t\""));
 
         // When
         String base = write(block);

@@ -75,12 +75,12 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"USERS\"\n"
                 + "    rows:\n"
-                + "      - ID: \"1\"\n"
-                + "        NAME: \"${u}\"\n"
-                + "        NOTE: null\n"
-                + "      - ID: \"2\"\n"
-                + "        NAME: \"\"\n"
-                + "        NOTE: \"x\"\n"));
+                + "      - \"ID\": \"1\"\n"
+                + "        \"NAME\": \"${u}\"\n"
+                + "        \"NOTE\": null\n"
+                + "      - \"ID\": \"2\"\n"
+                + "        \"NAME\": \"\"\n"
+                + "        \"NOTE\": \"x\"\n"));
     }
 
     @Test
@@ -97,11 +97,11 @@ public class YamlFormatWriterTest {
                 + "  - group_id: \"case01\"\n"
                 + "    table: \"ORDERS\"\n"
                 + "    rows:\n"
-                + "      - OID: \"10\"\n"
+                + "      - \"OID\": \"10\"\n"
                 + "  - group_id: \"case02\"\n"
                 + "    table: \"ORDERS\"\n"
                 + "    rows:\n"
-                + "      - OID: \"20\"\n"));
+                + "      - \"OID\": \"20\"\n"));
     }
 
     @Test
@@ -129,10 +129,10 @@ public class YamlFormatWriterTest {
                 + "list_maps:\n"
                 + "  - id: \"lm1\"\n"
                 + "    rows:\n"
-                + "      - key: \"k1\"\n"
-                + "        val: \"${v1}\"\n"
-                + "      - key: \"k2\"\n"
-                + "        val: null\n"));
+                + "      - \"key\": \"k1\"\n"
+                + "        \"val\": \"${v1}\"\n"
+                + "      - \"key\": \"k2\"\n"
+                + "        \"val\": null\n"));
     }
 
     // ------------------------------------------------------------------------
@@ -167,8 +167,8 @@ public class YamlFormatWriterTest {
                 + "  - path: \"input.dat\"\n"
                 + "    type: \"fixed\"\n"
                 + "    directives:\n"
-                + "      file-type: \"Fixed\"\n"
-                + "      text-encoding: \"UTF-8\"\n"
+                + "      \"file-type\": \"Fixed\"\n"
+                + "      \"text-encoding\": \"UTF-8\"\n"
                 + "    records:\n"
                 + "      - record_type: \"head\"\n"
                 + "        fields:\n"
@@ -230,10 +230,10 @@ public class YamlFormatWriterTest {
                 + "messages:\n"
                 + "  - id: \"RM01\"\n"
                 + "    directives:\n"
-                + "      text-encoding: \"Windows-31J\"\n"
+                + "      \"text-encoding\": \"Windows-31J\"\n"
                 + "    fw_header:\n"
-                + "      requestId: \"RM01\"\n"
-                + "      userId: \"${user}\"\n"
+                + "      \"requestId\": \"RM01\"\n"
+                + "      \"userId\": \"${user}\"\n"
                 + "    records:\n"
                 + "      - record_type: \"body\"\n"
                 + "        fields:\n"
@@ -302,7 +302,7 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"T1\"\n"
                 + "    rows:\n"
-                + "      - C: \"1\"\n"
+                + "      - \"C\": \"1\"\n"
                 + "\n"
                 + "messages:\n"
                 + "  - id: \"M\"\n"
@@ -334,7 +334,7 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - V: \"a\\\"b\\\\c\\n\\r\\t\\x01\"\n"));
+                + "      - \"V\": \"a\\\"b\\\\c\\n\\r\\t\\x01\"\n"));
     }
 
     @Test
@@ -349,8 +349,8 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - V: \"" + emoji + "\"\n"
-                + "      - V: \"abc" + emoji + "xyz\"\n"));
+                + "      - \"V\": \"" + emoji + "\"\n"
+                + "      - \"V\": \"abc" + emoji + "xyz\"\n"));
     }
 
     @Test
@@ -397,8 +397,8 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - V: null\n"
-                + "      - V: \"null\"\n"));
+                + "      - \"V\": null\n"
+                + "      - \"V\": \"null\"\n"));
     }
 
     // ------------------------------------------------------------------------
@@ -470,8 +470,8 @@ public class YamlFormatWriterTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - A: \"x\"\n"
-                + "        B: null\n"));
+                + "      - \"A\": \"x\"\n"
+                + "        \"B\": null\n"));
     }
 
     /**

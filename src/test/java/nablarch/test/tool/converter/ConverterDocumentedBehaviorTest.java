@@ -226,7 +226,7 @@ public class ConverterDocumentedBehaviorTest {
         assertThat("先頭のコメント", written, not(containsString("先頭のコメント")));
         assertThat("行末のコメント", written, not(containsString("行末のコメント")));
         assertThat("行の間のコメント", written, not(containsString("行の間のコメント")));
-        assertThat("値は保たれる", written, containsString("A: \"1\""));
+        assertThat("値は保たれる", written, containsString("\"A\": \"1\""));
     }
 
     // ------------------------------------------------------------------ 3-4

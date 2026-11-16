@@ -30,20 +30,30 @@ class YamlSeq {
     /**
      * {@code key: value} のプロパティ行を出力する。
      *
-     * @param k キー
+     * @param k 構造のキー（{@code table}・{@code id} など。そのまま書く）
      * @param v 値（クォートして出力。{@code null} は {@code null}）
      */
     void prop(String k, String v) {
-        line(YamlFormatWriter.key(k) + ": " + YamlFormatWriter.q(v));
+        line(k + ": " + YamlFormatWriter.q(v));
+    }
+
+    /**
+     * 利用者が書くキー（カラム名など）のプロパティ行を出力する。
+     *
+     * @param k 利用者が書くキー（{@link YamlFormatWriter#userKey} で囲んで書く）
+     * @param v 値（クォートして出力。{@code null} は {@code null}）
+     */
+    void userProp(String k, String v) {
+        line(YamlFormatWriter.userKey(k) + ": " + YamlFormatWriter.q(v));
     }
 
     /**
      * {@code key:}（値は後続の字下げで続く）のヘッダ行を出力する。
      *
-     * @param k キー
+     * @param k 構造のキー（そのまま書く）
      */
     void header(String k) {
-        line(YamlFormatWriter.key(k) + ":");
+        line(k + ":");
     }
 
     /**

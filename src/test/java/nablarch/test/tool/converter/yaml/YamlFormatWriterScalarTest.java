@@ -7,9 +7,14 @@ import static org.junit.Assert.assertThrows;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.core.reader.YamlFrameworkOracle;
+import nablarch.test.tool.converter.model.ListMapBlock;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -152,7 +157,7 @@ public class YamlFormatWriterScalarTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - V: " + scalar + "\n";
+                + "      - \"V\": " + scalar + "\n";
     }
 
     /**
@@ -169,6 +174,79 @@ public class YamlFormatWriterScalarTest {
         assertThat("読み戻したカラム名", table.getColumnNames(), is(Arrays.asList("V")));
         assertThat("読み戻した行数", table.getRows().size(), is(1));
         return table.getRows().get(0).get(0);
+    }
+
+    // ------------------------------------------------------------------ キー
+
+    /** 引用符で囲まないと文字列以外（null・真偽値・数値）として読まれるキーと、文字列のままのキー。 */
+    private static final List<String> NON_STRING_LOOKING_KEYS =
+            Arrays.asList("null", "true", "false", "1", "1.5", "1e3", "001");
+
+    /**
+     * {@link #NON_STRING_LOOKING_KEYS} をキーに持つ {@code LIST_MAP} を組み立てる。値はキーごとに変える。
+     *
+     * @return ブロック
+     */
+    private static ListMapBlock nonStringLookingKeyBlock() {
+        List<String> values = Arrays.asList("a", "b", "c", "d", "e", "f", "g");
+        return new ListMapBlock("", "lm", NON_STRING_LOOKING_KEYS, Collections.singletonList(values));
+    }
+
+    /**
+     * Given: キーが {@code null}・{@code true}・{@code false}・{@code 1}・{@code 1.5}・{@code 1e3}・
+     *        {@code 001} の {@code LIST_MAP}。
+     * When : {@code serialize}。
+     * Then : どのキーもダブルクォートで囲んで書く。
+     *
+     * <p>
+     * 担保する観点: 利用者が書くキーは、値と同じく常に囲むこと。囲まないと、{@code null} は null、
+     * {@code true}・{@code false} は真偽値、{@code 1}・{@code 1.5}・{@code 1e3} は数値として読まれる。
+     * </p>
+     */
+    @Test
+    public void writesNonStringLookingKeysAsDoubleQuotedScalars() {
+        assertThat(writer.serialize(section(nonStringLookingKeyBlock())), is(""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - \"null\": \"a\"\n"
+                + "        \"true\": \"b\"\n"
+                + "        \"false\": \"c\"\n"
+                + "        \"1\": \"d\"\n"
+                + "        \"1.5\": \"e\"\n"
+                + "        \"1e3\": \"f\"\n"
+                + "        \"001\": \"g\"\n"));
+    }
+
+    /**
+     * Given: {@link #writesNonStringLookingKeysAsDoubleQuotedScalars} と同じ {@code LIST_MAP}。
+     * When : {@code write} → 実 {@link YamlFormatReader} と、本体の YAML の読み込みで読み戻す。
+     * Then : どちらでも元のキーと値に戻る。
+     *
+     * <p>
+     * 囲まずに書いていたときは、{@code null} がスキーマの検証で、{@code true}・{@code false}・{@code 1}・
+     * {@code 1.5}・{@code 1e3} が {@code ClassCastException} で、読み込みに失敗していた。
+     * </p>
+     */
+    @Test
+    public void restoresNonStringLookingKeysThroughRealReaders() {
+        // Given
+        String base = folder.getRoot().getAbsolutePath();
+        ListMapBlock block = nonStringLookingKeyBlock();
+
+        // When
+        writer.write(new TestDataContainer("td", Collections.singletonList(section(block))), base);
+
+        // Then
+        ListMapBlock back = YamlFixture.onlyBlock(new YamlFormatReader().read(base, "td"), ListMapBlock.class);
+        assertThat("変換ツール: キー", back.getColumnNames(), is(NON_STRING_LOOKING_KEYS));
+        assertThat("変換ツール: 値", back.getRows(), is(block.getRows()));
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (int i = 0; i < NON_STRING_LOOKING_KEYS.size(); i++) {
+            expected.put(NON_STRING_LOOKING_KEYS.get(i), block.getRows().get(0).get(i));
+        }
+        assertThat("本体", YamlFrameworkOracle.listMap(base, "td", "lm"),
+                is(Collections.singletonList(expected)));
     }
 
     // ------------------------------------------------------------------ "100"
@@ -313,7 +391,7 @@ public class YamlFormatWriterScalarTest {
                 + "setup_tables:\n"
                 + "  - table: \"T\"\n"
                 + "    rows:\n"
-                + "      - V: \"aaaa bbbb cccc dddd eeee ffff gggg hhhh"
+                + "      - \"V\": \"aaaa bbbb cccc dddd eeee ffff gggg hhhh"
                 + "\\niiii jjjj kkkk llll mmmm nnnn oooo pppp\\\n"
                 + "  \\ qqqq\"\n"));
     }
@@ -371,12 +449,8 @@ public class YamlFormatWriterScalarTest {
      * </p>
      *
      * <p>
-     * <b>キー側の担保は、既存テストだけではコロン・空白・空文字・先頭 {@code -} の 4 つに限られていた</b>
-     * （{@code YamlFormatWriterTest#serialize_quotesKeyContainingSpecialChars} ／
-     * {@code #serialize_emptyKey_isQuoted} ／ {@code #serialize_keyStartingWithIndicator_isQuoted}）。
-     * {@code YamlFormatWriter#isPlainSafeKey} が持つ特殊文字集合 18 文字のうち残る 17 文字と制御文字は
-     * 未固定であり（{@code #} を集合から外しても全件が通る生存変異として実測された）、
-     * {@code YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter} で閉じた。
+     * キー側は {@code #writesNonStringLookingKeysAsDoubleQuotedScalars} と
+     * {@code YamlFormatWriterModelTest#quotesDirectiveKeyContainingAnyYamlSpecialOrControlCharacter} が担保する。
      * </p>
      */
     @Test
