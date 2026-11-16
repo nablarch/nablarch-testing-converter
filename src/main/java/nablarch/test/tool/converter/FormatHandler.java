@@ -64,6 +64,14 @@ interface FormatHandler {
     Path resolveOutputBase(ConversionRequest request, Path source);
 
     /**
+     * 1 つの読込対象を構成するファイルを列挙する（出力が入力自身になっていないかの検査用）。
+     *
+     * @param source 読込対象
+     * @return 読込対象を構成するファイルのリスト
+     */
+    List<Path> inputPaths(Path source);
+
+    /**
      * コンテナが本形式へ書き出す出力ファイルパスを列挙する（上書き衝突チェック用）。
      *
      * @param container  出力するコンテナ

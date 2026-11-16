@@ -1,5 +1,7 @@
 package nablarch.test.tool.converter;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -59,7 +61,8 @@ public final class TestDataConverter {
      *
      * @param request 変換リクエスト
      * @return 変換したコンテナ（テストクラス相当）の件数
-     * @throws ConverterException 入力ディレクトリが存在しない／上書き禁止下で出力が衝突した場合
+     * @throws ConverterException 入力ディレクトリが存在しない／出力が入力のファイル自身になる／
+     *                            上書き禁止下で出力が衝突した場合
      */
     public static int convert(ConversionRequest request) {
         FormatHandler source = request.getSourceFormat().handler();
@@ -70,7 +73,9 @@ public final class TestDataConverter {
         for (Path src : source.findSources(request)) {
             TestDataContainer container = source.read(src, request.getExcludeSheets());
             Path outputBase = target.resolveOutputBase(request, src);
-            checkOverwrite(request, target, container, outputBase);
+            List<Path> outputs = target.outputPaths(container, outputBase);
+            checkNotInput(source.inputPaths(src), outputs);
+            checkOverwrite(request, outputs);
             writer.write(container, outputBase.toString());
             converted++;
         }
@@ -78,20 +83,60 @@ public final class TestDataConverter {
     }
 
     /**
+     * 出力するファイルが、入力のファイル自身でないことを検証する。
+     *
+     * <p>
+     * 変換は NTF が読まない情報（{@code //} のコメント、セルのメモ、YAML の {@code #} のコメントなど）を
+     * 落とすため、入力をその場で上書きすると元に戻せない。同じ形式・同じディレクトリで変換した場合に
+     * 起こるため、{@code overwrite} によらず止める。
+     * </p>
+     *
+     * @param inputs  入力のファイル
+     * @param outputs 出力するファイル
+     * @throws ConverterException 出力するファイルが入力のファイル自身である場合
+     */
+    private static void checkNotInput(List<Path> inputs, List<Path> outputs) {
+        for (Path output : outputs) {
+            if (!Files.exists(output)) {
+                continue;
+            }
+            for (Path input : inputs) {
+                if (isSameFile(output, input)) {
+                    throw new ConverterException("output is the input file itself;"
+                            + " converting in place would lose comments that the conversion drops."
+                            + " Specify an output directory different from the input: " + output);
+                }
+            }
+        }
+    }
+
+    /**
+     * 2 つのパスが同じファイルを指すかを判定する。
+     *
+     * @param a パス（存在すること）
+     * @param b パス（存在すること）
+     * @return 同じファイルなら真
+     */
+    private static boolean isSameFile(Path a, Path b) {
+        try {
+            return Files.isSameFile(a, b);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to compare files: " + a + ", " + b, e);
+        }
+    }
+
+    /**
      * 上書き禁止時に出力衝突がないことを検証する。
      *
-     * @param request    変換リクエスト
-     * @param target     変換先形式のハンドラ
-     * @param container  出力するコンテナ
-     * @param outputBase 出力先ディレクトリ
+     * @param request 変換リクエスト
+     * @param outputs 出力するファイル
      * @throws ConverterException 上書き禁止下で出力が衝突した場合
      */
-    private static void checkOverwrite(ConversionRequest request, FormatHandler target,
-                                       TestDataContainer container, Path outputBase) {
+    private static void checkOverwrite(ConversionRequest request, List<Path> outputs) {
         if (request.isOverwrite()) {
             return;
         }
-        for (Path output : target.outputPaths(container, outputBase)) {
+        for (Path output : outputs) {
             if (Files.exists(output)) {
                 throw new ConverterException("output already exists (overwrite=false): " + output);
             }

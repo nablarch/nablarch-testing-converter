@@ -2,6 +2,7 @@ package nablarch.test.tool.converter;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import nablarch.test.core.reader.PoiXlsReader;
@@ -57,6 +58,16 @@ final class XlsFormatHandler implements FormatHandler {
     @Override
     public Path resolveOutputBase(ConversionRequest request, Path source) {
         return ConverterPathResolver.outputBaseForXls(request.getInputPath(), source, request.getOutputPath());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Excel 形式の読込対象はブックファイルそのものである。</p>
+     */
+    @Override
+    public List<Path> inputPaths(Path bookFile) {
+        return Collections.singletonList(bookFile);
     }
 
     @Override

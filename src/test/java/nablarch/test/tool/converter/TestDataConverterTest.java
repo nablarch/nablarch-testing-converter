@@ -430,6 +430,86 @@ public class TestDataConverterTest {
     }
 
     /**
+     * Given: 入力ルートに Excel ブック 1 件。
+     * When : XLS→XLS 変換で、出力先に入力と同じディレクトリを指定する（{@code overwrite=true}）。
+     * Then : ConverterException で止まり、入力のブックは書き換わらない。
+     *
+     * <p>
+     * 変換は NTF が読まない情報（コメントなど）を落とすため、入力をその場で上書きすると元に戻せない。
+     * </p>
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenXlsOutputIsInputItself() throws IOException {
+        // Given
+        writeXls(oneTable("BookA", "data", sampleTable("USERS")), in);
+        Path book = in.resolve("BookA.xlsx");
+        byte[] before = Files.readAllBytes(book);
+
+        // When / Then
+        try {
+            TestDataConverter.convert(new ConversionRequest.Builder()
+                    .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.XLS)
+                    .inputPath(in).outputPath(in)
+                    .overwrite(true)
+                    .build());
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("output is the input file itself"), is(true));
+            assertThat(e.getMessage().endsWith(book.toString()), is(true));
+        }
+        assertThat("入力のブックは書き換わらない", Files.readAllBytes(book), is(before));
+    }
+
+    /**
+     * Given: 入力ルートに、コメントを含む YAML コンテナ 1 件。
+     * When : YAML→YAML 変換で、出力先に入力と同じディレクトリを指定する（{@code overwrite=true}）。
+     * Then : ConverterException で止まり、入力の YAML（コメントを含む）は書き換わらない。
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void failsWhenYamlOutputIsInputItself() throws IOException {
+        // Given
+        writeYaml(oneTable("BookD", "data", sampleTable("USERS")), in.resolve("BookD"));
+        Path yaml = in.resolve("BookD/data.yaml");
+        Files.write(yaml, ("# 作成者のメモ\n" + new String(Files.readAllBytes(yaml), "UTF-8")).getBytes("UTF-8"));
+        byte[] before = Files.readAllBytes(yaml);
+
+        // When / Then
+        try {
+            TestDataConverter.convert(new ConversionRequest.Builder()
+                    .sourceFormat(DataFormat.YAML).targetFormat(DataFormat.YAML)
+                    .inputPath(in).outputPath(in)
+                    .overwrite(true)
+                    .build());
+            fail("should throw");
+        } catch (ConverterException e) {
+            assertThat(e.getMessage().startsWith("output is the input file itself"), is(true));
+        }
+        assertThat("入力の YAML は書き換わらない", Files.readAllBytes(yaml), is(before));
+    }
+
+    /**
+     * Given: 入力ルートに Excel ブック 1 件。
+     * When : XLS→YAML 変換で、出力先に入力と同じディレクトリを指定する。
+     * Then : 出力（{@code <ブック名>/<シート名>.yaml}）は入力のブックと別のファイルなので、止まらずに変換する。
+     */
+    @Test
+    public void convertsXlsToYamlIntoSameDirectory() {
+        // Given
+        writeXls(oneTable("BookA", "data", sampleTable("USERS")), in);
+
+        // When
+        int count = TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, in);
+
+        // Then
+        assertThat(count, is(1));
+        assertThat(Files.exists(in.resolve("BookA/data.yaml")), is(true));
+    }
+
+    /**
      * Given: setup_files／expected_files ブロックを含む YAML コンテナ。
      * When : YAML→XLS 変換。
      * Then : Excel が生成され、読み戻すと固定長／可変長ブロックが再現される。

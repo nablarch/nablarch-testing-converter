@@ -59,6 +59,16 @@ final class YamlFormatHandler implements FormatHandler {
         return ConverterPathResolver.outputBaseForYaml(request.getInputPath(), source, request.getOutputPath());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>YAML 形式の読込対象はディレクトリであり、その直下の {@code .yaml} ファイルで構成される。</p>
+     */
+    @Override
+    public List<Path> inputPaths(Path yamlDir) {
+        return listYamlFiles(yamlDir);
+    }
+
     @Override
     public List<Path> outputPaths(TestDataContainer container, Path outputBase) {
         List<Path> paths = new ArrayList<>();
