@@ -9,21 +9,8 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  * 形式（Excel／YAML）ごとに異なる入出力の振る舞いを 1 箇所へ集約するハンドラ。
  *
  * <p>
- * 入口（{@link TestDataConverter}）は形式を名指しで分岐せず、{@link DataFormat#handler()} で得た本ハンドラへ
- * 委譲する。これにより形式の追加はハンドラ実装を 1 つ増やすだけで済み、入口の共通フロー
- * （列挙 → 読込 → 出力先解決 → 衝突チェック → 書込）は変更不要になる（開放閉鎖原則）。
+ * {@link TestDataConverter} は {@link DataFormat#handler()} で得た本ハンドラへ委譲し、形式で分岐しない。
  * </p>
- *
- * <p>
- * 形式固有の責務は次の 4 つ。リソース粒度の差（Excel は 1 ブックに複数シート、YAML は 1 ディレクトリに
- * 複数ファイル）は各ハンドラが吸収する。
- * </p>
- * <ul>
- *   <li>変換元としての読込対象（ブックファイル／コンテナディレクトリ）の列挙</li>
- *   <li>1 つの読込対象を中間モデル（{@link TestDataContainer}）へ集約</li>
- *   <li>変換先としての {@link TestDataFormatWriter} の生成</li>
- *   <li>変換先としての出力先ディレクトリ・出力ファイルパスの解決</li>
- * </ul>
  *
  * @author kiyobot
  */
@@ -82,8 +69,6 @@ interface FormatHandler {
 
     /**
      * 出力先にあると、書き出したファイルの代わりに NTF に読まれてしまうファイルを列挙する。
-     *
-     * <p>列挙したファイルが 1 つでも存在すれば、{@code overwrite} によらず変換を止める。</p>
      *
      * @param container  出力するコンテナ
      * @param outputBase 出力先ディレクトリ

@@ -6,21 +6,8 @@ import org.apache.poi.ss.usermodel.IndexedColors;
  * {@link XlsFormatWriter} の整形設定。
  *
  * <p>
- * Excel OUT は人が見て編集する前提のため、行種別ごとの装飾やレイアウトで読みやすく整える。
- * 整形は NTF 仕様上の意味を持たず、読み戻し（{@link XlsFormatReader}）は
- * 装飾を無視するため、整形の有無・配色は往復の可逆性に影響しない。
- * </p>
- *
- * <p>
- * 不変オブジェクトで、{@link #defaults()} が見やすい既定値を提供する。各 {@code with*} は当該項目だけを
- * 差し替えたコピーを返すため、{@code ExcelFormatConfig.defaults().withBlankRowsBetweenBlocks(0)} のように
- * 既定値を部分的に上書きできる。
- * </p>
- *
- * <p>
- * ヘッダ背景色はブロック種別グループごとに 4 種類を持つ（{@link Fill} の HEADER_TEST_SHOTS /
- * HEADER_SETUP / HEADER_EXPECTED / HEADER_OTHER に対応）。マーカーカラムは別途 1 色。
- * 色はいずれも POI のインデックスカラー（{@link IndexedColors#getIndex()}）で保持する。
+ * 人が見て編集するための整形であり、NTF 上の意味は持たない（読み戻しでは無視される）。
+ * 不変オブジェクトで、{@code with*} で既定値（{@link #defaults()}）を部分的に上書きできる。
  * </p>
  *
  * @author kiyobot
@@ -45,7 +32,7 @@ public final class ExcelFormatConfig {
     /** 列幅を各列の値の最大文字数に合わせて自動調整するか。 */
     private final boolean autoColumnWidth;
 
-    /** 自動調整時の列幅上限（文字数）。列名が見える程度に抑えて全体俯瞰しやすくする。 */
+    /** 自動調整時の列幅上限（文字数）。 */
     private final int maxColumnWidthChars;
 
     /** データブロックの外枠に細線の罫線を引くか。 */
@@ -105,19 +92,6 @@ public final class ExcelFormatConfig {
 
     /**
      * 見やすい既定値の設定を返す。
-     *
-     * <ul>
-     *   <li>testShots ヘッダ背景色: ライム（{@link IndexedColors#LIME}）</li>
-     *   <li>SETUP 系ヘッダ背景色: 淡い青（{@link IndexedColors#PALE_BLUE}）</li>
-     *   <li>EXPECTED 系ヘッダ背景色: 淡い黄（{@link IndexedColors#LIGHT_YELLOW}）</li>
-     *   <li>その他ヘッダ背景色: ラベンダー（{@link IndexedColors#LAVENDER}）</li>
-     *   <li>マーカー背景色: 淡い橙（{@link IndexedColors#LIGHT_ORANGE}）</li>
-     *   <li>列幅自動調整: ON（上限 20 文字）</li>
-     *   <li>外枠罫線: あり</li>
-     *   <li>内部グリッド線: あり</li>
-     *   <li>目盛り線: OFF</li>
-     *   <li>ブロック間空行: 1</li>
-     * </ul>
      *
      * @return 既定設定
      */

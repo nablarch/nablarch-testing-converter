@@ -1,33 +1,17 @@
 package nablarch.test.tool.converter.reader;
 
 /**
- * 上流 API 境界のグループ ID 表記。
+ * グループ ID の書き方の決まり。
  *
  * <p>
- * 中間モデルとアクセサの公開 API が持つグループ ID は<b>生値</b>（{@code case01}、省略時は空文字）である。
- * 半角角括弧で囲む {@code [case01]} は Excel 形式の書式であって値ではない。
- * 中間モデルはテスティングフレームワークの仕様上の意味だけを持つ。
+ * 変換ツールが扱うグループ ID（中間モデルの {@code groupId} など）は、半角角括弧 {@code [ ]} を付けない値
+ * （{@code case01}。省略時は空文字）である。{@code [case01]} のように {@code [ ]} で囲むのは Excel 形式の
+ * 書き方であって、値の一部ではない。
  * </p>
  *
  * <p>
- * 一方、変更できない上流 2 つは API 境界で<b>整形済み</b>のグループ ID を要求する。
- * </p>
- * <ul>
- *   <li>Excel —— {@code GroupDataParsingTemplate} が
- *       {@code getTargetType().getName() + groupId + '='} を組み立ててマーカーセルと前方一致する</li>
- *   <li>YAML —— {@code YamlSection#groupMatches} が
- *       {@code "[" + rawGroupId + "]"} を作って比較する</li>
- * </ul>
- *
- * <p>
- * したがって整形はアクセサの中、<b>上流へ渡す直前</b>の 1 か所に置く。
- * {@code XlsFormatReader}・{@code YamlFormatReader} は {@code [ ]} を扱わない。
- * </p>
- *
- * <p>
- * <b>この表記を知ってよいもう 1 つの層</b>は Excel 版面の読み書きであり、
- * 付けるのが {@code XlsFormatWriter#marker}、外すのが
- * {@code XlsParserAccessor#markerGroupId} である。
+ * 本体の API（Excel 形式のパーサ、YAML 形式のビルダ）は {@code [ ]} で囲んだグループ ID を受け取るため、
+ * 本体を呼ぶ直前に {@link #format} で囲む。Excel 形式へ書き出すときも {@link #format} で囲む。
  * </p>
  *
  * @author kiyobot
@@ -39,14 +23,10 @@ public final class GroupIdNotation {
     }
 
     /**
-     * 生値のグループ ID を上流 API が要求する整形済み表記へ写す。
+     * グループ ID を {@code [ ]} で囲む。
      *
-     * <p>
-     * 生値の空文字（および {@code null}）は「グループ指定なし」であり、空文字のまま渡す。
-     * </p>
-     *
-     * @param rawGroupId 生値のグループ ID（省略時は空文字。{@code null} 可）
-     * @return 整形済みグループ ID（{@code [case01]}／グループ指定なしは空文字）
+     * @param rawGroupId {@code [ ]} を付けないグループ ID（省略時は空文字。{@code null} 可）
+     * @return {@code [ ]} で囲んだグループ ID（{@code [case01]}）。省略時は空文字
      */
     public static String format(String rawGroupId) {
         return rawGroupId == null || rawGroupId.isEmpty() ? "" : "[" + rawGroupId + "]";

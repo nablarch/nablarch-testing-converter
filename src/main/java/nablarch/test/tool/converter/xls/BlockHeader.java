@@ -7,19 +7,14 @@ import nablarch.test.core.reader.DataType;
 
 
 /**
- * 1 データブロックのヘッダ（マーカー行から取り出した属性）。
- * <p>
- * {@code SETUP_TABLE[g1]=USERS} のようなマーカー行を、データタイプ
- * （{@code SETUP_TABLE}）・グループ ID（{@code [g1]}、無指定は空文字）・
- * 識別子（{@code USERS}）へ分解して保持する。
- * </p>
+ * 1 データブロックのヘッダ（マーカー行から取り出したデータタイプ・グループ ID・識別子）。
  */
 public final class BlockHeader {
 
     /** データタイプ */
     private final DataType type;
 
-    /** グループ ID（{@code [g1]} 等。無指定は空文字） */
+    /** グループ ID（{@code [ ]} を付けない値。無指定は空文字） */
     private final String groupId;
 
     /** 識別子（テーブル名／ファイルパス／LIST_MAP ID／メッセージ ID） */
@@ -43,7 +38,7 @@ public final class BlockHeader {
         return type;
     }
 
-    /** @return グループ ID（{@code [g1]} 等。無指定は空文字） */
+    /** @return グループ ID（{@code [ ]} を付けない値。無指定は空文字） */
     public String getGroupId() {
         return groupId;
     }

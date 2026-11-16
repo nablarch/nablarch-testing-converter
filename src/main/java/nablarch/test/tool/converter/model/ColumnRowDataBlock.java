@@ -13,51 +13,20 @@ import java.util.List;
  * </p>
  *
  * <p>
- * <b>{@code columnNames} ／ {@code rows} と、その要素（行）は {@code null} を取らない。生成時点で拒否する</b>
- * （根拠は {@link ModelPreconditions} の Javadoc）。
- * <b>行の中のセルの {@code null} は記法にあるため通す。</b>
+ * {@code columnNames} ／ {@code rows} とその要素（行）は {@code null} を取らない（セルの {@code null} は通す）。
  * </p>
  *
  * <p>
- * <b>カラム名 0 件で「行」を抱えるブロックは作れない。生成時点で拒否する。</b>
- * 記法はテーブル系データを
- * 「データタイプと識別子の値・カラム名・データ行という共通の構成を持つ」と定め、YAML はカラム名を
- * {@code rows:} の先頭要素のキーで決めるため、値があってカラム名が無い形は書けない。
- * Excel も記法によりカラム名の行を省略できず、この形を書き出すと<b>データ行がカラム名へ
- * 昇格して値が消える</b>（先頭のデータ行がカラム名の行として読まれる）。
+ * カラム名 0 件で行を持つブロックは生成時に拒否する。カラム名の無い値はどちらの記法でも書けないためである
+ * （YAML はカラム名を {@code rows:} の先頭要素のキーで決め、Excel ではデータ行がカラム名へ昇格して値が消える）。
+ * セルを 1 つも持たない行も同じ理由で拒否する。
+ * 「カラム名 0 件・行 0 件」は YAML の 0 件テーブルとして記法にあるため通す。
  * </p>
  *
  * <p>
- * <b>セルを 1 つも持たない行も拒否する。</b>かつてはこの形を通していた ——
- * カラム名の行がマーカーカラムだけのブロックがマーカーの除外を受けると
- * 「カラム名 0 件・セルを持たない行が n 件」になり、Excel の読み込みと YAML の読み込みが
- * 仕様適合入力から実際に作っていたためである。<b>どちらの読み込みもマーカーカラムの名前と値を
- * 保つようになり、この形はどちらの読みからも作られなくなった。</b>どちらの記法にも書けない形でもある ——
- * YAML へ書くと {@code - &#123;&#125;} になり、読み戻すと行として存在しないものとして取り除かれる。
- * </p>
- *
- * <p>
- * <b>拒否しないのは「カラム名 0 件・行 0 件」だけである。</b>YAML の 0 件テーブル（記法は「0 件のデータは、
- * {@code rows:} に空配列 {@code []} を記載する」と定める）はカラム名を書く場所を持たず、YAML の読み込みが
- * 仕様適合入力から実際に作る。Excel への書き出しは、読み込み時に除外されるマーカーカラムを 1 つだけ
- * 書いて Excel の「カラム名の行は省略できない」制約を満たす（カラム名の行を書かないと、読み戻したとき
- * 直後のブロックのマーカー行がカラム名の行として読まれ、次のブロックが消える）。
- * </p>
- *
- * <p>
- * <b>{@code columnNames} の重複は拒否しない。番人も WARN も置かない。</b>
- * YAML の読み込みが重複したカラム名を持つブロックを実際に作るためである —— 本体 {@code TableData} が
- * テーブル系のカラム名を大文字化するので、{@code id} と {@code ID} を書いたスキーマ適合の YAML が
- * {@code columnNames} ＝ {@code [ID, ID]} になり、後のカラムの値で前のカラムの値が上書きされる（担保テストは
- * {@code YamlFormatReaderInvalidInputTest#dropsValueWhenTableColumnNamesDifferOnlyByCase}）。
- * 生成時に拒否すると仕様適合入力を変換できなくなるため、番人は置けない。
- * </p>
- *
- * <p>
- * <b>帰属は converter の外（nablarch-testing の {@code TableData}）である。</b>
- * 記法はテーブル系のカラム名の大小の扱いにいっさい触れていないため、記法に無い書き方を前提とした
- * あるべき姿のテストは置いていない。<b>フィールド名称側（{@link RecordLayout}）は、記法が同一レコード種別内での
- * フィールド名称の重複を記述時のエラーとして明文で禁じているため拒否している</b>。
+ * {@code columnNames} の重複は拒否しない。本体 {@code TableData} がカラム名を大文字化するため、
+ * {@code id} と {@code ID} を書いた仕様適合の YAML から重複したカラム名が実際に作られ、拒否すると変換できなくなるためである。
+ * この挙動は converter の外（nablarch-testing）に帰属する。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
@@ -78,8 +47,7 @@ public abstract sealed class ColumnRowDataBlock extends TestDataBlock
      * @param identifier  識別子（テーブル名／LIST_MAP ID）
      * @param columnNames カラム名リスト（マーカーカラムを含む。記述順・大文字化なし）
      * @param rows        データ行のリスト（{@code null} セルと空文字 {@code ""} を区別し、特殊記法を記法のまま保持）
-     * @throws IllegalArgumentException {@code columnNames} かその要素、{@code rows} かその要素（行）が
-     *                                  {@code null} の場合（セルの {@code null} は通す）、
+     * @throws IllegalArgumentException {@code columnNames} ／ {@code rows} かその要素が {@code null} の場合、
      *                                  または {@code columnNames} が空で {@code rows} が空でない場合
      */
     protected ColumnRowDataBlock(DataType dataType, String groupId, String identifier,

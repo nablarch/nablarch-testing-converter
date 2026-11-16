@@ -13,47 +13,15 @@ import java.util.Set;
  * <p>
  * データ種別は {@link DataType#MESSAGE}／{@link DataType#EXPECTED_REQUEST_HEADER_MESSAGES}／
  * {@link DataType#EXPECTED_REQUEST_BODY_MESSAGES}／{@link DataType#RESPONSE_HEADER_MESSAGES}／
- * {@link DataType#RESPONSE_BODY_MESSAGES} のいずれか。識別子はメッセージ ID を保持する。
- * ディレクティブ・FW 制御ヘッダフィールド・本文レコードレイアウト群を記述順で持つ。
- * <b>この 5 種以外のデータ種別では生成できない。生成時点で拒否する</b>
- * （根拠は
- * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
+ * {@link DataType#RESPONSE_BODY_MESSAGES} のいずれかで、それ以外は生成時に拒否する。
+ * 識別子はメッセージ ID を保持する。ディレクティブ・FW 制御ヘッダフィールド・本文レコードレイアウト群を記述順で持つ。
+ * FW 制御ヘッダを持つのは {@link DataType#MESSAGE} のみで、他は空 Map とする（仕様 MS-04）。
  * </p>
  *
  * <p>
- * FW 制御ヘッダ（{@code requestId}／{@code userId} 等）を読むのは {@code messages} 経路（{@link DataType#MESSAGE}）
- * のみで、{@code expected_request_*}／{@code response_*} 経路は空 Map とする（仕様 MS-04）。
- * </p>
- *
- * <p>
- * <b>{@code records}（本文レコード）は 1 件以上でなければならない（0 件不可）。生成時点で拒否する。</b>
- * Excel 記法・YAML 記法のいずれも本文レコード 0 件の電文を認めていないためである。
- * YAML は本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
- * {@code $defs.message_data} ／ {@code $defs.expected_request_message_data} ／
- * {@code $defs.group_message_data} がいずれも {@code required} ＝ {@code ["id", "records"]} かつ
- * {@code records.minItems} ＝ 1 であり、{@code records:} を省いても {@code records: []} と書いても通らない。
- * Excel も同じで、記法に電文のレコード 0 件を表す書き方の定めが無い。電文が存在しない場合は、
- * 記法の「応答不要メッセージ受信では {@code expectedMessages} のデータブロックを記述する必要はない」のとおり、
- * <b>データブロックごと省略する</b>のが記法である。
- * </p>
- *
- * <p>
- * <b>0 バイトの空ファイル特例（{@code records: []}）は電文には及ばない。</b>同特例は
- * 記法では、0 バイトの空ファイルはレコード定義を持たないファイルデータブロックとして表現し、YAML 形式では
- * {@code records:} に空配列 {@code []} を記載する）と、いずれも<b>ファイル</b>に限って書かれている。メッセージボディは
- * フィールド名称・データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つは
- * <b>カラム構成が同じ</b>と言っているだけで、空ファイル特例まで及ぶ読み方はしない。
- * スキーマ側も {@code $defs.file_data} だけが {@code records.minItems} ＝ 0 であり、電文系 3 定義と
- * 非対称である。{@link FileDataBlock#getRecords()} の 0 件は合法だが、本クラスの 0 件は違う。
- * </p>
- *
- * <p>
- * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める
- * （本文レコード 0 件の電文を YAML へ書くと、{@code records: []} と書いてもスキーマ違反になり、読み戻せない）。
- * <b>番人はもとは書き出し側（{@code XlsFormatWriter#layoutMessage} ／
- * {@code YamlFormatWriter#emitMessage}）にあったが、生成時へ移した</b>
- * （不正値は書き出し側でなく中間モデルの生成時に拒否する。書き出し側で落とすのは、持ってはいけない値を
- * 中間モデルが持てる状態をそのままにする暫定対応にあたるためである）。
+ * 本文レコードは 1 件以上でなければならず、生成時に拒否する。どちらの記法にも 0 件の電文を表す書き方が無く
+ * （スキーマも電文系は {@code records.minItems} ＝ 1）、電文が無い場合はデータブロックごと省略するためである。
+ * 0 バイトの空ファイル特例（{@code records: []}）はファイルに限られ、電文には及ばない。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
@@ -85,11 +53,7 @@ public final class MessageDataBlock extends TestDataBlock {
      * @param directives     ディレクティブ（記述順を保つため挿入順を維持する Map を渡すこと）
      * @param fwHeaderFields FW 制御ヘッダフィールド（記述順。FW ヘッダを読まない経路では空 Map）
      * @param records        本文レコードレイアウト群（記述順。1 件以上。0 件不可）
-     * @throws IllegalArgumentException {@code dataType} が MESSAGE ／
-     *                                  EXPECTED_REQUEST_HEADER_MESSAGES ／
-     *                                  EXPECTED_REQUEST_BODY_MESSAGES ／
-     *                                  RESPONSE_HEADER_MESSAGES ／ RESPONSE_BODY_MESSAGES の
-     *                                  いずれでもない場合、または {@code records} が 0 件の場合
+     * @throws IllegalArgumentException {@code dataType} が電文系の 5 種でない場合、または {@code records} が 0 件の場合
      */
     public MessageDataBlock(DataType dataType, String groupId, String identifier,
                             Map<String, String> directives,

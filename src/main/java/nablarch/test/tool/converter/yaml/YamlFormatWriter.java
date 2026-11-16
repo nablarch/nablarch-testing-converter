@@ -34,23 +34,13 @@ import nablarch.test.tool.converter.model.TestDataSection;
  * 中間モデル（{@link TestDataContainer}）を YAML へ書き出す OUT ライタ。
  *
  * <p>
- * {@link YamlFormatReader} と<b>記法対称</b>に直列化する。値はすべて
- * ダブルクォートで囲む（数値・null・前後空白を文字列として保つため）。ただし {@code null}（記述省略でなく
- * 明示的な NULL）はアンクォートの {@code null} とする。{@code ""}・{@code ${...}} は記法のまま保持する。
- * キーは原則クォートしない（YAML 特殊文字を含む場合のみクォートする）。
+ * 値はダブルクォートで囲む（数値・真偽値・前後空白を文字列として保つため）。明示的な NULL だけは
+ * アンクォートの {@code null} とする。
  * </p>
  *
  * <p>
- * セクションはブロックの {@link DataType} からセクションキーへ写し、初出順にグルーピングして出力する
- * （同一セクションキーの複数ブロックは 1 つのセクション配下へ記述順に並べる）。各ブロックの記法は
- * {@link YamlFormatReader} が読む形（テーブル＝{@code table:}＋行マップ／LIST_MAP＝{@code id:}＋列／
- * ファイル＝{@code path:}/{@code type:}/{@code directives:}/{@code records:}／メッセージ＝{@code id:}＋
- * {@code fw_header:}／送信系＝{@code group_id:}。デフォルトグループは省略）と一致させる。
- * </p>
- *
- * <p>
- * {@link DataType} からセクションキーへの対応は本ライタが保持する（本体の
- * {@link YamlSection#dataTypeToSectionKey(DataType)} は messaging 系専用で全種別を網羅しないため）。
+ * 本体の {@link YamlSection#dataTypeToSectionKey(DataType)} は messaging 系専用で全種別を網羅しないため、
+ * セクションキーへの対応は本クラスが持つ。
  * </p>
  *
  * @author kiyobot
@@ -69,11 +59,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * コンテナの各セクションを {@code <basePath>/<セクション名>.yaml}（UTF-8）へ書き出す。
      * </p>
-     * <p>
-     * セクション名の {@code null} は検査しない。かつては {@code null.yaml} というファイルを黙って
-     * 作っていたが、{@link TestDataSection} が生成時に
-     * {@code null} を拒否するようになったためここへは届かない。番人は置かない。
-     * </p>
      */
     @Override
     public void write(TestDataContainer container, String basePath) {
@@ -81,7 +66,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             Path file = Paths.get(basePath, section.getName() + YAML_EXTENSION);
             try {
                 Path parent = file.getParent();
-                // basePath が空文字列の場合など、親ディレクトリを持たない相対パス（例: "foo.yaml"）が生成されると getParent() は null を返すため、null チェックが必須。
+                // basePath が空文字列だと親ディレクトリが無く null になる。
                 if (parent != null) {
                     Files.createDirectories(parent);
                 }
@@ -140,10 +125,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
         } else if (block instanceof MessageDataBlock) {
             emitMessage(sb, (MessageDataBlock) block);
         } else {
-            // 到達しない。TestDataBlock は sealed で、許可された派生型は上ですべて判定しているため、ここへ
-            // 届くインスタンスを作れない。それでも残すのは、instanceof チェーンにはコンパイル時の網羅性
-            // 保証がなく、sealed 階層に派生型が増えたとき、そのブロックが黙って出力から欠落するのを防いで
-            // その場で検出するためである。
+            // 到達しない。派生型が増えたときに出力漏れを検出するため残す。
             throw new IllegalArgumentException("unsupported block: " + block.getClass().getName());
         }
     }
@@ -176,14 +158,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
 
     /**
      * ファイル系ブロックを出力する（{@code path:}/{@code type:}/{@code directives:}/{@code records:}）。
-     * <p>
-     * <b>ファイル種別 {@code null} はここでは検査しない。</b>{@code $defs.file_data} は {@code type} を
-     * 必須とし、値を {@code enum} ＝ {@code ["fixed", "variable"]} に限るため、どちらとも決まっていない
-     * ブロックは読み戻せる形に書けない。記法にも「{@code setup_files}・{@code expected_files} の各エントリには
-     * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる」とある。
-     * {@link FileDataBlock} はファイル種別をデータ種別から導出し、データ種別の {@code null} は
-     * <b>生成時点で拒否する</b>ため、ここへは届かない。
-     * </p>
      *
      * @param sb    出力先
      * @param block ファイルブロック
@@ -199,23 +173,6 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
 
     /**
      * メッセージ系ブロック（MESSAGE／送信系 4 種）を出力する。
-     * <p>
-     * グループ ID が非空なら {@code group_id:}（送信系）、FW 制御ヘッダが非空なら {@code fw_header:}（MESSAGE）を
-     * 出力する。いずれもブロックの内容に応じて自然に切り替わる。
-     * </p>
-     * <p>
-     * <b>本文レコード 0 件はここでは検査しない。</b>{@code $defs.message_data} ／
-     * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data} はいずれも
-     * {@code records} を必須かつ {@code minItems} ＝ 1 とするため、{@code records:} を省いても
-     * {@code records: []} と書いても読み戻せない。記法にも電文のレコード 0 件を表す書き方の
-     * 明文が無く、電文が存在しない場合は 記法の
-     * とおり<b>データブロックごと省略する</b>。{@link MessageDataBlock} が<b>生成時点で拒否する</b>ため
-     * ここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
-     * ファイルデータブロックのレコード 0 件は 0 バイトの空ファイルを表す<b>合法な形</b>であり、
-     * {@link #emitFile} 経由で {@code records: []} を出す正当な経路である
-     * （スキーマも
-     * {@code $defs.file_data} だけが {@code records.minItems} ＝ 0）。
-     * </p>
      *
      * @param sb    出力先
      * @param block メッセージブロック
@@ -234,15 +191,11 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     // ------------------------------------------------------------------------
 
     /**
-     * グループ ID を出力する。
-     * <p>
-     * 中間モデルの {@code groupId} は<b>生値</b>（省略時は空文字）であり、そのまま書く。
-     * 空文字（グループ省略）は本体スキーマが {@code group_id} に {@code minLength: 1} を課すため
-     * キーごと出力しない（{@code TestDataBlock} のクラス Javadoc）。
-     * </p>
+     * グループ ID を出力する。空文字はスキーマが {@code group_id} に {@code minLength: 1} を課すため
+     * キーごと出力しない。
      *
      * @param entry   エントリ
-     * @param groupId 生値のグループ ID（非 null。省略時は空文字）
+     * @param groupId グループ ID（{@code [ ]} を付けない値。省略時は空文字）
      */
     private static void emitGroupId(YamlSeq entry, String groupId) {
         if (!groupId.isEmpty()) {
@@ -251,17 +204,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * テーブル／LIST_MAP の行を「カラム名→値」のマップ列として出力する。
-     * <p>
-     * 行が 1 件も無ければ {@code rows: []}（空配列）を出力する。
-     * </p>
-     * <p>
-     * <b>カラム名 0 件で行を持つブロックはここへ届かない。</b>キーを 1 つも持たない行は
-     * {@code - &#123;&#125;} と書くしかなく、読み戻すと行として存在しないものとして取り除かれる
-     * ——書き出せてはならない形である。{@link ColumnRowDataBlock} が<b>生成時点で拒否する</b>
-     * （セルを 1 つも持たない行まで拒否対象に含むのは、カラム名の行がマーカーカラムだけのブロックが
-     * マーカーの名前と値を保つようになり、どちらの読みからもこの形が作られなくなったためである）。
-     * </p>
+     * テーブル／LIST_MAP の行を「カラム名→値」のマップ列として出力する。行が無ければ {@code rows: []} とする。
+     * キーを持たない行は読み戻せないため、{@link ColumnRowDataBlock} が生成時に拒否している。
      *
      * @param sb      出力先
      * @param parent  親エントリ
@@ -286,37 +230,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     /**
      * レコードレイアウト群を出力する。
      * <p>
-     * 空なら {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
-     * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法が定めているためである
-     * （本体スキーマも {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
-     * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
-     * {@link MessageDataBlock} が 0 件を<b>生成時点で拒否する</b>（{@code $defs.message_data} の
-     * {@code records} は {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。
-     * </p>
-     * <p>
-     * <b>フィールド 0 件のレコードレイアウトはここでは検査しない。</b>{@code $defs.record_fragment} は
-     * {@code fields} を必須かつ {@code minItems} ＝ 1 とするため、どう書いても読み戻せない形だが
-     * （Excel へ書いても、名前行がレコード種別セル 1 個だけになり読み戻せない）、
-     * {@link RecordLayout} が<b>生成時点で拒否する</b>ためここへは届かない
-     * （もとはここに番人を置いていたが、生成時へ移した）。
-     * </p>
-     * <p>
-     * <b>データ型が {@code null} のフィールド定義もここでは検査しない。</b>{@code $defs.field_def} は
-     * {@code required} ＝ {@code ["name", "type"]} であり {@code type} を省略した形は読み戻せないが、
-     * {@link FieldDef} が<b>生成時点で拒否する</b>
-     * ためここへは届かない（もとはここに番人を置いていたが、生成時へ移した）。
-     * </p>
-     * <p>
-     * <b>フィールド長が {@code null} のフィールド定義もここでは検査しない。</b>記法は固定長ファイルについて
-     * 「フィールド名称・データ型・フィールド長の3リストが同サイズで必須」と定め
-     * （「フィールド名称・データ型・フィールド長リストのサイズが一致していない」を記述時のエラーに挙げる）、
-     * 電文も 記法はフレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・
-     * フィールド長・データという、前述のファイルデータと同じ構成を持つで同じ制約に掛かる
-     * （長さの無い固定長フィールドは本体がレコード長を計算できない）。文脈（固定長ファイルか・電文か・可変長ファイルか）は
-     * ブロックが持っているため、{@link FileDataBlock}（{@code FIXED} のとき）と
-     * {@link MessageDataBlock}（常に）が<b>生成時点で拒否する</b>。<b>可変長ファイルでは {@code null} が
-     * 正しい</b>ため拒否しない（記法は可変長ファイルでは…フィールド長は不要である）。
-     * もとはここに番人を置いていたが、生成時へ移した。
+     * 空なら {@code records: []} とする。記法では 0 バイトの空ファイルをこの形で表す
+     * （メッセージ系はスキーマ上 1 件以上必須のため、空で来るのはファイル系だけである）。
      * </p>
      *
      * @param sb      出力先
@@ -384,9 +299,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * フィールド定義をフロー map 記法へ整形する（{@code length} は null なら省略。
-     * {@code type} は必須のため常に出力する。{@code null} は
-     * {@link nablarch.test.tool.converter.model.FieldDef} が生成時に拒否している）。
+     * フィールド定義をフロー map 記法へ整形する（{@code length} は null なら省略する）。
      *
      * @param field フィールド定義
      * @return フロー map 文字列
@@ -438,14 +351,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * 利用者が書くキー（テーブルのカラム名、{@code LIST_MAP} のキー、ディレクティブ名、
-     * FW 制御ヘッダ名）を、値と同じく常にダブルクォートで囲む。
-     *
-     * <p>
-     * 囲まないキーは、{@code null} なら null、{@code true}・{@code false} なら真偽値、{@code 1}・{@code 1.5}
-     * なら数値として読まれ、文字列のキーに戻らない。値を囲むのと同じ理由である。
-     * 構造のキー（{@code rows}・{@code name} など）は本クラスが決める識別子なので、そのまま書く。
-     * </p>
+     * 利用者が書くキー（カラム名・ディレクティブ名など）をダブルクォートで囲む。
+     * 囲まないと {@code null}・{@code true}・{@code 1} などが文字列のキーとして読み戻せないためである。
      *
      * @param k キー
      * @return キー文字列
@@ -469,14 +376,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
     }
 
     /**
-     * {@link DataType} を YAML セクションキーへ写す（全種別）。
-     *
-     * <p>
-     * {@code default:} は switch の網羅のために残しているだけで<b>到達しない</b>。写せないのは
-     * {@link DataType#DEFAULT} だけであり、{@code TestDataBlock} が生成時に拒否するようになったため
-     * ここへは届かない（{@code DEFAULT} は YAML のトップレベルキー対応表に行が無く、YAML 形式では
-     * 表現できない）。番人としては置いていない。
-     * </p>
+     * {@link DataType} を YAML セクションキーへ写す。
      *
      * @param type データ種別
      * @return セクションキー
@@ -497,8 +397,7 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
             case RESPONSE_HEADER_MESSAGES:         return YamlSection.KEY_RESPONSE_HEADER_MESSAGES;
             case RESPONSE_BODY_MESSAGES:           return YamlSection.KEY_RESPONSE_BODY_MESSAGES;
             default:
-                // 到達不能。DEFAULT は TestDataBlock が生成時に拒否し（YAML のトップレベルキー対応表に行が無い）、
-                // 残る 13 個の DataType は上ですべて分岐しているため。DataType が増えたときの安全網として残す。
+                // 到達しない。DataType が増えたときの検出のため残す。
                 throw new IllegalArgumentException("unsupported DataType: " + type);
         }
     }

@@ -12,21 +12,8 @@ import java.util.List;
  * </p>
  *
  * <p>
- * <b>フィールドを 1 件も持たないレコードレイアウトは作れない。生成時点で拒否する。</b>
- * Excel 記法・YAML 記法のいずれもフィールドを持たないレコードレイアウトを認めていないためである
- * （Excel は 記法がフィールド名称リストまたは
- * データ型リストが未指定または空であるを記述時のエラーに挙げる。YAML は本体スキーマ
- * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.record_fragment} が
- * {@code fields} を必須かつ {@code minItems} ＝ 1 とする）。
- * この形を Excel へ書くと読み戻せないブックになり、YAML へ書くとスキーマ違反の {@code fields: []} になる。
- * <b>番人はもとは書き出し側（Excel ／ YAML）にあった</b>が、不正値は書き出し側でなく生成時に拒否する
- * 方針に従って本クラスへ移した。
- * </p>
- *
- * <p>
- * <b>フィールド名称が重複したレコードレイアウトは作れない。生成時点で拒否する</b>
- * （記法は同一レコード種別内でフィールド名称が重複していることを記述時のエラーとしている。
- * 保持できると、Excel へ書いて読み戻したときに列が減り、YAML へは同じキーを 2 回書いてしまう）。
+ * フィールド 0 件と、フィールド名称の重複は生成時に拒否する。どちらも記法が記述時のエラーとしている形であり、
+ * 書き出すと読み戻せないかスキーマ違反になるためである。
  * </p>
  *
  * <p>getter が返すコレクションは防御的コピーせず保持参照を返すため、呼び出し側は読み取り専用として扱うこと。</p>
@@ -45,10 +32,8 @@ public final class RecordLayout {
      * @param recordType レコード種別（省略時は {@code null}。FW_HEADER 等もそのまま保持）
      * @param fields     フィールド定義群（記述順。1 件以上）
      * @param rows       データ行のリスト（{@code null}・空文字・特殊記法を未加工で保持）
-     * @throws IllegalArgumentException {@code fields} かその要素、{@code rows} かその要素（行）が
-     *                                  {@code null} の場合（セルの {@code null} は通す）、
-     *                                  {@code fields} が空の場合、
-     *                                  または {@code fields} のフィールド名称に重複がある場合
+     * @throws IllegalArgumentException {@code fields} ／ {@code rows} かその要素が {@code null} の場合、
+     *                                  {@code fields} が空の場合、またはフィールド名称に重複がある場合
      */
     public RecordLayout(String recordType, List<FieldDef> fields, List<List<String>> rows) {
         this.recordType = recordType;

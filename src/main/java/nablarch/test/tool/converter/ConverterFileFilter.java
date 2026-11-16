@@ -14,12 +14,7 @@ import java.util.stream.Stream;
 
 /**
  * 入力ディレクトリを走査し、変換対象（Excel ブックファイル／YAML コンテナディレクトリ）を
- * include／exclude グロブで絞り込んで列挙する純関数群。
- *
- * <p>
- * include／exclude は入力ルートからの相対パスに対して評価する。include が空なら全件対象、
- * exclude に合致したものは除外する。結果は再現性のため辞書順にソートして返す。
- * </p>
+ * include／exclude グロブ（入力ルートからの相対パスで評価）で絞り込んで列挙する。
  *
  * @author kiyobot
  */
@@ -40,11 +35,6 @@ public final class ConverterFileFilter {
 
     /**
      * 入力ディレクトリ配下の Excel ブックファイルを列挙する。
-     *
-     * <p>
-     * 変換対象になったブックごとに、同じディレクトリに拡張子違いの同名ブックが居ないことも検査する
-     * （{@link #requireNoSameNameBook(Path)}）。
-     * </p>
      *
      * @param inputRoot 入力ルートディレクトリ
      * @param includes  取り込み glob（空なら全件）
@@ -78,7 +68,7 @@ public final class ConverterFileFilter {
                 .map(Path::getParent)
                 .forEach(dirs::add);
         } catch (IOException e) {
-            // Files.walk はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
+            // Files.walk の IOException を非チェック例外へ包む
             throw new UncheckedIOException("failed to scan input directory: " + inputRoot, e);
         }
         return dirs.stream()
@@ -104,7 +94,7 @@ public final class ConverterFileFilter {
                        .sorted()
                        .collect(Collectors.toList());
         } catch (IOException e) {
-            // Files.walk はチェック例外 IOException を宣言する。ストリーム操作の関数インタフェース契約を満たすためラップが必要。
+            // Files.walk の IOException を非チェック例外へ包む
             throw new UncheckedIOException("failed to scan input directory: " + inputRoot, e);
         }
     }
@@ -148,21 +138,8 @@ public final class ConverterFileFilter {
      * 変換対象ブックと同じディレクトリに、拡張子違いの同名ブックが居ないことを検証する。
      *
      * <p>
-     * 記法は同名の 1 つの Excel ファイル（{@code .xls} または {@code .xlsx}）がテストクラスに対応し、
-     * 1 シートが読み込み単位に対応すると定めており、同名同居は想定されていない。
-     * </p>
-     *
-     * <p>
-     * 同居を通すと、本体 {@code PoiXlsReader#open}（{@code nablarch-testing} の
-     * {@code PoiXlsReader}）が {@code <名前>.xls} を先に解決するため、{@code .xlsx} を
-     * 対象にした読み取りでも中身は {@code .xls} から読まれ、{@code .xlsx} の内容は失われる。
-     * 上書き禁止（既定）でも「出力先が既に在る」としか分からず、出力先を消してやり直しても同じ結果になる。
-     * </p>
-     *
-     * <p>
-     * 判定は列挙結果どうしの突き合わせではなく、実ディスク上の隣接ファイルで行う。本体の解決は
-     * include／exclude を知らないため、片方を exclude で外しても読み違いは起きるからである。
-     * 逆に、変換対象にならなかったブックの同居は読み違いを起こさないので検査しない。
+     * NTF は {@code .xls} を先に読むため、同居すると {@code .xlsx} の内容が読まれない。
+     * NTF は include／exclude を知らないので、列挙結果ではなく実ディスク上の隣接ファイルで判定する。
      * </p>
      *
      * @param book 変換対象の Excel ブック
@@ -182,11 +159,7 @@ public final class ConverterFileFilter {
                    .sorted()
                    .forEach(sameName::add);
         } catch (IOException e) {
-            // 到達しない。dir は直前の Files.walk が走査できたブックの親ディレクトリであり、走査できた以上
-            // そのディレクトリは読める。Files.list が失敗するのは走査との間に権限か存在が変わった場合だけで、
-            // テストから決定的には作れない。それでも残すのは、Files.list がチェック例外 IOException を
-            // 宣言するため catch を外せず、ストリーム操作の関数インタフェース契約を満たすには
-            // ラップが要るためである。
+            // 走査済みディレクトリのため通常は到達しない
             throw new UncheckedIOException("failed to scan input directory: " + dir, e);
         }
         if (sameName.size() > 1) {

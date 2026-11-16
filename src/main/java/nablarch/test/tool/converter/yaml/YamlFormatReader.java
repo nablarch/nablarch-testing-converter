@@ -33,24 +33,8 @@ import nablarch.test.tool.converter.reader.FragmentView;
  * YAML（1 ファイル）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。
  *
  * <p>
- * 独自の YAML 構造解析は持たない。本体の読み込みは {@link YamlBuilderAccessor}
- * （本体 {@code reader} パッケージ相乗りのアクセサ）へ委譲し、本クラスは
- * {@link YamlBuilderAccessor#loadRawMap(String, String) トップレベル Map}（{@link java.util.LinkedHashMap}
- * ＝YAML 記述順）を走査して既知セクションをブロックへ展開するオーケストレーションに徹する。
- * グループ絞り込み・fixed/variable 判定・送信系グループ／NO 扱い・テーブル名／
- * カラム名の大文字化・マーカー除外といった YAML 構造解釈はすべてアクセサ（本体器）側が担う。
- * </p>
- *
- * <p>
- * 各ブロックは「{@code accessor.read*} が返す本体器（構造の権威）」と「同じ Map から取る原文」を
- * 突き合わせて組み立てる。Excel 経路（{@code XlsFormatReader}）が器の正規化を<b>生行</b>から復元するのに対し、
- * YAML 経路は器が正規化する値（カラム名の大文字化・長さ省略・型表記）の原文を<b>{@code loadRawMap} の Map</b>から
- * 復元する。
- * </p>
- *
- * <p>
- * YAML は 1 ファイル＝1 読み込み単位。1 つの {@link TestDataSection} を持つ {@link TestDataContainer} を返す
- * （コンテナ名・セクション名ともリソース名）。
+ * YAML の構造解釈は本体に任せ（{@link YamlBuilderAccessor} 経由）、本体が正規化してしまう値
+ * （カラム名の大文字化・長さ省略・型表記など）だけを YAML の原文から復元する。
  * </p>
  *
  * @author kiyobot
@@ -79,8 +63,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     /**
      * {@inheritDoc}
      * <p>
-     * YAML の 1 ファイルを読み、1 つの {@link TestDataSection} を持つ {@link TestDataContainer} を返す。
-     * トップレベルキーを記述順に走査し、既知セクションのみブロックへ展開する（未知キーは無視）。
+     * 1 ファイルを 1 つの {@link TestDataSection} として返す。未知のトップレベルキーは無視する。
      * </p>
      */
     @Override
@@ -132,7 +115,6 @@ public class YamlFormatReader implements TestDataFormatReader {
             addSendSyncBlocks(basePath, resourceName, yaml, sectionKey,
                     DataType.RESPONSE_BODY_MESSAGES, blocks);
         }
-        // 未知キーは無視。
     }
 
     // ------------------------------------------------------------------------
@@ -140,8 +122,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * テーブル系ブロックを写す。原文は不要（器のみ。Excel と同一）。器のテーブル名・カラム名は大文字化済み、
-     * マーカーカラムは除外済みで、値も器の保持値（記法のまま）をそのまま用いる。
+     * テーブル系ブロックを写す。マーカーカラムだけのエントリを除き、本体の読み込み結果をそのまま用いる。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
@@ -159,9 +140,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                 TableData table = tables.get(t);
                 String[] columns = table.getColumnNames();
                 if (columns.length == 0) {
-                    // 器が 1 つもカラムを持たないときだけ、同じグループの Map エントリ（器と 1:1 同順）を
-                    // 見に行き、カラム名の行がマーカーカラムだけかを判定する。件数の一致は
-                    // ファイル系・送信同期系と同じ検査に委ね、対応が破綻していれば静かに進めず止める。
+                    // 本体はマーカーカラムを落とすため、マーカーカラムだけのエントリは原文から写す。
                     requireSameSize(tables.size(), entries.size(), sectionKey, groupId);
                     List<String> markerColumns = markerOnlyColumns(entries.get(t));
                     if (!markerColumns.isEmpty()) {
@@ -190,8 +169,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * LIST_MAP ブロックを写す。器（{@code List<Map>}・マーカー除外・記法のまま）を行値の権威とし、
-     * カラムの並びだけ Map（YAML 記述順）から復元する。
+     * LIST_MAP ブロックを写す。カラムの並びだけ原文（YAML 記述順）から復元する。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
@@ -228,8 +206,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * ファイル系ブロックを写す。器（{@link DataFile}・グループ絞り込み済み・fixed/variable 混在・Map 順）と
-     * 当該グループの Map エントリ列は 1:1 同順のため zip して原文（レコード種別・フィールド名／型／長さ・値の並び）を復元する。
+     * ファイル系ブロックを写す。本体の {@link DataFile} と同じグループの原文エントリは 1:1 同順で対応する。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
@@ -240,7 +217,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     private void addFileBlocks(String basePath, String resourceName, Map<String, Object> yaml,
                               String sectionKey, boolean setup, List<TestDataBlock> blocks) {
-        // 代表データタイプはセクション解決（固定長／可変長で同一セクション）にのみ用いる。
+        // 固定長／可変長は同一セクションのため、セクション解決用の代表値として使う。
         DataType representativeType = setup ? DataType.SETUP_FIXED : DataType.EXPECTED_FIXED;
         for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
             List<DataFile> files = accessor.readFiles(basePath, resourceName, groupId, representativeType);
@@ -264,7 +241,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * MESSAGE ブロックを写す。本文（固定長ファイルの器）のレコードレイアウトと FW 制御ヘッダ（原文・文字列化済み）を持つ。
+     * MESSAGE ブロックを写す。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
@@ -293,10 +270,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * 送信系ブロックを写す。グループは生値で一致（{@code group_id} 省略時は {@code null} ＝デフォルトグループ）させ、
-     * 器（本文 {@link FixedLengthFile} 群・Map 順）と当該グループの Map エントリ列を zip する。
-     * FW 制御ヘッダは送信系では常に空。中間グループ ID は整形（{@code "[xxx]"}／デフォルトグループは空文字）して
-     * Excel 中間と対称にする（マッチは生値・格納は整形）。
+     * 送信系ブロックを写す。本体には {@code group_id} 省略（デフォルトグループ）を {@code null} で渡す。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
@@ -328,19 +302,13 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * 器のビュー（断片構造）と整列済みの原文レコード Map から、レコードレイアウト群を組み立てる。
+     * 器のビューと原文レコードから、レコードレイアウト群を組み立てる。
      * <p>
-     * フィールド定義（名称・型・長さ）は Map 原文を正とする（器は型表記をフレームワーク表記へ・長さ省略を
-     * 実バイト長へ正規化するため）。レコード種別も Map 原文（{@code null} 可）を用いる。データ行は器の保持値
-     * （記法のまま）を断片のフィールド名順に positional 化する。
-     * </p>
-     * <p>
-     * 器の断片数と原文レコード数が一致しない（対応が破綻している）場合は、誤った原文を静かに充填せず
-     * 即座に失敗させる。
+     * フィールド定義とレコード種別は原文を正とする（本体は型表記と長さ省略を正規化してしまうため）。
      * </p>
      *
      * @param view           器のビュー
-     * @param alignedRecords 器の断片と整列済みの原文レコード Map（FILE・MESSAGE・送信系とも全件。スキップするレコードはない）
+     * @param alignedRecords 器の断片と同順の原文レコード
      * @return レコードレイアウト群
      */
     private List<RecordLayout> toRecordLayouts(FileView view, List<Map<String, Object>> alignedRecords) {
@@ -370,12 +338,6 @@ public class YamlFormatReader implements TestDataFormatReader {
         return records;
     }
 
-    /**
-     * 原文レコード Map の {@code fields} から、記法を加工しないフィールド定義群を組み立てる。
-     *
-     * @param record 原文レコード Map
-     * @return フィールド定義群（記述順）
-     */
     /** "Default" は NTF 仕様に存在しない値（Excelでは空欄）のため null に正規化する。 */
     private static String normalizeRecordType(String recordType) {
         if ("Default".equals(recordType) || "default".equals(recordType)) {
@@ -384,6 +346,12 @@ public class YamlFormatReader implements TestDataFormatReader {
         return recordType;
     }
 
+    /**
+     * 原文レコードの {@code fields} から、記法を加工しないフィールド定義群を組み立てる。
+     *
+     * @param record 原文レコード Map
+     * @return フィールド定義群（記述順）
+     */
     private static List<FieldDef> toFieldDefs(Map<String, Object> record) {
         List<Object> fieldList = YamlSection.getList(record, YamlSection.FIELD_FIELDS);
         List<FieldDef> fields = new ArrayList<>(fieldList.size());
@@ -398,8 +366,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリの {@code records} を Map のリストとして取り出す（全件。{@code record_type} による
-     * スキップはしない。器も {@code FW_HEADER} 断片を落とさない）。
+     * エントリの {@code records} を Map のリストとして全件取り出す。
      *
      * @param entry エントリ Map
      * @return レコード Map のリスト
@@ -417,11 +384,11 @@ public class YamlFormatReader implements TestDataFormatReader {
     // ------------------------------------------------------------------------
 
     /**
-     * セクション内エントリの生値のグループ ID を初出順で列挙する（重複排除）。
+     * セクション内エントリのグループ ID を初出順で重複なく列挙する。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @return 生値のグループ ID のリスト（省略時は空文字）
+     * @return グループ ID のリスト（省略時は空文字）
      */
     private static List<String> groupIdsInOrder(Map<String, Object> yaml, String sectionKey) {
         List<String> groups = new ArrayList<>();
@@ -435,12 +402,11 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 送信系セクション内エントリの生グループ ID を初出順で列挙する（重複排除）。
-     * {@code group_id} を省略したエントリはデフォルトグループとして {@code null} で列挙する。
+     * 送信系セクション内エントリのグループ ID を初出順で重複なく列挙する。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @return 生グループ ID のリスト（デフォルトグループは {@code null}）
+     * @return グループ ID のリスト（{@code group_id} 省略時は {@code null}）
      */
     private static List<String> rawGroupsInOrder(Map<String, Object> yaml, String sectionKey) {
         List<String> groups = new ArrayList<>();
@@ -454,11 +420,11 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 指定のグループに属するエントリを記述順で集める。器（同一グループ絞り込み済み）と 1:1 同順で対応する。
+     * 指定のグループに属するエントリを記述順で集める。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @param groupId    生値のグループ ID（省略時は空文字）
+     * @param groupId    グループ ID（省略時は空文字）
      * @return エントリ Map のリスト
      */
     private static List<Map<String, Object>> entriesForGroupId(Map<String, Object> yaml, String sectionKey,
@@ -474,11 +440,11 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 指定の生グループに属するエントリ（{@code group_id} が生値で一致）を記述順で集める。送信系の器と 1:1 同順で対応する。
+     * 送信系で、指定のグループに属するエントリを記述順で集める。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー
-     * @param rawGroup   生グループ ID
+     * @param rawGroup   グループ ID（{@code group_id} 省略時は {@code null}）
      * @return エントリ Map のリスト
      */
     private static List<Map<String, Object>> entriesForRawGroup(Map<String, Object> yaml, String sectionKey,
@@ -494,15 +460,10 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリの {@code group_id} を<b>生値の</b>グループ ID（省略時は空文字）として取り出す。
-     * <p>
-     * 中間モデルが持つのはテスティングフレームワークの仕様上の意味だけであり、半角角括弧は
-     * Excel 形式の書式であって値ではない。
-     * 上流 API が要求する整形は {@code YamlBuilderAccessor} が渡す直前に行う。
-     * </p>
+     * エントリの {@code group_id} をグループ ID（{@code [ ]} を付けない値。省略時は空文字）として取り出す。
      *
      * @param entry エントリ Map
-     * @return 生値のグループ ID（省略時は空文字）
+     * @return グループ ID（省略時は空文字）
      */
     private static String rawGroupId(Map<String, Object> entry) {
         String groupId = YamlSection.toStr(entry.get(YamlSection.FIELD_GROUP_ID));
@@ -510,12 +471,10 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * カラム名の行が<b>マーカーカラムだけ</b>で構成されたエントリについて、そのカラム名（YAML 記述順）を返す。
+     * カラムがマーカーカラムだけのエントリについて、そのカラム名（記述順）を返す。
      * <p>
-     * <b>このブロックはマーカーカラムとその値を保ったまま変換する。</b>各エントリはフィールドを持たないが、
-     * テストショット一覧と行の順序で対応付ける用途ではエントリの数と並びが意味を持つためである。
-     * 非マーカーのカラムが 1 つでもあるエントリと、行を 1 つも持たないエントリ（カラム名が決まらない）は
-     * 空リストを返し、従来どおり器を正として写す。
+     * テストショット一覧と行の順序で対応付ける用途があり、エントリの数と並びに意味があるため、
+     * このエントリもマーカーカラムと値を保って変換する。
      * </p>
      *
      * @param entry エントリ Map（{@code rows} を持つ）
@@ -533,15 +492,9 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリの行を、指定のカラム名の並びで<b>原文のまま</b>取り出す。
+     * エントリの行を、指定のカラム名の並びで原文のまま取り出す。
      * <p>
-     * マーカーカラムは器（{@code TableData}／{@code List<Map>}）へ入らないため、値は同じ Map の原文から
-     * 復元するしかない。YAML 経路は値加工のインタープリタを 1 つも積まない（変換ツールの読みは
-     * 記法のまま運ぶ）ので、原文がそのまま中間モデルの値になる。
-     * </p>
-     * <p>
-     * 行として存在しないもの（空マッピング {@code {} }）の除去は本体の
-     * {@link YamlSection#dropBlankRows} に委ねる。除去の条件を変換ツール側で二重実装しないためである。
+     * 空行の除去は本体と同じ条件にするため {@link YamlSection#dropBlankRows} を使う。
      * </p>
      *
      * @param entry   エントリ Map（{@code rows} を持つ）
@@ -564,7 +517,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * エントリ先頭行のキー（YAML 記述順）からマーカーカラム（{@code [COL]}）を除いたカラム名を返す。
+     * エントリのカラム名（記述順）からマーカーカラムを除いたものを返す。
      *
      * @param entry エントリ Map（{@code rows} を持つ）
      * @return 非マーカーカラム名（記述順）
@@ -598,15 +551,10 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 本体ディレクティブ（{@code Map<String, Object>}）を文字列ディレクティブへ写す。
+     * 本体ディレクティブを文字列ディレクティブへ写す。
      * <p>
-     * 本体器のディレクティブ値は型変換済み（{@code Charset}・整数等）で、順序も {@code HashMap} 由来で
-     * 記述順を保たない。YAML 経路も Excel 経路と対称にこの器固有挙動を受容し、値は {@link Object#toString()} で
-     * 文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）null のまま保持する。
-     * 区切り文字（{@code record-separator}／{@code field-separator}）は、Excel の読み込みと同じ
-     * {@link DirectiveUtil#normalizeSeparator} で記法どおりの表現へ逆正規化する
-     * （器が実制御文字へ変換して保持するため。実制御文字のまま書き出すと、本体の読み込みが値を
-     * {@code trim()} して区切り文字が失われる）。
+     * 区切り文字は本体が実制御文字へ変換して保持しており、そのまま書き出すと本体の読み込みで
+     * {@code trim()} され失われるため、記法どおりの表現へ戻す。
      * </p>
      *
      * @param directives 本体ディレクティブ
@@ -623,7 +571,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 器の要素数と原文エントリ数が一致することを検証する。不一致は対応の破綻として即座に失敗させる。
+     * 器の要素数と原文エントリ数が一致することを検証する。
      *
      * @param containerSize 器の要素数
      * @param entrySize     原文エントリ数

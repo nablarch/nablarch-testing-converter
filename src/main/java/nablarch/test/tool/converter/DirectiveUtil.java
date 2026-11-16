@@ -6,13 +6,6 @@ import java.util.Map;
 /**
  * ディレクティブ変換に関するユーティリティ。
  *
- * <p>
- * {@link nablarch.test.tool.converter.xls.XlsFormatReader} および
- * {@link nablarch.test.tool.converter.yaml.YamlFormatReader} で共通して使われる
- * {@code Map<String, Object>} → {@code Map<String, String>} 変換（{@link #toStringDirectives}）と、
- * 区切り文字ディレクティブの値の逆正規化（{@link #normalizeSeparator}）を提供する。
- * </p>
- *
  * @author kiyobot
  */
 public final class DirectiveUtil {
@@ -24,21 +17,11 @@ public final class DirectiveUtil {
     /**
      * 本体ディレクティブ（{@code Map<String, Object>}）を文字列ディレクティブへ写す。
      * <p>
-     * null 値はここでは変換せず {@code null} のまま通す（文字列 {@code "null"} へ化けさせない）。
-     * ただし<b>保持はされない</b>——戻り値を受け取る {@code FileDataBlock} ／ {@code MessageDataBlock} が
-     * 生成時に {@code ModelPreconditions#requireNoNulls(String, Map)} で拒否するため、
-     * 最終的には {@code IllegalArgumentException} になる（本体スキーマ {@code $defs.directives} の値型は
-     * string ／ boolean ／ integer だけで {@code null} を許す定義が無い。記法もディレクティブを
-     * 「キー名と値の 2 要素」で記述すると定めており、{@code null} に当たる書き方が無い）。
-     * 非 null 値は {@code valueMapper} を介して文字列へ変換する。
+     * null 値は文字列 {@code "null"} へ化けさせないよう {@code null} のまま通す。
      * </p>
      *
      * @param directives  本体ディレクティブ
-     * @param valueMapper キーと {@link Object#toString()} 済みの値文字列を受け取り、
-     *                    最終的な文字列値へ変換する関数。区切り文字ディレクティブについては
-     *                    Excel の読み込み・YAML の読み込みとも {@link #normalizeSeparator} による逆正規化を
-     *                    行う。Excel の読み込みはそれ以外のキーで {@code QuotationTrimmer} 相当のクォート剥がしも
-     *                    行うため、両者は同一ではない
+     * @param valueMapper キーと {@link Object#toString()} 済みの値文字列を最終的な文字列値へ変換する関数
      * @return 文字列ディレクティブ（{@link LinkedHashMap} 順）
      */
     public static Map<String, String> toStringDirectives(
@@ -56,16 +39,8 @@ public final class DirectiveUtil {
      * 区切り文字ディレクティブ（{@code record-separator}／{@code field-separator}）の値を、
      * 記法どおりの表現（シンボル／エスケープ 2 文字）へ逆正規化する。
      * <p>
-     * 本体の器は {@code record-separator} を {@code LineSeparator.evaluate} で実改行（{@code \r\n} 等）へ、
-     * {@code field-separator} の 2 文字記法を実タブへ変換して保持する。一方、記法が定めるのは
-     * シンボル（{@code NONE}／{@code CR}／{@code LF}／{@code CRLF}）または任意のリテラル文字列
-     * と、タブを表す {@code field-separator=\t}
-     * である。実制御文字のまま中間モデルへ入れると、
-     * 書き出した値を本体が読み戻せない（{@code DataFile#setDirective} の {@code trim()} で失われる）。
-     * </p>
-     * <p>
-     * Excel の読み込み（Excel → 中間モデル）と YAML の読み込み（YAML → 中間モデル）で、同じ入力表記が
-     * 同じ中間モデル値になるよう、両者から呼ぶ。区切り文字以外のキーは値をそのまま返す。
+     * NTF は読込時に実制御文字へ変換して保持するが、実制御文字のまま書き出すと NTF の {@code trim()} で
+     * 失われ読み戻せないため、記法の表現へ戻す。区切り文字以外のキーは値をそのまま返す。
      * </p>
      *
      * @param key   ディレクティブキー

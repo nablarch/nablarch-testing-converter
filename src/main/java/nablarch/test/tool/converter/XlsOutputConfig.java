@@ -8,12 +8,7 @@ import nablarch.test.tool.converter.xls.ExcelFormatConfig;
 /**
  * Maven plugin {@code <configuration>} で指定する Excel 出力整形設定の POJO。
  *
- * <p>
- * すべてのフィールドは省略可能（{@code null} なら {@link ExcelFormatConfig#defaults()} の値を使う）。
- * {@link #toExcelFormatConfig()} で {@link ExcelFormatConfig} に変換して利用する。
- * </p>
- *
- * <p>色名は Apache POI の {@link IndexedColors} の列挙定数名（例: {@code AQUA}、{@code YELLOW}）で指定する。</p>
+ * <p>すべてのフィールドは省略可能。色名は Apache POI の {@link IndexedColors} の列挙定数名（例: {@code AQUA}、{@code YELLOW}）で指定する。</p>
  *
  * @author kiyobot
  */
@@ -123,7 +118,7 @@ public class XlsOutputConfig {
     /**
      * 本 POJO を {@link ExcelFormatConfig} に変換する。
      *
-     * <p>{@code null} のフィールドは {@link ExcelFormatConfig#defaults()} の値をそのまま使う。</p>
+     * <p>{@code null} のフィールドは {@link ExcelFormatConfig#defaults()} の値を使う。</p>
      *
      * @return 設定済み {@link ExcelFormatConfig}
      * @throws IllegalArgumentException 色名が {@link IndexedColors} に存在しない場合

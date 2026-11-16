@@ -38,13 +38,13 @@ final class XlsFormatHandler implements FormatHandler {
         String bookName = ConverterPathResolver.stripExtension(bookFile.getFileName().toString());
 
         List<String> sheetNames = new ArrayList<>(PoiXlsReader.getSheetNames(bookFile.toFile()));
-        // 本体 getSheetNames はシート名を順不同で返すため、出力の再現性を担保するため辞書順にソートする。
+        // getSheetNames は順不同のため、出力の再現性のためにソートする
         sheetNames.sort(null);
 
         List<TestDataSection> sections = new ArrayList<>();
         for (String sheetName : sheetNames) {
             if (excludeSheets.contains(sheetName)) {
-                // 異常系データ等、中間モデル化できないシートは変換対象外。
+                // 中間モデル化できないシートは変換対象外
                 continue;
             }
             TestDataContainer single = reader.read(basePath, bookName + "/" + sheetName);
@@ -81,18 +81,9 @@ final class XlsFormatHandler implements FormatHandler {
     }
 
     /**
-     * ファイルの親ディレクトリパス文字列を返す（親が無ければカレント）。
-     *
-     * @param file ファイル
-     * @return 親ディレクトリパス文字列
-     */
-    /**
      * {@inheritDoc}
      *
-     * <p>
-     * Excel 形式へは常に {@code .xlsx} で書くが、本体は同名の {@code .xls} があればそちらを先に読む。
-     * 出力先に同名の {@code .xls} があると、書き出した {@code .xlsx} は読まれず、テストは古い内容で動く。
-     * </p>
+     * <p>出力先の同名 {@code .xls} を返す。</p>
      */
     @Override
     public List<Path> shadowingPaths(TestDataContainer container, Path outputBase) {
@@ -102,13 +93,19 @@ final class XlsFormatHandler implements FormatHandler {
     /**
      * {@inheritDoc}
      *
-     * <p>Excel 形式は 1 コンテナを 1 ブックとして丸ごと書くため、書き出さずに残るファイルは無い。</p>
+     * <p>Excel 形式はブックを丸ごと書くため、該当するファイルは無い。</p>
      */
     @Override
     public List<Path> strayPaths(TestDataContainer container, Path outputBase) {
         return Collections.emptyList();
     }
 
+    /**
+     * ファイルの親ディレクトリパス文字列を返す（親が無ければカレント）。
+     *
+     * @param file ファイル
+     * @return 親ディレクトリパス文字列
+     */
     private static String parentOf(Path file) {
         Path parent = file.getParent();
         return parent == null ? "." : parent.toString();

@@ -11,13 +11,8 @@ import nablarch.test.tool.converter.xls.ExcelFormatConfig;
  * 1 回の変換の意図を表す不変リクエスト。
  *
  * <p>
- * 変換元・変換先の形式、入出力ディレクトリ、上書き可否、走査時の include／exclude グロブを束ねる。
- * 入口（{@link TestDataConverter#convert(ConversionRequest)}）が本リクエストを解釈して実行する。
- * テストコード・CLI・将来の Maven プラグインはいずれも {@link Builder} で組み立てて渡す。
- * </p>
- *
- * <p>
- * 同一形式（{@code XLS→XLS}／{@code YAML→YAML}）も許容する（4 方向変換の往復検証に用いるため）。
+ * {@link Builder} で組み立て、{@link TestDataConverter#convert(ConversionRequest)} に渡す。
+ * 同一形式（{@code XLS→XLS}／{@code YAML→YAML}）も許容する（往復検証に用いるため）。
  * </p>
  *
  * @author kiyobot
@@ -116,8 +111,7 @@ public final class ConversionRequest {
     /**
      * {@link ConversionRequest} のビルダ。
      *
-     * <p>{@code sourceFormat}／{@code targetFormat}／{@code inputPath}／{@code outputPath} は必須。
-     * {@code overwrite} の既定値は {@code false}（出力衝突は失敗）。</p>
+     * <p>{@code sourceFormat}／{@code targetFormat}／{@code inputPath}／{@code outputPath} は必須。</p>
      */
     public static final class Builder {
 

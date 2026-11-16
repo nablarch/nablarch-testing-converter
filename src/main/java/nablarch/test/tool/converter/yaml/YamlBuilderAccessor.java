@@ -23,21 +23,11 @@ import nablarch.test.tool.converter.reader.GroupIdNotation;
 import nablarch.test.tool.converter.reader.StubDbInfo;
 
 /**
- * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の YAML 読み込みを
- * 再利用して生の器を取り出すための薄いアクセサ。Excel 経路の {@link nablarch.test.core.reader.XlsParserAccessor} と対称。
+ * 本体の YAML 読み込みを再利用して、生の器（{@link TableData}／{@link DataFile}／{@link MessagePool} 本文）を
+ * 取り出すアクセサ。
  *
  * <p>
- * 本体の YAML 読み込みは {@code reader.yaml} パッケージのビルダ
- * （{@link YamlTableDataBuilder}／{@link YamlFileBuilder}／{@link YamlMessageBuilder}）が
- * {@link YamlLoader#load} の返す順序保持 Map を走査して器を組み立てる。本アクセサはそれらビルダを
- * <b>{@link InterpreterResolver#raw() 値加工なし（空インタープリタ）}・デフォルト値補完なし</b>で配線し、
- * {@code ${...}}・{@code ${binaryFile:...}}・{@code null}・{@code ""} を記法のまま（未加工）保った
- * 生の本体器（{@link TableData}／{@link DataFile}／{@link MessagePool} 本文）を返す。
- * </p>
- * <p>
- * あわせて {@link #loadRawMap}（{@link YamlLoader#load} の透過）を備える。Excel が器の正規化を生行から
- * 復元するのに対し、YAML は器が正規化する値（カラム名の大文字化・長さ省略 {@code -}・型表記）の原文を
- * この順序保持 Map から復元する。
+ * {@code ${...}} などの記法を加工せずに運ぶため、本体のビルダを値加工なし・デフォルト値補完なしで使う。
  * </p>
  *
  * @author kiyobot
@@ -45,14 +35,8 @@ import nablarch.test.tool.converter.reader.StubDbInfo;
 public class YamlBuilderAccessor {
 
     /**
-     * デフォルトグループ（{@code group_id} 省略）を本体ビルダへ引き渡すための合成グループ ID。
-     * <p>
-     * 値そのものに衝突回避の役割は無い。{@link #defaultGroupOnlyYaml} が {@code group_id} を持つ
-     * エントリを 1 件も残さないため、この ID と一致しうる実在のグループ ID がそもそも同じ Map に
-     * 存在しない。上流の照合は {@code YamlMessageBuilder} の
-     * {@code rawGroupId != null && rawGroupId.equals(groupId)} で、非 null の文字列なら何でもよい。
-     * 複製した Map の中だけで使い、元の YAML は書き換えない。
-     * </p>
+     * デフォルトグループ（{@code group_id} 省略）を本体ビルダへ渡すための合成グループ ID。
+     * 実在のグループ ID を含まない複製 Map の中だけで使うため、値は何でもよい。
      */
     private static final String DEFAULT_GROUP_MARKER = "default-group";
 
@@ -66,11 +50,8 @@ public class YamlBuilderAccessor {
     private final YamlMessageBuilder messageBuilder;
 
     /**
-     * コンストラクタ。ビルダを値加工なし（{@link InterpreterResolver#raw()}）で配線する。
-     * <p>
-     * テーブル構築に必要な {@link nablarch.test.core.db.DbInfo} はスタブ（{@link StubDbInfo}）を用いる。
-     * 読み込み経路で実際に参照されるのはカラム型（一律 VARCHAR）のみで、値は型に依存せず生のまま格納される。
-     * </p>
+     * コンストラクタ。ビルダを値加工なし（{@link InterpreterResolver#raw()}）で構成する。
+     * DB に接続しないよう {@link StubDbInfo} を用いる。
      */
     public YamlBuilderAccessor() {
         InterpreterResolver raw = InterpreterResolver.raw();
@@ -81,10 +62,7 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * YAML ファイルのトップレベル Map（原文。順序保持）をそのまま返す。
-     * <p>
-     * 変換ツールは器（構造）と本 Map（原文）を突き合わせて中間モデルを組み立てる。
-     * </p>
+     * YAML ファイルのトップレベル Map（原文。記述順を保持）を返す。
      *
      * @param path     取得元パス
      * @param resource リソース名（拡張子なし）
@@ -95,20 +73,8 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * テストデータの<b>入れ物</b>が存在するかどうかを返す。
-     *
-     * <p>
-     * YAML 形式の入れ物は {@code <path>/<入れ物名>} ディレクトリである
-     * （Excel 形式の {@code <path>/<入れ物名>.xls} に相当する）。入れ物名は {@code resource} の
-     * 最後の {@code "/"} より前の部分で、{@code "/"} を含まない場合は {@code resource} 全体を
-     * 入れ物名として扱う（{@code YamlLoader}）。
-     * </p>
-     *
-     * <p>
-     * <b>読み込み単位（{@code <path>/<入れ物名>/<読み込み単位名>.yaml}）の存在は見ない。</b>
-     * 入れ物ディレクトリさえ在れば、実在しない読み込み単位名を渡しても {@code true} を返す。
-     * 読み込み単位の存在を判定するのは {@code isDataExisting} である。
-     * </p>
+     * テストデータの入れ物（{@code <path>/<入れ物名>} ディレクトリ）が存在するかどうかを返す。
+     * 読み込み単位の YAML ファイルの存在は見ない。
      *
      * @param path     取得元パス
      * @param resource リソース名
@@ -119,16 +85,11 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * テーブルデータを取り出す。
-     * <p>
-     * デフォルト値補完（{@code fillDefaultValues}）は行わず、指定データタイプ・グループの生の
-     * {@link TableData} 一覧を返す。
-     * </p>
+     * テーブルデータを、デフォルト値を補完せずに取り出す。
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  <b>生値の</b>グループ ID（例: {@code "case01"} または {@code ""}）。
-     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
+     * @param groupId  グループ ID（{@code [ ]} を付けない値。{@link GroupIdNotation}）
      * @param type     データタイプ（{@link DataType#SETUP_TABLE_DATA}／
      *                 {@link DataType#EXPECTED_TABLE_DATA}／{@link DataType#EXPECTED_COMPLETED}）
      * @return テーブルデータ一覧
@@ -154,12 +115,11 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * ファイル（固定長／可変長）を取り出す。固定長・可変長の区別はエントリの {@code type} で決まる。
+     * ファイル（固定長／可変長）を取り出す。
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  <b>生値の</b>グループ ID（例: {@code "case01"} または {@code ""}）。
-     *                 上流へ渡す直前に {@link GroupIdNotation#format} で整形する
+     * @param groupId  グループ ID（{@code [ ]} を付けない値。{@link GroupIdNotation}）
      * @param type     データタイプ（{@link DataType#SETUP_FIXED}／{@link DataType#EXPECTED_FIXED}／
      *                 {@link DataType#SETUP_VARIABLE}／{@link DataType#EXPECTED_VARIABLE}）
      * @return ファイル一覧
@@ -172,7 +132,7 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * メッセージ（{@link DataType#MESSAGE}）を取り出す。本文（固定長ファイルの器）と FW 制御ヘッダを併せ持つ。
+     * メッセージ（{@link DataType#MESSAGE}）を取り出す。
      *
      * @param path     取得元パス
      * @param resource リソース名
@@ -185,15 +145,11 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * 送信同期メッセージ（要求/応答電文 4 種）のうち、指定グループに属する全ブロックの本文
-     * （固定長ファイルの器）を取り出す。FW 制御ヘッダは送信系では常に空のため返さない。
+     * 送信同期メッセージ（要求/応答電文 4 種）のうち、指定グループに属する本文を取り出す。
      *
      * @param path     取得元パス
      * @param resource リソース名
-     * @param groupId  <b>生値の</b>グループ ID（{@code group_id} と生値で一致比較する）。{@code null} を渡すと
-     *                 {@code group_id} を省略したエントリ（デフォルトグループ）を対象にする。
-     *                 上流 {@code YamlMessageBuilder#buildSendSyncBodies}が
-     *                 生値で比較するため、<b>整形しない</b>
+     * @param groupId  グループ ID（{@code [ ]} を付けない値）。{@code null} はデフォルトグループ
      * @param type     データタイプ（送信系 4 種のいずれか）
      * @return 本文（固定長ファイルの器）一覧（記述順。対象が無ければ空）
      * @throws IllegalArgumentException データタイプが送信系でない場合
@@ -209,15 +165,11 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * デフォルトグループ（{@code group_id} 省略）のエントリだけを残し、それぞれに合成グループ ID
-     * （{@link #DEFAULT_GROUP_MARKER}）を付けた 1 セクションだけの Map を組み立てる。
+     * {@code group_id} を省略したエントリだけを残し、合成グループ ID（{@link #DEFAULT_GROUP_MARKER}）を
+     * 付けた複製 Map を組み立てる。
      * <p>
-     * 本体の {@code YamlMessageBuilder#buildSendSyncBodies} は {@code group_id} が非 null のエントリしか
-     * 返さないため（{@code rawGroupId != null && rawGroupId.equals(groupId)}）、
-     * グループ ID を省略したエントリはデフォルトグループの対象になる、という記法どおりに読むには
-     * この前処理が要る。元の Map・エントリ Map は書き換えず複製する。
-     * 合成 ID を付けるエントリは「{@code group_id} を持たないもの」だけに限り、かつ他のエントリを含めない
-     * ため、実在のグループ ID と衝突しない。
+     * 本体は {@code group_id} を持つエントリしか返さないため、省略したエントリを記法どおり
+     * デフォルトグループとして読むにはこの前処理が要る。
      * </p>
      *
      * @param yaml       トップレベル Map
@@ -229,11 +181,7 @@ public class YamlBuilderAccessor {
         Object sectionObj = yaml.get(sectionKey);
         if (sectionObj instanceof List) {
             for (Object entryObj : (List<?>) sectionObj) {
-                // 到達しない。ここへ来る yaml は loadRawMap ／ YamlLoader.load を通ったものだけで、
-                // 同メソッドはスキーマ検証に通らない YAML を返さずに例外にするため、セクションの要素が
-                // Map 以外になることがない。それでも残すのは、直後の Map への無検査キャストを守るためで、
-                // 判定を落とすとスキーマを経ない Map を渡されたときに ClassCastException になり、
-                // 原因の分からない場所で落ちる。
+                // 到達しない（スキーマ検証済み）。直後の無検査キャストを守るため残す。
                 if (!(entryObj instanceof Map)) {
                     continue;
                 }
@@ -270,7 +218,7 @@ public class YamlBuilderAccessor {
     }
 
     /**
-     * ファイル系データタイプを YAML セクションキーへ変換する。固定長／可変長はセクションを分けない。
+     * ファイル系データタイプを YAML セクションキーへ変換する。
      *
      * @param type データタイプ
      * @return セクションキー

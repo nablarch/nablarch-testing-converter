@@ -7,8 +7,7 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Workbook;
 
 /**
- * セルスタイルのキャッシュ。外枠罫線（細線）と背景色の組み合わせは有限（外枠 4 辺 × 背景 6 種）のため、
- * 同一構成のスタイルを使い回して POI のスタイル数上限を回避する。
+ * セルスタイルのキャッシュ。同一構成のスタイルを使い回して POI のスタイル数上限を回避する。
  *
  * <p>
  * どのスタイルも書式を文字列（{@code @}）にする。書式が「標準」のままだと、人が {@code 001} や {@code 1} と
@@ -79,7 +78,7 @@ final class CellStyleCache {
                 style.setBorderLeft(CellStyle.BORDER_THIN);
                 style.setBorderRight(CellStyle.BORDER_THIN);
             }
-            // 外枠罫線（ブロック外周の辺のみ上書き。内部グリッド線 OFF でも外枠は引ける）
+            // 外枠罫線（ブロック外周の辺のみ）
             if (config.isDrawBlockBorder()) {
                 if (top) {
                     style.setBorderTop(CellStyle.BORDER_THIN);
@@ -113,10 +112,7 @@ final class CellStyleCache {
                         color = config.getMarkerColumnColorIndex();
                         break;
                     default:
-                        // 到達しない。Fill は 6 値で、NONE は直前の if で除かれ、残る 5 値を上で分岐済みのため。
-                        // それでも残すのは、switch の網羅性がコンパイル時に保証されず、default を落とすと
-                        // color が確定せずコンパイルできないためであり、Fill に値が増えたときに塗りの
-                        // 未実装をその場で検出する安全網も兼ねる。
+                        // 到達しない。color を確定させるため、および Fill が増えたときの検出のため残す。
                         throw new IllegalStateException("Unhandled Fill: " + fill);
                 }
                 style.setFillForegroundColor(color);

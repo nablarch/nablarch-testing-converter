@@ -4,67 +4,19 @@ package nablarch.test.tool.converter.model;
  * ファイル／メッセージのフィールド定義。不変オブジェクト。
  *
  * <p>
- * 名称・型・長さを、形式の記法を加工せずそのまま保持する。長さの省略（可変長ファイル）は {@code null}
- * （可変長ファイルでは {@code null} 以外を取れない。下記）。
- * 名称は大文字化しない。長さは {@code "-"}（自動拡張指示）等の記法もありうるためリテラルとして
- * {@link String} で保持する（数値化しない）。
+ * 名称・型・長さを、形式の記法を加工せずそのまま保持する（名称は大文字化しない）。
+ * 長さは {@code "-"} 等の記法もありうるため、数値化せず {@link String} で保持する。
  * </p>
  *
  * <p>
- * <b>{@code name} と {@code type} は必須であり {@code null} であってはならない。生成時点で拒否する。</b>
- * Excel 記法・YAML 記法のいずれも、名称またはデータ型を持たないフィールド定義を認めていないためである
- * （Excel は 記法が固定長ファイルで「フィールド名称・
- * データ型・フィールド長の3リストが同サイズで必須」・可変長ファイルで「フィールド名称・データ型の2リストが
- * 同サイズで必須」と定め、記法がフィールド名称リストまたはデータ型リストが未指定または空であるを
- * 記述時のエラーに挙げる。YAML は本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} の
- * {@code $defs.field_def} が {@code required} ＝ {@code ["name", "type"]} とする）。
- * <b>空文字は拒否しない</b>——{@code $defs.field_def.name} に {@code minLength} が無いため
- * {@code name: ""} はスキーマに適合する。
- * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める。
+ * {@code name} と {@code type} は {@code null} 不可で、生成時に拒否する。どちらの記法も名称・データ型を
+ * 持たないフィールド定義を認めないためである。空文字は通す（スキーマも {@code minLength} を持たない）。
  * </p>
  *
  * <p>
- * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>NTF 仕様に合わない Excel ／ YAML が
- * 読み取りで落ちるのは従来どおり正しい。それとは別に、中間モデルへ {@code null} が入ることは呼び出し側の
- * バグであり、生成時点で露見させる。したがって書き出し側（{@code XlsFormatWriter} ／
- * {@code YamlFormatWriter}）には番人を置かない。書き出し側で落とすのは、持ってはいけない値を
- * 中間モデルが持てる状態をそのままにする暫定対応にあたるためである。
- * </p>
- *
- * <p>
- * <b>{@code length} は条件つきで必須である——固定長ファイル・電文のフィールド定義では {@code null} で
- * あってはならず、可変長ファイルのフィールド定義では {@code null} でなければならない。</b>
- * 記法が固定長と可変長で異なる制約を置いているためである（が固定長ファイルで「フィールド名称・データ型・フィールド長の3リストが同サイズで
- * 必須」・可変長ファイルで「フィールド名称・データ型の2リストが同サイズで必須であり、フィールド長は不要である」と
- * 定め、記法がフィールド名称・データ型・フィールド長リストのサイズが一致していないを記述時の
- * エラーに挙げる。電文も 記法はフレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・
- * データ型・フィールド長・データという、前述のファイルデータと同じ構成を持つにより同じ制約に掛かる）。
- * <b>本体スキーマ {@code $defs.field_def} の {@code required} は {@code ["name", "type"]} であり
- * {@code length} を含まない</b>——{@code $defs.record_fragment} が固定長ファイル・可変長ファイル・電文で
- * 共用されるため、必須か否かを {@code required} では表せないからである。ただし同スキーマ自身が
- * {@code length} の説明に「固定長ファイルでは実質必須（省略すると NTF が record-length を計算できない）。
- * 可変長ファイルでは不要（省略可）」と書いており、記法の明文と食い違ってはいない。
- * 中間モデルの契約は、Excel・YAML の読み込みと書き出しのすべてが表現できる範囲で定める。
- * <b>ただし固定長か可変長かは本クラス単体では
- * 判らないため、{@code length} は本クラスの生成時には拒否できない。</b>文脈を持つ側が生成時に拒否する——
- * {@link nablarch.test.tool.converter.model.FileDataBlock}（固定長系のデータ種別のとき）と
- * {@link nablarch.test.tool.converter.model.MessageDataBlock}（常に）が
- * {@code ModelPreconditions#requireLengths} を呼ぶ（長さの無い固定長フィールドは本体がレコード長を
- * 計算できない。この検査は生成時に行うので、
- * {@code XlsFormatWriter} ／ {@code YamlFormatWriter} に {@code length} の番人は無い。
- * 上の段落「書き出し側には番人を置かない」と揃っている）。
- * </p>
- *
- * <p>
- * <b>可変長ファイルでは逆向きの検査が掛かる——{@code length} を持ってはならない。</b>
- * 可変長ファイルではフィールド長が不要であり、固定長との違いはフィールド長行を書かない点だけである。
- * すなわち <b>Excel 記法に可変長のフィールド長行が無く、書き出す先が無い</b>
- * （本体スキーマ {@code $defs.field_def.properties.length} は可変長で {@code length} を禁じていないが、
- * NTF 仕様として禁止で確定した。可変長では数値の長さは NTF の実行時に使われず、効くのは {@code "-"} による
- * 値の整形（改行コードと前後空白の除去）だけであり、それはフィールド長の枠に相乗りした結果にすぎない）。
- * これも文脈を持つ側が拒否する——{@link nablarch.test.tool.converter.model.FileDataBlock} が
- * 可変長系のデータ種別のとき {@code ModelPreconditions#requireNoLengths} を呼ぶ。
- * <b>弾くのは {@code null} 以外のすべてであり、{@code "-"} も空文字も弾く</b>（固定長側と境界が逆である）。
+ * {@code length} は固定長ファイル・電文では必須、可変長ファイルでは持ってはならない。
+ * 固定長か可変長かは本クラス単体では判らないため、検査は {@link FileDataBlock} ／
+ * {@link MessageDataBlock} が生成時に行う。
  * </p>
  *
  * @author kiyotis
@@ -80,9 +32,7 @@ public final class FieldDef {
      *
      * @param name   フィールド名称（記述のまま。大文字化なし。必須（{@code null} 不可）。空文字は可）
      * @param type   データ型（記述のまま。必須（{@code null} 不可）。空文字は可）
-     * @param length フィールド長（記述のまま。{@code "-"} 等もリテラル保持。可変長ファイルでは
-     *               {@code null} でなければならず、固定長ファイル・電文では必須である。どちらの検査も
-     *               {@code FileDataBlock} ／ {@code MessageDataBlock} が生成時に行う）
+     * @param length フィールド長（記述のまま。可変長ファイルでは {@code null}、固定長ファイル・電文では必須）
      * @throws IllegalArgumentException {@code name} または {@code type} が {@code null} の場合
      */
     public FieldDef(String name, String type, String length) {

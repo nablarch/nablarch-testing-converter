@@ -8,9 +8,7 @@ import java.util.Set;
 import nablarch.test.core.reader.DataType;
 
 /**
- * 1 ブロックの版面（行・行種別・マーカーカラム位置）。
- * <p>各行のセル数は不揃いでよく、描画時にブロック最大幅へ矩形整形される。</p>
- * <p>ブロックのデータタイプと識別子を保持し、{@link #headerFill()} でグループ別ヘッダ色を返す。</p>
+ * 1 ブロックの版面（行・行種別・マーカーカラム位置）。各行のセル数は不揃いでよい。
  */
 final class BlockLayout {
 
@@ -50,11 +48,8 @@ final class BlockLayout {
      * 1 行を追加する。
      *
      * <p>
-     * {@code //} で始まるセルは、本体がコメントとして読み飛ばすため書けない。値は
-     * {@code XlsFormatWriter#toCellNotation} が引用符で囲むのでここへは届かず、届くのは名前の類
-     * （カラム名・レコード種別・フィールド名・データ型・フィールド長・ディレクティブ名・FW 制御ヘッダ名）である。
-     * 名前を引用符で囲む書き方は記法に定めが無いため、書き出せないものとして止める
-     * （シート名の文字数の上限を超える場合と同じ扱い）。
+     * {@code //} で始まるセルは本体がコメントとして読み飛ばす。値は引用符で囲んであるが、
+     * 名前の類を引用符で囲む書き方は記法に定めが無いため、書き出せないものとして止める。
      * </p>
      *
      * @param kind  行種別
@@ -121,19 +116,7 @@ final class BlockLayout {
     }
 
     /**
-     * このブロックのグループに対応するヘッダ背景色の {@link Fill} を返す。
-     *
-     * <ul>
-     *   <li>testShots: {@code LIST_MAP} かつ identifier が {@code "testShots"} → {@link Fill#HEADER_TEST_SHOTS}</li>
-     *   <li>SETUP 系: {@code SETUP_TABLE_DATA} / {@code SETUP_FIXED} / {@code SETUP_VARIABLE}
-     *       → {@link Fill#HEADER_SETUP}</li>
-     *   <li>EXPECTED 系: {@code EXPECTED_TABLE_DATA} / {@code EXPECTED_COMPLETED} / {@code EXPECTED_FIXED} /
-     *       {@code EXPECTED_VARIABLE} / {@code EXPECTED_REQUEST_HEADER_MESSAGES} /
-     *       {@code EXPECTED_REQUEST_BODY_MESSAGES} / {@code RESPONSE_HEADER_MESSAGES} /
-     *       {@code RESPONSE_BODY_MESSAGES} → {@link Fill#HEADER_EXPECTED}</li>
-     *   <li>それ以外（{@code MESSAGE} / {@code LIST_MAP}（非 testShots））
-     *       → {@link Fill#HEADER_OTHER}</li>
-     * </ul>
+     * このブロックのグループ（testShots／SETUP 系／EXPECTED 系／その他）に対応するヘッダ背景色を返す。
      *
      * @return グループ別ヘッダ背景色
      */

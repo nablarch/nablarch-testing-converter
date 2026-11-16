@@ -12,15 +12,10 @@ import nablarch.test.core.db.TableData;
  * 値加工を伴わない生の本体器を取り出すために共有する。
  * </p>
  * <p>
- * 読み込み（parse→getResult／ビルダ走査）経路で実際に呼ばれるのは
- * {@link #getColumnType(String, String)}のみ（{@link TableData#addRow(java.util.List)}でのカラム型取得）。
- * 値は型に依存せず生のまま格納されるため、一律で{@link java.sql.Types#VARCHAR}を返す。
- * </p>
- * <p>
- * その他のメソッドは DB 書き込み経路（insertData/replaceData）専用で、変換ツールの
- * DB レスな読み込み経路からは呼ばれない。これらは「呼ばれてはならない」ことを表明する
- * <b>番人コード</b>であり、万一呼ばれた場合は前提崩れとして{@link UnsupportedOperationException}で
- * 即座に失敗させる（誤った DB メタ情報で変換結果を静かに歪めない）。
+ * 読み込み経路で呼ばれるのは {@link #getColumnType(String, String)}（{@link TableData} が使う）のみで、
+ * 値は型に依存せず生のまま格納されるため一律で {@link java.sql.Types#VARCHAR} を返す。
+ * その他のメソッドは DB 書き込み経路専用であり、呼ばれたら前提崩れとして
+ * {@link UnsupportedOperationException} で即座に失敗させる（誤った DB メタ情報で変換結果を静かに歪めない）。
  * </p>
  *
  * @author kiyobot

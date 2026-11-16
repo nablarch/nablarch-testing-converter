@@ -12,10 +12,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 /**
  * Maven plugin {@code convert} ゴール。テストデータを指定形式（XLS／YAML）間で変換する。
  *
- * <p>
- * {@link TestDataConverter#convert(ConversionRequest)} へ薄くラップするだけの委譲ゴール。
- * 変換ロジックは本クラスに持たず、{@link ConversionRequest.Builder} で組み立てて委譲する。
- * </p>
+ * <p>変換は {@link TestDataConverter#convert(ConversionRequest)} へ委譲する。</p>
  *
  * @author kiyobot
  */

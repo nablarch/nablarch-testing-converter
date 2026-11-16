@@ -6,22 +6,12 @@ import java.util.List;
  * カラム名の行が<b>マーカーカラムだけ</b>で構成されたデータブロックの版面（カラム名と各行の値）。
  *
  * <p>
- * マーカーカラム（{@code [COL]} のように半角角括弧で囲んだカラム）は、フレームワークが読み込み対象から
- * 除外する。カラム名の行がマーカーカラムだけのブロックでは、除外の結果としてフレームワークが持つ器
- * （{@code TableData}／{@code List<Map>}）にカラムも値も残らない。エントリの数と並びだけは器にも残るが、
- * 変換ツールは名前と値も要る——このブロックの各エントリはフィールドを持たないものの、テストショット一覧と
- * 行の順序で対応付ける用途ではエントリの数と並びが意味を持ち、往復して同じ版面へ戻せなければならないためである。
+ * フレームワークはマーカーカラムを除外するため器にはカラムも値も残らないが、往復して同じ版面へ戻すために
+ * 名前と値を別途保持する。値はフレームワークが解釈したあとの値である。
  * </p>
  *
- * <p>
- * 値は<b>フレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）である。
- * フレームワークは行の解釈をマーカーカラムの除外より前に行の全セルへ掛けるため、マーカーカラムの値も
- * 他のカラムと同じ解釈を受けている。
- * </p>
- *
- * <p>各行はカラム名と同じ要素数を持つ（足りない位置は空文字で埋めてある）。</p>
- *
- * @see XlsParserAccessor#readMarkerOnlyBlock(String, String, String, String, DataType)
+ * @see nablarch.test.core.reader.XlsParserAccessor#readMarkerOnlyBlock(String, String, String, String,
+ *      nablarch.test.core.reader.DataType)
  * @author kiyobot
  */
 public class MarkerOnlyBlock {

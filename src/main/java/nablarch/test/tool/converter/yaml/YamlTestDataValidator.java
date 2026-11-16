@@ -29,9 +29,7 @@ import java.util.Set;
 /**
  * YAML テストデータディレクトリを検証し、{@link ValidationError} のリストを返すリンタ。
  *
- * <p>変換ツールが扱う前に、人手で記述された YAML テストデータの記述ミスを早期検出するための
- * 開発者向けリンタである。中間モデルには依存せず、生の YAML（テキスト／Map）だけを対象に検証する。
- * 入力が壊れていても（不正構文・重複キー・読み込み不能）例外で停止せず、その旨を
+ * <p>人手で記述された YAML の記述ミスを早期検出する。入力が壊れていても例外で停止せず、
  * {@link ValidationError} として報告する。</p>
  *
  * <p>検証ルール:</p>
@@ -44,10 +42,6 @@ import java.util.Set;
  *   <li><b>V-DKEY</b>：{@code directives} のキーが既知のディレクティブ名であること</li>
  *   <li><b>V-YAML</b>：YAML として解析可能であること（不正構文・キー重複を検出）</li>
  * </ul>
- *
- * <p>注: かつて存在した「{@code expected_request_header_messages} と
- * {@code expected_request_body_messages} の総行数一致（V-MSGROW）」は、実テストデータの異常系で
- * 両者の行数が意図的に異なるケースが多数あり制約として成立しないため採用しない。</p>
  */
 public class YamlTestDataValidator {
 
@@ -59,12 +53,7 @@ public class YamlTestDataValidator {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
-        // 以下の失敗経路 2 つ（in == null ／ IOException）は到達しない。SCHEMA_RESOURCE は依存の
-        // nablarch-testing-yaml の jar に同梱されており、本クラスと同じクラスローダで必ず解決するため、
-        // in が null になることも、jar 内リソースの読み込みが IOException になることもない。
-        // それでも残すのは、null 判定を落とすとリソースを欠いた配布物で NullPointerException になり
-        // 原因が読めなくなるためと、try-with-resources の close が IOException を宣言するため
-        // catch 自体を外せないためである。
+        // 失敗経路は到達しない（スキーマは依存 jar に同梱）。原因の分かる例外にするため残す。
         try (InputStream in = YamlTestDataValidator.class.getResourceAsStream(SCHEMA_RESOURCE)) {
             if (in == null) {
                 throw new IllegalStateException("スキーマリソースが見つかりません: " + SCHEMA_RESOURCE);
@@ -78,10 +67,7 @@ public class YamlTestDataValidator {
     /**
      * 既知のディレクティブ名。{@code directives:} のキー検証（V-DKEY）と、{@code fw_header:} への
      * ディレクティブ名混入検出（V-DIR）に用いる。
-     *
-     * <p>NTF 本体の {@code DataRecordFormatterSupport$Directive} ／ {@code FixedLengthDirective} ／
-     * {@code VariableLengthDirective} の全名称を網羅する。本体・スキーマとの整合は
-     * {@code YamlTestDataValidatorTest} がリフレクションで保証する。</p>
+     * NTF 本体のディレクティブ名を網羅する。
      */
     static final Set<String> KNOWN_DIRECTIVE_NAMES = Set.of(
             "file-type", "text-encoding", "record-separator",
@@ -102,9 +88,7 @@ public class YamlTestDataValidator {
     );
 
     /**
-     * {@code fw_header} マップを持ちうるセクションキー（スキーマ上 {@code message_data} に対応）。
-     * {@code response_*_messages}（{@code group_message_data}）は {@code fw_header} を持たないため
-     * V-DIR の対象外（混入は V-SCH が捕捉する）。
+     * {@code fw_header} を持ちうるセクションキー（V-DIR の対象）。
      */
     private static final Set<String> FW_HEADER_SECTION_KEYS = Set.of(
             "messages",
@@ -143,7 +127,7 @@ public class YamlTestDataValidator {
             return errors;
         }
 
-        // V-YAML: 解析（不正構文・キー重複はここで検出し、リンタ自身が例外停止しない）
+        // V-YAML: 不正構文・キー重複
         Map<String, Object> yaml;
         try {
             yaml = parseYaml(yamlText);
@@ -152,7 +136,7 @@ public class YamlTestDataValidator {
             return errors;
         }
 
-        // V-SCH: スキーマ適合検証（解析済みのため安全。検証器が送出する例外も握って報告に変える）
+        // V-SCH: スキーマ適合
         try {
             JsonNode jsonNode = (yaml == null) ? NullNode.getInstance() : OBJECT_MAPPER.valueToTree(yaml);
             for (ValidationMessage schemaError : schema.validate(jsonNode)) {
@@ -161,11 +145,7 @@ public class YamlTestDataValidator {
                         "[V-SCH] スキーマ非適合: " + schemaError.getMessage()));
             }
         } catch (RuntimeException e) {
-            // 到達しない。検証へ届くのは直前の parseYaml を通った入力だけであり、壊れた入力は手前で
-            // [V-YAML] として捕まる。YAML テキストを読むのは parseYaml の 1 箇所だけであり、ここは
-            // その結果の Map を JsonNode に写して渡すため、YAML の解析はもう起こらない。
-            // それでも catch を残すのは、リンタは全ファイルを走査し切ることが役目であり、
-            // 検証器が送出しうる非チェック例外で途中停止すると残りのファイルが検査されないためである。
+            // 到達しない。検証器の例外で残りのファイルの検査が止まらないよう残す。
             errors.add(new ValidationError(filePath, "", "[V-SCH] スキーマ検証エラー: " + e.getMessage()));
         }
 
@@ -273,11 +253,9 @@ public class YamlTestDataValidator {
 
     /**
      * YAML テキストを解析しトップレベル Map を返す。Map でない場合は {@code null}。
+     * 本体と同じ読み込み設定（{@link YamlLoader#loadSettings()}）を使う。
      *
-     * <p>読み込み設定は {@link YamlLoader#loadSettings()} を使う。テストデータを読むパーサと
-     * その設定（重複キー禁止・サイズ上限なし）を NTF 全体で 1 箇所に揃えるためである。</p>
-     *
-     * @throws YamlEngineException 不正構文・キー重複（呼び出し側が報告に変換する）
+     * @throws YamlEngineException 不正構文・キー重複
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseYaml(String yamlText) {

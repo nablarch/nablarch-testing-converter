@@ -35,7 +35,7 @@ final class YamlFormatHandler implements FormatHandler {
 
     @Override
     public TestDataContainer read(Path yamlDir, List<String> excludeSheets) {
-        // YAML はファイル単位で管理するためシート除外の概念がなく、excludeSheets は使用しない。
+        // YAML にはシート除外の概念がなく、excludeSheets は使用しない
         YamlFormatReader reader = new YamlFormatReader();
         String basePath = yamlDir.toString();
         String dirName = yamlDir.getFileName().toString();
@@ -80,15 +80,9 @@ final class YamlFormatHandler implements FormatHandler {
     }
 
     /**
-     * ディレクトリ直下の YAML ファイルを辞書順で列挙する。
-     *
-     * @param yamlDir YAML コンテナディレクトリ
-     * @return YAML ファイルのリスト（ファイル名辞書順）
-     */
-    /**
      * {@inheritDoc}
      *
-     * <p>YAML 形式には、書き出したファイルの代わりに読まれるファイルが無い。</p>
+     * <p>YAML 形式には該当するファイルが無い。</p>
      */
     @Override
     public List<Path> shadowingPaths(TestDataContainer container, Path outputBase) {
@@ -98,11 +92,7 @@ final class YamlFormatHandler implements FormatHandler {
     /**
      * {@inheritDoc}
      *
-     * <p>
-     * YAML 形式は 1 セクションを 1 ファイルとして書き、出力先にある他のファイルには触れない。
-     * 変換元から消したシートや名前を変えたシートの YAML は残り、YAML から Excel へ戻すとシートとして復元される。
-     * 手で置いた YAML を消さないよう削除はせず、列挙だけする。
-     * </p>
+     * <p>出力先にある他の {@code .yaml} ファイルのうち、今回書き出さないものを返す。</p>
      */
     @Override
     public List<Path> strayPaths(TestDataContainer container, Path outputBase) {
@@ -119,6 +109,12 @@ final class YamlFormatHandler implements FormatHandler {
         return stray;
     }
 
+    /**
+     * ディレクトリ直下の YAML ファイルを列挙する。
+     *
+     * @param yamlDir YAML コンテナディレクトリ
+     * @return YAML ファイルのリスト（ファイル名辞書順）
+     */
     private static List<Path> listYamlFiles(Path yamlDir) {
         TreeMap<String, Path> byName = new TreeMap<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(yamlDir)) {
@@ -129,7 +125,7 @@ final class YamlFormatHandler implements FormatHandler {
                 }
             }
         } catch (IOException e) {
-            // Files.newDirectoryStream が宣言するチェック例外。呼び出し元は IOException を受け取れないため UncheckedIOException でラップする。
+            // IOException を非チェック例外へ包む
             throw new UncheckedIOException("failed to list YAML files: " + yamlDir, e);
         }
         return new ArrayList<>(byName.values());

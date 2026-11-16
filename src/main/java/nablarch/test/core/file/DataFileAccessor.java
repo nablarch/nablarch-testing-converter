@@ -8,22 +8,11 @@ import nablarch.test.tool.converter.reader.FileView;
 import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
- * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析結果である
- * {@link DataFile}／{@link DataFileFragment} の<b>器の中身</b>を読み取るための、{@code file}
- * パッケージ相乗りのアクセサ。
+ * 本体の {@link DataFile}／{@link DataFileFragment} の中身を、読み取り専用のスナップショット
+ * （{@link FileView}）へ写すアクセサ。
  * <p>
- * {@link DataFile#all}・{@link DataFile#directives}・{@link DataFileFragment#names}／
- * {@code types}／{@code lengths}／{@code values} は protected で、変換ツールのパッケージから
- * 直接読めない。本クラスを本体と同一パッケージ（{@code nablarch.test.core.file}）に 1 枚だけ
- * 相乗りさせ、この可視性の壁を越えて読み取り専用のスナップショット（{@link FileView}）へ写す。
- * 相乗りの影響は本クラスに局所化される。
- * </p>
- * <p>
- * 本クラスは器が保持する値を<b>そのまま</b>写すだけで、原文復元（長さ省略・型表記の生行からの復元）は
- * 行わない。器が正規化した値（型記法のフレームワーク表記化など）はそのまま現れる。原文の復元は
- * 呼び出し側（Reader）が生行から行う。なお
- * レコード種別（{@link DataFileFragment#recordType}）は本体で private のため読めず、{@link FragmentView}
- * は保持しない。レコード種別も呼び出し側が生行（名前行の先頭セル）から取る。
+ * 読み取る項目が protected のため、本体と同じパッケージに置いている。
+ * レコード種別は本体で private のため読めず、{@link FragmentView} は保持しない。
  * </p>
  *
  * @author kiyobot

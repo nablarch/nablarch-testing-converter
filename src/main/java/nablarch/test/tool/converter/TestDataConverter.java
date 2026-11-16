@@ -14,21 +14,8 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  * テストデータ変換ツールの入口。
  *
  * <p>
- * 変換元・変換先の形式と入出力ディレクトリを受け取り、入力ディレクトリ配下の各リソースを
- * 形式中立な中間モデル（{@link TestDataContainer}）経由で変換先形式へ書き出す。Excel↔YAML の
- * 双方向に加え、同一形式変換（往復検証用）も扱う 4 方向対応。
- * </p>
- *
- * <p>
- * 形式固有の振る舞い（読込対象の列挙・読込・Writer 生成・出力先解決・出力先の検査に使うファイルの列挙）は
- * {@link FormatHandler} に集約され、本クラスは {@link DataFormat#handler()} へ委譲するだけの形式中立な共通フロー
- * （列挙 → 読込 → 出力先解決 → 出力先の検査 → 書込 → 残ったファイルの警告）に徹する。
- * 形式の追加はハンドラを 1 つ増やすだけで済む。
- * </p>
- *
- * <p>
- * Maven プラグイン（{@link ConverterMojo}）と Java API の共通の入口である。テストコードから呼び出して、
- * テストの実行時に変換することもできる。
+ * 入力ディレクトリ配下の各リソースを中間モデル（{@link TestDataContainer}）経由で変換先形式へ書き出す。
+ * 形式固有の処理は {@link FormatHandler} へ委譲する。
  * </p>
  *
  * @author kiyobot
@@ -44,8 +31,6 @@ public final class TestDataConverter {
 
     /**
      * 変換元・変換先の形式と入出力ディレクトリだけを指定する簡易入口。
-     *
-     * <p>上書きは行わず、include／exclude による絞り込みもしない既定リクエストで変換する。</p>
      *
      * @param from   変換元形式
      * @param to     変換先形式
@@ -94,9 +79,7 @@ public final class TestDataConverter {
      * 出力するファイルが、入力のファイル自身でないことを検証する。
      *
      * <p>
-     * 変換は NTF が読まない情報（{@code //} のコメント、セルのメモ、YAML の {@code #} のコメントなど）を
-     * 落とすため、入力をその場で上書きすると元に戻せない。同じ形式・同じディレクトリで変換した場合に
-     * 起こるため、{@code overwrite} によらず止める。
+     * 変換はコメント等を落とすため、入力をその場で上書きすると元に戻せない。{@code overwrite} によらず止める。
      * </p>
      *
      * @param inputs  入力のファイル
@@ -122,9 +105,7 @@ public final class TestDataConverter {
      * 出力先に、書き出したファイルの代わりに NTF に読まれてしまうファイルが無いことを検証する。
      *
      * <p>
-     * Excel 形式へは常に {@code .xlsx} で書くため、{@code .xls} を変換して同じディレクトリへ戻すと、
-     * 同名の {@code .xls} と {@code .xlsx} が並ぶ。本体は {@code .xls} を先に読むので、書き出した
-     * {@code .xlsx} は読まれない。{@code .xlsx} を上書きしても {@code .xls} が残る限り同じなので、
+     * NTF は同名の {@code .xls} を {@code .xlsx} より先に読むため、書き出した {@code .xlsx} が読まれない。
      * {@code overwrite} によらず止める。
      * </p>
      *
@@ -144,10 +125,7 @@ public final class TestDataConverter {
     /**
      * 出力先に、今回の変換で書き出さなかった同じ形式のファイルがあれば警告する。
      *
-     * <p>
-     * 変換元から消したシートや名前を変えたシートの YAML は出力先に残り、YAML から Excel へ戻すと
-     * シートとして復元される。手で置いたファイルの可能性もあるため削除はせず、利用者に知らせるだけにする。
-     * </p>
+     * <p>手で置いたファイルの可能性もあるため、削除はせず警告だけにする。</p>
      *
      * @param container  出力したコンテナ
      * @param stray      書き出さなかったファイル

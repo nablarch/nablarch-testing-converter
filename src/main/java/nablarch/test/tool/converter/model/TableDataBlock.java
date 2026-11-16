@@ -11,15 +11,8 @@ import java.util.Set;
  *
  * <p>
  * データ種別は {@link DataType#SETUP_TABLE_DATA}／{@link DataType#EXPECTED_TABLE_DATA}／
- * {@link DataType#EXPECTED_COMPLETED} のいずれか。識別子はテーブル名を保持する。
- * 省略カラムへのデフォルト補完（{@code EXPECTED_COMPLETE_TABLE}）は本体読み込み側の責務であり、
- * 中間モデルでは補完しない。
- * </p>
- *
- * <p>
- * <b>この 3 種以外のデータ種別では生成できない。生成時点で拒否する</b>
- * （根拠は
- * {@link TestDataBlock#requireDataTypeOf(Class, Set, DataType)} の Javadoc）。
+ * {@link DataType#EXPECTED_COMPLETED} のいずれかで、それ以外は生成時に拒否する。
+ * 識別子はテーブル名を保持する。省略カラムへのデフォルト補完は本体の責務であり、中間モデルでは行わない。
  * </p>
  *
  * @author kiyotis
@@ -41,8 +34,7 @@ public final class TableDataBlock extends ColumnRowDataBlock {
      * @param identifier  テーブル名
      * @param columnNames カラム名リスト（マーカーカラムを含む）
      * @param rows        データ行のリスト
-     * @throws IllegalArgumentException {@code dataType} が SETUP_TABLE_DATA ／ EXPECTED_TABLE_DATA ／
-     *                                  EXPECTED_COMPLETED のいずれでもない場合
+     * @throws IllegalArgumentException {@code dataType} がテーブル系の 3 種でない場合
      */
     public TableDataBlock(DataType dataType, String groupId, String identifier,
                           List<String> columnNames, List<List<String>> rows) {

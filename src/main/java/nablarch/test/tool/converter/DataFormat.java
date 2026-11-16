@@ -3,11 +3,6 @@ package nablarch.test.tool.converter;
 /**
  * 変換ツールが扱うテストデータ形式。
  *
- * <p>
- * 入口（{@link TestDataConverter}）が変換元・変換先の形式を指定するために用いる。各形式は
- * コマンドライン引数・設定値として用いる短い識別子（{@link #getArgument() argument}）を持つ。
- * </p>
- *
  * @author kiyobot
  */
 public enum DataFormat {
@@ -33,8 +28,6 @@ public enum DataFormat {
     /**
      * 本形式の入出力の振る舞いを担うハンドラを返す。
      *
-     * <p>入口（{@link TestDataConverter}）はこのハンドラへ委譲することで形式分岐を持たない。</p>
-     *
      * @return 形式ハンドラ
      */
     FormatHandler handler() {
@@ -44,7 +37,7 @@ public enum DataFormat {
             case YAML:
                 return new YamlFormatHandler();
             default:
-                // 将来 enum 値が追加された際にハンドラ未実装を即座に検出するための安全網。switch は網羅性をコンパイル時に保証しないため必須。
+                // enum 値追加時のハンドラ未実装を検出するための番人
                 throw new IllegalStateException("no handler for format: " + this);
         }
     }

@@ -14,78 +14,21 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * <b>{@code groupId} は生値である</b>（{@code g1}。半角角括弧は付けない）。角括弧は Excel 形式の書式であって
- * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である。書式を知ってよいのは
- * Excel 版面の読み書き（付ける＝{@code XlsFormatWriter#marker}／外す＝
- * {@code XlsParserAccessor#markerGroupId}）と、整形済みを要求する上流 API の境界
- * （{@code XlsParserAccessor}・{@code YamlBuilderAccessor} が渡す直前）の 2 層だけである。
+ * <b>{@code groupId} は {@code [ ]} を付けない値である</b>（{@link nablarch.test.tool.converter.reader.GroupIdNotation}）。
  * </p>
  *
  * <p>
- * <b>{@code groupId} は {@code null} であってはならない。省略は空文字で表す。生成時点で拒否する。</b>
- * Excel 記法・YAML 記法のいずれも {@code null} と空文字を区別できないためである
- * （Excel は 記法の {@code データタイプ=識別子の値} と
- * 記法の {@code データタイプ名[グループID]=} が書ける形を定めるが、どちらも「何も書かない」という
- * 同じ 1 つの出力にしかならない。YAML 本体スキーマ
- * {@code nablarch/test/ntf-testdata-yaml-schema.json} は {@code group_id} を
- * {@code {"type": "string", "minLength": 1}} の任意キーとしており、空文字を禁じ、省略はキーを置かない形で表す）。
- * 省略が「グループ ID を持たないデータブロック（デフォルトグループ）」を指すことは 記法が定める。
+ * 生成時に次の不変条件を検査する。いずれも、満たさないブロックは Excel・YAML のどちらかで書けないか、
+ * 読み戻すと別のブロックになるためである。{@code null} が入るのは呼び出し側のバグであり、生成時に露見させる。
  * </p>
- *
- * <p>
- * <b>{@code identifier} は {@code null} であってはならない。生成時点で拒否する。</b>
- * 識別子は記法上の必須要素である（{@code データタイプ=識別子の値}）。本体スキーマ
- * {@code nablarch/test/ntf-testdata-yaml-schema.json} も {@code $defs.table_data} の
- * {@code required} に {@code table} を含め、{@code {"type": "string"}} としている。
- * <b>空文字は拒否しない</b>（Excel は {@code id=[]} として往復し、YAML の {@code table: ""} は
- * スキーマに適合する）。{@code null} を許すと、Excel へは {@code SETUP_TABLE=null} と書かれて
- * 読み戻すと {@code NULL} という名前のテーブルになり、YAML へはスキーマ違反の {@code table: null} が書かれる。
- * </p>
- *
- * <p>
- * <b>{@code dataType} は {@code null} であってはならない。生成時点で拒否する。</b>
- * データブロックは必ず 1 つのデータタイプを持つ。Excel 形式はマーカー
- * （記法の {@code データタイプ=識別子の値}）、
- * YAML 形式はトップレベルキーがデータタイプから決まるため、
- * <b>データタイプの無いブロックはどちらの形式でも書けない</b>。
- * </p>
- *
- * <p>
- * <b>{@code dataType} に {@link DataType#DEFAULT} を持たせてはならない。生成時点で拒否する。</b>
- * {@code DEFAULT} は記法のデータタイプ表に載っている予約語だが（フレームワーク内部用（通常は使用しない））、YAML のトップレベルキー
- * 対応表（「データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりである」）
- * に {@code DEFAULT} の行が無く、<b>YAML 形式では表現できない</b>。中間モデルの契約は、Excel・YAML の
- * 読み込みと書き出しのすべてが表現できる範囲で定めるため、{@code DEFAULT} は契約の外である
- * （Excel へは {@code DEFAULT=識別子} と書けてしまうが、本体の読み込みは {@code DEFAULT} の行を読み飛ばすため、
- * 読み戻すとブロックが黙って消える）。**根拠が「対応表に行が無い」という不在である点に注意。**
- * </p>
- *
- * <p>
- * <b>データ種別は、そのブロックのクラスの系統に属していなければならない。生成時点で拒否する。</b>
- * データタイプとブロックの形は 1:1 に対応するためである。YAML 形式は
- * <b>データタイプごとに専用のトップレベルキー</b>を使い（データタイプごとに専用のトップレベルキーを使う…対応は、以下のとおりであると
- * 対応表）、本体スキーマ {@code nablarch/test/ntf-testdata-yaml-schema.json} は
- * キーごとに別の {@code $defs} を割り当てている（{@code setup_tables} ／ {@code expected_tables} ／
- * {@code expected_complete_tables} → {@code $defs.table_data}（{@code required} ＝
- * {@code ["table","rows"]}）、{@code list_maps} → {@code $defs.list_map_data}（{@code ["id","rows"]}）、
- * {@code setup_files} ／ {@code expected_files} → {@code $defs.file_data}（{@code ["path","type","records"]}）、
- * {@code messages} → {@code $defs.message_data}、{@code expected_request_*} ／ {@code response_*} →
- * {@code $defs.expected_request_message_data} ／ {@code $defs.group_message_data}）。
- * <b>いずれも {@code additionalProperties} ＝ {@code false}</b> であり、系統の違うデータ種別を持つ
- * ブロックはスキーマ違反の YAML にしかならない。Excel 形式も同じで、系統の違う組は書けてしまうが
- * 読み戻すと別種のブロックになる（例: データ種別 {@code SETUP_TABLE_DATA} のファイルブロックは
- * テーブルブロックとして読み戻される）。
- * {@link ListMapBlock} は {@link DataType#LIST_MAP} をコンストラクタで固定するため検査の対象外である。
- * </p>
- *
- * <p>
- * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>両リーダーは {@code null} を作らない
- * （Excel の読み込みは {@code XlsParserAccessor} がマーカー行でない行をブロックごと読み飛ばすため
- * {@code BlockHeader.groupId} が必ず非 null、YAML の読み込みは {@code YamlFormatReader} が省略時に空文字を返す）。
- * したがって {@code null} が入るのは呼び出し側のバグであり、生成時点で露見させる。書き出し側
- * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）には番人を置かない。書き出し側で落とすのは、
- * 持ってはいけない値を中間モデルが持てる状態をそのままにする暫定対応にあたるためである。
- * </p>
+ * <ul>
+ *   <li>{@code dataType} は {@code null} 不可。データタイプの無いブロックはどちらの形式でも書けない。</li>
+ *   <li>{@code dataType} に {@link DataType#DEFAULT} は不可。YAML のトップレベルキーに対応が無く表現できない。</li>
+ *   <li>データ種別はブロックのクラスの系統に属すること。データタイプとブロックの形は 1:1 に対応し、
+ *       系統の違う組は YAML ではスキーマ違反、Excel では読み戻すと別種のブロックになる。</li>
+ *   <li>{@code groupId} は {@code null} 不可。どちらの記法も {@code null} と空文字を区別できないため、省略は空文字で表す。</li>
+ *   <li>{@code identifier} は {@code null} 不可（記法上の必須要素）。空文字は往復できるため通す。</li>
+ * </ul>
  *
  * @author kiyotis
  */
@@ -148,7 +91,7 @@ public abstract sealed class TestDataBlock
         return dataType;
     }
 
-    /** @return グループ ID（非 {@code null}。省略時は空文字） */
+    /** @return グループ ID（{@code [ ]} を付けない値。非 {@code null}。省略時は空文字） */
     public String getGroupId() {
         return groupId;
     }
@@ -162,32 +105,14 @@ public abstract sealed class TestDataBlock
      * データ種別が、そのブロックのクラスの系統に属することを確かめる。
      *
      * <p>
-     * 具体ブロックのコンストラクタは {@code super(...)} の直後にこれを呼ぶ。その経路では
-     * {@code dataType} が {@code null} ／ {@link DataType#DEFAULT} の場合ここへ届かない ——
-     * どちらも {@link #TestDataBlock(DataType, String, String)} が先に拒否し、その専用のメッセージが
-     * そのまま残る。
-     * </p>
-     *
-     * <p>
-     * <b>ただしコンストラクタ以外（{@link FileDataBlock#fileTypeOf(DataType)}）からも直接呼ばれるため、
-     * {@code null} ／ {@link DataType#DEFAULT} がここへ届く経路がある。</b>
-     * その場合 {@link DataType#DEFAULT} はコンストラクタの専用メッセージ（YAML 形式で表現できない旨）に
-     * ならず、このメソッドの {@code IllegalArgumentException}（クラスの系統に属さないデータ種別である旨の
-     * メッセージ）になる。
-     * <b>{@code null} はこのメソッド自身が {@link IllegalArgumentException} で拒否する</b> ——
-     * データブロックは必ず 1 つのデータタイプを持ち、データタイプの無いブロックはどちらの形式でも
-     * 書けない。答えは
-     * {@link #TestDataBlock(DataType, String, String)} で確定しており、<b>受け口によって
-     * {@link NullPointerException} と {@link IllegalArgumentException} に分かれる状態は残さない</b>
-     * （メッセージの趣旨はコンストラクタと同じで、文面は本メソッド専用のもの）。
+     * コンストラクタ以外からも直接呼ばれるため、{@code null} もここで拒否する
+     * （{@link NullPointerException} にはしない）。
      * </p>
      *
      * @param blockClass 具体ブロックのクラス
      * @param permitted  そのクラスが取りうるデータ種別
      * @param dataType   検査するデータ種別（{@code null} 不可）
-     * @throws IllegalArgumentException {@code dataType} が {@code null} の場合、または
-     *                                  {@code permitted} に含まれない場合
-     *                                  （{@link DataType#DEFAULT} を含む）
+     * @throws IllegalArgumentException {@code dataType} が {@code null} または {@code permitted} に含まれない場合
      */
     static void requireDataTypeOf(Class<? extends TestDataBlock> blockClass,
                                   Set<DataType> permitted, DataType dataType) {

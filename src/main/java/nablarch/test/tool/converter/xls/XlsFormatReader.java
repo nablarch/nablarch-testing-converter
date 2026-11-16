@@ -37,31 +37,13 @@ import nablarch.test.tool.converter.reader.FragmentView;
  * Excel（1 シート）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。
  *
  * <p>
- * 独自の POI パース・構造解析は持たない。本体の読み込みは {@link XlsParserAccessor}
- * （本体 {@code reader} パッケージ相乗りのアクセサ）へ委譲し、本クラスは「どのブロックが存在するか」を
- * {@link XlsParserAccessor#readHeaders(String, String)} で得て、各ブロックをデータタイプ別の
- * {@code read*} で取り出し、本体の器を中間モデルへ写すオーケストレーションに徹する。
- * 行のデータタイプ判定・マーカー解釈はすべてアクセサ（本体）側が担う。
+ * POI パース・構造解析は本体（{@link XlsParserAccessor}）へ委譲する。値は本体が解釈したあとの値を使うが、
+ * 本体が正規化してしまう箇所（長さ・型記法・レコード種別）だけは作成者の原文が要るため生行から復元する。
  * </p>
  *
  * <p>
- * 器の中身は {@link DataFileAccessor}（本体 {@code file} パッケージ相乗り）が読む。データ行の値は
- * 本クラスでは解釈しない。{@link XlsParserAccessor} が本体パーサへインタープリタ列を渡し、
- * 本体が全セルを解釈してから構造解析するため、器から取り出した時点で既に
- * <b>テスティングフレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）に
- * なっている。一方、本体の構造解析は
- * テスト実行に必要な正規化を器に施す（長さ省略 {@code -} の実バイト長化・型記法のフレームワーク表記化・
- * レコード種別の private 化）。作成者が記述した原文が要るため、これら正規化される箇所だけ
- * {@link XlsParserAccessor#readBlockBodyLines(String, String, String, String, DataType) 生行}から
- * 原文を復元する。生行は器（{@link FragmentView}）を
- * 権威に断片数・フィールド数・値行数を決め、本体パーサと同形に走査して原文を充填する。
- * </p>
- *
- * <p>
- * 同一データタイプ・同一グループの複数ブロックは本体 API が一括取得するため、ブロックの並びは
- * 「各 (データタイプ, グループ) を最初に検出した位置」にまとめて展開する。データタイプをまたぐ
- * 厳密な記述順は保たれない場合があるが、NTF はデータを (データタイプ, ID) で取得するため
- * ブロックの並び順は意味を持たない。
+ * 同一データタイプ・同一グループの複数ブロックは本体 API が一括取得するため、最初に検出した位置へ
+ * まとめて展開する。NTF はデータを (データタイプ, ID) で取得するため並び順は意味を持たない。
  * </p>
  *
  * @author kiyobot
@@ -75,7 +57,7 @@ public class XlsFormatReader implements TestDataFormatReader {
     private final XlsParserAccessor accessor;
 
     /**
-     * 本番用コンストラクタ。実 Excel を読む {@link PoiXlsReader} を注入したアクセサを構成する。
+     * 本番用コンストラクタ。{@link PoiXlsReader} で実 Excel を読む。
      */
     public XlsFormatReader() {
         this(new XlsParserAccessor(new PoiXlsReader()));
@@ -133,10 +115,7 @@ public class XlsFormatReader implements TestDataFormatReader {
                     blocks.addAll(readSendSyncBlocks(basePath, resourceName, header.getGroupId(), type));
                 }
             } else {
-                // 到達しない。readHeaders はマーカー行から取れた DataType だけを返し DataType.DEFAULT は
-                // 返さないため、ここへ届くのは残る 13 種であり、上の 5 分岐がその 13 種を尽くしている。
-                // それでも残すのは、DataType に値が増えたとき、その種別のブロックが黙って変換結果から
-                // 欠落するのを防ぎ、その場で検出するための安全網としてである。
+                // 到達しない。DataType が増えたときにブロックが黙って欠落するのを防ぐため残す。
                 throw new IllegalStateException("unhandled DataType: " + type);
             }
         }
@@ -191,20 +170,16 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return LIST_MAP ブロック
      */
     private TestDataBlock readListMapBlock(String basePath, String resourceName, BlockHeader header) {
-        // 本体は LIST_MAP を ID だけで引き当て、識別行のグループ ID を使わない。中間モデルの LIST_MAP は
-        // グループ ID を持たないため、書かれていれば外して警告する。
+        // 本体は LIST_MAP のグループ ID を使わないため、書かれていれば外して警告する。
         if (!header.getGroupId().isEmpty()) {
             LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
                     + "\" の LIST_MAP \"" + header.getIdentifier() + "\" にグループID \"" + header.getGroupId()
                     + "\" が書かれています。テスティングフレームワークは LIST_MAP のグループIDを使わないため、"
                     + "グループIDを除いて出力します。");
         }
-        // 列順は accessor.readListMapColumnNames() から取得する。
-        // accessor.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
-        // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
+        // readListMap() の Map は記述順を保たないため、列順は別途取得する。
         List<String> rawColumnNames = accessor.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
         List<String> columnNames = deduplicateColumnNames(rawColumnNames, resourceName, header.getIdentifier());
-        // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         MarkerOnlyBlock markerOnly = markerOnlyBlock(basePath, resourceName, header.getGroupId(),
                                                      header.getIdentifier(), DataType.LIST_MAP, columnNames);
         if (markerOnly != null) {
@@ -260,21 +235,16 @@ public class XlsFormatReader implements TestDataFormatReader {
     private TestDataBlock readMessageBlock(String basePath, String resourceName, BlockHeader header) {
         MessageData message = accessor.readMessage(basePath, resourceName, header.getIdentifier());
         if (message == null) {
-            // ヘッダスキャンで MESSAGE= マーカーを検出したが、本体パーサが同 ID のデータを見つけられない場合。
-            // 本体の MessageParser が空結果を返したとき accessor.readMessage は null を返す（正常系）。
+            // マーカーはあるが本体が同 ID のデータを見つけられない場合（正常系）。
             return null;
         }
         FixedLengthFile body = message.getBody();
         FileView view = DataFileAccessor.read(body);
-        // MESSAGE 本文は固定長。生行には FW ヘッダ行が先頭に含まれるが、原文復元は名前行を
-        // 起点に走査するため FW ヘッダ行は読み飛ばされる。
         List<List<String>> bodyLines =
                 accessor.readBlockBodyLines(basePath, resourceName, header.getGroupId(), header.getIdentifier(),
                         DataType.MESSAGE);
-        // FW ヘッダ値は本体 MessageParser が解釈後の値として返すため、変換器側の加工は要らない。
         Map<String, String> fwHeaderFields = new LinkedHashMap<>(message.getFwHeader());
-        // FW ヘッダ行も本体 MessageParser はディレクティブ行と同じく設定行として読む。
-        // 名前行の候補からはディレクティブ名と FW ヘッダ名の両方を除く。
+        // 本体は FW ヘッダ行も設定行として読むため、名前行の候補から除く。
         Set<String> settingRowNames = new HashSet<>(view.getDirectives().keySet());
         settingRowNames.addAll(fwHeaderFields.keySet());
         return new MessageDataBlock(DataType.MESSAGE, header.getGroupId(), header.getIdentifier(),
@@ -284,18 +254,11 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 送信同期メッセージ（要求/応答電文 4 種）の全ブロック（指定の (データタイプ, グループ) に属する）を
-     * {@link MessageDataBlock} 群へ写す。
-     * <p>
-     * 構造は MESSAGE と同型（名前行の先頭セルがレコード種別、{@code no} 列＝メタ情報は器が
-     * 値から除いて {@code FIRST_FIELD_NO} に隔離する）だが、送信系に FW 制御ヘッダは無い（常に空）。
-     * 本文の固定長ファイルは {@link XlsParserAccessor#readSendSyncMessages} がグループ単位で
-     * まとめて返し、各ファイルの {@link DataFile#getPath()} がマーカー {@code =} 以降の識別子に一致する。
-     * 原文（レコード種別・型記法・長さ・値）は MESSAGE と同じく生行から復元する。
-     * </p>
+     * {@link MessageDataBlock} 群へ写す。構造は MESSAGE と同じだが FW 制御ヘッダは持たない。
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
-     * @param groupId      グループ ID（{@code [case1]} 等）
+     * @param groupId      グループ ID（{@code [ ]} を付けない値）
      * @param type         データタイプ（送信系 4 種）
      * @return メッセージデータブロック一覧
      */
@@ -317,19 +280,12 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 器のビュー（断片構造）と生行から、原文を復元したレコードレイアウト群を組み立てる。
-     * <p>
-     * 器（{@link FragmentView}）を権威に断片数・フィールド名・値行数を決め、生行を本体パーサと同形に
-     * 走査して原文（レコード種別＝名前行の先頭セル／型記法＝型行／長さ＝長さ行／値＝値行）を取る。
-     * 生行のうちマーカー行は既に除かれており、各行の先頭セルを落とした残り（{@link #tail(List)}）が
-     * 器のフィールドと同順・同数で並ぶ。最初の断片の名前行はフィールド名一致で特定し、それより前の
-     * ディレクティブ行・FW ヘッダ行を読み飛ばす。
-     * </p>
+     * 断片数・フィールド名・値行数は器に従い、レコード種別・型記法・長さは生行から取る。
      *
      * @param view            器のビュー
      * @param bodyLines       生のボディ行（マーカー行除去済み）
      * @param fixed           固定長（長さ行を持つ）なら真、可変長なら偽
-     * @param settingRowNames 本体パーサが設定行として読んだ行の先頭セルの集合（ディレクティブ名。
-     *                        MESSAGE では FW ヘッダ名も含む）
+     * @param settingRowNames 本体パーサが設定行として読んだ行の先頭セルの集合
      * @return レコードレイアウト群
      */
     private List<RecordLayout> toRecordLayouts(FileView view, List<List<String>> bodyLines, boolean fixed,
@@ -352,13 +308,7 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * レコード種別セルの値を中間モデルの表現へ直す。
-     * <p>
-     * 空セルは {@code PoiXlsReader} が {@code ""} を返すが、中間モデルの
-     * {@link RecordLayout}（同クラスのコンストラクタ Javadoc「レコード種別（省略時は {@code null}）」）は
-     * 省略を {@code null} で表す。YAML の読み込みも省略時は {@code null} を入れる。
-     * Excel の読み込みだけ {@code ""} になる非対称を無くす（放置すると、Excel 由来のレコード種別の省略が
-     * YAML へ {@code record_type: ""} として書き出され、YAML 由来の省略（キー自体が無い）と食い違う）。
-     * </p>
+     * 中間モデルは省略を {@code null} で表すため、空セルの {@code ""} を {@code null} にそろえる。
      *
      * @param recordType レコード種別セルの値
      * @return 空文字なら {@code null}、それ以外はそのまま
@@ -369,15 +319,6 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 最初の断片の名前行が現れる位置まで生行を読み飛ばす（ディレクティブ行・FW ヘッダ行を除外）。
-     * <p>
-     * 名前行は「先頭セルを除いた残り（{@link #tail(List)}）がフィールド名と一致する行」で特定するが、
-     * 単一フィールドの電文（例: JSON 電文のフィールドが {@code JSON} の 1 つだけ）では、
-     * ディレクティブ行（例: {@code [file-type, JSON]}）の {@code tail} が {@code [JSON]} となり
-     * フィールド名と一致してしまう。NTF 本体は「先頭セルがディレクティブ名なら設定行」と判断して
-     * 名前行と区別するため、ここでも同じ判断を行い、先頭セルがディレクティブ名の行は名前行とみなさない。
-     * MESSAGE の FW ヘッダ行（例: {@code [requestId, JSON]}）も本体 {@code MessageParser} は設定行として
-     * 読むため、同じく名前行とみなさない。
-     * </p>
      *
      * @param bodyLines 生のボディ行
      * @param firstNames 最初の断片のフィールド名リスト
@@ -395,8 +336,8 @@ public class XlsFormatReader implements TestDataFormatReader {
     /**
      * 生行が名前行かどうかを判定する。
      * <p>
-     * 先頭セルがディレクティブ名（MESSAGE では FW ヘッダ名も）の行は設定行であり名前行ではない
-     * （NTF 本体と同じ判断）。それ以外で、先頭セルを除いた残りがフィールド名と一致する行を名前行とみなす。
+     * 単一フィールドの電文ではディレクティブ行（例: {@code [file-type, JSON]}）もフィールド名と一致しうるため、
+     * NTF 本体と同じく、先頭セルが設定行の名前である行は名前行とみなさない。
      * </p>
      *
      * @param line            生行
@@ -413,10 +354,6 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 器（断片構造）の名前行が生行の {@code idx} 位置に一致することを検証し、{@code idx} をそのまま返す。
-     * <p>
-     * 一致しなければ器↔生行の対応が破綻している＝前提崩れ。誤った原文を静かに充填せず
-     * 即座に失敗させる。
-     * </p>
      *
      * @param bodyLines 生のボディ行
      * @param idx       検証する位置
@@ -425,7 +362,6 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @throws IllegalStateException 名前行が生行に見つからない場合
      */
     private int verifyNameRow(List<List<String>> bodyLines, int idx, List<String> names) {
-        // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
         if (idx >= bodyLines.size() || !tail(bodyLines.get(idx)).equals(names)) {
             throw new IllegalStateException(
                     "器の断片構造と生行が不整合です。名前行 names=" + names + " が生行に見つかりません。");
@@ -434,12 +370,7 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 型行・長さ行（固定長のみ）を読んで {@link FieldDef} リストを組み立て、続けてデータ行も読んで
-     * {@link RecordLayout} を {@code records} に追加する。
-     * <p>
-     * このメソッドは名前行の次の行（{@code idx}）から始まり、型行・長さ行・全値行を消費した後の
-     * 次インデックスを返す。
-     * </p>
+     * 型行・長さ行（固定長のみ）・値行を読んで {@link RecordLayout} を {@code records} に追加する。
      *
      * @param bodyLines  生のボディ行
      * @param idx        型行の開始インデックス（名前行の次）
@@ -499,8 +430,7 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 器が期待する位置の生行を取り出す。生行が器の断片構造より短い（対応が破綻している）場合は
-     * 前提崩れとして即座に失敗させる。
+     * 器が期待する位置の生行を取り出す。
      *
      * @param bodyLines 生のボディ行
      * @param idx       取り出す位置
@@ -510,7 +440,6 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @throws IllegalStateException 当該位置に生行が存在しない場合
      */
     private static List<String> requireLine(List<List<String>> bodyLines, int idx, List<String> names, String rowKind) {
-        // 内部整合性ガード。断片構造と生行の対応が壊れていれば二経路読み込みロジックのバグ。
         if (idx >= bodyLines.size()) {
             throw new IllegalStateException(
                     "器の断片構造と生行が不整合です。断片 names=" + names + " の" + rowKind + "が生行に存在しません。");
@@ -520,14 +449,6 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 本体ディレクティブ（{@code Map<String, Object>}）を文字列ディレクティブへ写す。
-     * <p>
-     * 本体器のディレクティブ値は型変換済み（{@code Charset}・enum・整数等）で、順序も
-     * {@code HashMap} 由来で記述順を保たない。Excel 経路はこの器固有挙動を受容し、
-     * 値は {@link Object#toString()} で文字列化する。null 値は（テーブル/LIST_MAP 経路と対称に）
-     * null のまま保持し、文字列 {@code "null"} へ化けさせない。
-     * Excel 経路固有の逆正規化（{@link #normalizeDirectiveValue}）を {@link DirectiveUtil#toStringDirectives}
-     * の {@code valueMapper} として差し込む。
-     * </p>
      *
      * @param directives 本体ディレクティブ
      * @return 文字列ディレクティブ
@@ -543,19 +464,13 @@ public class XlsFormatReader implements TestDataFormatReader {
     }
 
     /**
-     * 本体ディレクティブ値を、YAML へ書き出す表現（仕様 DR-09/DR-10 のシンボル）へ逆正規化する。
-     * 区切り文字（record-separator／field-separator）の逆正規化は YAML の読み込み（YamlFormatReader）と共有する
-     * {@link DirectiveUtil#normalizeSeparator} が行う。それ以外のキーは値をそのまま返す。
+     * 本体ディレクティブ値を、YAML へ書き出す表現へ逆正規化する。区切り文字以外はそのまま返す。
      */
     private static String normalizeDirectiveValue(String key, String value) {
         if ("record-separator".equals(key) || "field-separator".equals(key)) {
             return DirectiveUtil.normalizeSeparator(key, value);
         }
-        // 区切り文字以外は加工しない。本体パーサへ NullInterpreter → QuotationTrimmer →
-        // LineSeparatorInterpreter を渡しているため、ここへ届く値は本体が解釈し終えたあとの値である
-        // （例: quoting-delimiter のセル値がダブルクォート 5 個なら、本体が外側 1 層を外した 3 個が届く）。
-        // 変換器がここでもう一度剥がすと二重適用になり、本体が読む値とずれる。
-        // 記法へ戻すのは書き出し側（XlsFormatWriter の toCellNotation）の役目である。
+        // 値は本体が解釈済みのため、ここで再度加工すると二重適用になる。
         return value;
     }
 
@@ -574,21 +489,8 @@ public class XlsFormatReader implements TestDataFormatReader {
      * 検出し、フレームワークが読まないデータブロックについて警告を出す。
      *
      * <p>
-     * 収集方式が「グループ」のデータタイプ（テーブル・ファイル・グループ ID 付きの電文）では、
-     * フレームワークは対象のブロックを読み始めたあと、別のキーのマーカー行に当たった時点で収集を打ち切る。
-     * そのため、間に別のブロックを挟んだあとに再び現れた同じキーのブロックは読まれない。
-     * YAML 形式にはこれに相当する記法が無く、そのまま変換すると読まれなかったブロックが有効になって
-     * 意味が変わってしまうため、警告を出す。
-     * </p>
-     *
-     * <p>
-     * <b>出力から外すのは本クラスではない。</b>フレームワークが打ち切った結果、
-     * 読まれなかったブロックはそもそも器に入ってこない。本メソッドは検出と警告だけを行う。
-     * </p>
-     *
-     * <p>
-     * 識別子で 1 件を引くデータタイプ（{@code LIST_MAP} ／ {@code MESSAGE}）は収集方式が
-     * 「グループ」ではないため対象外である。
+     * フレームワークは別のキーのマーカー行に当たった時点で収集を打ち切るため、後ろのブロックは読まれず
+     * 器にも入らない。YAML にはこれに相当する記法が無く、黙って落ちることになるため警告する。
      * </p>
      *
      * @param headers      記述順のブロックヘッダ一覧
@@ -620,11 +522,6 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * 指定位置から始まるブロック群のうち、フレームワークが読まないブロックの識別子を返す。
-     *
-     * <p>
-     * 打ち切りが起きるのは、開始位置より後ろで最初に別のキーのヘッダが現れた位置である。
-     * それより後ろに同じキーのヘッダがあれば、それらは読まれない。
-     * </p>
      *
      * @param headers 記述順のブロックヘッダ一覧
      * @param start   対象キーが最初に現れた位置
@@ -667,16 +564,8 @@ public class XlsFormatReader implements TestDataFormatReader {
      * ブロックが持つデータ行の数を返す。カラム名を 1 件も持たないブロックは 0 を返す。
      *
      * <p>
-     * <b>カラム名を 1 件も持たないブロックは行を持てない</b>（{@link ColumnRowDataBlock} の不変条件）。
+     * カラム名の無いブロックは行を持てない（{@link ColumnRowDataBlock} の不変条件）。
      * どちらの記法にも「値があってカラム名が無い」形は書けないためである。
-     * </p>
-     *
-     * <p>
-     * <b>カラム名の行がマーカーカラムだけのブロックはここへ来ない。</b>そちらは
-     * {@link #markerOnlyBlock} がマーカーカラムの名前と値ごと保つ。ここへ来るのは、カラム名の行が
-     * <b>マーカーカラムでもないのに 1 件も残らなかった</b>ブロックだけである。カラム名の行のセルが
-     * {@code null} 記法だけの場合に起こる（フレームワークは解釈のあとに行末の空要素を取り除くため、
-     * カラム名が 1 件も残らない）。版面に書き戻せる形が無いため行を落とす。
      * </p>
      *
      * @param columnNames ブロックのカラム名
@@ -691,20 +580,13 @@ public class XlsFormatReader implements TestDataFormatReader {
      * カラム名の行が<b>マーカーカラムだけ</b>で構成されたブロックの版面を返す。そうでなければ {@code null}。
      *
      * <p>
-     * マーカーカラムはフレームワークが読み込み対象から除外するため、除外後のカラム名が 0 件になったときだけ
-     * この形の候補になる。除外前の版面（マーカーカラムの名前と各行の値）は器に残っていないため、
-     * アクセサが本体の行読み込みを再利用して取り直す。
-     * </p>
-     *
-     * <p>
-     * <b>このブロックは名前と値を保ったまま変換する。</b>各エントリはフィールドを持たないが、
-     * テストショット一覧と行の順序で対応付ける用途ではエントリの数と並びが意味を持つためである。
-     * 実データカラムを 1 つでも持つブロックのマーカーカラムは、従来どおりフレームワークの除外に従って落とす。
+     * テストショット一覧と行の順序で対応付ける用途ではエントリの数と並びが意味を持つため、
+     * フレームワークが除外するマーカーカラムをこの形に限り名前と値ごと保つ。
      * </p>
      *
      * @param basePath     ディレクトリ
      * @param resourceName リソース名
-     * @param groupId      生値のグループ ID
+     * @param groupId      グループ ID（{@code [ ]} を付けない値）
      * @param identifier   識別子（テーブル名／{@code LIST_MAP} の ID）
      * @param type         データタイプ
      * @param columnNames  マーカーカラムを除いたカラム名
@@ -720,10 +602,6 @@ public class XlsFormatReader implements TestDataFormatReader {
 
     /**
      * カラム名リストから重複を除去し（後勝ち）、重複があれば WARN ログを出力する。
-     * <p>
-     * ヘッダ行に同名カラムが複数存在する場合、最後の出現位置のみを有効とする（後勝ち）。
-     * 重複が検出されると、ファイル名・シート名・ブロック識別子・重複カラム名を含む WARN ログを出力する。
-     * </p>
      *
      * @param columnNames  元のカラム名リスト（重複を含む可能性あり）
      * @param resourceName リソース名（{@code "ブック名/シート名"} 形式）
@@ -731,18 +609,15 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return 重複を除去したカラム名リスト（後勝ち・元の順序を保持）
      */
     private static List<String> deduplicateColumnNames(List<String> columnNames, String resourceName, String blockId) {
-        // 各カラム名の最後の出現インデックスを記録
         Map<String, Integer> lastIndex = new HashMap<>();
         for (int i = 0; i < columnNames.size(); i++) {
             lastIndex.put(columnNames.get(i), i);
         }
-        // 重複チェック：最後の出現でない位置は除外、初回重複検出時に WARN を出す
         Set<String> warned = new HashSet<>();
         List<String> result = new ArrayList<>(lastIndex.size());
         for (int i = 0; i < columnNames.size(); i++) {
             String name = columnNames.get(i);
             if (lastIndex.get(name) != i) {
-                // この位置は後方に同名カラムが存在するため除外（後勝ち）
                 if (warned.add(name)) {
                     LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
                             + "\" のブロック \"" + blockId
