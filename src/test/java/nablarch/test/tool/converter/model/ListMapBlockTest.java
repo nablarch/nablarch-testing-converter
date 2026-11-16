@@ -5,8 +5,10 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 /**
  * {@link ListMapBlock} のテスト。
@@ -43,5 +45,16 @@ public class ListMapBlockTest {
         // Then: 行は存在し中身は空
         assertThat(sut.getRows().size(), is(1));
         assertThat(sut.getRows().get(0).isEmpty(), is(true));
+    }
+
+    @Test
+    public void グループIDを持つLISTMAPブロックは生成できない() {
+        // Given / When: フレームワークは LIST_MAP を ID だけで引き当てるため、中間モデルはグループ ID を持たない
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> new ListMapBlock("g1", "lm", List.of("k"), List.of(List.of("v"))));
+
+        // Then
+        assertThat(e.getMessage(), containsString("グループ ID を持てません"));
+        assertThat(e.getMessage(), containsString("groupId=[g1]"));
     }
 }

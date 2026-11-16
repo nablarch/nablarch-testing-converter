@@ -61,9 +61,10 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動（{@code ~} ／ {@code NULL} が Java {@code null} にならず文字列になる）もあるが、
- * 原因は本ツールの外（yaml 側のローダ）にあるため、実装（src/main）は変更していない。
+ * <b>本クラスのアサーションは、YAML のスカラーが中間モデルの値になる規則である。</b>変換ツールは
+ * {@code nablarch-testing-yaml} のローダ（本体が YAML 形式を読むのと同じもの）で読むため、本体と同じ値になる。
+ * {@code ~} ／ {@code NULL} が Java {@code null} にならず文字列になるのも、このローダの動作であり、
+ * 本ツールでは変えない（{@link #readsTildeAsString} などに記す）。
  * </p>
  *
  * @author kiyobot
@@ -404,7 +405,7 @@ public class YamlFormatReaderScalarTest {
      * （null と解決するのは小文字の {@code null} だけ）で読むためである。NTF の記法が定める null の書き方は
      * 「{@code null}（大文字小文字不問）」であり、YAML の {@code ~} を null と読めという定めは無い。
      * 文字列として入った {@code NULL} は NTF の実行時に Java の null へ変換される。
-     * ここでは現状の挙動として固定するにとどめる。
+     * 本ツールではローダの読み方を変えない。
      * </p>
      *
      * <p>担保する観点: NULL に見える文字列・~。</p>

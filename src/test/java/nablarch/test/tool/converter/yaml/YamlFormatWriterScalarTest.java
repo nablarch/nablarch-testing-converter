@@ -57,9 +57,9 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと判断した挙動（折り返しの起きるキーを書き出すと YAML として読めなくなる）もあるが、
- * 実装（src/main）は変更していない。理由は {@link #foldsLongEscapedKeyWithBackslashContinuation} に記す。
+ * <b>本クラスのアサーションは、値とキーを YAML へ書く規則（どちらも常にダブルクォートで囲む）である。</b>
+ * ただし、折り返しの起きるキーを書き出すと YAML として読めなくなることは既知の制限であり、修正しない。
+ * 理由は {@link #foldsLongEscapedKeyWithBackslashContinuation} に記す。
  * </p>
  *
  * @author kiyobot
@@ -481,7 +481,7 @@ public class YamlFormatWriterScalarTest {
      * Then : 値と同じく行末の {@code \} で折り返され、<b>キーが 2 行にまたがる</b>。
      *
      * <p>
-     * 担保する観点: 折り返したキーの現状挙動の固定。
+     * 担保する観点: 折り返したキーの既知の制限の固定。
      * YAML の simple key は 1 行に収まらなければならないため、この出力は読み戻せない
      * （{@code #failsToReadBackFoldedKey}）。修正しない。NTF の記法はキーに使える文字種・長さを定めておらず、
      * 到達には「キーにエスケープ対象の文字を含む」かつ「出力幅（80 桁）を超える」の両方が要り、

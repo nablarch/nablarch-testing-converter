@@ -116,6 +116,10 @@ public class XlsFormatReader implements TestDataFormatReader {
             } else if (type == DataType.LIST_MAP) {
                 if (processed.add(singleKey(type, header.getIdentifier()))) {
                     blocks.add(readListMapBlock(basePath, resourceName, header));
+                } else {
+                    LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
+                            + "\" に、識別子 \"" + header.getIdentifier() + "\" の LIST_MAP が複数あります。"
+                            + "テスティングフレームワークは最初のものだけを読むため、2 つ目以降を出力しません。");
                 }
             } else if (type == DataType.MESSAGE) {
                 if (processed.add(singleKey(type, header.getIdentifier()))) {
@@ -187,6 +191,14 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return LIST_MAP ブロック
      */
     private TestDataBlock readListMapBlock(String basePath, String resourceName, BlockHeader header) {
+        // 本体は LIST_MAP を ID だけで引き当て、識別行のグループ ID を使わない。中間モデルの LIST_MAP は
+        // グループ ID を持たないため、書かれていれば外して警告する。
+        if (!header.getGroupId().isEmpty()) {
+            LOGGER.warning("[" + bookName(resourceName) + "] シート \"" + sheetName(resourceName)
+                    + "\" の LIST_MAP \"" + header.getIdentifier() + "\" にグループID \"" + header.getGroupId()
+                    + "\" が書かれています。テスティングフレームワークは LIST_MAP のグループIDを使わないため、"
+                    + "グループIDを除いて出力します。");
+        }
         // 列順は accessor.readListMapColumnNames() から取得する。
         // accessor.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
         // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
@@ -196,7 +208,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         MarkerOnlyBlock markerOnly = markerOnlyBlock(basePath, resourceName, header.getGroupId(),
                                                      header.getIdentifier(), DataType.LIST_MAP, columnNames);
         if (markerOnly != null) {
-            return new ListMapBlock(header.getGroupId(), header.getIdentifier(),
+            return new ListMapBlock("", header.getIdentifier(),
                                     markerOnly.getColumnNames(), markerOnly.getRows());
         }
         List<Map<String, String>> mapRows = accessor.readListMap(basePath, resourceName, header.getIdentifier());
@@ -209,7 +221,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             }
             cellRows.add(cells);
         }
-        return new ListMapBlock(header.getGroupId(), header.getIdentifier(), columnNames,
+        return new ListMapBlock("", header.getIdentifier(), columnNames,
                                 cellRows);
     }
 

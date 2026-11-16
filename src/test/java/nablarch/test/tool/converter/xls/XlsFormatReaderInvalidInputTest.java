@@ -79,12 +79,12 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
- * 妥当でないと見える挙動も、記法に明文が無いか入力が記法違反であるため、実装（src/main）は変更していない。
- * 異常系は<b>例外になるもの</b>
+ * <b>本クラスのアサーションは、記法に反する Excel 形式のテストデータを読んだときの動作である。</b>
+ * 変換ツールは本体のパーサで読み、例外も読んだ結果も本体のものをそのまま使うため、本体と同じ動作になる。
+ * 変換ツールが独自に決めた動作ではない（カラム名の重複の警告と、カラム名を 1 件も持たないブロックの行を
+ * 落とすことだけは、変換ツールの決めである）。異常系は<b>例外になるもの</b>
  * （シート不在・ブック破損・行と列の数の不一致の一部）と<b>例外にならず変換が継続するもの</b>
- * （未知のデータタイプ名・マーカーカラム欠落・カラム名重複・行と列の数の不一致の一部）に
- * 分かれ、後者は継続時の結果をそのまま固定している。
+ * （未知のデータタイプ名・マーカーカラム欠落・カラム名重複・行と列の数の不一致の一部）に分かれる。
  * </p>
  *
  * <p>
@@ -1031,34 +1031,5 @@ public class XlsFormatReaderInvalidInputTest {
         assertThat("カラム名が 1 件も残らない", table.getColumnNames(), is(Collections.<String>emptyList()));
         assertThat("カラム名を持たないブロックは行を持たない",
                 table.getRows(), is(Collections.<List<String>>emptyList()));
-    }
-
-    /**
-     * Given: 識別行にグループ ID を書いた {@code LIST_MAP} の実 {@code .xlsx}。
-     * When : 実 {@code .xlsx} を {@code read}。
-     * Then : 例外にならず、カラム名 0 件・行 0 件になる。
-     *
-     * <p>
-     * <b>これは現状の挙動の記録である。</b>{@code LIST_MAP} のカラム名の取り出しはグループ指定なしの
-     * ブロックだけを探すため、識別行にグループ ID があると対象ブロックが見つからずカラム名が 0 件になる。
-     * カラム名を 1 件も持たないブロックは行を持てないため、行も落ちる。
-     * </p>
-     */
-    @Test
-    public void dropsRowsWhenListMapMarkerHasGroupIdInRealBook() {
-        // Given
-        book("groupedListMap").row(text("LIST_MAP[g1]=lm"))
-                .row(text("A"))
-                .row(text("1"))
-                .writeTo(dir());
-
-        // When
-        ListMapBlock listMap = onlyBlock("groupedListMap", ListMapBlock.class);
-
-        // Then
-        assertThat("グループ指定つきの LIST_MAP はカラム名が取れない",
-                listMap.getColumnNames(), is(Collections.<String>emptyList()));
-        assertThat("カラム名を持たないブロックは行を持たない",
-                listMap.getRows(), is(Collections.<List<String>>emptyList()));
     }
 }

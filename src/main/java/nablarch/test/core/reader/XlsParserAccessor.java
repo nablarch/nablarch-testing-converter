@@ -524,6 +524,9 @@ public class XlsParserAccessor {
      * 指定した 1 ブロック（データタイプ・グループ ID・識別子）の生のボディ行を収集する、
      * 解析を伴わない{@link TestDataParsingTemplate}。
      * <p>
+     * {@link DataType#LIST_MAP} は本体 {@link ListMapParser} と同じく、グループ ID を見ずに識別子だけで照合し、
+     * 最初に見つけた 1 ブロックだけを読む。</p>
+     * <p>
      * 本体のテンプレートが提供する{@code getDataType}／{@code getTypeValue}でマーカー行を判定し、
      * 対象ブロックのマーカー行を検出している間だけ後続の非マーカー行を収集する。ブロック本体
      * （名前・型・長さ・値）の構造解釈はしない。各行は本体読み込みと同じく
@@ -543,6 +546,9 @@ public class XlsParserAccessor {
 
         /** 収集した生のボディ行（記述順） */
         private final List<List<String>> bodyLines = new ArrayList<>();
+
+        /** 対象ブロックを読み終えたか（{@link DataType#LIST_MAP} は最初の 1 ブロックだけを読む） */
+        private boolean finished = false;
 
         /** 対象ブロックを検出して収集中か */
         private boolean collecting = false;
@@ -579,9 +585,13 @@ public class XlsParserAccessor {
                     String groupId = markerGroupId(type, first);
                     if (groupId != null) {
                         // マーカー行＝新しいブロックの開始。対象ブロックかで収集を切り替える。
+                        if (collecting && targetType == DataType.LIST_MAP) {
+                            finished = true;
+                        }
                         String identifier = normalizeIdentifier(targetType, getTypeValue(line));
-                        collecting = type == targetType
-                                && groupId.equals(targetGroupId)
+                        collecting = !finished
+                                && type == targetType
+                                && (targetType == DataType.LIST_MAP || groupId.equals(targetGroupId))
                                 && identifier.equals(targetIdentifier);
                         continue; // マーカー行自体はボディに含めない
                     }

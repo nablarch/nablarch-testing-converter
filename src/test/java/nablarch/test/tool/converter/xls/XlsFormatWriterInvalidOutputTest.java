@@ -100,11 +100,11 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>
- * ただしシート名の文字数上限だけは例外で、31 文字超を黙って切り詰めていた挙動を
- * {@link XlsFormatWriter} で修正したうえで、仕様どおりの期待値を置いている。
- * {@code //} で始まる名前（{@code #rejectsColumnNameStartingWithCommentPrefix}・
- * {@code #rejectsFieldNameStartingWithCommentPrefix}）も、仕様どおりの期待値である。
+ * <b>本クラスのアサーションは、Excel 形式へ書き出せない場合の仕様である。</b>シート名の制約
+ * （31 文字以内・禁止文字・空文字・大文字小文字を区別しない重複）は Excel と POI の制約で、本ツールは
+ * 切り詰めたり置き換えたりせずに例外で止める。{@code //} で始まる名前は、本体がコメントとして読み飛ばすため
+ * 止める。出力先が存在しない場合はディレクトリを作って書き出し、書き込めない場合は
+ * {@code UncheckedIOException} で止める。
  * </p>
  *
  * @author kiyobot

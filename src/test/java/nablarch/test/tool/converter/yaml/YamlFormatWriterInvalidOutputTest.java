@@ -65,7 +65,8 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>期待される仕様ではない。
+ * <b>本クラスのアサーションは、YAML 形式の出力先の扱いの仕様である</b>（存在しない出力先はディレクトリを作って書き出し、
+ * 書き込めない出力先は {@code UncheckedIOException} で止める）。
  * </p>
  *
  * @author kiyobot
