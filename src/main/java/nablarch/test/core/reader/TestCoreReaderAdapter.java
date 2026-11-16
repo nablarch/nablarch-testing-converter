@@ -487,8 +487,8 @@ public class TestCoreReaderAdapter {
             }
         }
 
-        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
-        // TestDataParsingTemplate の契約上、実装は必須。
+        // parse(String id) を上書きして独自に走査するため、基底クラスの parse(String id) が
+        // 走査中に呼ぶ以下の抽象メソッドは使わない。抽象メソッドのため、空の実装を置く。
         @Override
         void onReadLine(List<String> line) {
             // ブロック本体は解析しない
@@ -587,8 +587,8 @@ public class TestCoreReaderAdapter {
             }
         }
 
-        // parse(String id) を上書きしているため doParse() からこれらの抽象メソッドは呼ばれない。
-        // TestDataParsingTemplate の契約上、実装は必須。
+        // parse(String id) を上書きして独自に走査するため、基底クラスの parse(String id) が
+        // 走査中に呼ぶ以下の抽象メソッドは使わない。抽象メソッドのため、空の実装を置く。
         @Override
         void onReadLine(List<String> line) {
             // parse を上書きしているため未使用
