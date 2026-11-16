@@ -1,5 +1,6 @@
 package nablarch.test.tool.converter;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -22,6 +23,7 @@ import nablarch.test.tool.converter.model.TestDataSection;
 import nablarch.test.tool.converter.xls.ExcelFormatConfig;
 import nablarch.test.tool.converter.xls.XlsFormatWriter;
 import nablarch.test.tool.converter.yaml.YamlFormatReader;
+import nablarch.test.tool.converter.yaml.YamlFormatWriter;
 
 import org.apache.poi.ss.usermodel.IndexedColors;
 
@@ -284,6 +286,36 @@ public class ConverterMojoTest {
             fail("should throw MojoExecutionException");
         } catch (MojoExecutionException e) {
             assertThat(e.getCause(), instanceOf(ConverterException.class));
+        }
+    }
+
+    /**
+     * Given: シート名にできない 32 文字のファイル名の YAML（Excel 形式へ書き出すと IllegalArgumentException になる）。
+     * When : YAML→Excel で execute() を呼ぶ。
+     * Then : 実行時例外も MojoExecutionException に変換され、入力ディレクトリと元の例外のメッセージを含む。
+     */
+    @Test
+    public void throwsMojoExecutionExceptionOnRuntimeExceptionDuringConversion() throws Exception {
+        // Given
+        String longName = "a".repeat(32);
+        new YamlFormatWriter().write(oneTable("BookA", longName, sampleTable("USERS")),
+                in.resolve("BookA").toString());
+
+        ConverterMojo mojo = new ConverterMojo();
+        inject(mojo, "from", "yaml");
+        inject(mojo, "to", "xls");
+        inject(mojo, "input", in.toFile());
+        inject(mojo, "output", out.toFile());
+
+        // When / Then
+        try {
+            mojo.execute();
+            fail("should throw MojoExecutionException");
+        } catch (MojoExecutionException e) {
+            assertThat(e.getCause(), instanceOf(IllegalArgumentException.class));
+            assertThat(e.getMessage(), containsString("Failed to convert test data under " + in.toFile()));
+            assertThat(e.getMessage(), containsString("IllegalArgumentException"));
+            assertThat(e.getMessage(), containsString(longName));
         }
     }
 

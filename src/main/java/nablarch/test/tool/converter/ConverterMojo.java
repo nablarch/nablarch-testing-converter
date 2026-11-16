@@ -95,6 +95,11 @@ public class ConverterMojo extends AbstractMojo {
             getLog().info("Converted " + count + " file(s).");
         } catch (ConverterException | UncheckedIOException e) {
             throw new MojoExecutionException(e.getMessage(), e);
+        } catch (RuntimeException e) {
+            // 入力の誤りで中間モデルや書き出しが投げる例外（IllegalArgumentException など）も、
+            // スタックトレースではなくビルドのエラーとして知らせる。
+            throw new MojoExecutionException("Failed to convert test data under " + input + ": "
+                    + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
     }
 }

@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ import static org.junit.Assert.assertTrue;
  * {@link YamlTestDataValidator} のテスト。
  *
  * <p>YAML テストデータディレクトリのリンタ。検証ルール V-COL / V-DIR / V-SCH / V-FNAME / V-DKEY /
- * V-YAML を、意味のある最小フィクスチャ（対象ルールのみが発火する schema 適合データ）で実証する。
+ * V-YAML / V-COLCASE を、意味のある最小フィクスチャ（対象ルールのみが発火する schema 適合データ）で実証する。
  * TDD: RED → GREEN。</p>
  */
 public class YamlTestDataValidatorTest {
@@ -178,6 +179,79 @@ public class YamlTestDataValidatorTest {
 
         // When / Then
         assertThat(hasRule(sut.validate(dir), "[V-COL]"), is(false));
+    }
+
+    // =========================================================================
+    // V-COLCASE: テーブルのカラム名の大文字・小文字だけの重複
+    // =========================================================================
+
+    /**
+     * [Given] setup_tables の行に、大文字・小文字だけが違うキー id と ID
+     * [When]  validate
+     * [Then]  V-COLCASE エラーが 1 件（schema・YAML ともキーの大小を区別するため単独発火）
+     */
+    @Test
+    public void vcolcase_keysDifferOnlyInCase_reportsError() throws Exception {
+        // Given
+        Path dir = newCaseDir();
+        writeYaml(dir, "case.yaml",
+                "setup_tables:\n" +
+                "  - table: users\n" +
+                "    rows:\n" +
+                "      - {id: \"1\", ID: \"2\", name: \"a\"}\n" +
+                "      - {id: \"3\", ID: \"4\", name: \"b\"}\n");
+
+        // When
+        List<ValidationError> errors = sut.validate(dir);
+
+        // Then
+        assertThat(errors.size(), is(1));
+        assertThat(errors.get(0).getMessage(), containsString("[V-COLCASE]"));
+        assertThat(errors.get(0).getMessage(), containsString("[id, ID]"));
+        assertThat(errors.get(0).getLocation(), is("setup_tables[0].rows"));
+    }
+
+    /**
+     * [Given] 大文字・小文字だけが違うキーが別の行にある expected_tables
+     * [When]  validate
+     * [Then]  V-COLCASE エラーが 1 件（全行のキーを対象にする）
+     */
+    @Test
+    public void vcolcase_keysInDifferentRows_reportsError() throws Exception {
+        // Given
+        Path dir = newCaseDir();
+        writeYaml(dir, "case.yaml",
+                "expected_tables:\n" +
+                "  - table: users\n" +
+                "    rows:\n" +
+                "      - {id: \"1\"}\n" +
+                "      - {Id: \"2\"}\n");
+
+        // When
+        List<ValidationError> errors = sut.validate(dir);
+
+        // Then
+        assertThat(errors.size(), is(1));
+        assertThat(errors.get(0).getMessage(), containsString("[id, Id]"));
+    }
+
+    /**
+     * [Given] list_maps の行に、大文字・小文字だけが違うキー（LIST_MAP は本体が大文字にしない）
+     * [When]  validate
+     * [Then]  エラーなし（V-COLCASE の対象はテーブルだけ）
+     */
+    @Test
+    public void vcolcase_listMapIsNotTarget() throws Exception {
+        // Given
+        Path dir = newCaseDir();
+        writeYaml(dir, "case.yaml",
+                "list_maps:\n" +
+                "  - id: lm\n" +
+                "    rows:\n" +
+                "      - {key: \"1\", KEY: \"2\"}\n");
+
+        // When / Then
+        assertThat(sut.validate(dir), is(Collections.<ValidationError>emptyList()));
     }
 
     // =========================================================================

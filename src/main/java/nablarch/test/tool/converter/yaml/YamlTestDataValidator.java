@@ -22,7 +22,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,6 +44,8 @@ import java.util.Set;
  *   <li><b>V-FNAME</b>：同一 record_fragment 内のフィールド名が重複していないこと</li>
  *   <li><b>V-DKEY</b>：{@code directives} のキーが既知のディレクティブ名であること</li>
  *   <li><b>V-YAML</b>：YAML として解析可能であること（不正構文・キー重複を検出）</li>
+ *   <li><b>V-COLCASE</b>：テーブル（{@code setup_tables} など）のカラム名が、大文字・小文字の違いだけで
+ *       重複していないこと。本体はテーブルのカラム名を大文字にするため、重複すると後の値だけが使われる</li>
  * </ul>
  */
 public class YamlTestDataValidator {
@@ -85,6 +90,11 @@ public class YamlTestDataValidator {
             "messages",
             "expected_request_header_messages", "expected_request_body_messages",
             "response_header_messages", "response_body_messages"
+    );
+
+    /** テーブルのセクションキー（V-COLCASE の対象）。 */
+    private static final Set<String> TABLE_SECTION_KEYS = Set.of(
+            "setup_tables", "expected_tables", "expected_complete_tables"
     );
 
     /**
@@ -149,7 +159,7 @@ public class YamlTestDataValidator {
             errors.add(new ValidationError(filePath, "", "[V-SCH] スキーマ検証エラー: " + e.getMessage()));
         }
 
-        // 構造検証（V-COL / V-DIR / V-FNAME / V-DKEY）は Map トップレベルのみ
+        // 構造検証（V-COL / V-DIR / V-FNAME / V-DKEY / V-COLCASE）は Map トップレベルのみ
         if (yaml != null) {
             errors.addAll(validateStructure(filePath, yaml));
         }
@@ -180,6 +190,10 @@ public class YamlTestDataValidator {
 
                 if (FW_HEADER_SECTION_KEYS.contains(sectionKey)) {
                     errors.addAll(validateFwHeader(filePath, blockLocation, block));
+                }
+
+                if (TABLE_SECTION_KEYS.contains(sectionKey)) {
+                    errors.addAll(validateColumnNameCase(filePath, blockLocation, block));
                 }
             }
         }
@@ -219,6 +233,30 @@ public class YamlTestDataValidator {
                 errors.add(new ValidationError(filePath,
                         recLocation + ".fields",
                         "[V-FNAME] フィールド名重複: \"" + nameObj + "\" が同一 record_fragment 内で重複しています"));
+            }
+        }
+        return errors;
+    }
+
+    /**
+     * V-COLCASE: テーブルのカラム名が、大文字・小文字の違いだけで重複していないことを検証する。
+     * 全行のキーを対象にし、重複する組ごとに 1 件を報告する。
+     */
+    private List<ValidationError> validateColumnNameCase(String filePath, String blockLocation,
+                                                         Map<String, Object> block) {
+        Map<String, Set<String>> byUpperCase = new LinkedHashMap<>();
+        for (Object row : castList(block.get("rows"))) {
+            for (String key : castMap(row).keySet()) {
+                byUpperCase.computeIfAbsent(key.toUpperCase(Locale.ROOT), k -> new LinkedHashSet<>()).add(key);
+            }
+        }
+        List<ValidationError> errors = new ArrayList<>();
+        for (Set<String> keys : byUpperCase.values()) {
+            if (keys.size() > 1) {
+                errors.add(new ValidationError(filePath,
+                        blockLocation + ".rows",
+                        "[V-COLCASE] カラム名が大文字・小文字の違いだけで重複しています: " + keys
+                                + "（テスティングフレームワークはカラム名を大文字にするため、後の値だけが使われます）"));
             }
         }
         return errors;

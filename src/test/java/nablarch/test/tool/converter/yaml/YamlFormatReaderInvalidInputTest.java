@@ -1197,6 +1197,7 @@ public class YamlFormatReaderInvalidInputTest {
      * <p>
      * <b>本テストは、本体と同じ結果になることを固定する（原因は本ツールの外にある）。</b>記法はテーブル系の
      * カラム名の大小の扱いにいっさい触れていない。converter に大文字化を止める権限も無いため、本ツールでは変えない。
+     * 手で書いた YAML のこの誤りは、{@code YamlTestDataValidator} の V-COLCASE で見つける。
      * <b>「あるべき姿」を主張していた {@code @Ignore} つきテストは削除した</b>
      * （記法に無い書き方は追わない）。
      * </p>
