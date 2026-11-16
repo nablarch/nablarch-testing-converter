@@ -199,11 +199,7 @@ public class YamlFormatReaderTest {
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
-     * {@link FileDataBlock} の生成時へ移したため、失敗する場所が書き出し時から読み込み時へ前倒しになった
-     * （変換が失敗すること自体は移設の前後で変わらない）。移設前は
-     * {@code readFile_fixed_mapsRawFieldDefsAndValues} が {@code f2} の長さを {@code null} のまま
-     * 読み込めることを固定していた。
+     * {@link FileDataBlock} が生成時に拒否するため、読み込みの時点で失敗する。
      * </p>
      */
     @Test
@@ -376,16 +372,11 @@ public class YamlFormatReaderTest {
      * <b>この入力は本体スキーマに適合しない。</b>{@code $defs.message_data} は
      * {@code required} ＝ {@code ["id", "records"]} かつ {@code records.minItems} ＝ 1 であり、
      * {@code records:} を省いても {@code records: []} と書いても通らない。記法にも電文の
-     * レコード 0 件を表す書き方が無く、電文が存在しない場合は 記法
-     * のとおり<b>データブロックごと省略する</b>。
+     * レコード 0 件を表す書き方が無く、電文が存在しない場合は<b>データブロックごと省略する</b>。
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
-     * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
-     * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
-     * {@code readMessage_emptyBody_isStillMapped} で、レコード 0 件のブロックが生成されることを
-     * 固定していた。
+     * {@link MessageDataBlock} が生成時に拒否するため、読み込みの時点で失敗する。
      * </p>
      */
     @Test

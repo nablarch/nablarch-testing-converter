@@ -50,7 +50,7 @@ package nablarch.test.tool.converter.model;
  * {@link nablarch.test.tool.converter.model.FileDataBlock}（固定長系のデータ種別のとき）と
  * {@link nablarch.test.tool.converter.model.MessageDataBlock}（常に）が
  * {@code ModelPreconditions#requireLengths} を呼ぶ（長さの無い固定長フィールドは本体がレコード長を
- * 計算できない。<b>この検査は {@code b762438} で書き出し側から移設した</b>ので、
+ * 計算できない。この検査は生成時に行うので、
  * {@code XlsFormatWriter} ／ {@code YamlFormatWriter} に {@code length} の番人は無い。
  * 上の段落「書き出し側には番人を置かない」と揃っている）。
  * </p>

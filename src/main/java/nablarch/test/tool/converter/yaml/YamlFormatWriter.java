@@ -179,10 +179,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * <p>
      * <b>ファイル種別 {@code null} はここでは検査しない。</b>{@code $defs.file_data} は {@code type} を
      * 必須とし、値を {@code enum} ＝ {@code ["fixed", "variable"]} に限るため、どちらとも決まっていない
-     * ブロックは読み戻せる形に書けない。記法にも
-     * 記法
-     * {@code setup_files}・{@code expected_files} の各エントリには {@code path}・{@code type}・
-     * {@code records} の3キーが必須であり、いずれかを省略するとエラーになるとある。
+     * ブロックは読み戻せる形に書けない。記法にも「{@code setup_files}・{@code expected_files} の各エントリには
+     * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる」とある。
      * {@link FileDataBlock} はファイル種別をデータ種別から導出し、データ種別の {@code null} は
      * <b>生成時点で拒否する</b>ため、ここへは届かない。
      * </p>
@@ -289,9 +287,8 @@ public final class YamlFormatWriter implements TestDataFormatWriter {
      * レコードレイアウト群を出力する。
      * <p>
      * 空なら {@code records: []}（空配列）を出力する。0 バイトの空ファイルはレコード定義を持たない
-     * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法仕様が定めているためである
-     * （記法は／記法。本体スキーマも
-     * {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
+     * ファイルデータブロックとして表し、{@code records:} に空配列を記載すると記法が定めているためである
+     * （本体スキーマも {@code $defs.file_data.required} に {@code records} を含み {@code minItems} は 0）。
      * <b>空で本メソッドへ入るのはファイル系だけである</b>——メッセージ系は
      * {@link MessageDataBlock} が 0 件を<b>生成時点で拒否する</b>（{@code $defs.message_data} の
      * {@code records} は {@code minItems} ＝ 1 であり、空配列もスキーマ違反になるため）。

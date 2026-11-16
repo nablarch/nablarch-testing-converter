@@ -497,7 +497,7 @@ public class XlsFormatWriterCellTypeTest {
      * <p>
      * 担保する観点: 改行を含む文字列（改行の異表記）。メモリ上のブックでは {@code CRLF} が保たれており
      * （{@code XlsFormatWriter#build} 直後の値は 4 文字）、書き出した {@code .xlsx} の
-     * {@code xl/sharedStrings.xml} にも {@code CR} は<b>生のまま保存されている</b>（実測）。
+     * {@code xl/sharedStrings.xml} にも {@code CR} は<b>生のまま保存されている</b>。
      * したがって<b>変わるのは読み戻し（XML パース）区間</b>であって直列化区間ではない。
      * （{@code #keepsCarriageReturnRawInSharedStringsXml} が生バイトで検査している）。
      * XML の行末正規化は「{@code CR} を捨てる」のではなく「{@code CR} を {@code LF} へ置き換える」
@@ -640,7 +640,7 @@ public class XlsFormatWriterCellTypeTest {
 
     /*
      * 制御文字は文字ごとに 1 メソッドへ分けてある（姉妹クラス XlsFormatReaderCellTypeTest が
-     * 1 ケース 1 @Test で展開しているのに合わせた。同クラスの @Test は 19 個 ＝ grep -c "^    @Test" の実測）。ループで束ねると
+     * 1 ケース 1 @Test で展開しているのに合わせた）。ループで束ねると
      * 最初の 1 文字が落ちた時点で残りが実行されず、どの文字で挙動が違うのかが分からなくなるためである。
      *
      * 以下 4 件（NUL／BEL／VT／US）は XML 1.0 で表現できない制御文字。

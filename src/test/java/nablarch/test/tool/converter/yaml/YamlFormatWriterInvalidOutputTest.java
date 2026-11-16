@@ -36,9 +36,8 @@ import org.junit.rules.TemporaryFolder;
  * 対象は出力先の異常系 3 ケースのうち 2 件
  * （出力先不在／書き込み権限なし）である。残る <b>同名ファイル既存かつ
  * {@code overwrite=false} は本クラスの対象外</b>とする。{@link YamlFormatWriter} は {@code overwrite} を
- * 保持しないためである（実測: {@code grep -rln overwrite src/main/java} が挙げるのは
- * {@code ConversionRequest} ／ {@code TestDataConverter} ／ {@code ConverterMojo} の 3 クラスだけで、
- * {@code YamlFormatWriter} は 0 ヒット）。
+ * 保持しないためである（{@code overwrite} を持つのは {@code ConversionRequest} ／ {@code TestDataConverter} ／
+ * {@code ConverterMojo} だけである）。
  * </p>
  *
  * <p>

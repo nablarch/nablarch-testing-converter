@@ -26,10 +26,9 @@ import java.util.Set;
  * 4 種のデータ種別それぞれに固定長／可変長のどちらか一方を一意に割り当てている —— 本体スキーマ
  * {@code nablarch/test/ntf-testdata-yaml-schema.json} の {@code $defs.file_data.properties.type} の
  * description が「fixed = 固定長（SETUP_FIXED / EXPECTED_FIXED）、variable = 可変長
- * （SETUP_VARIABLE / EXPECTED_VARIABLE）」と定め、記法
- * も固定長ファイル・可変長ファイルに対応するテストデータ（ファイルデータ）は、
- * SETUP_FIXED・EXPECTED_FIXED（固定長）、SETUP_VARIABLE・EXPECTED_VARIABLE（可変長）の
- * いずれかのデータタイプで記述する。と、データタイプそのものに固定長／可変長の別を割り当てている。
+ * （SETUP_VARIABLE / EXPECTED_VARIABLE）」と定め、記法も「固定長ファイル・可変長ファイルに対応するテストデータ
+ * （ファイルデータ）は、SETUP_FIXED・EXPECTED_FIXED（固定長）、SETUP_VARIABLE・EXPECTED_VARIABLE（可変長）の
+ * いずれかのデータタイプで記述する」と、データタイプそのものに固定長／可変長の別を割り当てている。
  * <b>したがってデータ種別が決まればファイル種別は決まる</b>（逆向きは SETUP／EXPECTED の情報が要るため
  * 定まらない。4 対 2 の写像であって全単射ではない）。
  * </p>
@@ -73,8 +72,7 @@ public final class FileDataBlock extends TestDataBlock {
 
     /**
      * 取りうるデータ種別。YAML のトップレベルキー {@code setup_files} ／ {@code expected_files}
-     * （いずれも {@code $defs.file_data}）に対応する 4 種
-     * 。
+     * （いずれも {@code $defs.file_data}）に対応する 4 種。
      */
     private static final Set<DataType> PERMITTED_TYPES = EnumSet.of(
             DataType.SETUP_FIXED, DataType.EXPECTED_FIXED,

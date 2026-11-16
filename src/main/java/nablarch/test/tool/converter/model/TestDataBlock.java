@@ -15,8 +15,7 @@ import java.util.Set;
  *
  * <p>
  * <b>{@code groupId} は生値である</b>（{@code g1}。半角角括弧は付けない）。角括弧は Excel 形式の書式であって
- * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である
- * 。書式を知ってよいのは
+ * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である。書式を知ってよいのは
  * Excel 版面の読み書き（付ける＝{@code XlsFormatWriter#marker}／外す＝
  * {@code XlsParserAccessor#markerGroupId}）と、整形済みを要求する上流 API の境界
  * （{@code XlsParserAccessor}・{@code YamlBuilderAccessor} が渡す直前）の 2 層だけである。

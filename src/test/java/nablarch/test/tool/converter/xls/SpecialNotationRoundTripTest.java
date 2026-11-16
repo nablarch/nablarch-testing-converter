@@ -38,7 +38,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * 特殊記法の母集合を<b>実ファイル起点・4 経路</b>で往復させ、テスティングフレームワークが解釈したあとの
+ * 特殊記法の一覧を<b>実ファイル起点・4 経路</b>で往復させ、テスティングフレームワークが解釈したあとの
  * 値が保たれることを固定するテスト。
  *
  * <p>
@@ -49,7 +49,7 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>母集合</b>:
+ * <b>対象</b>:
  * </p>
  * <ul>
  *   <li>特殊記法の一覧 —— Excel 形式 12 種／YAML 形式 12 種。
@@ -829,14 +829,14 @@ public class SpecialNotationRoundTripTest {
         assertExampleFourRoutes(XLS_SETUP_VARIABLE, YAML_SETUP_FILES);
     }
 
-    // ------------------------------------------------------------------ 一覧・記述例の外から足した母集合（4 種）
+    // ------------------------------------------------------------------ 一覧・記述例の外から足した値（4 種）
 
     /**
-     * 母集合の追加 1 —— ファイルの末尾に連続して {@code null} を書いた形。
+     * 追加 1 —— ファイルの末尾に連続して {@code null} を書いた形。
      *
      * <p>
-     * 3 行はそれぞれ {@code x,null,null} ／ {@code null,null,null} ／ {@code x,"",null} で、
-     * 2-1 の実測表の F1・F4・F6 に対応する。末尾のフィールドの {@code null} は形式によらず空文字になる。
+     * 3 行はそれぞれ {@code x,null,null} ／ {@code null,null,null} ／ {@code x,"",null} である。
+     * 末尾のフィールドの {@code null} は形式によらず空文字になる。
      * </p>
      */
     @Test
@@ -874,7 +874,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 母集合の追加 1（続き） —— 電文の末尾に連続して {@code null} を書いた形（2-1 の実測表 M1）。
+     * 追加 1（続き） —— 電文の末尾に連続して {@code null} を書いた形。
      */
     @Test
     public void trailingNullInMessage() {
@@ -908,7 +908,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 母集合の追加 2 —— 全カラムの値が空文字のテーブルエントリ。
+     * 追加 2 —— 全カラムの値が空文字のテーブルエントリ。
      *
      * <p>
      * 一覧・記述例のケースは行が読み飛ばされないよう先頭にガードのカラムを置くため、この形を
@@ -939,7 +939,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 母集合の追加 2（続き） —— 全カラムの値が空文字の {@code LIST_MAP} エントリ。
+     * 追加 2（続き） —— 全カラムの値が空文字の {@code LIST_MAP} エントリ。
      */
     @Test
     public void allEmptyStringEntryInListMap() {
@@ -964,7 +964,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 母集合の追加 3 —— マーカーカラムだけに値があるエントリ。
+     * 追加 3 —— マーカーカラムだけに値があるエントリ。
      *
      * <p>
      * マーカーカラムはエントリを読み飛ばす判断に使われないため、この形のエントリは残り、
@@ -996,7 +996,7 @@ public class SpecialNotationRoundTripTest {
     }
 
     /**
-     * 母集合の追加 4 —— アップロードファイルを指定する記載例
+     * 追加 4 —— アップロードファイルを指定する記載例
      * （{@code LIST_MAP} ＋ マーカーカラム {@code [no]} ＋ {@code ${attach:パス}}）。
      *
      * <p>
@@ -1047,7 +1047,7 @@ public class SpecialNotationRoundTripTest {
      * @param xlsOracle            Excel 形式を本体に読ませる読み手
      * @param yamlOracle           YAML 形式を YAML 読み込みに読ませる読み手
      * @param compareConverterRead 変換ツールが読んだ値を正解と突き合わせるか。
-     *                             {@code ${binaryFile:パス}} を含む母集合では偽にする ——
+     *                             {@code ${binaryFile:パス}} を含む値では偽にする ——
      *                             変換ツールはこの記法を解決せず記法のまま運ぶ仕様であり、
      *                             フレームワークが解決した値とは一致しないためである（往復の担保は残る）
      */

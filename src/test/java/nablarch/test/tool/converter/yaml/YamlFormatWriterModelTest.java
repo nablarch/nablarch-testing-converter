@@ -67,7 +67,7 @@ import org.junit.rules.TemporaryFolder;
  * <b>ただし 4 形すべて修正済み</b>であり、本クラスには 1 つも残っていない。
  * <b>2 形目（電文の {@code records} 空）は書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
  * （{@code MessageDataBlockTest#本文レコードが0件の電文ブロックは生成できない} ／
- * {@code #本文レコードが0件の送信系電文ブロックも生成できない}。移設は 2026-08-19）。
+ * {@code #本文レコードが0件の送信系電文ブロックも生成できない}）。
  * <b>3 形目（{@code fields} 空）は書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
  * （{@code RecordLayoutTest#フィールドを1件も持たないレコードは生成できない}）。
  * <b>4 形目（{@code FieldDef.type} 省略）だけは書き出し側の番人ではなく中間モデルの生成時拒否へ移した</b>
@@ -339,8 +339,8 @@ public class YamlFormatWriterModelTest {
      * <p>
      * 担保する観点: <b>{@code SETUP_FIXED} ／ {@code EXPECTED_FIXED} ／ {@code SETUP_VARIABLE} ／
      * {@code EXPECTED_VARIABLE}</b>。YAML の書き出しのトップレベルキーは
-     * SETUP 系 → {@code setup_files} ／ EXPECTED 系 → {@code expected_files} の <b>2 対 1</b> であり
-     * 、固定長／可変長を分けるのは {@code type:} だけである。
+     * SETUP 系 → {@code setup_files} ／ EXPECTED 系 → {@code expected_files} の <b>2 対 1</b> であり、
+     * 固定長／可変長を分けるのは {@code type:} だけである。
      * 中間モデルはかつてファイル種別を {@code DataType} と {@code fileType} の 2 つで持ち、{@code type:} は
      * 引数の {@code fileType} から出ていた。食い違う組み合わせを検査しなかったため、
      * <b>4 種のデータ種別を区別する出力が YAML の書き出しに無かった</b>。現在は {@code fileType} を
@@ -496,8 +496,7 @@ public class YamlFormatWriterModelTest {
      * 既存の {@code YamlFormatWriterTest#serializeSendSync_allFourSectionKeys} は送信同期 4 種を
      * <b>まとめて 1 つの出力に</b>直列化し、4 つのキー文字列が「どこかに現れる」ことを
      * {@code assertTrue(yaml.contains(...))} で見ているだけで、{@code DataType} → セクションキーの対応を
-     * 1 つも固定していない。4 種の写像を入れ替えても 4 キーはすべて現れるため通ってしまう
-     * （変異を入れて実測）。担保があったのは、単独ブロックの出力全文を完全一致で見ている
+     * 1 つも固定していない。4 種の写像を入れ替えても 4 キーはすべて現れるため通ってしまう。担保があったのは、単独ブロックの出力全文を完全一致で見ている
      * {@code #serializeSendSync_requiresGroupIdOmitsFwHeaderAndKeepsNoField} が通す
      * {@code EXPECTED_REQUEST_HEADER_MESSAGES} だけである。
      * <b>中間モデル → Excel の書き出しのテストにも、まったく同じ形の欠陥があった</b>。
@@ -681,8 +680,8 @@ public class YamlFormatWriterModelTest {
      * Then : {@code records: []}（空配列）が書かれる。ディレクティブは記述順のまま、値はダブルクォート付きで出る。
      *
      * <p>
-     * 記法は0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する
-     * 、「{@code setup_files}・{@code expected_files} の各エントリには
+     * 記法は「0バイトの空ファイルは、レコード定義を持たないファイルデータブロックとして表現する」、
+     * 「{@code setup_files}・{@code expected_files} の各エントリには
      * {@code path}・{@code type}・{@code records} の3キーが必須であり、いずれかを省略するとエラーになる。
      * 0バイトの空ファイルを表現するには、{@code records:} に空配列 {@code []} を記載する」
      * と定めている。
@@ -883,8 +882,7 @@ public class YamlFormatWriterModelTest {
      * <p>
      * 本体スキーマの {@code $defs.file_data.required} は {@code records} を要求するが
      * {@code minItems} は 0 であり、<b>空配列なら通る</b>（キーごと省略すると通らない）。
-     * 記法仕様も 0 バイトの空ファイルを {@code records: []} で表すと定めている
-     * 。
+     * 記法も 0 バイトの空ファイルを {@code records: []} で表すと定めている。
      * </p>
      */
     @Test

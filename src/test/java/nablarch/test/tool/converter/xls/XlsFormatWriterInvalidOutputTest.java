@@ -67,11 +67,9 @@ import org.junit.rules.TemporaryFolder;
  * 既定値 {@code false} のままリクエストを組むため（{@code ConversionRequest.Builder#overwrite} を呼ばない）、
  * {@code checkOverwrite} は早期 return せず {@code outputPaths} を呼ぶ。YAML→XLS ／ XLS→XLS を通す
  * {@code TestDataConverterTest#convertsYamlToXls} ／ {@code #convertsXlsToXls} ／
- * {@code #convertsYamlWithFilesToXls} の 3 件がこれに当たる
- * （実測 2026-08-13: {@code XlsFormatHandler#outputPaths} を送出に変異させると、落ちるのはこの 3 件だけ）。
+ * {@code #convertsYamlWithFilesToXls} の 3 件がこれに当たる。
  * 1 件も通っていないのは <b>{@code .xlsx} が既存で衝突する分岐</b>
- * （{@code checkOverwrite} の {@code Files.exists(output)} が真 → {@code ConverterException}）のほうである
- * （実測 2026-08-13: この分岐を {@code .xlsx} のときだけ {@code AssertionError} に変異させても 0 failures）。
+ * （{@code checkOverwrite} の {@code Files.exists(output)} が真 → {@code ConverterException}）のほうである。
  * すなわち共通処理 {@code checkOverwrite} の分岐自体は通っているが、
  * <b>{@code .xlsx} を出力側とする衝突は未担保</b>である。
  * これは {@code XlsFormatWriter} 単体の責務ではなく上位層側の穴であり、本クラスでは埋めない。
@@ -655,7 +653,7 @@ public class XlsFormatWriterInvalidOutputTest {
      * <p>
      * これは Excel 自身の制約（Excel もシート名の大文字小文字を区別しない）と一致するため、
      * <b>不具合ではなく妥当な挙動</b>である。
-     * 固定する意味は、31 文字超の切り詰めと重複判定を担う POI の機構の両輪を実測で押さえておくことにある。
+     * 固定する意味は、31 文字超の切り詰めと重複判定を担う POI の機構の両方を押さえておくことにある。
      * </p>
      */
     @Test

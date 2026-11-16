@@ -47,8 +47,7 @@ import java.util.Set;
  *
  * <p>注: かつて存在した「{@code expected_request_header_messages} と
  * {@code expected_request_body_messages} の総行数一致（V-MSGROW）」は、実テストデータの異常系で
- * 両者の行数が意図的に異なるケースが多数あり制約として成立しないため採用しない（ユーザー判断・
- * 旧コミット {@code 9465fa2}）。</p>
+ * 両者の行数が意図的に異なるケースが多数あり制約として成立しないため採用しない。</p>
  */
 public class YamlTestDataValidator {
 

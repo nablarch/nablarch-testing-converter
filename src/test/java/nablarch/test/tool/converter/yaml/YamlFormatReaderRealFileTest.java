@@ -315,7 +315,7 @@ public class YamlFormatReaderRealFileTest {
      * {@code YamlFormatReader#normalizeRecordType} は {@code "Default"} と {@code "default"} の
      * 2 つを {@code null} へ正規化する。{@code "Default"} 側は in-memory 経路の
      * {@code YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull} が通しているが、
-     * <b>小文字側は JaCoCo の実測で未到達だった</b>。本テストはそれを実 {@code .yaml} で閉じる。
+     * 小文字側は本テストが実 {@code .yaml} で通す。
      * スキーマ {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、
      * その description も「可読性のために任意の名前を記述してよい」と書いているため、
      * {@code "default"} は<b>スキーマを通る仕様内の入力</b>である。
@@ -399,7 +399,7 @@ public class YamlFormatReaderRealFileTest {
      *
      * <p>
      * 注入されるキーは<b>ファイル種別で違う</b>。固定長は {@code {file-type=Fixed}} の 1 件だが、
-     * 可変長は {@code {file-type=Variable, field-separator=,}} の 2 件になる（実測）。
+     * 可変長は {@code {file-type=Variable, field-separator=,}} の 2 件になる。
      * 本テストは固定長で 1 件であることを固定する。{@code directives} が空にならないという結論は両種別で成り立つ。
      * </p>
      *
@@ -625,12 +625,9 @@ public class YamlFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>修正は 2 リポジトリにまたがった。</b>器（yaml jar の {@code YamlFileBuilder}）が
-     * {@code FW_HEADER} を名乗る断片を作らなかったのを {@code nablarch-testing-yaml} の {@code 0b53910}
-     * （ブランチ {@code feature/ntf-yaml}）でやめ、本リポジトリ側は {@code YamlFormatReader} の
-     * メッセージ系専用の除外（旧 {@code #recordsWithoutFwHeader}）を廃止してファイル系と同じ
-     * {@code #records(entry)} に揃えた。器の断片数と原文レコード数が両側で揃うため、
-     * {@code #toRecordLayouts} の不整合チェックにも掛からない。
+     * 器（{@code nablarch-testing-yaml} の {@code YamlFileBuilder}）も {@code FW_HEADER} を名乗る断片を作り、
+     * {@code YamlFormatReader} もファイル系と同じ {@code #records(entry)} で原文のレコードを取る。
+     * 器の断片数と原文レコード数が揃うため、{@code #toRecordLayouts} の不整合チェックにも掛からない。
      * </p>
      *
      * <p>
@@ -989,11 +986,9 @@ public class YamlFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>修正は 2 リポジトリにまたがった。</b>器の特別扱いは {@code nablarch-testing-yaml} の
-     * {@code 0b53910}（ブランチ {@code feature/ntf-yaml}）で廃止され、本リポジトリ側は
-     * メッセージ系専用の除外をやめてファイル系と同じ {@code #records(entry)} に揃えた。
-     * 片側だけを直すと器の断片数と原文レコード数が食い違い、{@code YamlFormatReader#toRecordLayouts} の
-     * 不整合チェックが {@code IllegalStateException} を投げるため、両側そろって初めて成立する。
+     * 器（{@code nablarch-testing-yaml}）と {@code YamlFormatReader} の両方が {@code FW_HEADER} を名乗る
+     * レコードを特別扱いしない。片側だけが特別扱いすると器の断片数と原文レコード数が食い違い、
+     * {@code YamlFormatReader#toRecordLayouts} の不整合チェックが {@code IllegalStateException} を投げる。
      * </p>
      *
      * <p>担保する観点: 経路差（新しいデータタイプ・ブロック・フィールドの担保は与えない）。</p>

@@ -115,7 +115,7 @@ public class ExcelOutputDocumentedBehaviorTest {
                 Collections.singletonList(row("a")));
     }
 
-    // ------------------------------------------------------------------ 3-2
+    // ------------------------------------------------------------------ 色・表示形式・結合セルは残らない
 
     /**
      * Given: セルの背景色・表示形式・結合セルを設定した実 {@code .xlsx}（{@code SETUP_TABLE}）。
@@ -162,7 +162,7 @@ public class ExcelOutputDocumentedBehaviorTest {
         assertThat("結合セルは残らない", back.getNumMergedRegions(), is(0));
     }
 
-    // ------------------------------------------------------------------ 3-6
+    // ------------------------------------------------------------------ テストショット一覧のヘッダ色
 
     /**
      * Given: 識別子 {@code testShots} の {@code LIST_MAP}。
@@ -186,7 +186,7 @@ public class ExcelOutputDocumentedBehaviorTest {
                 CUSTOM, is(not(ExcelFormatConfig.defaults().getTestShotsHeaderColorIndex())));
     }
 
-    // ------------------------------------------------------------------ 3-7
+    // ------------------------------------------------------------------ EXPECTED 系のヘッダ色
 
     /**
      * Given: {@code EXPECTED_} で始まるブロックと {@code RESPONSE_} で始まるブロック。
@@ -216,7 +216,7 @@ public class ExcelOutputDocumentedBehaviorTest {
         assertThat("RESPONSE_BODY_MESSAGES のヘッダ行", fill(sheet, 5, 0), is(CUSTOM));
     }
 
-    // ------------------------------------------------------------------ 3-8
+    // ------------------------------------------------------------------ その他のヘッダ色
 
     /**
      * Given: {@code MESSAGE}・{@code testShots} 以外の {@code LIST_MAP}・{@code testShots} の {@code LIST_MAP}。
@@ -250,7 +250,7 @@ public class ExcelOutputDocumentedBehaviorTest {
         assertThat("MESSAGE", fill(sheet, 9, 0), is(CUSTOM));
     }
 
-    // ------------------------------------------------------------------ 3-9
+    // ------------------------------------------------------------------ 列幅の上限
 
     /**
      * Given: 30 文字の値を持つ列。
@@ -280,7 +280,7 @@ public class ExcelOutputDocumentedBehaviorTest {
         assertThat("上限 5 を指定すると 5 文字相当になる", narrowed.getColumnWidth(0), is(5 * 256));
     }
 
-    // ------------------------------------------------------------------ 3-10
+    // ------------------------------------------------------------------ シートのグリッド線
 
     /**
      * Given: 任意のブロック。

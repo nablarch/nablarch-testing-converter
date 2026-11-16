@@ -436,8 +436,7 @@ public class YamlFormatReader implements TestDataFormatReader {
 
     /**
      * 送信系セクション内エントリの生グループ ID を初出順で列挙する（重複排除）。
-     * {@code group_id} を省略したエントリはデフォルトグループとして {@code null} で列挙する
-     * 。
+     * {@code group_id} を省略したエントリはデフォルトグループとして {@code null} で列挙する。
      *
      * @param yaml       トップレベル Map
      * @param sectionKey セクションキー

@@ -362,10 +362,8 @@ public class XlsFormatReaderRealFileTest {
      * </p>
      *
      * <p>
-     * <b>期待値は 2 度変わっている。</b>最初は「セル 0 個の行がデータ行の件数ぶん入る」を実測どおりに
-     * 固定していた。次に「カラム名の数だけで決め、カラム名が 0 件なら行も 0 件」とした。
-     * 現在は<b>カラム名の行がマーカーカラムだけのブロックを例外として扱い、マーカーカラムとその値を
-     * 保つ</b>。各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
+     * <b>カラム名の行がマーカーカラムだけのブロックは、マーカーカラムとその値を保つ</b>。
+     * 各エントリはフィールドを持たないが、テストショット一覧と行の順序で対応付ける用途では
      * エントリの数と並びが意味を持つためである。
      * </p>
      *
@@ -687,9 +685,9 @@ public class XlsFormatReaderRealFileTest {
      * <p>
      * <b>レコード種別が {@code "no"} になる点について。</b>送信同期の名前行の先頭セルはレコード種別では
      * なくメタ列ヘッダ {@code no} だが、原文復元は名前行の先頭セルを一律にレコード種別として採るため
-     * {@code "no"} が入る（実測）。これは課題として記録していない。この値は Excel へ書き戻す際に
+     * {@code "no"} が入る。この値は Excel へ書き戻す際に
      * メタ列ヘッダ {@code no} を再生するのに使われ、実 {@code .xlsx} → 中間モデル → 実 {@code .xlsx} →
-     * 中間モデルで安定することをプローブで確認した（{@code null} だとヘッダが失われて往復が壊れる）。
+     * 中間モデルで安定する（{@code null} だとヘッダが失われて往復が壊れる）。
      * すなわち本経路では load-bearing であり、既存テスト
      * {@code XlsFormatReaderTest#readPreservesErrorModeRowInSendSyncMessage} の判定（良性）と一致する。
      * </p>
@@ -991,21 +989,14 @@ public class XlsFormatReaderRealFileTest {
      * <b>本入力は記法どおりではない。</b>
      * 記法は「フレームワーク制御ヘッダ以降のメッセージボディは、フィールド名称・データ型・フィールド長・
      * データという、前述のファイルデータと同じ構成を持つ」とメッセージボディの存在を前提に書いており、
-     * 本文レコード 0 件の電文を表す書き方は記法に無い。電文が存在しない場合は 記法
-     * 応答不要メッセージ受信では…{@code expectedMessages} のデータブロックを記述する必要はないの
-     * とおり<b>データブロックごと省略する</b>。本体スキーマの電文系 3 定義も {@code records} を必須かつ
+     * 本文レコード 0 件の電文を表す書き方は記法に無い。電文が存在しない場合は、記法の「応答不要メッセージ受信では
+     * {@code expectedMessages} のデータブロックを記述する必要はない」のとおり<b>データブロックごと省略する</b>。本体スキーマの電文系 3 定義も {@code records} を必須かつ
      * {@code minItems} ＝ 1 とする。
      * </p>
      *
      * <p>
-     * <b>2026-08-19 に、この入力に対する converter の挙動が変わった。</b>番人を Excel・YAML の書き出し側から
-     * {@link MessageDataBlock} の生成時へ移したため、失敗する場所が<b>書き出し時から読み込み時へ
-     * 前倒しになった</b>（変換が失敗すること自体は移設の前後で変わらない）。旧テスト名は
-     * {@code readsEmptyRecordsFromMessageWithFwHeaderOnlyInRealBook} で、レコード 0 件のブロックが
-     * 生成されることを固定していた。<b>これにより {@code MessageDataBlock.records}（空）／ファイル内レコードレイアウト数 0 件の
-     * {@link MessageDataBlock} 経路は到達不能になった</b>（{@link FileDataBlock} 経路は
-     * {@link #readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook()} が担保しており、
-     * そちらは記法上も合法である）。
+     * {@link MessageDataBlock} が生成時に拒否するため、読み込みの時点で失敗する。レコード 0 件の
+     * {@link FileDataBlock} は記法上も合法で、{@link #readsEmptyRecordsFromFixedFileWithDirectiveOnlyInRealBook()} が担保する。
      * </p>
      */
     @Test

@@ -77,10 +77,7 @@ import org.junit.rules.TemporaryFolder;
  * </p>
  *
  * <p>
- * <b>読み戻しを実検査する末尾の 2 件は無くなった。</b>カラム名 0 件のブロックを書く 1 件は、
- * カラム名 0 件のブロックを {@link XlsFormatWriter} が弾くようになり到達不能になったため削除済み
- * （{@code 57c1b0d}）、{@code DEFAULT} のブロックを書く 1 件は {@code DEFAULT} のブロックが
- * 作れなくなったため削除した。
+ * カラム名 0 件で行を持つブロックと {@code DEFAULT} のブロックは中間モデルとして作れないため、本クラスでは扱わない。
  * </p>
  *
  * @author kiyobot
@@ -235,9 +232,8 @@ public class XlsFormatWriterModelTest {
      *
      * <p>
      * 導出前は長さ行の有無が引数の {@code fileType} で決まっていたため、識別セルに
-     * {@code SETUP_FIXED=…} と書きながら長さ行を書かない Excel を出せた（実測）。これは
-     * 記法は固定長ファイルでは、フィールド名称・
-     * データ型・フィールド長の3リストが同サイズで必須に反する。導出後はファイル種別を外から渡せない。
+     * {@code SETUP_FIXED=…} と書きながら長さ行を書かない Excel を出せた。これは、固定長ファイルでは
+     * フィールド名称・データ型・フィールド長の 3 リストが同サイズで必須という記法に反する。導出後はファイル種別を外から渡せない。
      * </p>
      *
      * <p>
@@ -324,13 +320,8 @@ public class XlsFormatWriterModelTest {
      *
      * 追加前、この 3 タイプを Excel への書き出しで通していたのは XlsFormatWriterTest#writesSequenceNoForAllSendSyncTypes
      * だけで、同メソッドがアサートするのはデータ行の列 0 の連番 "1"（4 タイプ共通の値）であり、
-     * タイプを区別する出力は 1 つも固定していなかった。実測（2026-08-13）: XlsFormatWriter#marker が
-     * この 3 タイプにだけ別文字列 "MUTATED" を返すよう src/main を一時的に変異させて全件実行したところ、
-     * 落ちたのは RoundTripTest の 3 件（xls_expectedRequestBodyMessages_isPreserved／
-     * xls_responseHeaderMessages_isPreserved／xls_responseBodyMessages_isPreserved）だけで、
-     * XlsFormatWriterTest 40 件は全緑だった（変異は確認後に戻し、src/main は無変更）。
-     * 往復テストは中間モデルを起点に中間モデルへ戻すため、書きと読みが同じ誤りを持つと緑になる。
-     * 正式な担保には数えず、テストを足して埋める。
+     * タイプを区別する出力は 1 つも固定していなかった。往復テスト（RoundTripTest）は中間モデルを起点に
+     * 中間モデルへ戻すため、書きと読みが同じ誤りを持つと通ってしまい、担保にならない。
      *
      * 粒度は XlsFormatWriterTest#writesSendSyncMessageWithSequenceNo（EXPECTED_REQUEST_HEADER_MESSAGES）に揃え、
      * グループ ID と識別子を含むマーカー全体と、データ行の列 0 に連番が入る版面を固定する。

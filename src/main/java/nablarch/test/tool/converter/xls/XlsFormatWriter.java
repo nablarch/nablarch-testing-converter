@@ -233,8 +233,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * テーブル／LIST_MAP の版面を組み立てる（識別行 → カラム名行 → データ行）。
      * <p>
      * <b>カラム名を 1 件も持たない 0 件テーブルには、カラム名の行へマーカーカラム
-     * {@value #EMPTY_BLOCK_MARKER_COLUMN} を 1 つだけ書く。</b>3 つの明文を同時に満たす唯一の書き方だからである
-     * （以下の明文はいずれも解説書 {@code 30a8271} 時点）。
+     * {@value #EMPTY_BLOCK_MARKER_COLUMN} を 1 つだけ書く。</b>解説書の次の 3 つの記述を同時に満たす唯一の書き方だからである。
      * </p>
      * <ul>
      *   <li>Excel 記法では、データ行を書かない場合でもカラム名の行を省略できない。
@@ -253,7 +252,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * </ul>
      * <p>
      * <b>黙ってカラム名行を落とすと次のブロックを食う。</b>カラム名行を持たない版面を本体が読み戻すと、
-     * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える（実測）。
+     * 次のブロックの識別子行がカラム名の行として吸収され、そのブロックが丸ごと消える。
      * <b>読み戻すと、書いたマーカーカラムがそのまま
      * {@code columnNames} に入る</b>——{@link XlsFormatReader} は、カラム名の行がマーカーカラムだけの
      * ブロックをマーカーカラムの名前と値を保って読むためである。行は 0 件のままである
@@ -614,8 +613,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *
      * <p>
      * <b>全要素が空文字のエントリは各セルへ空文字記法（{@code ""}）を書く。</b>空セルだけの行にすると、
-     * 読み戻しで空エントリとして読み飛ばされてエントリが 1 件消える
-     * 。
+     * 読み戻しで空エントリとして読み飛ばされてエントリが 1 件消える。
      * 一部の要素だけが空文字のエントリは空セルのまま書く（行として空にならないため）。
      * </p>
      *

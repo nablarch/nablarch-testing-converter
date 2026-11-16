@@ -41,7 +41,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 入力の 5 形（ファイル 3 形・電文 1 形・送信同期電文 1 形）は、末尾の {@code null} が
- * 空文字にならないという不具合を実測で特定したときの入力と同じものである。
+ * 空文字にならないという不具合を特定したときの入力と同じものである。
  * </p>
  */
 public class XlsTrailingNullTest {

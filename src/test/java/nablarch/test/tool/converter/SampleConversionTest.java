@@ -67,14 +67,6 @@ public class SampleConversionTest {
      * 0 件レコードであり、カラム名は {@code fields:} に持つ。
      * </p>
      *
-     * <p>
-     * <b>本テストは 2026-08-18〜19 の間、変換が中止されることを固定していた</b>
-     * （{@code stopsClimanSampleConversionBecauseOfZeroRowTable}）。当時の Excel への書き出しは
-     * カラム名 0 件のブロックを {@code IllegalArgumentException} で弾いており、
-     * 0 件テーブルを含む YAML を Excel へ変換できないという実運用上の制約があった
-     * （カラム名の行を空のまま書くと、読み戻しで直後のブロックの識別子行をカラム名の行と取り違え、
-     * ブロックが 1 つ消えるため）。
-     * </p>
      */
     @Test
     public void convertsClimanSampleIncludingZeroRowTable() throws IOException {

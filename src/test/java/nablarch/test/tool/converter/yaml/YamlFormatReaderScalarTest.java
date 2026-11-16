@@ -113,7 +113,7 @@ public class YamlFormatReaderScalarTest {
      *
      * <p>
      * <b>継続行のインデントは本メソッドが付ける</b>（半角空白 10 個）。呼び出し側は中身だけを渡す。
-     * 必要なインデントは<b>半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1 で実測。8 個は
+     * 必要なインデントは<b>半角空白 9 個以上</b>である（snakeyaml-engine 3.0.1。8 個は
      * {@code ScannerException}、7 個は {@code ParserException}、6 個は {@code ScannerException} になる）。
      * キー {@code V} が {@code "        V:"}（空白 8 個）の <b>9 桁目</b>から始まり、
      * YAML のブロックスカラーはそれより深いインデントを要求するためである。
@@ -609,7 +609,6 @@ public class YamlFormatReaderScalarTest {
      * 「12 ケースの結果が他の 2 系統でも同じか」は上のテストだけでは分からない。
      * 以下は null と空文字の 2 ケースだけを別経路で測り、経路差が無いことを固定する。
      * 12 ケース × 3 経路には広げない（12 ケースの定義は setup_tables 経路のまま変えない）。
-     * 実測の結果、3 経路とも同じ値が入った。
      *
      * ただしレコード断片経路の空文字だけは、固定できる性質が他より弱い。この経路では
      * 「書かれた空文字」と「要素数が足りず器が埋めた空文字」が中間モデル上で区別できないため
@@ -676,8 +675,8 @@ public class YamlFormatReaderScalarTest {
      * レコード断片経路では、行の要素数が {@code fields} の件数に足りないときに欠けた位置が
      * <b>空文字で埋められる</b>ため（固定テストは
      * {@link YamlFormatReaderInvalidInputTest#fillsMissingRecordFragmentValuesWithEmptyStringInsteadOfNull}）、
-     * 「書かれた {@code ""}」と「書かれなかった位置」が同じ {@code ""} になる。実測でも
-     * {@code rows: - [""]} と {@code rows: - []} は同じ結果になった。
+     * 「書かれた {@code ""}」と「書かれなかった位置」が同じ {@code ""} になる
+     * （{@code rows: - [""]} と {@code rows: - []} は同じ結果になる）。
      * すなわち「書いた空文字が保たれた」ことは本テストでは示せない
      * （{@code setup_tables} ／ {@code list_maps} 経路では欠けたキーが {@code null} になるため示せる。
      * {@link YamlFormatReaderInvalidInputTest#padsColumnMissingFromSecondRowWithNullInTable}）。

@@ -376,8 +376,7 @@ public class XlsParserAccessor {
     /**
      * マーカー行の先頭セルから<b>生値の</b>グループ ID（{@code g1} 等。無指定は空文字）を切り出す。
      * <p>
-     * 半角角括弧は Excel 形式の書式であって値ではないため、ここで外す
-     * 。付けるのは
+     * 半角角括弧は Excel 形式の書式であって値ではないため、ここで外す。付けるのは
      * {@code XlsFormatWriter#marker} であり、この 2 か所が Excel 版面の書式を知る層である。
      * </p>
      * <p>

@@ -26,8 +26,7 @@ import org.junit.rules.TemporaryFolder;
  *
  * <p>
  * 中間モデルが持つのは「テスティングフレームワークが解釈したあとの値」（Java {@code null} または
- * {@link String}）であって Excel 形式固有の記法ではない（変換ツールの仕様・
- * 記法・記法）。読み（{@link XlsFormatReader}）で外した記法を
+ * {@link String}）であって Excel 形式固有の記法ではない。読み（{@link XlsFormatReader}）で外した記法を
  * 書き（{@link XlsFormatWriter}）で戻すことで写像が対称になる。
  * </p>
  *
@@ -193,8 +192,7 @@ public class XlsNotationSymmetryTest {
     /**
      * Given: セルに {@code \r}／{@code \n}／セル内 LF と書いた実 {@code .xlsx}。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : {@code \r} だけが CR になり、{@code \n} は 2 文字のまま・LF は LF のまま素通しになる
-     *        。
+     * Then : {@code \r} だけが CR になり、{@code \n} は 2 文字のまま・LF は LF のまま素通しになる。
      */
     @Test
     public void readsBackslashRNotationAsCarriageReturn() {

@@ -79,7 +79,7 @@ public class XlsFormatReaderCellTypeTest {
      * {@code XlsParserAccessor} の全パーサが {@code parse(..., false)} を渡し
      * {@code TestDataParsingTemplate} が {@code PoiXlsReader#setUseCache(false)} を呼ぶため、
      * {@code PoiXlsReader} のブックキャッシュは使われない（同一パスを書き換えて同一 JVM 内で
-     * 2 回読むと新しい内容が読めることをプローブで実測して確認済み）。ブック名を一意化する必要はない。
+     * 2 回読んでも新しい内容が読める）。ブック名を一意化する必要はない。
      * </p>
      */
     @Rule
@@ -288,7 +288,7 @@ public class XlsFormatReaderCellTypeTest {
     /**
      * Given: 値が数値 {@code 1}・表示形式が {@code @}（文字列書式）のセル。
      * When : 実 {@code .xlsx} を {@code read}。
-     * Then : <b>値は保証しない。</b>実測では表示形式 {@code @} は考慮されず {@code "1.0"} が入る
+     * Then : <b>値は保証しない。</b>表示形式 {@code @} は考慮されず {@code "1.0"} が入る
      *        （画面表示 {@code 1} と一致しない）。
      *
      * <p>

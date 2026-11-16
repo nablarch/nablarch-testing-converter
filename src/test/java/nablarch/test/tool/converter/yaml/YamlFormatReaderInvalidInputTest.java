@@ -593,11 +593,9 @@ public class YamlFormatReaderInvalidInputTest {
      * Then : 空マッピングの行<b>だけ</b>が読み飛ばされ、2 行目はカラム名も値も保たれる。
      *
      * <p>
-     * 記法
-     * 全要素が空のエントリは読み飛ばされる。……YAML では {@code rows:} 内の要素が空マッピング
-     * （{@code {}}）……の場合にスキップされる。のとおりであり、カラム名は<b>読み飛ばしたあとの
-     * 先頭行</b>で決まる。実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}
-     * （2026-08-28）。
+     * 記法の「全要素が空のエントリは読み飛ばされる。YAML では {@code rows:} 内の要素が空マッピング
+     * （{@code {}}）の場合にスキップされる」のとおりであり、カラム名は<b>読み飛ばしたあとの
+     * 先頭行</b>で決まる（{@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}）。
      * </p>
      *
      * <p>
@@ -629,9 +627,7 @@ public class YamlFormatReaderInvalidInputTest {
      *
      * <p>
      * <b>テーブル経路（{@link #skipsEmptyObjectRowAndKeepsFollowingRowInTable}）と同じ結果になる。</b>
-     * 以前は同じ入力でも経路によって結果が違い（テーブルは行ごと消える／LIST_MAP は値を持たない行が残る）、
-     * 依存先 {@code nablarch-testing-yaml} の修正で両経路とも記法どおりになった。
-     * 実測値は {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]}（2026-08-28）。
+     * {@code columnNames} ＝ {@code [A]}・{@code rows} ＝ {@code [[1]]} になる。
      * </p>
      */
     @Test
@@ -1050,9 +1046,7 @@ public class YamlFormatReaderInvalidInputTest {
      * 実際にタブへ変換されるのは<b>バックスラッシュと {@code t} の 2 文字</b>を渡した場合
      * （YAML では {@code '\t'} などシングルクォート記法）である。本体スキーマ
      * {@code $defs.directives.properties.field-separator.description} も
-     * 「タブは {@code field-separator: "\\t"} と記述する」と書いており、**この挙動と一致している**
-     * （2026-08-19 実測。以前この Javadoc が引いていた「{@code "\t"} と記述するとタブ文字に変換される」は
-     * 現行スキーマに存在しない）。
+     * 「タブは {@code field-separator: "\\t"} と記述する」と書いており、<b>この挙動と一致している</b>。
      * 実タブで書いた区切り文字は本体の {@code trim()} で失われるが、例外で止まるため値が黙って変わることはない。
      * </p>
      */
