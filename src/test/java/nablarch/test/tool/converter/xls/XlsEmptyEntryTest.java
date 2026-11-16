@@ -15,7 +15,7 @@ import java.util.Map;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.PoiXlsReader;
-import nablarch.test.core.reader.TestCoreReaderAdapter;
+import nablarch.test.core.reader.XlsParserAccessor;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -131,7 +131,7 @@ public class XlsEmptyEntryTest {
      */
     private static int frameworkTableSize(Path dir, String id) {
         List<TableData> tables =
-                new TestCoreReaderAdapter(new PoiXlsReader())
+                new XlsParserAccessor(new PoiXlsReader())
                         .readTables(dir.toString(), resource(), "", DataType.SETUP_TABLE_DATA);
         for (TableData table : tables) {
             if (id.equals(table.getTableName())) {
@@ -149,7 +149,7 @@ public class XlsEmptyEntryTest {
      * @return エントリ件数
      */
     private static int frameworkListMapSize(Path dir, String id) {
-        return new TestCoreReaderAdapter(new PoiXlsReader())
+        return new XlsParserAccessor(new PoiXlsReader())
                 .readListMap(dir.toString(), resource(), id).size();
     }
 

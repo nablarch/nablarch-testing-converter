@@ -16,7 +16,7 @@ import nablarch.test.tool.converter.reader.FileView;
 import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
- * {@link TestCoreFileAdapter}のテストクラス。
+ * {@link DataFileAccessor}のテストクラス。
  * <p>
  * 本体ファイル器（{@link DataFile}／{@link DataFileFragment}）の protected な内部を
  * {@link FileView}／{@link FragmentView}へ無損失に写すこと、および「器が正規化した値」
@@ -26,7 +26,7 @@ import nablarch.test.tool.converter.reader.FragmentView;
  *
  * @author kiyobot
  */
-public class TestCoreFileAdapterTest {
+public class DataFileAccessorTest {
 
     /**
      * Given: 名前・型・長さ・データ行を持つ固定長ファイル器（2 断片）。
@@ -47,7 +47,7 @@ public class TestCoreFileAdapterTest {
         frag2.setLengths(Arrays.asList("5"));
         frag2.addValue(Arrays.asList("admin"));
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
 
         assertThat(view.getPath(), is("test.dat"));
         assertThat(view.getFragments().size(), is(2));
@@ -75,7 +75,7 @@ public class TestCoreFileAdapterTest {
         frag.setTypes(Arrays.asList("半角英字", "全角"));
         frag.setLengths(Arrays.asList("10", "4"));
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
 
         // 器は 半角英字→X・全角→N へ正規化する。原文（半角英字/全角）は現れない。
         assertThat(view.getFragments().get(0).getTypes(), is(Arrays.asList("X", "N")));
@@ -97,7 +97,7 @@ public class TestCoreFileAdapterTest {
         frag.setLengths(Arrays.asList("-", "5"));
         frag.addValue(Arrays.asList("abcd", "x"));
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
 
         List<String> lengths = view.getFragments().get(0).getLengths();
         // 省略長 "-" は実バイト長 "4" へ上書きされている（原文は失われる）。
@@ -118,7 +118,7 @@ public class TestCoreFileAdapterTest {
         frag.setTypes(Arrays.asList("半角英字"));
         frag.addValue(Arrays.asList("v"));
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
 
         assertThat(view.getFragments().get(0).getLengths(), is(nullValue()));
         assertThat(view.getFragments().get(0).getValues().get(0).get("f1"), is("v"));
@@ -133,7 +133,7 @@ public class TestCoreFileAdapterTest {
     public void readsDirectives() {
         FixedLengthFile file = new FixedLengthFile("t.dat");
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
 
         assertThat(view.getDirectives().get("file-type"), is((Object) "Fixed"));
     }
@@ -148,7 +148,7 @@ public class TestCoreFileAdapterTest {
         FixedLengthFile file = new FixedLengthFile("t.dat");
         DataFileFragment frag = file.getNewFragment();
         frag.setNames(Arrays.asList("f1"));
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
         try {
             view.getFragments().clear();
             fail("UnsupportedOperationException が送出されるべき");
@@ -171,7 +171,7 @@ public class TestCoreFileAdapterTest {
         frag.setLengths(Arrays.asList("3"));
         frag.addValue(Arrays.asList("abc"));
 
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
         Map<String, String> originalRow = frag.values.get(0);
         originalRow.put("f1", "MUTATED");
 

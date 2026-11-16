@@ -10,7 +10,7 @@ import nablarch.test.tool.converter.reader.FragmentView;
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析結果である
  * {@link DataFile}／{@link DataFileFragment} の<b>器の中身</b>を読み取るための、{@code file}
- * パッケージ相乗りのアダプタ。
+ * パッケージ相乗りのアクセサ。
  * <p>
  * {@link DataFile#all}・{@link DataFile#directives}・{@link DataFileFragment#names}／
  * {@code types}／{@code lengths}／{@code values} は protected で、変換ツールのパッケージから
@@ -28,10 +28,10 @@ import nablarch.test.tool.converter.reader.FragmentView;
  *
  * @author kiyobot
  */
-public final class TestCoreFileAdapter {
+public final class DataFileAccessor {
 
     /** インスタンス化させない。 */
-    private TestCoreFileAdapter() {
+    private DataFileAccessor() {
     }
 
     /**

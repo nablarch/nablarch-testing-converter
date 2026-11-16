@@ -11,7 +11,7 @@ import java.util.Objects;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.TestCoreFileAdapter;
+import nablarch.test.core.file.DataFileAccessor;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
@@ -33,16 +33,16 @@ import nablarch.test.tool.converter.reader.FragmentView;
  * YAML（1 ファイル）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。
  *
  * <p>
- * 独自の YAML 構造解析は持たない。本体の読み込みは {@link YamlTestCoreAdapter}
- * （本体 {@code reader} パッケージ相乗りのアダプタ）へ委譲し、本クラスは
- * {@link YamlTestCoreAdapter#loadRawMap(String, String) トップレベル Map}（{@link java.util.LinkedHashMap}
+ * 独自の YAML 構造解析は持たない。本体の読み込みは {@link YamlBuilderAccessor}
+ * （本体 {@code reader} パッケージ相乗りのアクセサ）へ委譲し、本クラスは
+ * {@link YamlBuilderAccessor#loadRawMap(String, String) トップレベル Map}（{@link java.util.LinkedHashMap}
  * ＝YAML 記述順）を走査して既知セクションをブロックへ展開するオーケストレーションに徹する。
  * グループ絞り込み・fixed/variable 判定・送信系グループ／NO 扱い・テーブル名／
- * カラム名の大文字化・マーカー除外といった YAML 構造解釈はすべてアダプタ（本体器）側が担う。
+ * カラム名の大文字化・マーカー除外といった YAML 構造解釈はすべてアクセサ（本体器）側が担う。
  * </p>
  *
  * <p>
- * 各ブロックは「{@code adapter.read*} が返す本体器（構造の権威）」と「同じ Map から取る原文」を
+ * 各ブロックは「{@code accessor.read*} が返す本体器（構造の権威）」と「同じ Map から取る原文」を
  * 突き合わせて組み立てる。Excel 経路（{@code XlsFormatReader}）が器の正規化を<b>生行</b>から復元するのに対し、
  * YAML 経路は器が正規化する値（カラム名の大文字化・長さ省略・型表記）の原文を<b>{@code loadRawMap} の Map</b>から
  * 復元する。
@@ -57,23 +57,23 @@ import nablarch.test.tool.converter.reader.FragmentView;
  */
 public class YamlFormatReader implements TestDataFormatReader {
 
-    /** 本体再利用のためのアダプタ */
-    private final YamlTestCoreAdapter adapter;
+    /** 本体再利用のためのアクセサ */
+    private final YamlBuilderAccessor accessor;
 
     /**
-     * 本番用コンストラクタ。実 YAML を読む {@link YamlTestCoreAdapter} を構成する。
+     * 本番用コンストラクタ。実 YAML を読む {@link YamlBuilderAccessor} を構成する。
      */
     public YamlFormatReader() {
-        this(new YamlTestCoreAdapter());
+        this(new YamlBuilderAccessor());
     }
 
     /**
-     * アダプタを注入するコンストラクタ（主にテスト用）。
+     * アクセサを注入するコンストラクタ（主にテスト用）。
      *
-     * @param adapter 本体再利用のためのアダプタ
+     * @param accessor 本体再利用のためのアクセサ
      */
-    YamlFormatReader(YamlTestCoreAdapter adapter) {
-        this.adapter = adapter;
+    YamlFormatReader(YamlBuilderAccessor accessor) {
+        this.accessor = accessor;
     }
 
     /**
@@ -85,7 +85,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      */
     @Override
     public TestDataContainer read(String basePath, String resourceName) {
-        Map<String, Object> yaml = adapter.loadRawMap(basePath, resourceName);
+        Map<String, Object> yaml = accessor.loadRawMap(basePath, resourceName);
         List<TestDataBlock> blocks = new ArrayList<>();
         for (String key : yaml.keySet()) {
             addBlocksForSection(basePath, resourceName, yaml, key, blocks);
@@ -153,7 +153,7 @@ public class YamlFormatReader implements TestDataFormatReader {
     private void addTableBlocks(String basePath, String resourceName, Map<String, Object> yaml,
                                String sectionKey, DataType type, List<TestDataBlock> blocks) {
         for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
-            List<TableData> tables = adapter.readTables(basePath, resourceName, groupId, type);
+            List<TableData> tables = accessor.readTables(basePath, resourceName, groupId, type);
             List<Map<String, Object>> entries = entriesForGroupId(yaml, sectionKey, groupId);
             for (int t = 0; t < tables.size(); t++) {
                 TableData table = tables.get(t);
@@ -209,7 +209,7 @@ public class YamlFormatReader implements TestDataFormatReader {
                         rawRows(entry, markerColumns)));
                 continue;
             }
-            List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, id);
+            List<Map<String, String>> mapRows = accessor.readListMap(basePath, resourceName, id);
             List<String> orderedColumns = nonMarkerColumns(entry);
             List<List<String>> rows = new ArrayList<>(mapRows.size());
             for (Map<String, String> mapRow : mapRows) {
@@ -243,13 +243,13 @@ public class YamlFormatReader implements TestDataFormatReader {
         // 代表データタイプはセクション解決（固定長／可変長で同一セクション）にのみ用いる。
         DataType representativeType = setup ? DataType.SETUP_FIXED : DataType.EXPECTED_FIXED;
         for (String groupId : groupIdsInOrder(yaml, sectionKey)) {
-            List<DataFile> files = adapter.readFiles(basePath, resourceName, groupId, representativeType);
+            List<DataFile> files = accessor.readFiles(basePath, resourceName, groupId, representativeType);
             List<Map<String, Object>> entries = entriesForGroupId(yaml, sectionKey, groupId);
             requireSameSize(files.size(), entries.size(), sectionKey, groupId);
             for (int i = 0; i < files.size(); i++) {
                 DataFile file = files.get(i);
                 Map<String, Object> entry = entries.get(i);
-                FileView view = TestCoreFileAdapter.read(file);
+                FileView view = DataFileAccessor.read(file);
                 FileDataBlock.FileType fileType = file instanceof FixedLengthFile
                         ? FileDataBlock.FileType.FIXED : FileDataBlock.FileType.VARIABLE;
                 blocks.add(new FileDataBlock(fileDataType(setup, fileType), groupId, view.getPath(),
@@ -276,11 +276,11 @@ public class YamlFormatReader implements TestDataFormatReader {
         for (Object entryObj : YamlSection.getList(yaml, YamlSection.KEY_MESSAGES)) {
             Map<String, Object> entry = YamlSection.castMap(entryObj);
             String id = YamlSection.toStr(entry.get(YamlSection.FIELD_ID));
-            MessageContent content = adapter.readMessage(basePath, resourceName, id);
+            MessageContent content = accessor.readMessage(basePath, resourceName, id);
             if (content == null) {
                 continue;
             }
-            FileView view = TestCoreFileAdapter.read(content.getBody());
+            FileView view = DataFileAccessor.read(content.getBody());
             blocks.add(new MessageDataBlock(DataType.MESSAGE, "", id,
                     toStringDirectives(view.getDirectives()),
                     new LinkedHashMap<>(content.getFwHeader()),
@@ -308,13 +308,13 @@ public class YamlFormatReader implements TestDataFormatReader {
     private void addSendSyncBlocks(String basePath, String resourceName, Map<String, Object> yaml,
                                   String sectionKey, DataType type, List<TestDataBlock> blocks) {
         for (String rawGroup : rawGroupsInOrder(yaml, sectionKey)) {
-            List<FixedLengthFile> bodies = adapter.readSendSyncMessages(basePath, resourceName, rawGroup, type);
+            List<FixedLengthFile> bodies = accessor.readSendSyncMessages(basePath, resourceName, rawGroup, type);
             List<Map<String, Object>> entries = entriesForRawGroup(yaml, sectionKey, rawGroup);
             requireSameSize(bodies.size(), entries.size(), sectionKey, rawGroup);
             for (int i = 0; i < bodies.size(); i++) {
                 FixedLengthFile body = bodies.get(i);
                 Map<String, Object> entry = entries.get(i);
-                FileView view = TestCoreFileAdapter.read(body);
+                FileView view = DataFileAccessor.read(body);
                 blocks.add(new MessageDataBlock(type, rawGroupId(entry), body.getPath(),
                         toStringDirectives(view.getDirectives()),
                         new LinkedHashMap<>(),
@@ -499,7 +499,7 @@ public class YamlFormatReader implements TestDataFormatReader {
      * <p>
      * 中間モデルが持つのはテスティングフレームワークの仕様上の意味だけであり、半角角括弧は
      * Excel 形式の書式であって値ではない。
-     * 上流 API が要求する整形は {@code YamlTestCoreAdapter} が渡す直前に行う。
+     * 上流 API が要求する整形は {@code YamlBuilderAccessor} が渡す直前に行う。
      * </p>
      *
      * @param entry エントリ Map

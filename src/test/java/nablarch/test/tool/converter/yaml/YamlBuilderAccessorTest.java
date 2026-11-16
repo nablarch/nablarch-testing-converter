@@ -15,7 +15,7 @@ import java.util.Map;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.TestCoreFileAdapter;
+import nablarch.test.core.file.DataFileAccessor;
 import nablarch.test.core.file.VariableLengthFile;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.MessageContent;
@@ -27,21 +27,21 @@ import org.junit.After;
 import org.junit.Test;
 
 /**
- * {@link YamlTestCoreAdapter} のテストクラス。
+ * {@link YamlBuilderAccessor} のテストクラス。
  * <p>
- * 本アダプタは本体 YAML ビルダを空インタープリタ・補完なしで配線し、生の本体器を取り出す。Excel 経路の
- * {@link nablarch.test.core.reader.TestCoreReaderAdapter} と対称。各テストは「本体器を返すこと」と「IN 値が記法のまま（未加工。
+ * 本アクセサは本体 YAML ビルダを空インタープリタ・補完なしで配線し、生の本体器を取り出す。Excel 経路の
+ * {@link nablarch.test.core.reader.XlsParserAccessor} と対称。各テストは「本体器を返すこと」と「IN 値が記法のまま（未加工。
  * {@code ${...}}・{@code ${binaryFile:...}}・{@code null}・{@code ""} がそのまま）であること」、および
  * {@code loadRawMap} が順序保持の原文 Map を返すことを検証する。
  * </p>
  *
  * @author kiyobot
  */
-public class YamlTestCoreAdapterTest {
+public class YamlBuilderAccessorTest {
 
-    private static final String DIR = "src/test/java/nablarch/test/core/reader/";
+    private static final String DIR = "src/test/java/nablarch/test/tool/converter/yaml/";
 
-    private final YamlTestCoreAdapter sut = new YamlTestCoreAdapter();
+    private final YamlBuilderAccessor sut = new YamlBuilderAccessor();
 
     @After
     public void after() {
@@ -56,7 +56,7 @@ public class YamlTestCoreAdapterTest {
     public void readTables_setup_returnsRawTableData() {
         // Given: setup_tables の users（${...}・null・""・${binaryFile:} を含む）
         // When
-        List<TableData> tables = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "", DataType.SETUP_TABLE_DATA);
+        List<TableData> tables = sut.readTables(DIR, "YamlBuilderAccessorTest/tables", "", DataType.SETUP_TABLE_DATA);
 
         // Then: 1 テーブル・値は記法のまま（binaryFile は HexString へ解決されない）
         assertThat(tables.size(), is(1));
@@ -71,10 +71,10 @@ public class YamlTestCoreAdapterTest {
     @Test
     public void readTables_expectedWithGroup_filtersByGroupId() {
         // Given: expected_tables の orders（group_id=case01）
-        // When: 生値のグループ ID で取得（上流へ渡す直前にアダプタが整形する）
-        List<TableData> match = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "case01",
+        // When: 生値のグループ ID で取得（上流へ渡す直前にアクセサが整形する）
+        List<TableData> match = sut.readTables(DIR, "YamlBuilderAccessorTest/tables", "case01",
                 DataType.EXPECTED_TABLE_DATA);
-        List<TableData> noMatch = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "other",
+        List<TableData> noMatch = sut.readTables(DIR, "YamlBuilderAccessorTest/tables", "other",
                 DataType.EXPECTED_TABLE_DATA);
 
         // Then
@@ -87,7 +87,7 @@ public class YamlTestCoreAdapterTest {
     public void readTables_completed_doesNotFillDefaults() {
         // Given: expected_complete_tables の items
         // When: 補完なしで取得（fillDefaultValues が走れば StubDbInfo の番人メソッドが発火し例外になる）
-        List<TableData> tables = sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "",
+        List<TableData> tables = sut.readTables(DIR, "YamlBuilderAccessorTest/tables", "",
                 DataType.EXPECTED_COMPLETED);
 
         // Then: 例外なく取得でき、値は記法のまま＝補完が走っていない
@@ -102,7 +102,7 @@ public class YamlTestCoreAdapterTest {
         // (no setup)
         // When
         try {
-            sut.readTables(DIR, "YamlTestCoreAdapterTest/tables", "", DataType.LIST_MAP);
+            sut.readTables(DIR, "YamlBuilderAccessorTest/tables", "", DataType.LIST_MAP);
             fail("should throw");
         } catch (IllegalArgumentException e) {
             // Then
@@ -115,7 +115,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        List<Map<String, String>> rows = sut.readListMap(DIR, "YamlTestCoreAdapterTest/tables", "lm1");
+        List<Map<String, String>> rows = sut.readListMap(DIR, "YamlBuilderAccessorTest/tables", "lm1");
 
         // Then: 2 行・値は記法のまま・null 保持
         assertThat(rows.size(), is(2));
@@ -132,13 +132,13 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        List<DataFile> files = sut.readFiles(DIR, "YamlTestCoreAdapterTest/files", "", DataType.SETUP_FIXED);
+        List<DataFile> files = sut.readFiles(DIR, "YamlBuilderAccessorTest/files", "", DataType.SETUP_FIXED);
 
         // Then: 固定長 1 件・ディレクティブ・フィールド名・値が記法のまま
         assertThat(files.size(), is(1));
         DataFile file = files.get(0);
         assertTrue(file instanceof FixedLengthFile);
-        FileView view = TestCoreFileAdapter.read(file);
+        FileView view = DataFileAccessor.read(file);
         assertThat(view.getPath(), is("input.dat"));
         FragmentView fragment = view.getFragments().get(0);
         assertThat(fragment.getNames(), is(list("f1", "f2")));
@@ -151,13 +151,13 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        List<DataFile> files = sut.readFiles(DIR, "YamlTestCoreAdapterTest/files", "", DataType.EXPECTED_VARIABLE);
+        List<DataFile> files = sut.readFiles(DIR, "YamlBuilderAccessorTest/files", "", DataType.EXPECTED_VARIABLE);
 
         // Then: 可変長 1 件・値は記法のまま
         assertThat(files.size(), is(1));
         DataFile file = files.get(0);
         assertTrue(file instanceof VariableLengthFile);
-        FragmentView fragment = TestCoreFileAdapter.read(file).getFragments().get(0);
+        FragmentView fragment = DataFileAccessor.read(file).getFragments().get(0);
         assertThat(fragment.getValues().get(0).get("c2"), is("${b}"));
     }
 
@@ -167,7 +167,7 @@ public class YamlTestCoreAdapterTest {
         // (no setup)
         // When
         try {
-            sut.readFiles(DIR, "YamlTestCoreAdapterTest/files", "", DataType.MESSAGE);
+            sut.readFiles(DIR, "YamlBuilderAccessorTest/files", "", DataType.MESSAGE);
             fail("should throw");
         } catch (IllegalArgumentException e) {
             // Then
@@ -184,13 +184,13 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        MessageContent content = sut.readMessage(DIR, "YamlTestCoreAdapterTest/messages", "RM01");
+        MessageContent content = sut.readMessage(DIR, "YamlBuilderAccessorTest/messages", "RM01");
 
         // Then: FW ヘッダは文字列化のみ（${...} は未加工）・本文も記法のまま
         assertNotNull(content);
         assertThat(content.getFwHeader().get("requestId"), is("RM01"));
         assertThat(content.getFwHeader().get("userId"), is("${user}"));
-        FragmentView fragment = TestCoreFileAdapter.read(content.getBody()).getFragments().get(0);
+        FragmentView fragment = DataFileAccessor.read(content.getBody()).getFragments().get(0);
         assertThat(fragment.getNames(), is(list("m1")));
         assertThat(fragment.getValues().get(0).get("m1"), is("abc"));
     }
@@ -200,7 +200,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup)
         // When / Then
-        assertNull(sut.readMessage(DIR, "YamlTestCoreAdapterTest/messages", "ABSENT"));
+        assertNull(sut.readMessage(DIR, "YamlBuilderAccessorTest/messages", "ABSENT"));
     }
 
     // ------------------------------------------------------------------------
@@ -212,14 +212,14 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When: case1 グループ（MSG1・MSG2）を取得
-        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", "case1",
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", "case1",
                 DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then: 2 件・path は id・値は記法のまま
         assertThat(bodies.size(), is(2));
         assertThat(bodies.get(0).getPath(), is("MSG1"));
         assertThat(bodies.get(1).getPath(), is("MSG2"));
-        FragmentView fragment = TestCoreFileAdapter.read(bodies.get(0)).getFragments().get(0);
+        FragmentView fragment = DataFileAccessor.read(bodies.get(0)).getFragments().get(0);
         assertThat(fragment.getValues().get(0).get("s1"), is("${z}"));
     }
 
@@ -235,7 +235,7 @@ public class YamlTestCoreAdapterTest {
      * <p>
      * 記法（グループ ID を省略した場合はデフォルトグループが
      * 対象になる）どおりの挙動である。本体ビルダは {@code group_id} が非 null のエントリしか
-     * 返さないため、{@link YamlTestCoreAdapter} 側の前処理
+     * 返さないため、{@link YamlBuilderAccessor} 側の前処理
      * （{@code defaultGroupOnlyYaml}）でしか実現できない。この前処理の直接の担保である
      * （前処理が無いと、{@code group_id} を省略したエントリが黙って消える）。
      * </p>
@@ -245,7 +245,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When: グループ ID 省略（＝デフォルトグループ）を取得
-        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", null,
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", null,
                 DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then: group_id を持たない 2 件だけが記述順で返る
@@ -254,9 +254,9 @@ public class YamlTestCoreAdapterTest {
         assertThat(bodies.get(1).getPath(), is("MSG_DEFAULT2"));
 
         // Then: 値も読めている（前処理が records を落としていない）
-        FragmentView first = TestCoreFileAdapter.read(bodies.get(0)).getFragments().get(0);
+        FragmentView first = DataFileAccessor.read(bodies.get(0)).getFragments().get(0);
         assertThat(first.getValues().get(0).get("d1"), is("de"));
-        FragmentView second = TestCoreFileAdapter.read(bodies.get(1)).getFragments().get(0);
+        FragmentView second = DataFileAccessor.read(bodies.get(1)).getFragments().get(0);
         assertThat(second.getValues().get(0).get("e1"), is("fg"));
     }
 
@@ -276,7 +276,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", "case2",
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", "case2",
                 DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
@@ -302,7 +302,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (sendSync.yaml は expected_request_header_messages しか持たない)
         // When
-        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", null,
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", null,
                 DataType.EXPECTED_REQUEST_BODY_MESSAGES);
 
         // Then
@@ -314,7 +314,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", "absent",
+        List<FixedLengthFile> bodies = sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", "absent",
                 DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
         // Then
         assertThat(bodies.size(), is(0));
@@ -326,7 +326,7 @@ public class YamlTestCoreAdapterTest {
         // (no setup)
         // When
         try {
-            sut.readSendSyncMessages(DIR, "YamlTestCoreAdapterTest/sendSync", "case1", DataType.MESSAGE);
+            sut.readSendSyncMessages(DIR, "YamlBuilderAccessorTest/sendSync", "case1", DataType.MESSAGE);
             fail("should throw");
         } catch (IllegalArgumentException e) {
             // Then
@@ -343,7 +343,7 @@ public class YamlTestCoreAdapterTest {
         // Given
         // (no setup beyond @After clearing cache)
         // When
-        Map<String, Object> yaml = sut.loadRawMap(DIR, "YamlTestCoreAdapterTest/tables");
+        Map<String, Object> yaml = sut.loadRawMap(DIR, "YamlBuilderAccessorTest/tables");
 
         // Then: トップレベルキーは記述順・原文のカラム名/値（小文字・null 保持）
         assertTrue(yaml.containsKey("setup_tables"));
@@ -363,7 +363,7 @@ public class YamlTestCoreAdapterTest {
     }
 
     /**
-     * Given: 入れ物ディレクトリ {@code YamlTestCoreAdapterTest} が在るパス。
+     * Given: 入れ物ディレクトリ {@code YamlBuilderAccessorTest} が在るパス。
      * When : {@code isResourceExisting} を呼ぶ。
      * Then : 入れ物ディレクトリの有無だけを映す（読み込み単位の有無は見ない）。
      *
@@ -378,13 +378,13 @@ public class YamlTestCoreAdapterTest {
     public void isResourceExisting_reflectsContainerDirectoryExistence() {
         // Given / When / Then
         assertTrue("入れ物ディレクトリが在る",
-                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/tables"));
+                sut.isResourceExisting(DIR, "YamlBuilderAccessorTest/tables"));
         assertTrue("読み込み単位名が実在しなくても、入れ物が在れば true",
-                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest/noSuchFile"));
+                sut.isResourceExisting(DIR, "YamlBuilderAccessorTest/noSuchFile"));
         assertThat("入れ物ディレクトリが無い",
                 sut.isResourceExisting(DIR, "noSuchContainer/tables"), is(false));
         assertTrue("\"/\" を含まない resourceName は全体が入れ物名",
-                sut.isResourceExisting(DIR, "YamlTestCoreAdapterTest"));
+                sut.isResourceExisting(DIR, "YamlBuilderAccessorTest"));
         assertThat("同上（入れ物ディレクトリが無い場合）",
                 sut.isResourceExisting(DIR, "noSuchContainer"), is(false));
     }

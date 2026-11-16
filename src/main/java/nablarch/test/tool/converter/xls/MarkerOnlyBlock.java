@@ -21,7 +21,7 @@ import java.util.List;
  *
  * <p>各行はカラム名と同じ要素数を持つ（足りない位置は空文字で埋めてある）。</p>
  *
- * @see TestCoreReaderAdapter#readMarkerOnlyBlock(String, String, String, String, DataType)
+ * @see XlsParserAccessor#readMarkerOnlyBlock(String, String, String, String, DataType)
  * @author kiyobot
  */
 public class MarkerOnlyBlock {

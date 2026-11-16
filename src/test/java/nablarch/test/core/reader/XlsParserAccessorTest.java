@@ -16,7 +16,7 @@ import java.util.Map;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.TestCoreFileAdapter;
+import nablarch.test.core.file.DataFileAccessor;
 import nablarch.test.core.file.VariableLengthFile;
 import nablarch.test.tool.converter.xls.BlockHeader;
 import nablarch.test.tool.converter.xls.MarkerOnlyBlock;
@@ -25,9 +25,9 @@ import nablarch.test.tool.converter.xls.MessageData;
 import org.junit.Test;
 
 /**
- * {@link TestCoreReaderAdapter}のテストクラス。
+ * {@link XlsParserAccessor}のテストクラス。
  * <p>
- * 本アダプタは本体 Parser を空 interpreters で配線し {@code parse → getResult} で
+ * 本アクセサは本体 Parser を空 interpreters で配線し {@code parse → getResult} で
  * 生の本体器を取り出す。各テストは「本体器を返すこと」と「IN 値が記法のまま（未加工）であること」を検証する。
  * </p>
  * <p>
@@ -37,7 +37,7 @@ import org.junit.Test;
  *
  * @author kiyobot
  */
-public class TestCoreReaderAdapterTest {
+public class XlsParserAccessorTest {
 
     /**
      * テスト用の{@link TestDataReader}実装。
@@ -124,11 +124,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("${userName}", "", "memo"));       // ${...}・空セル
         lines.add(row("\"quoted\"", "null", "memo2"));   // 引用符記法・null 記法
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TableData> tables = adapter.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
+        List<TableData> tables = accessor.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
 
         // Then
         assertThat(tables.size(), is(1));
@@ -161,11 +161,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("ROLE_NAME"));
         lines.add(row("admin"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TableData> tables = adapter.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
+        List<TableData> tables = accessor.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
 
         // Then
         assertThat(tables.size(), is(2));
@@ -180,7 +180,7 @@ public class TestCoreReaderAdapterTest {
      * <p>
      * {@code TableData#fillDefaultValues()} は「宣言されていない DB カラム」を埋める実装で、
      * その過程で {@code DbInfo#getColumns} を呼び、最後に {@code setColumnNames(allColumns)} で
-     * カラムを DB 全カラムへ拡張する。本アダプタの {@code StubDbInfo#getColumns} は番人として
+     * カラムを DB 全カラムへ拡張する。本アクセサの {@code StubDbInfo#getColumns} は番人として
      * 例外を投げるため、補完が走れば本テストは例外で落ちる。「例外なく完了し」かつ
      * 「カラム数が宣言数のまま（拡張されない）」ことで後処理が行われないことを識別的に実証する。
      * </p>
@@ -194,11 +194,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("USER_NAME"));    // 1 カラムのみ宣言（DB には他カラムがある想定）
         lines.add(row("${u}"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When: 補完が走れば StubDbInfo#getColumns が番人として例外を投げる＝ここで落ちる
-        List<TableData> tables = adapter.readTables(DIR, resource, "", DataType.EXPECTED_COMPLETED);
+        List<TableData> tables = accessor.readTables(DIR, resource, "", DataType.EXPECTED_COMPLETED);
 
         // Then
         assertThat(tables.size(), is(1));
@@ -213,7 +213,7 @@ public class TestCoreReaderAdapterTest {
      * When : {@code readTables(EXPECTED_COMPLETED)} を呼ぶ。
      * Then : 指定タイプ単独（EXPECTED_COMPLETE 分のみ）を返し、EXPECTED_TABLE とマージしない。
      * <p>
-     * 本体 {@code getExpectedTableData} は両タイプをマージするが、アダプタは後処理を持ち込まない。
+     * 本体 {@code getExpectedTableData} は両タイプをマージするが、アクセサは後処理を持ち込まない。
      * </p>
      */
     @Test
@@ -228,11 +228,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("COL"));
         lines.add(row("comp"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TableData> completed = adapter.readTables(DIR, resource, "", DataType.EXPECTED_COMPLETED);
+        List<TableData> completed = accessor.readTables(DIR, resource, "", DataType.EXPECTED_COMPLETED);
 
         // Then: EXPECTED_COMPLETED 単独＝COMP のみ（EXPECTED_TABLE の PLAIN を含まない＝マージしない）
         assertThat(completed.size(), is(1));
@@ -253,11 +253,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("KEY"));
         lines.add(row("v"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TableData> tables = adapter.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
+        List<TableData> tables = accessor.readTables(DIR, resource, "", DataType.SETUP_TABLE_DATA);
 
         // Then
         assertThat(tables.isEmpty(), is(true));
@@ -271,10 +271,10 @@ public class TestCoreReaderAdapterTest {
     @Test
     public void readTablesRejectsNonTableType() {
         // Given
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(new FakeTestDataReader());
+        XlsParserAccessor accessor = new XlsParserAccessor(new FakeTestDataReader());
         // When
         try {
-            adapter.readTables(DIR, "x", "", DataType.SETUP_FIXED);
+            accessor.readTables(DIR, "x", "", DataType.SETUP_FIXED);
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             // Then
@@ -296,11 +296,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("USER_NAME"));
         lines.add(row("${u}"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<TableData> tables = adapter.readTables(DIR, resource, "", DataType.EXPECTED_TABLE_DATA);
+        List<TableData> tables = accessor.readTables(DIR, resource, "", DataType.EXPECTED_TABLE_DATA);
 
         // Then
         assertThat(tables.size(), is(1));
@@ -323,11 +323,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("ID", "NAME", "[MARK]"));
         lines.add(row("${id}", "", "x"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<Map<String, String>> rows = adapter.readListMap(DIR, resource, "result");
+        List<Map<String, String>> rows = accessor.readListMap(DIR, resource, "result");
 
         // Then
         assertThat(rows.size(), is(1));
@@ -353,11 +353,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("Z", "A", "M"));
         lines.add(row("z1", "a1", "m1"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<String> columnNames = adapter.readListMapColumnNames(DIR, resource, "ordered");
+        List<String> columnNames = accessor.readListMapColumnNames(DIR, resource, "ordered");
 
         // Then: 記述順（Z, A, M）で返り、アルファベット順（A, M, Z）にならない
         assertThat(columnNames.size(), is(3));
@@ -380,11 +380,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("COL"));
         lines.add(row("v"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<String> columnNames = adapter.readListMapColumnNames(DIR, resource, "absent");
+        List<String> columnNames = accessor.readListMapColumnNames(DIR, resource, "absent");
 
         // Then
         assertThat(columnNames.isEmpty(), is(true));
@@ -408,18 +408,18 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "10", "5"));                   // 長さ
         lines.add(row("", "${value}", "abc"));           // データ行
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<? extends DataFile> files = adapter.readFiles(DIR, resource, "", DataType.SETUP_FIXED);
+        List<? extends DataFile> files = accessor.readFiles(DIR, resource, "", DataType.SETUP_FIXED);
 
         // Then
         assertThat(files.size(), is(1));
         DataFile file = files.get(0);
         assertThat(file.getPath(), is("test.dat"));
-        // IN 値は記法のまま（未加工）。値は file 相乗りアダプタ経由で読む。
-        Map<String, String> values = TestCoreFileAdapter.read(file).getFragments().get(0).getValues().get(0);
+        // IN 値は記法のまま（未加工）。値は file 相乗りアクセサ経由で読む。
+        Map<String, String> values = DataFileAccessor.read(file).getFragments().get(0).getValues().get(0);
         assertThat(values.get("field1"), is("${value}"));
         assertThat(values.get("field2"), is("abc"));
     }
@@ -439,16 +439,16 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "半角英字"));      // 可変長は型のみ（長さなし）
         lines.add(row("", "${v}"));         // データ行
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<? extends DataFile> files = adapter.readFiles(DIR, resource, "", DataType.EXPECTED_VARIABLE);
+        List<? extends DataFile> files = accessor.readFiles(DIR, resource, "", DataType.EXPECTED_VARIABLE);
 
         // Then
         assertThat(files.size(), is(1));
         assertThat(files.get(0) instanceof VariableLengthFile, is(true));
-        assertThat(TestCoreFileAdapter.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
+        assertThat(DataFileAccessor.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
                 is("${v}"));
     }
 
@@ -468,15 +468,15 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "5"));
         lines.add(row("", "${e}"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<? extends DataFile> files = adapter.readFiles(DIR, resource, "", DataType.EXPECTED_FIXED);
+        List<? extends DataFile> files = accessor.readFiles(DIR, resource, "", DataType.EXPECTED_FIXED);
 
         // Then
         assertThat(files.size(), is(1));
-        assertThat(TestCoreFileAdapter.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
+        assertThat(DataFileAccessor.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
                 is("${e}"));
     }
 
@@ -495,16 +495,16 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "半角英字"));
         lines.add(row("", "${s}"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<? extends DataFile> files = adapter.readFiles(DIR, resource, "", DataType.SETUP_VARIABLE);
+        List<? extends DataFile> files = accessor.readFiles(DIR, resource, "", DataType.SETUP_VARIABLE);
 
         // Then
         assertThat(files.size(), is(1));
         assertThat(files.get(0) instanceof VariableLengthFile, is(true));
-        assertThat(TestCoreFileAdapter.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
+        assertThat(DataFileAccessor.read(files.get(0)).getFragments().get(0).getValues().get(0).get("field1"),
                 is("${s}"));
     }
 
@@ -516,10 +516,10 @@ public class TestCoreReaderAdapterTest {
     @Test
     public void readFilesRejectsNonFileType() {
         // Given
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(new FakeTestDataReader());
+        XlsParserAccessor accessor = new XlsParserAccessor(new FakeTestDataReader());
         // When
         try {
-            adapter.readFiles(DIR, "x", "", DataType.LIST_MAP);
+            accessor.readFiles(DIR, "x", "", DataType.LIST_MAP);
             fail("IllegalArgumentException が送出されるべき");
         } catch (IllegalArgumentException e) {
             // Then
@@ -543,11 +543,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("requestId", "${rid}"));
         lines.add(row("userId", "U001"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        MessageData message = adapter.readMessage(DIR, resource, "msg1");
+        MessageData message = accessor.readMessage(DIR, resource, "msg1");
 
         // Then
         assertNotNull(message);
@@ -571,11 +571,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("K"));
         lines.add(row("v"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        MessageData message = adapter.readMessage(DIR, resource, "missing");
+        MessageData message = accessor.readMessage(DIR, resource, "missing");
 
         // Then
         assertThat(message, is(nullValue()));
@@ -599,11 +599,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "20"));
         lines.add(row("1", "RM21AA0104_01"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
+        List<FixedLengthFile> bodies = accessor.readSendSyncMessages(
                 DIR, resource, "case1", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
@@ -632,11 +632,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "20"));
         lines.add(row("1", "RM21AA0104_02"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
+        List<FixedLengthFile> bodies = accessor.readSendSyncMessages(
                 DIR, resource, "case1", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
@@ -661,11 +661,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("", "20"));
         lines.add(row("1", "RM21AA0104_01"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<FixedLengthFile> bodies = adapter.readSendSyncMessages(
+        List<FixedLengthFile> bodies = accessor.readSendSyncMessages(
                 DIR, resource, "other", DataType.EXPECTED_REQUEST_HEADER_MESSAGES);
 
         // Then
@@ -698,11 +698,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("MESSAGE=msg1"));
         lines.add(row("requestId", "R001"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(4));
@@ -732,11 +732,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("USER_NAME"));
         lines.add(row("alice"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(1));
@@ -762,11 +762,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("ROLE_NAME"));
         lines.add(row("admin"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(2));
@@ -786,11 +786,11 @@ public class TestCoreReaderAdapterTest {
         List<List<String>> lines = new ArrayList<List<String>>();
         lines.add(row("just", "some", "data"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.isEmpty(), is(true));
@@ -814,11 +814,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("USER_NAME"));
         lines.add(row("alice"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(1));
@@ -842,11 +842,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("USER_NAME"));
         lines.add(row("alice"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<BlockHeader> headers = adapter.readHeaders(DIR, resource);
+        List<BlockHeader> headers = accessor.readHeaders(DIR, resource);
 
         // Then
         assertThat(headers.size(), is(1));
@@ -871,11 +871,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("MESSAGE", "v1"));
         lines.add(row("plain", "v2"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        List<List<String>> body = adapter.readBlockBodyLines(DIR, resource, "", "testShots", DataType.LIST_MAP);
+        List<List<String>> body = accessor.readBlockBodyLines(DIR, resource, "", "testShots", DataType.LIST_MAP);
 
         // Then
         assertThat(body.size(), is(3));
@@ -902,11 +902,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("[no]"));
         lines.add(row("1"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        MarkerOnlyBlock block = adapter.readMarkerOnlyBlock(DIR, resource, "", "absent", DataType.LIST_MAP);
+        MarkerOnlyBlock block = accessor.readMarkerOnlyBlock(DIR, resource, "", "absent", DataType.LIST_MAP);
 
         // Then
         assertThat(block, is(nullValue()));
@@ -929,11 +929,11 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("2", "b"));
         lines.add(row("1"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When
-        MarkerOnlyBlock block = adapter.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP);
+        MarkerOnlyBlock block = accessor.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP);
 
         // Then
         assertNotNull(block);
@@ -955,10 +955,10 @@ public class TestCoreReaderAdapterTest {
         lines.add(row("[no]", "id"));
         lines.add(row("1", "U0001"));
 
-        TestCoreReaderAdapter adapter = new TestCoreReaderAdapter(
+        XlsParserAccessor accessor = new XlsParserAccessor(
                 new FakeTestDataReader().put(resource, lines));
 
         // When / Then
-        assertThat(adapter.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP), is(nullValue()));
+        assertThat(accessor.readMarkerOnlyBlock(DIR, resource, "", "lm", DataType.LIST_MAP), is(nullValue()));
     }
 }

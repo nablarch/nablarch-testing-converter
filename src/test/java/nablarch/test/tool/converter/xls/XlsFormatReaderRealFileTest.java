@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
-import nablarch.test.core.reader.TestCoreReaderAdapter;
+import nablarch.test.core.reader.XlsParserAccessor;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;
@@ -70,7 +70,7 @@ import org.junit.rules.TemporaryFolder;
  *   <tr><th>観点</th><th>扱い</th><th>理由</th></tr>
  *   <tr>
  *     <td>データタイプ {@code DEFAULT}</td><td>到達不能</td>
- *     <td>{@link TestCoreReaderAdapter} の {@code HeaderCollector} が {@code DEFAULT} と判定した行を
+ *     <td>{@link XlsParserAccessor} の {@code HeaderCollector} が {@code DEFAULT} と判定した行を
  *         {@code continue} でスキップするため、ヘッダ一覧に {@code DEFAULT} のブロックが載らない。
  *         {@link XlsFormatReader#read} はヘッダ一覧の各要素しか見ないため、リーダ経路では
  *         {@code DEFAULT} のブロックが生成されない。</td>

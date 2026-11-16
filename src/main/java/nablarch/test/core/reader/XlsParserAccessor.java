@@ -26,7 +26,7 @@ import nablarch.test.tool.converter.xls.MessageData;
 
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析を
- * 再利用して生の器を取り出すための薄いアダプタ。
+ * 再利用して生の器を取り出すための薄いアクセサ。
  * <p>
  * 本体の各 Parser は取り出し口（{@code getResult}）や一部コンストラクタが
  * パッケージプライベートで、変換ツールのパッケージから直接呼べない。本クラスを
@@ -48,7 +48,7 @@ import nablarch.test.tool.converter.xls.MessageData;
  *
  * @author kiyobot
  */
-public class TestCoreReaderAdapter {
+public class XlsParserAccessor {
 
     /** 空の interpreters（生行を原文のまま取り出すコレクタ用の配線） */
     private static final List<TestDataInterpreter> EMPTY_INTERPRETERS = Collections.emptyList();
@@ -72,7 +72,7 @@ public class TestCoreReaderAdapter {
      *
      * @param reader テストデータリーダ
      */
-    public TestCoreReaderAdapter(TestDataReader reader) {
+    public XlsParserAccessor(TestDataReader reader) {
         this.reader = reader;
     }
 
@@ -189,7 +189,7 @@ public class TestCoreReaderAdapter {
      * 併せ持つ{@link MessageData}を返す。本文の{@link FixedLengthFile}は本体
      * {@link MessageParser#getDelegate()}（同一パッケージからのみ可視）から取り出す。
      * これは{@link MessagePool#getSource()}が protected で変換ツールのパッケージから
-     * 読めないための相乗りであり、相乗りの影響は本アダプタに局所化される。
+     * 読めないための相乗りであり、相乗りの影響は本アクセサに局所化される。
      * 対象が存在しない場合は{@code null}を返す（本体{@link MessageParser}の挙動を踏襲）。
      * </p>
      *
@@ -219,7 +219,7 @@ public class TestCoreReaderAdapter {
      * は結果を {@link MessagePool} 群へ包んで返すため、変換ツールが必要とする生の
      * {@link FixedLengthFile} を取り出せない（{@link MessagePool#getSource()} は protected で
      * 別パッケージから不可視）。そこで本メソッドは {@code GroupMessageParser} と同じ配線
-     * （{@code GroupDataParsingTemplate} ＋ {@code SendSyncMessageParser} 委譲）を本アダプタ内で
+     * （{@code GroupDataParsingTemplate} ＋ {@code SendSyncMessageParser} 委譲）を本アクセサ内で
      * 再現し、{@link SendSyncMessageParser#getDelegate()} が持つ {@link FixedLengthFile} 群を
      * そのまま返す。FW 制御ヘッダは送信系では常に空のため返さない（本体 {@code GroupMessageParser}
      * も空ヘッダで包む）。
@@ -248,7 +248,7 @@ public class TestCoreReaderAdapter {
      * リソース内に存在する全データブロックの<b>ヘッダ</b>（データタイプ・グループ ID・識別子）を
      * シート記述順に列挙する。ブロック本体の解析は行わない。
      * <p>
-     * 変換ツールはアダプタの各 {@code read*} メソッドを (データタイプ, ID) 単位で呼ぶため、
+     * 変換ツールはアクセサの各 {@code read*} メソッドを (データタイプ, ID) 単位で呼ぶため、
      * 「リソースにどのブロックが存在するか」を知る手段が要る。本メソッドは本体
      * {@link TestDataParsingTemplate#getDataType(String)}／{@link TestDataParsingTemplate#getTypeValue(List)}
      * を再利用してマーカー行を判定するため、行分類のロジックを本体と二重実装しない

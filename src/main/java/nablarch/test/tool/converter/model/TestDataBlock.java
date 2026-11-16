@@ -18,8 +18,8 @@ import java.util.Set;
  * 値ではなく、中間モデルが持つのは「テスティングフレームワークの仕様上の意味だけ」である
  * 。書式を知ってよいのは
  * Excel 版面の読み書き（付ける＝{@code XlsFormatWriter#marker}／外す＝
- * {@code TestCoreReaderAdapter#markerGroupId}）と、整形済みを要求する上流 API の境界
- * （{@code TestCoreReaderAdapter}・{@code YamlTestCoreAdapter} が渡す直前）の 2 層だけである。
+ * {@code XlsParserAccessor#markerGroupId}）と、整形済みを要求する上流 API の境界
+ * （{@code XlsParserAccessor}・{@code YamlBuilderAccessor} が渡す直前）の 2 層だけである。
  * </p>
  *
  * <p>
@@ -81,7 +81,7 @@ import java.util.Set;
  *
  * <p>
  * <b>この拒否は入力の検証ではなく不変条件の保証である。</b>両リーダーは {@code null} を作らない
- * （Excel の読み込みは {@code TestCoreReaderAdapter} がマーカー行でない行をブロックごと読み飛ばすため
+ * （Excel の読み込みは {@code XlsParserAccessor} がマーカー行でない行をブロックごと読み飛ばすため
  * {@code BlockHeader.groupId} が必ず非 null、YAML の読み込みは {@code YamlFormatReader} が省略時に空文字を返す）。
  * したがって {@code null} が入るのは呼び出し側のバグであり、生成時点で露見させる。書き出し側
  * （{@code XlsFormatWriter} ／ {@code YamlFormatWriter}）には番人を置かない。書き出し側で落とすのは、

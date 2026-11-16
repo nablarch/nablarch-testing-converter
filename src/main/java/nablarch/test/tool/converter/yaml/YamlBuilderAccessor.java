@@ -24,12 +24,12 @@ import nablarch.test.tool.converter.reader.StubDbInfo;
 
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の YAML 読み込みを
- * 再利用して生の器を取り出すための薄いアダプタ。Excel 経路の {@link nablarch.test.core.reader.TestCoreReaderAdapter} と対称。
+ * 再利用して生の器を取り出すための薄いアクセサ。Excel 経路の {@link nablarch.test.core.reader.XlsParserAccessor} と対称。
  *
  * <p>
  * 本体の YAML 読み込みは {@code reader.yaml} パッケージのビルダ
  * （{@link YamlTableDataBuilder}／{@link YamlFileBuilder}／{@link YamlMessageBuilder}）が
- * {@link YamlLoader#load} の返す順序保持 Map を走査して器を組み立てる。本アダプタはそれらビルダを
+ * {@link YamlLoader#load} の返す順序保持 Map を走査して器を組み立てる。本アクセサはそれらビルダを
  * <b>{@link InterpreterResolver#raw() 値加工なし（空インタープリタ）}・デフォルト値補完なし</b>で配線し、
  * {@code ${...}}・{@code ${binaryFile:...}}・{@code null}・{@code ""} を記法のまま（未加工）保った
  * 生の本体器（{@link TableData}／{@link DataFile}／{@link MessagePool} 本文）を返す。
@@ -42,7 +42,7 @@ import nablarch.test.tool.converter.reader.StubDbInfo;
  *
  * @author kiyobot
  */
-public class YamlTestCoreAdapter {
+public class YamlBuilderAccessor {
 
     /**
      * デフォルトグループ（{@code group_id} 省略）を本体ビルダへ引き渡すための合成グループ ID。
@@ -72,7 +72,7 @@ public class YamlTestCoreAdapter {
      * 読み込み経路で実際に参照されるのはカラム型（一律 VARCHAR）のみで、値は型に依存せず生のまま格納される。
      * </p>
      */
-    public YamlTestCoreAdapter() {
+    public YamlBuilderAccessor() {
         InterpreterResolver raw = InterpreterResolver.raw();
         DefaultValues defaultValues = new BasicDefaultValues();
         this.tableBuilder = new YamlTableDataBuilder(new StubDbInfo(), defaultValues, raw);

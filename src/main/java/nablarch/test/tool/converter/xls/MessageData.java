@@ -7,7 +7,7 @@ import nablarch.test.core.file.FixedLengthFile;
 /**
  * メッセージ（{@link nablarch.test.core.reader.DataType#MESSAGE}）の取り出し結果。FW 制御ヘッダと本文を併せ持つ。
  *
- * @see TestCoreReaderAdapter#readMessage(String, String, String)
+ * @see XlsParserAccessor#readMessage(String, String, String)
  */
 public final class MessageData {
 

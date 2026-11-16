@@ -73,7 +73,7 @@ public class XlsFormatReaderCellTypeTest {
      * <p>
      * {@link TemporaryFolder} はテストメソッドごとに別ディレクトリを与えるため、全メソッドが同じ
      * ブック名を使ってもファイルパスは衝突しない。加えて converter 経路は
-     * {@code TestCoreReaderAdapter} の全パーサが {@code parse(..., false)} を渡し
+     * {@code XlsParserAccessor} の全パーサが {@code parse(..., false)} を渡し
      * {@code TestDataParsingTemplate} が {@code PoiXlsReader#setUseCache(false)} を呼ぶため、
      * {@code PoiXlsReader} のブックキャッシュは使われない（同一パスを書き換えて同一 JVM 内で
      * 2 回読むと新しい内容が読めることをプローブで実測して確認済み）。ブック名を一意化する必要はない。

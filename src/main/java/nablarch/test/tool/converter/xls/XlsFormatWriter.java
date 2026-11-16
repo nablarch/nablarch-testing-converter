@@ -551,7 +551,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * <p>
      * 中間モデルの {@code groupId} は<b>生値</b>（{@code g1}、省略時は空文字）である。半角角括弧は
      * Excel 形式の書式であって値ではないため、ここで付ける。外すのは
-     * {@code TestCoreReaderAdapter#markerGroupId} であり、この 2 か所が Excel 版面の書式を知る層である。
+     * {@code XlsParserAccessor#markerGroupId} であり、この 2 か所が Excel 版面の書式を知る層である。
      * </p>
      *
      * @param block ブロック

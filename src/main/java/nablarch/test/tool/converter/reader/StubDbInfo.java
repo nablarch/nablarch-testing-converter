@@ -8,7 +8,7 @@ import nablarch.test.core.db.TableData;
 /**
  * 変換ツールの DB レスな読み込み経路で本体 Parser／ビルダの配線にのみ用いるスタブの{@link DbInfo}。
  * <p>
- * {@link nablarch.test.core.reader.TestCoreReaderAdapter}（Excel 経路）と {@link nablarch.test.tool.converter.yaml.YamlTestCoreAdapter}（YAML 経路）の両方が、
+ * {@link nablarch.test.core.reader.XlsParserAccessor}（Excel 経路）と {@link nablarch.test.tool.converter.yaml.YamlBuilderAccessor}（YAML 経路）の両方が、
  * 値加工を伴わない生の本体器を取り出すために共有する。
  * </p>
  * <p>

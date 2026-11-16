@@ -15,7 +15,7 @@ import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.DataFileFragment;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.reader.DataType;
-import nablarch.test.core.reader.TestCoreReaderAdapter;
+import nablarch.test.core.reader.XlsParserAccessor;
 import nablarch.test.core.reader.TestDataReader;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.RecordLayout;
@@ -24,18 +24,18 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import org.junit.Test;
 
 /**
- * {@link XlsFormatReader} が<b>アダプタとの契約</b>をどう扱うかのテストクラス。
+ * {@link XlsFormatReader} が<b>アクセサとの契約</b>をどう扱うかのテストクラス。
  *
  * <p>
  * {@link XlsFormatReader} はファイル系・電文系のブロックを 2 経路から組み立てる。器
- * （{@link TestCoreReaderAdapter#readFiles} 等が返す本体器）が断片構造・値を決め、生行
- * （{@link TestCoreReaderAdapter#readBlockBodyLines}）が原文（レコード種別・型記法・長さ）を決める。
+ * （{@link XlsParserAccessor#readFiles} 等が返す本体器）が断片構造・値を決め、生行
+ * （{@link XlsParserAccessor#readBlockBodyLines}）が原文（レコード種別・型記法・長さ）を決める。
  * 実 Excel を入力にすると両経路は同じシートを読むため必ず一致し、<b>一致しないときの振る舞いは
  * 実 Excel からは動かせない</b>。
  * </p>
  *
  * <p>
- * 本クラスはそこを担う。{@link XlsFormatReader} が受け取るアダプタを差し替え、器と生行を
+ * 本クラスはそこを担う。{@link XlsFormatReader} が受け取るアクセサを差し替え、器と生行を
  * 意図的にずらして、次の 3 つが仕様どおりであることを確かめる。
  * </p>
  * <ul>
@@ -47,13 +47,13 @@ import org.junit.Test;
  * </ul>
  *
  * <p>
- * 差し替えるのは {@link TestCoreReaderAdapter} の値を返すメソッドだけで、マーカー行の走査
+ * 差し替えるのは {@link XlsParserAccessor} の値を返すメソッドだけで、マーカー行の走査
  * （{@code readHeaders}）は本体の実装をそのまま使う。
  * </p>
  *
  * @author kiyobot
  */
-public class XlsFormatReaderAdapterContractTest {
+public class XlsFormatReaderAccessorContractTest {
 
     /** ディレクトリ（ダミー） */
     private static final String DIR = "dummy-dir";
@@ -112,9 +112,9 @@ public class XlsFormatReaderAdapterContractTest {
     }
 
     /**
-     * 器と生行を独立に差し替えられるアダプタ。{@code readHeaders} は継承した本体実装を使う。
+     * 器と生行を独立に差し替えられるアクセサ。{@code readHeaders} は継承した本体実装を使う。
      */
-    private static final class StubAdapter extends TestCoreReaderAdapter {
+    private static final class StubAccessor extends XlsParserAccessor {
 
         /** {@code readFiles} が返す器（空なら継承実装を使わずそのまま空） */
         private final List<DataFile> files = new ArrayList<DataFile>();
@@ -130,7 +130,7 @@ public class XlsFormatReaderAdapterContractTest {
          *
          * @param reader マーカー行だけを持つリーダ
          */
-        StubAdapter(TestDataReader reader) {
+        StubAccessor(TestDataReader reader) {
             super(reader);
         }
 
@@ -159,16 +159,16 @@ public class XlsFormatReaderAdapterContractTest {
      * <p>担保：{@code readMessageBlock} の {@code message == null} 側と、その戻り値を捨てる側。</p>
      */
     @Test
-    public void skipsMessageBlockWhenAdapterHasNoMessage() {
+    public void skipsMessageBlockWhenAccessorHasNoMessage() {
         // Given
-        String resource = "skipsMessageBlockWhenAdapterHasNoMessage";
+        String resource = "skipsMessageBlockWhenAccessorHasNoMessage";
         MarkerOnlyReader reader = new MarkerOnlyReader().put(resource,
                 Arrays.asList(Arrays.asList("MESSAGE=M1")));
-        StubAdapter adapter = new StubAdapter(reader);
-        adapter.message = null;
+        StubAccessor accessor = new StubAccessor(reader);
+        accessor.message = null;
 
         // When
-        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+        TestDataContainer container = new XlsFormatReader(accessor).read(DIR, resource);
 
         // Then
         assertThat(container.getSections().size(), is(1));
@@ -187,14 +187,14 @@ public class XlsFormatReaderAdapterContractTest {
     public void failsWhenNameRowIsAbsentFromBodyLines() {
         // Given
         String resource = "failsWhenNameRowIsAbsentFromBodyLines";
-        StubAdapter adapter = fileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = fileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList("", "OTHER1"),
                 Arrays.asList("", "OTHER2"));
 
         // When / Then
         try {
-            new XlsFormatReader(adapter).read(DIR, resource);
+            new XlsFormatReader(accessor).read(DIR, resource);
             fail("should throw IllegalStateException");
         } catch (IllegalStateException e) {
             assertThat(e.getMessage(), containsString("名前行"));
@@ -213,12 +213,12 @@ public class XlsFormatReaderAdapterContractTest {
     public void failsWhenBodyLinesAreShorterThanFragment() {
         // Given
         String resource = "failsWhenBodyLinesAreShorterThanFragment";
-        StubAdapter adapter = fileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(Arrays.asList("", "ZF", "AF"));
+        StubAccessor accessor = fileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(Arrays.asList("", "ZF", "AF"));
 
         // When / Then
         try {
-            new XlsFormatReader(adapter).read(DIR, resource);
+            new XlsFormatReader(accessor).read(DIR, resource);
             fail("should throw IllegalStateException");
         } catch (IllegalStateException e) {
             assertThat(e.getMessage(), containsString("型行"));
@@ -241,8 +241,8 @@ public class XlsFormatReaderAdapterContractTest {
     public void passesNullTypeToModelWhenTypeRowIsShorterThanNames() {
         // Given —— 名前は辞書順とずらす
         String resource = "passesNullTypeToModelWhenTypeRowIsShorterThanNames";
-        StubAdapter adapter = fileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = fileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList("", "ZF", "AF"),
                 Arrays.asList("", "半角英字"),
                 Arrays.asList("", "2", "2"),
@@ -250,7 +250,7 @@ public class XlsFormatReaderAdapterContractTest {
 
         // When / Then
         try {
-            new XlsFormatReader(adapter).read(DIR, resource);
+            new XlsFormatReader(accessor).read(DIR, resource);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(), containsString("データ型を持たないフィールド定義は作れません"));
@@ -274,8 +274,8 @@ public class XlsFormatReaderAdapterContractTest {
     public void passesNullLengthToModelWhenLengthRowIsShorterThanNames() {
         // Given —— 名前は辞書順とずらす。先頭セルの null はレコード種別の省略にあたる
         String resource = "passesNullLengthToModelWhenLengthRowIsShorterThanNames";
-        StubAdapter adapter = fileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = fileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList(null, "ZF", "AF"),
                 Arrays.asList("", "半角英字", "半角英字"),
                 Arrays.asList("", "2"),
@@ -283,7 +283,7 @@ public class XlsFormatReaderAdapterContractTest {
 
         // When / Then
         try {
-            new XlsFormatReader(adapter).read(DIR, resource);
+            new XlsFormatReader(accessor).read(DIR, resource);
             fail("should throw IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertThat(e.getMessage(),
@@ -294,15 +294,15 @@ public class XlsFormatReaderAdapterContractTest {
 
     /**
      * {@code SETUP_FIXED} マーカー 1 件と、フィールド {@code ZF}／{@code AF}・値 1 行の器を持つ
-     * アダプタを組み立てる。生行は呼び出し側が差し替える。
+     * アクセサを組み立てる。生行は呼び出し側が差し替える。
      *
      * @param resource リソース名
-     * @return アダプタ
+     * @return アクセサ
      */
-    private static StubAdapter fileAdapter(String resource) {
+    private static StubAccessor fileAccessor(String resource) {
         MarkerOnlyReader reader = new MarkerOnlyReader().put(resource,
                 Arrays.asList(Arrays.asList("SETUP_FIXED=" + FILE_ID)));
-        StubAdapter adapter = new StubAdapter(reader);
+        StubAccessor accessor = new StubAccessor(reader);
 
         FixedLengthFile file = new FixedLengthFile(FILE_ID);
         file.setDirective("text-encoding", "UTF-8");
@@ -311,8 +311,8 @@ public class XlsFormatReaderAdapterContractTest {
         fragment.setTypes(Arrays.asList("半角英字", "半角英字"));
         fragment.setLengths(Arrays.asList("2", "2"));
         fragment.addValue(Arrays.asList("ab", "cd"));
-        adapter.files.add(file);
-        return adapter;
+        accessor.files.add(file);
+        return accessor;
     }
     /**
      * Given: 名前行の手前に、セルを 1 つも持たない生行が挟まっている。
@@ -328,8 +328,8 @@ public class XlsFormatReaderAdapterContractTest {
     public void skipsRawLineWithNoCellsWhenLocatingNameRow() {
         // Given
         String resource = "skipsRawLineWithNoCellsWhenLocatingNameRow";
-        StubAdapter adapter = fileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = fileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(
                 Arrays.<String>asList(),
                 Arrays.asList("", "ZF", "AF"),
                 Arrays.asList("", "半角英字", "半角英字"),
@@ -337,7 +337,7 @@ public class XlsFormatReaderAdapterContractTest {
                 Arrays.asList("", "ab", "cd"));
 
         // When
-        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+        TestDataContainer container = new XlsFormatReader(accessor).read(DIR, resource);
 
         // Then
         FileDataBlock block = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
@@ -360,8 +360,8 @@ public class XlsFormatReaderAdapterContractTest {
     public void failsWhenLaterFragmentNameRowDoesNotMatch() {
         // Given
         String resource = "failsWhenLaterFragmentNameRowDoesNotMatch";
-        StubAdapter adapter = twoFragmentFileAdapter(resource);
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = twoFragmentFileAccessor(resource);
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList("", "ZF", "AF"),
                 Arrays.asList("", "半角英字", "半角英字"),
                 Arrays.asList("", "2", "2"),
@@ -373,7 +373,7 @@ public class XlsFormatReaderAdapterContractTest {
 
         // When / Then
         try {
-            new XlsFormatReader(adapter).read(DIR, resource);
+            new XlsFormatReader(accessor).read(DIR, resource);
             fail("should throw IllegalStateException");
         } catch (IllegalStateException e) {
             assertThat(e.getMessage(), containsString("名前行"));
@@ -382,15 +382,15 @@ public class XlsFormatReaderAdapterContractTest {
     }
 
     /**
-     * 2 断片（{@code ZF}／{@code AF} と {@code ZS}）を持つ器のアダプタを組み立てる。
+     * 2 断片（{@code ZF}／{@code AF} と {@code ZS}）を持つ器のアクセサを組み立てる。
      *
      * @param resource リソース名
-     * @return アダプタ
+     * @return アクセサ
      */
-    private static StubAdapter twoFragmentFileAdapter(String resource) {
+    private static StubAccessor twoFragmentFileAccessor(String resource) {
         MarkerOnlyReader reader = new MarkerOnlyReader().put(resource,
                 Arrays.asList(Arrays.asList("SETUP_FIXED=" + FILE_ID)));
-        StubAdapter adapter = new StubAdapter(reader);
+        StubAccessor accessor = new StubAccessor(reader);
 
         FixedLengthFile file = new FixedLengthFile(FILE_ID);
         file.setDirective("text-encoding", "UTF-8");
@@ -404,8 +404,8 @@ public class XlsFormatReaderAdapterContractTest {
         second.setTypes(Arrays.asList("半角英字"));
         second.setLengths(Arrays.asList("2"));
         second.addValue(Arrays.asList("ef"));
-        adapter.files.add(file);
-        return adapter;
+        accessor.files.add(file);
+        return accessor;
     }
 
     /**
@@ -425,8 +425,8 @@ public class XlsFormatReaderAdapterContractTest {
     public void locatesNameRowAfterDirectiveRowWhenSingleFieldNameCollidesWithDirectiveValue() {
         // Given
         String resource = "singleFieldCollidesWithDirectiveValue";
-        StubAdapter adapter = singleFieldFileAdapter(resource, "JSON");
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = singleFieldFileAccessor(resource, "JSON");
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList("file-type", "JSON"),  // ディレクティブ行（tail=[JSON] が名前と衝突）
                 Arrays.asList("no", "JSON"),          // 本来の名前行（レコード種別 no）
                 Arrays.asList("", "全角"),            // 型行
@@ -434,7 +434,7 @@ public class XlsFormatReaderAdapterContractTest {
                 Arrays.asList("", "{\"k\":\"v\"}"));  // 値行
 
         // When
-        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+        TestDataContainer container = new XlsFormatReader(accessor).read(DIR, resource);
 
         // Then
         FileDataBlock block = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
@@ -460,15 +460,15 @@ public class XlsFormatReaderAdapterContractTest {
     public void doesNotSkipLegitimateSingleFieldNameRowWhenNoDirectiveRowPresent() {
         // Given
         String resource = "singleFieldNoDirectiveRow";
-        StubAdapter adapter = singleFieldFileAdapter(resource, "JSON");
-        adapter.bodyLines = Arrays.asList(
+        StubAccessor accessor = singleFieldFileAccessor(resource, "JSON");
+        accessor.bodyLines = Arrays.asList(
                 Arrays.asList("no", "JSON"),          // 名前行（レコード種別 no）
                 Arrays.asList("", "全角"),            // 型行
                 Arrays.asList("", "-"),               // 長さ行
                 Arrays.asList("", "{\"k\":\"v\"}"));  // 値行
 
         // When
-        TestDataContainer container = new XlsFormatReader(adapter).read(DIR, resource);
+        TestDataContainer container = new XlsFormatReader(accessor).read(DIR, resource);
 
         // Then
         FileDataBlock block = (FileDataBlock) container.getSections().get(0).getBlocks().get(0);
@@ -482,19 +482,19 @@ public class XlsFormatReaderAdapterContractTest {
     }
 
     /**
-     * フィールドが 1 つだけ（{@code fieldName}）の固定長の器を持つアダプタを組み立てる。
+     * フィールドが 1 つだけ（{@code fieldName}）の固定長の器を持つアクセサを組み立てる。
      * 器のディレクティブには {@code file-type}（注入）・{@code text-encoding} が入る。
      * 生行は呼び出し側が差し替える。器の型・長さは出力に使われない（出力は生行から復元する）ため
      * 妥当な値を入れておくだけでよい。
      *
      * @param resource  リソース名
      * @param fieldName 単一フィールドの名前
-     * @return アダプタ
+     * @return アクセサ
      */
-    private static StubAdapter singleFieldFileAdapter(String resource, String fieldName) {
+    private static StubAccessor singleFieldFileAccessor(String resource, String fieldName) {
         MarkerOnlyReader reader = new MarkerOnlyReader().put(resource,
                 Arrays.asList(Arrays.asList("SETUP_FIXED=" + FILE_ID)));
-        StubAdapter adapter = new StubAdapter(reader);
+        StubAccessor accessor = new StubAccessor(reader);
 
         FixedLengthFile file = new FixedLengthFile(FILE_ID);
         file.setDirective("text-encoding", "UTF-8");
@@ -503,7 +503,7 @@ public class XlsFormatReaderAdapterContractTest {
         fragment.setTypes(Arrays.asList("半角英字"));
         fragment.setLengths(Arrays.asList("2"));
         fragment.addValue(Arrays.asList("{\"k\":\"v\"}"));
-        adapter.files.add(file);
-        return adapter;
+        accessor.files.add(file);
+        return accessor;
     }
 }

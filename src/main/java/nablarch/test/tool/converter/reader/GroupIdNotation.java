@@ -4,7 +4,7 @@ package nablarch.test.tool.converter.reader;
  * 上流 API 境界のグループ ID 表記。
  *
  * <p>
- * 中間モデルとアダプタの公開 API が持つグループ ID は<b>生値</b>（{@code case01}、省略時は空文字）である。
+ * 中間モデルとアクセサの公開 API が持つグループ ID は<b>生値</b>（{@code case01}、省略時は空文字）である。
  * 半角角括弧で囲む {@code [case01]} は Excel 形式の書式であって値ではない。
  * 中間モデルはテスティングフレームワークの仕様上の意味だけを持つ。
  * </p>
@@ -20,14 +20,14 @@ package nablarch.test.tool.converter.reader;
  * </ul>
  *
  * <p>
- * したがって整形はアダプタの中、<b>上流へ渡す直前</b>の 1 か所に置く。
+ * したがって整形はアクセサの中、<b>上流へ渡す直前</b>の 1 か所に置く。
  * {@code XlsFormatReader}・{@code YamlFormatReader} は {@code [ ]} を扱わない。
  * </p>
  *
  * <p>
  * <b>この表記を知ってよいもう 1 つの層</b>は Excel 版面の読み書きであり、
  * 付けるのが {@code XlsFormatWriter#marker}、外すのが
- * {@code TestCoreReaderAdapter#markerGroupId} である。
+ * {@code XlsParserAccessor#markerGroupId} である。
  * </p>
  *
  * @author kiyobot

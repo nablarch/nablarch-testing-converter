@@ -503,8 +503,8 @@ public class XlsFormatReaderInvalidInputTest {
      *
      * <p>
      * 切り出しを行う
-     * {@code TestCoreReaderAdapter#markerGroupId}（<b>本リポジトリの
-     * {@code src/main/java/nablarch/test/core/reader/TestCoreReaderAdapter.java}</b>。
+     * {@code XlsParserAccessor#markerGroupId}（<b>本リポジトリの
+     * {@code src/main/java/nablarch/test/core/reader/XlsParserAccessor.java}</b>。
      * {@code nablarch-testing} 側ではない）は角括弧の有無を検証せず、データタイプ名の直後から
      * {@code =} までの文字列（{@code X}）を生値のグループ ID として切り出す。上流へ渡すときに
      * {@code [X]} へ整形するため、版面の {@code SETUP_TABLEX=} とは前方一致せず 0 件になる。

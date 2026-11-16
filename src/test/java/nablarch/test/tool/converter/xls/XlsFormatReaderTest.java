@@ -18,7 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import nablarch.test.core.reader.TestCoreReaderAdapter;
+import nablarch.test.core.reader.XlsParserAccessor;
 import nablarch.test.core.reader.TestDataReader;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
@@ -36,8 +36,8 @@ import org.junit.Test;
  * {@link XlsFormatReader}のテストクラス。
  * <p>
  * 実 Excel を使わず、{@link FakeTestDataReader}に canned な行データを与えて
- * {@link TestCoreReaderAdapter}を駆動し、本体器が中間モデルへ無損失（IN 値が記法のまま）に
- * 写されることを検証する。{@link TestCoreReaderAdapter}内部の静的キャッシュ衝突を避けるため、
+ * {@link XlsParserAccessor}を駆動し、本体器が中間モデルへ無損失（IN 値が記法のまま）に
+ * 写されることを検証する。{@link XlsParserAccessor}内部の静的キャッシュ衝突を避けるため、
  * テストメソッドごとにリソース名を一意にする。
  * </p>
  *
@@ -120,7 +120,7 @@ public class XlsFormatReaderTest {
      */
     private static XlsFormatReader readerOf(String resource, List<List<String>> lines) {
         FakeTestDataReader fake = new FakeTestDataReader().put(resource, lines);
-        return new XlsFormatReader(new TestCoreReaderAdapter(fake));
+        return new XlsFormatReader(new XlsParserAccessor(fake));
     }
 
     // ------------------------------------------------------------------ table
@@ -844,12 +844,12 @@ public class XlsFormatReaderTest {
 
     /**
      * Given: 引数なしコンストラクタ（本番配線＝実 Excel を読む {@link nablarch.test.core.reader.PoiXlsReader}
-     *        を注入したアダプタを構成）。
+     *        を注入したアクセサを構成）。
      * When : インスタンス化。
      * Then : 例外なく生成される（本番配線の健全性）。
      */
     @Test
-    public void defaultConstructorWiresProductionAdapter() {
+    public void defaultConstructorWiresProductionAccessor() {
         // When / Then
         assertNotNull(new XlsFormatReader());
     }

@@ -31,9 +31,9 @@ import org.junit.Test;
  * {@link YamlFormatReader} のテストクラス。
  *
  * <p>
- * 本リーダは本体 YAML ビルダ（{@link YamlTestCoreAdapter} 経由）で構造を得て、{@code loadRawMap} の
+ * 本リーダは本体 YAML ビルダ（{@link YamlBuilderAccessor} 経由）で構造を得て、{@code loadRawMap} の
  * 順序保持 Map から原文を復元し中間モデルへ写す。各テストは {@code loadRawMap} のみを差し替えた
- * アダプタ（{@link #reader(Map)}）を用い、本体の実ビルダを通る統合テストとしてブロックの内容を検証する
+ * アクセサ（{@link #reader(Map)}）を用い、本体の実ビルダを通る統合テストとしてブロックの内容を検証する
  * （{@code read*} は内部で {@code loadRawMap} を呼ぶため、差し替え一点で器も原文も同一の in-memory Map から駆動する）。
  * </p>
  *
@@ -409,7 +409,7 @@ public class YamlFormatReaderTest {
         // Given: 器（readMessage）が null を返す（本文が存在しない）
         final Map<String, Object> yaml = map(
                 "messages", list(map("id", "ABSENT", "records", list())));
-        YamlTestCoreAdapter adapter = new YamlTestCoreAdapter() {
+        YamlBuilderAccessor accessor = new YamlBuilderAccessor() {
             @Override
             public Map<String, Object> loadRawMap(String path, String resource) {
                 return yaml;
@@ -423,7 +423,7 @@ public class YamlFormatReaderTest {
         };
 
         // When
-        TestDataContainer container = new YamlFormatReader(adapter).read(DIR, RESOURCE);
+        TestDataContainer container = new YamlFormatReader(accessor).read(DIR, RESOURCE);
 
         // Then: ブロック化されない
         assertThat(blocks(container).size(), is(0));
@@ -566,7 +566,7 @@ public class YamlFormatReaderTest {
         final Map<String, Object> yaml = map(
                 "setup_files", list(map("path", "input.dat", "type", "fixed",
                         "records", list(map("fields", list(field("f", "半角英字", "1")), "rows", list(list("v")))))));
-        YamlTestCoreAdapter adapter = new YamlTestCoreAdapter() {
+        YamlBuilderAccessor accessor = new YamlBuilderAccessor() {
             @Override
             public Map<String, Object> loadRawMap(String path, String resource) {
                 return yaml;
@@ -580,7 +580,7 @@ public class YamlFormatReaderTest {
 
         // When / Then
         try {
-            new YamlFormatReader(adapter).read(DIR, RESOURCE);
+            new YamlFormatReader(accessor).read(DIR, RESOURCE);
             fail("should throw");
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("器と原文エントリが不整合"));
@@ -599,7 +599,7 @@ public class YamlFormatReaderTest {
                         "records", list(
                                 map("fields", list(field("a", "半角英字", "1")), "rows", list(list("p"))),
                                 map("fields", list(field("b", "半角英字", "1")), "rows", list(list("q")))))));
-        YamlTestCoreAdapter adapter = new YamlTestCoreAdapter() {
+        YamlBuilderAccessor accessor = new YamlBuilderAccessor() {
             private int calls = 0;
 
             @Override
@@ -611,7 +611,7 @@ public class YamlFormatReaderTest {
 
         // When / Then: 断片 2 ≠ 原文レコード 1 で fail-fast
         try {
-            new YamlFormatReader(adapter).read(DIR, RESOURCE);
+            new YamlFormatReader(accessor).read(DIR, RESOURCE);
             fail("should throw");
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("器の断片構造と原文レコードが不整合"));
@@ -622,9 +622,9 @@ public class YamlFormatReaderTest {
     // ヘルパー
     // ------------------------------------------------------------------------
 
-    /** {@code loadRawMap} を固定 Map に差し替えたアダプタで SUT を生成する。 */
+    /** {@code loadRawMap} を固定 Map に差し替えたアクセサで SUT を生成する。 */
     private static YamlFormatReader reader(final Map<String, Object> yaml) {
-        return new YamlFormatReader(new YamlTestCoreAdapter() {
+        return new YamlFormatReader(new YamlBuilderAccessor() {
             @Override
             public Map<String, Object> loadRawMap(String path, String resource) {
                 return yaml;

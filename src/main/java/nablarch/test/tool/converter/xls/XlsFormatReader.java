@@ -14,10 +14,10 @@ import java.util.logging.Logger;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.TestCoreFileAdapter;
+import nablarch.test.core.file.DataFileAccessor;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.PoiXlsReader;
-import nablarch.test.core.reader.TestCoreReaderAdapter;
+import nablarch.test.core.reader.XlsParserAccessor;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
 import nablarch.test.tool.converter.model.ColumnRowDataBlock;
@@ -37,22 +37,22 @@ import nablarch.test.tool.converter.reader.FragmentView;
  * Excel（1 シート）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。
  *
  * <p>
- * 独自の POI パース・構造解析は持たない。本体の読み込みは {@link TestCoreReaderAdapter}
- * （本体 {@code reader} パッケージ相乗りのアダプタ）へ委譲し、本クラスは「どのブロックが存在するか」を
- * {@link TestCoreReaderAdapter#readHeaders(String, String)} で得て、各ブロックをデータタイプ別の
+ * 独自の POI パース・構造解析は持たない。本体の読み込みは {@link XlsParserAccessor}
+ * （本体 {@code reader} パッケージ相乗りのアクセサ）へ委譲し、本クラスは「どのブロックが存在するか」を
+ * {@link XlsParserAccessor#readHeaders(String, String)} で得て、各ブロックをデータタイプ別の
  * {@code read*} で取り出し、本体の器を中間モデルへ写すオーケストレーションに徹する。
- * 行のデータタイプ判定・マーカー解釈はすべてアダプタ（本体）側が担う。
+ * 行のデータタイプ判定・マーカー解釈はすべてアクセサ（本体）側が担う。
  * </p>
  *
  * <p>
- * 器の中身は {@link TestCoreFileAdapter}（本体 {@code file} パッケージ相乗り）が読む。データ行の値は
- * 本クラスでは解釈しない。{@link TestCoreReaderAdapter} が本体パーサへインタープリタ列を渡し、
+ * 器の中身は {@link DataFileAccessor}（本体 {@code file} パッケージ相乗り）が読む。データ行の値は
+ * 本クラスでは解釈しない。{@link XlsParserAccessor} が本体パーサへインタープリタ列を渡し、
  * 本体が全セルを解釈してから構造解析するため、器から取り出した時点で既に
  * <b>テスティングフレームワークが解釈したあとの値</b>（Java {@code null} または {@link String}）に
  * なっている。一方、本体の構造解析は
  * テスト実行に必要な正規化を器に施す（長さ省略 {@code -} の実バイト長化・型記法のフレームワーク表記化・
  * レコード種別の private 化）。作成者が記述した原文が要るため、これら正規化される箇所だけ
- * {@link TestCoreReaderAdapter#readBlockBodyLines(String, String, String, String, DataType) 生行}から
+ * {@link XlsParserAccessor#readBlockBodyLines(String, String, String, String, DataType) 生行}から
  * 原文を復元する。生行は器（{@link FragmentView}）を
  * 権威に断片数・フィールド数・値行数を決め、本体パーサと同形に走査して原文を充填する。
  * </p>
@@ -71,23 +71,23 @@ public class XlsFormatReader implements TestDataFormatReader {
     /** ロガー */
     private static final Logger LOGGER = Logger.getLogger(XlsFormatReader.class.getName());
 
-    /** 本体再利用のためのアダプタ */
-    private final TestCoreReaderAdapter adapter;
+    /** 本体再利用のためのアクセサ */
+    private final XlsParserAccessor accessor;
 
     /**
-     * 本番用コンストラクタ。実 Excel を読む {@link PoiXlsReader} を注入したアダプタを構成する。
+     * 本番用コンストラクタ。実 Excel を読む {@link PoiXlsReader} を注入したアクセサを構成する。
      */
     public XlsFormatReader() {
-        this(new TestCoreReaderAdapter(new PoiXlsReader()));
+        this(new XlsParserAccessor(new PoiXlsReader()));
     }
 
     /**
-     * アダプタを注入するコンストラクタ（主にテスト用）。
+     * アクセサを注入するコンストラクタ（主にテスト用）。
      *
-     * @param adapter 本体再利用のためのアダプタ
+     * @param accessor 本体再利用のためのアクセサ
      */
-    XlsFormatReader(TestCoreReaderAdapter adapter) {
-        this.adapter = adapter;
+    XlsFormatReader(XlsParserAccessor accessor) {
+        this.accessor = accessor;
     }
 
     /**
@@ -99,7 +99,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      */
     @Override
     public TestDataContainer read(String basePath, String resourceName) {
-        List<BlockHeader> headers = adapter.readHeaders(basePath, resourceName);
+        List<BlockHeader> headers = accessor.readHeaders(basePath, resourceName);
         warnInterleavedBlocks(headers, resourceName);
         List<TestDataBlock> blocks = new ArrayList<>();
         Set<String> processed = new HashSet<>();
@@ -150,7 +150,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return テーブルデータブロック一覧
      */
     private List<TestDataBlock> readTableBlocks(String basePath, String resourceName, String groupId, DataType type) {
-        List<TableData> tables = adapter.readTables(basePath, resourceName, groupId, type);
+        List<TableData> tables = accessor.readTables(basePath, resourceName, groupId, type);
         List<TestDataBlock> result = new ArrayList<>();
         for (TableData table : tables) {
             String[] columns = table.getColumnNames();
@@ -187,10 +187,10 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return LIST_MAP ブロック
      */
     private TestDataBlock readListMapBlock(String basePath, String resourceName, BlockHeader header) {
-        // 列順は adapter.readListMapColumnNames() から取得する。
-        // adapter.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
+        // 列順は accessor.readListMapColumnNames() から取得する。
+        // accessor.readListMap() が返す Map は TreeMap 由来のためアルファベット順になるが、
         // readListMapColumnNames() は HeaderLine の effectiveColumnNames（Excel 記述順）を返す。
-        List<String> rawColumnNames = adapter.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
+        List<String> rawColumnNames = accessor.readListMapColumnNames(basePath, resourceName, header.getIdentifier());
         List<String> columnNames = deduplicateColumnNames(rawColumnNames, resourceName, header.getIdentifier());
         // 同一ブロックを2回読む（readListMapColumnNames と readListMap の二重パース）のは、readListMap が TreeMap を返す設計を本体側で変えずに済ませるためである。
         MarkerOnlyBlock markerOnly = markerOnlyBlock(basePath, resourceName, header.getGroupId(),
@@ -199,7 +199,7 @@ public class XlsFormatReader implements TestDataFormatReader {
             return new ListMapBlock(header.getGroupId(), header.getIdentifier(),
                                     markerOnly.getColumnNames(), markerOnly.getRows());
         }
-        List<Map<String, String>> mapRows = adapter.readListMap(basePath, resourceName, header.getIdentifier());
+        List<Map<String, String>> mapRows = accessor.readListMap(basePath, resourceName, header.getIdentifier());
         List<List<String>> cellRows = new ArrayList<>();
         for (int r = 0; r < rowCount(columnNames, mapRows.size()); r++) {
             Map<String, String> mapRow = mapRows.get(r);
@@ -223,13 +223,13 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return ファイルデータブロック一覧
      */
     private List<TestDataBlock> readFileBlocks(String basePath, String resourceName, String groupId, DataType type) {
-        List<? extends DataFile> files = adapter.readFiles(basePath, resourceName, groupId, type);
+        List<? extends DataFile> files = accessor.readFiles(basePath, resourceName, groupId, type);
         boolean fixed = FileDataBlock.fileTypeOf(type) == FileDataBlock.FileType.FIXED;
         List<TestDataBlock> result = new ArrayList<>();
         for (DataFile file : files) {
-            FileView view = TestCoreFileAdapter.read(file);
+            FileView view = DataFileAccessor.read(file);
             List<List<String>> bodyLines =
-                    adapter.readBlockBodyLines(basePath, resourceName, groupId, view.getPath(), type);
+                    accessor.readBlockBodyLines(basePath, resourceName, groupId, view.getPath(), type);
             result.add(new FileDataBlock(type, groupId, view.getPath(),
                     toStringDirectives(view.getDirectives()),
                     toRecordLayouts(view, bodyLines, fixed, view.getDirectives().keySet())));
@@ -246,18 +246,18 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return MESSAGE ブロック。対象が存在しない場合は {@code null}
      */
     private TestDataBlock readMessageBlock(String basePath, String resourceName, BlockHeader header) {
-        MessageData message = adapter.readMessage(basePath, resourceName, header.getIdentifier());
+        MessageData message = accessor.readMessage(basePath, resourceName, header.getIdentifier());
         if (message == null) {
             // ヘッダスキャンで MESSAGE= マーカーを検出したが、本体パーサが同 ID のデータを見つけられない場合。
-            // 本体の MessageParser が空結果を返したとき adapter.readMessage は null を返す（正常系）。
+            // 本体の MessageParser が空結果を返したとき accessor.readMessage は null を返す（正常系）。
             return null;
         }
         FixedLengthFile body = message.getBody();
-        FileView view = TestCoreFileAdapter.read(body);
+        FileView view = DataFileAccessor.read(body);
         // MESSAGE 本文は固定長。生行には FW ヘッダ行が先頭に含まれるが、原文復元は名前行を
         // 起点に走査するため FW ヘッダ行は読み飛ばされる。
         List<List<String>> bodyLines =
-                adapter.readBlockBodyLines(basePath, resourceName, header.getGroupId(), header.getIdentifier(),
+                accessor.readBlockBodyLines(basePath, resourceName, header.getGroupId(), header.getIdentifier(),
                         DataType.MESSAGE);
         // FW ヘッダ値は本体 MessageParser が解釈後の値として返すため、変換器側の加工は要らない。
         Map<String, String> fwHeaderFields = new LinkedHashMap<>(message.getFwHeader());
@@ -276,7 +276,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * <p>
      * 構造は MESSAGE と同型（名前行の先頭セルがレコード種別、{@code no} 列＝メタ情報は器が
      * 値から除いて {@code FIRST_FIELD_NO} に隔離する）だが、送信系に FW 制御ヘッダは無い（常に空）。
-     * 本文の固定長ファイルは {@link TestCoreReaderAdapter#readSendSyncMessages} がグループ単位で
+     * 本文の固定長ファイルは {@link XlsParserAccessor#readSendSyncMessages} がグループ単位で
      * まとめて返し、各ファイルの {@link DataFile#getPath()} がマーカー {@code =} 以降の識別子に一致する。
      * 原文（レコード種別・型記法・長さ・値）は MESSAGE と同じく生行から復元する。
      * </p>
@@ -288,13 +288,13 @@ public class XlsFormatReader implements TestDataFormatReader {
      * @return メッセージデータブロック一覧
      */
     private List<TestDataBlock> readSendSyncBlocks(String basePath, String resourceName, String groupId, DataType type) {
-        List<FixedLengthFile> bodies = adapter.readSendSyncMessages(basePath, resourceName, groupId, type);
+        List<FixedLengthFile> bodies = accessor.readSendSyncMessages(basePath, resourceName, groupId, type);
         List<TestDataBlock> result = new ArrayList<>();
         for (FixedLengthFile body : bodies) {
             String identifier = body.getPath();
-            FileView view = TestCoreFileAdapter.read(body);
+            FileView view = DataFileAccessor.read(body);
             List<List<String>> bodyLines =
-                    adapter.readBlockBodyLines(basePath, resourceName, groupId, identifier, type);
+                    accessor.readBlockBodyLines(basePath, resourceName, groupId, identifier, type);
             result.add(new MessageDataBlock(type, groupId, identifier,
                     toStringDirectives(view.getDirectives()),
                     new LinkedHashMap<>(),
@@ -657,7 +657,7 @@ public class XlsFormatReader implements TestDataFormatReader {
      * <p>
      * マーカーカラムはフレームワークが読み込み対象から除外するため、除外後のカラム名が 0 件になったときだけ
      * この形の候補になる。除外前の版面（マーカーカラムの名前と各行の値）は器に残っていないため、
-     * アダプタが本体の行読み込みを再利用して取り直す。
+     * アクセサが本体の行読み込みを再利用して取り直す。
      * </p>
      *
      * <p>
@@ -708,7 +708,7 @@ public class XlsFormatReader implements TestDataFormatReader {
         if (!columnNames.isEmpty()) {
             return null;
         }
-        return adapter.readMarkerOnlyBlock(basePath, resourceName, groupId, identifier, type);
+        return accessor.readMarkerOnlyBlock(basePath, resourceName, groupId, identifier, type);
     }
 
     /**

@@ -24,7 +24,7 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  *
  * <p>
  * YAML テキストを実ファイル（{@code <dir>/testdata.yaml}）へ書き出し、本番配線の
- * {@link YamlFormatReader}（{@code YamlTestCoreAdapter} → {@code YamlLoader} → SnakeYAML Engine ＋
+ * {@link YamlFormatReader}（{@code YamlBuilderAccessor} → {@code YamlLoader} → SnakeYAML Engine ＋
  * JSON スキーマ検証）で読む。{@code YamlFormatReaderTest} が {@code loadRawMap} を in-memory
  * {@code Map} に差し替えて駆動するのに対し、本フィクスチャを使うテストは
  * <b>YAML テキストのパースとスキーマ検証を実際に通す</b>。
