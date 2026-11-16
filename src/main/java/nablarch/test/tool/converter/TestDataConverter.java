@@ -20,14 +20,15 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  * </p>
  *
  * <p>
- * 形式固有の振る舞い（読込対象の列挙・読込・Writer 生成・出力先解決）は {@link FormatHandler} に集約され、
- * 本クラスは {@link DataFormat#handler()} へ委譲するだけの形式中立な共通フロー
- * （列挙 → 読込 → 出力先解決 → 衝突チェック → 書込）に徹する。形式の追加はハンドラを 1 つ増やすだけで済む。
+ * 形式固有の振る舞い（読込対象の列挙・読込・Writer 生成・出力先解決・出力先の検査に使うファイルの列挙）は
+ * {@link FormatHandler} に集約され、本クラスは {@link DataFormat#handler()} へ委譲するだけの形式中立な共通フロー
+ * （列挙 → 読込 → 出力先解決 → 出力先の検査 → 書込 → 残ったファイルの警告）に徹する。
+ * 形式の追加はハンドラを 1 つ増やすだけで済む。
  * </p>
  *
  * <p>
- * 本体テストコードから直接呼び出して「Excel を実行時に一時 YAML へ変換」する用途を主目的とする
- * （CLI・Maven プラグインはリポジトリ分割後に整備）。
+ * Maven プラグイン（{@link ConverterMojo}）と Java API の共通の入口である。テストコードから呼び出して、
+ * テストの実行時に変換することもできる。
  * </p>
  *
  * @author kiyobot
