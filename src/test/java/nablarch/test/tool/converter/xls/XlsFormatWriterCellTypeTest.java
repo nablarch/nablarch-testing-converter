@@ -13,11 +13,18 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import nablarch.test.core.reader.DataType;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -787,5 +794,59 @@ public class XlsFormatWriterCellTypeTest {
         assertThat("数値文字参照 &#13; への退避は無い", containsAscii(xml, "&#13;"), is(false));
         assertThat("? への置換も起きていない（制御文字とは違う）",
                 containsAscii(xml, "<t>a?b</t>"), is(false));
+    }
+
+    /**
+     * Given: テーブルと、ディレクティブを持つ固定長ファイルを 1 シートに持つコンテナ。
+     * When : 実 {@code .xlsx} へ {@code write} し、POI で開き直す。
+     * Then : 識別行・カラム名行・ディレクティブ行・名前／型／長さ行・データ行の、作られたすべてのセルの書式が
+     *        文字列（{@code @}）になる。
+     *
+     * <p>
+     * 担保する観点: 書式が「標準」のままだと、人が {@code 001} や {@code 1} と入力し直したときに Excel が
+     * 数値のセルにし、本体はそのセルを {@code 1.0} と読む。どの行のセルも人が編集しうるため、
+     * 罫線・背景色を持たない識別行のセルも含めて文字列にする。
+     * </p>
+     */
+    @Test
+    public void setsTextFormatToEveryWrittenCell() {
+        // Given
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                Arrays.asList("KEY", "V"), Collections.singletonList(Arrays.asList("1", "001")));
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("text-encoding", "UTF-8");
+        RecordLayout record = new RecordLayout("data",
+                Collections.singletonList(new FieldDef("f", "X", "3")),
+                Collections.singletonList(Collections.singletonList("001")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_FIXED, "", "out.dat", directives,
+                Collections.singletonList(record));
+        TestDataContainer container = new TestDataContainer(BOOK, Collections.singletonList(
+                new TestDataSection(SHEET, Arrays.<TestDataBlock>asList(table, file))));
+
+        // When
+        new XlsFormatWriter().write(container, folder.getRoot().getAbsolutePath());
+        Sheet sheet = XlsFixture.open(folder.getRoot().toPath().resolve(BOOK + ".xlsx")).getSheet(SHEET);
+
+        // Then
+        List<String> notText = new ArrayList<>();
+        int cells = 0;
+        for (int r = sheet.getFirstRowNum(); r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) {
+                continue;
+            }
+            for (int c = 0; c < row.getLastCellNum(); c++) {
+                Cell cell = row.getCell(c);
+                if (cell == null) {
+                    continue;
+                }
+                cells++;
+                if (!"@".equals(cell.getCellStyle().getDataFormatString())) {
+                    notText.add("(" + r + "," + c + ")=" + cell.getCellStyle().getDataFormatString());
+                }
+            }
+        }
+        assertThat("セルが書かれていること", cells > 0, is(true));
+        assertThat("文字列書式でないセル", notText, is(Collections.<String>emptyList()));
     }
 }

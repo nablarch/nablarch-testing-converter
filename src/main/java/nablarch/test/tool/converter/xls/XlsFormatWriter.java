@@ -144,7 +144,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      */
     Workbook build(TestDataContainer container) {
         XSSFWorkbook workbook = new XSSFWorkbook();
-        Styles styles = new Styles(workbook, config);
+        CellStyleCache styles = new CellStyleCache(workbook, config);
         for (TestDataSection section : container.getSections()) {
             requireValidSheetNameLength(section.getName());
             Sheet sheet = workbook.createSheet(section.getName());
@@ -188,7 +188,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param section セクション
      * @param styles  セルスタイルキャッシュ
      */
-    private void writeSection(Sheet sheet, TestDataSection section, Styles styles) {
+    private void writeSection(Sheet sheet, TestDataSection section, CellStyleCache styles) {
         WidthTracker widths = new WidthTracker(config.getMaxColumnWidthChars());
         int rowNum = 0;
         boolean first = true;
@@ -485,7 +485,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * @param widths   列幅トラッカ
      * @return 次に書き込むべき行番号
      */
-    private int render(Sheet sheet, int startRow, BlockLayout layout, Styles styles, WidthTracker widths) {
+    private int render(Sheet sheet, int startRow, BlockLayout layout, CellStyleCache styles, WidthTracker widths) {
         int width = layout.width();
         int rowCount = layout.size();
         // 外枠罫線の上辺・下辺は HEADER/DIRECTIVE/DATA 行の中での最初・最後で引く
@@ -503,12 +503,14 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             Row row = sheet.createRow(startRow + r);
             List<String> cells = layout.row(r);
             RowKind kind = layout.kind(r);
-            // META 行（識別行）は罫線なし・背景色なし。空セルを作ると隣列へのテキストオーバーフローが
-            // Excel に塞がれるため、値を持つセルのみ作成する。
+            // META 行（識別行）は罫線なし・背景色なし（書式は文字列）。空セルを作ると隣列への
+            // テキストオーバーフローが Excel に塞がれるため、値を持つセルのみ作成する。
             if (kind == RowKind.META) {
                 for (int c = 0; c < cells.size(); c++) {
                     String value = cells.get(c);
-                    row.createCell(c).setCellValue(value);
+                    Cell cell = row.createCell(c);
+                    cell.setCellValue(value);
+                    cell.setCellStyle(styles.getOrCreatePlain());
                     widths.observe(c, value.length());
                 }
                 continue;
@@ -531,7 +533,7 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
                     fill = layout.isMarkerColumn(c) ? Fill.MARKER
                             : (header ? layout.headerFill() : Fill.NONE);
                 }
-                cell.setCellStyle(styles.get(r == firstBorderRow, r == lastBorderRow,
+                cell.setCellStyle(styles.getOrCreate(r == firstBorderRow, r == lastBorderRow,
                         c == 0, c == width - 1, fill));
                 widths.observe(c, value.length());
             }

@@ -157,8 +157,8 @@ public class ExcelOutputDocumentedBehaviorTest {
         Sheet back = XlsFixture.open(dir(2).resolve(BOOK + ".xlsx")).getSheet(SHEET);
         assertThat("値は保たれる", XlsFixture.line(back, 2), is(row("1", "2")));
         assertThat("元の背景色は残らない", fill(back, 2, 0), is(not(IndexedColors.RED.getIndex())));
-        assertThat("元の表示形式は残らない",
-                back.getRow(2).getCell(0).getCellStyle().getDataFormatString(), is("General"));
+        assertThat("元の表示形式は残らず、本ツールが付ける文字列の書式になる",
+                back.getRow(2).getCell(0).getCellStyle().getDataFormatString(), is("@"));
         assertThat("結合セルは残らない", back.getNumMergedRegions(), is(0));
     }
 
