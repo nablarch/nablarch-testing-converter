@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.yaml;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,14 +12,17 @@ import nablarch.test.core.file.DataFileInspector;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.messaging.MessagePool;
 import nablarch.test.core.messaging.MessagePoolInspector;
+import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.YamlTestDataParser;
 import nablarch.test.core.util.interpreter.TestDataInterpreter;
+import nablarch.test.tool.converter.reader.StubDbInfo;
 
 /**
  * YAML 形式のテストデータを、テスティングフレームワークの YAML 読み込み
  * （{@code nablarch-testing-yaml} の {@link YamlTestDataParser}）に読ませて「正解」として取り出すヘルパ。
  *
  * <p>
- * {@link FrameworkOracle} の YAML 版である。変換ツールのリーダを通さず、フレームワークが実行時に使うのと
+ * {@link nablarch.test.core.reader.FrameworkOracle} の YAML 版である。変換ツールのリーダを通さず、フレームワークが実行時に使うのと
  * 同じ経路で読む。<b>Excel 形式の記法を解釈するインタープリタは渡さない</b>（下の {@code INTERPRETERS} 参照）。
  * </p>
  *

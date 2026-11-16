@@ -15,7 +15,6 @@ import java.util.Map;
 
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.reader.DataType;
-import nablarch.test.core.reader.YamlTestCoreAdapter;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
 import nablarch.test.tool.converter.model.ListMapBlock;

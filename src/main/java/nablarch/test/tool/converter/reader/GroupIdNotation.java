@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.reader;
 
 /**
  * 上流 API 境界のグループ ID 表記。
@@ -32,7 +32,7 @@ package nablarch.test.core.reader;
  *
  * @author kiyobot
  */
-final class GroupIdNotation {
+public final class GroupIdNotation {
 
     /** インスタンス化させない。 */
     private GroupIdNotation() {
@@ -48,7 +48,7 @@ final class GroupIdNotation {
      * @param rawGroupId 生値のグループ ID（省略時は空文字。{@code null} 可）
      * @return 整形済みグループ ID（{@code [case01]}／グループ指定なしは空文字）
      */
-    static String format(String rawGroupId) {
+    public static String format(String rawGroupId) {
         return rawGroupId == null || rawGroupId.isEmpty() ? "" : "[" + rawGroupId + "]";
     }
 }

@@ -12,6 +12,8 @@ import java.util.Map;
 
 
 import org.junit.Test;
+import nablarch.test.tool.converter.reader.FileView;
+import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
  * {@link TestCoreFileAdapter}のテストクラス。

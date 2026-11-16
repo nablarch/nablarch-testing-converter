@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.yaml;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -15,12 +15,13 @@ import java.util.Map;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.FileView;
-import nablarch.test.core.file.FragmentView;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.file.VariableLengthFile;
-import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.MessageContent;
+import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.reader.FileView;
+import nablarch.test.tool.converter.reader.FragmentView;
 
 import org.junit.After;
 import org.junit.Test;
@@ -29,7 +30,7 @@ import org.junit.Test;
  * {@link YamlTestCoreAdapter} のテストクラス。
  * <p>
  * 本アダプタは本体 YAML ビルダを空インタープリタ・補完なしで配線し、生の本体器を取り出す。Excel 経路の
- * {@link TestCoreReaderAdapter} と対称。各テストは「本体器を返すこと」と「IN 値が記法のまま（未加工。
+ * {@link nablarch.test.core.reader.TestCoreReaderAdapter} と対称。各テストは「本体器を返すこと」と「IN 値が記法のまま（未加工。
  * {@code ${...}}・{@code ${binaryFile:...}}・{@code null}・{@code ""} がそのまま）であること」、および
  * {@code loadRawMap} が順序保持の原文 Map を返すことを検証する。
  * </p>

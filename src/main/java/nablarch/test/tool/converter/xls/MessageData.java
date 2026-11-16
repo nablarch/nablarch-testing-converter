@@ -1,11 +1,11 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.xls;
 
 import java.util.Map;
 
 import nablarch.test.core.file.FixedLengthFile;
 
 /**
- * メッセージ（{@link DataType#MESSAGE}）の取り出し結果。FW 制御ヘッダと本文を併せ持つ。
+ * メッセージ（{@link nablarch.test.core.reader.DataType#MESSAGE}）の取り出し結果。FW 制御ヘッダと本文を併せ持つ。
  *
  * @see TestCoreReaderAdapter#readMessage(String, String, String)
  */
@@ -23,7 +23,7 @@ public final class MessageData {
      * @param fwHeader FW 制御ヘッダ
      * @param body     本文
      */
-    MessageData(Map<String, String> fwHeader, FixedLengthFile body) {
+    public MessageData(Map<String, String> fwHeader, FixedLengthFile body) {
         this.fwHeader = fwHeader;
         this.body = body;
     }

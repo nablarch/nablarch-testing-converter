@@ -15,7 +15,6 @@ import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.DataFileFragment;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.reader.DataType;
-import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.core.reader.TestDataReader;
 import nablarch.test.tool.converter.model.FileDataBlock;

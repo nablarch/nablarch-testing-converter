@@ -14,7 +14,7 @@ import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.FrameworkOracle;
-import nablarch.test.core.reader.YamlFrameworkOracle;
+import nablarch.test.tool.converter.yaml.YamlFrameworkOracle;
 
 import org.junit.Rule;
 import org.junit.Test;

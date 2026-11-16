@@ -13,7 +13,6 @@ import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
-import nablarch.test.core.reader.YamlFrameworkOracle;
 import nablarch.test.tool.converter.model.ListMapBlock;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;

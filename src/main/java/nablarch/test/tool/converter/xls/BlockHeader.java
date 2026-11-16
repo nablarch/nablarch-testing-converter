@@ -1,4 +1,10 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.xls;
+
+import nablarch.test.core.reader.DataType;
+
+
+
+
 
 /**
  * 1 データブロックのヘッダ（マーカー行から取り出した属性）。
@@ -26,7 +32,7 @@ public final class BlockHeader {
      * @param groupId    グループ ID（無指定は空文字）
      * @param identifier 識別子
      */
-    BlockHeader(DataType type, String groupId, String identifier) {
+    public BlockHeader(DataType type, String groupId, String identifier) {
         this.type = type;
         this.groupId = groupId;
         this.identifier = identifier;

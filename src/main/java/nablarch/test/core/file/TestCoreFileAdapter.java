@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import nablarch.test.tool.converter.reader.FileView;
+import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析結果である

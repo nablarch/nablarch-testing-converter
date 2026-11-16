@@ -18,6 +18,7 @@ import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
 import nablarch.test.core.util.interpreter.NullInterpreter;
 import nablarch.test.core.util.interpreter.QuotationTrimmer;
 import nablarch.test.core.util.interpreter.TestDataInterpreter;
+import nablarch.test.tool.converter.reader.StubDbInfo;
 
 /**
  * テスティングフレームワーク本体に {@code .xlsx} を読ませ、その値を「正解」として取り出すヘルパ。

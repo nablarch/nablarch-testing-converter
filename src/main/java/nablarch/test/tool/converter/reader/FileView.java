@@ -1,4 +1,4 @@
-package nablarch.test.core.file;
+package nablarch.test.tool.converter.reader;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,7 +25,7 @@ public final class FileView {
      * @param directives ディレクティブ
      * @param fragments  断片
      */
-    FileView(String path, Map<String, Object> directives, List<FragmentView> fragments) {
+    public FileView(String path, Map<String, Object> directives, List<FragmentView> fragments) {
         this.path = path;
         this.directives = directives;
         this.fragments = fragments;

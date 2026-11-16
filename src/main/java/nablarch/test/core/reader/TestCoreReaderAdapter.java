@@ -18,6 +18,11 @@ import nablarch.test.core.util.interpreter.LineSeparatorInterpreter;
 import nablarch.test.core.util.interpreter.NullInterpreter;
 import nablarch.test.core.util.interpreter.QuotationTrimmer;
 import nablarch.test.core.util.interpreter.TestDataInterpreter;
+import nablarch.test.tool.converter.reader.GroupIdNotation;
+import nablarch.test.tool.converter.reader.StubDbInfo;
+import nablarch.test.tool.converter.xls.BlockHeader;
+import nablarch.test.tool.converter.xls.MarkerOnlyBlock;
+import nablarch.test.tool.converter.xls.MessageData;
 
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の構造解析を

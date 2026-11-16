@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.xls;
 
 import java.util.List;
 
@@ -38,7 +38,7 @@ public class MarkerOnlyBlock {
      * @param columnNames マーカーカラムの名前（記述順）
      * @param rows        各行の値（記述順。カラム名と同じ要素数）
      */
-    MarkerOnlyBlock(List<String> columnNames, List<List<String>> rows) {
+    public MarkerOnlyBlock(List<String> columnNames, List<List<String>> rows) {
         this.columnNames = columnNames;
         this.rows = rows;
     }

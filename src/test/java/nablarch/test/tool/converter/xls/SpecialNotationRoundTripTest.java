@@ -19,7 +19,6 @@ import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.FrameworkOracle;
-import nablarch.test.core.reader.YamlFrameworkOracle;
 import nablarch.test.tool.converter.FrameworkReadDump;
 import nablarch.test.tool.converter.model.FieldDef;
 import nablarch.test.tool.converter.model.FileDataBlock;
@@ -32,6 +31,7 @@ import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
 import nablarch.test.tool.converter.yaml.YamlFormatReader;
 import nablarch.test.tool.converter.yaml.YamlFormatWriter;
+import nablarch.test.tool.converter.yaml.YamlFrameworkOracle;
 
 import org.junit.Rule;
 import org.junit.Test;

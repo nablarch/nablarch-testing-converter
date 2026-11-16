@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 
 import nablarch.test.core.db.TableData;
-import nablarch.test.core.reader.YamlFrameworkOracle;
 import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.tool.converter.model.ListMapBlock;
 import nablarch.test.tool.converter.model.TableDataBlock;

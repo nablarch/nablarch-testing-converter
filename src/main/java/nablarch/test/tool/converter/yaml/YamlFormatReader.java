@@ -11,11 +11,8 @@ import java.util.Objects;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.FileView;
-import nablarch.test.core.file.FragmentView;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.reader.DataType;
-import nablarch.test.core.reader.YamlTestCoreAdapter;
 import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
 import nablarch.test.tool.converter.DirectiveUtil;
@@ -29,6 +26,8 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
+import nablarch.test.tool.converter.reader.FileView;
+import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
  * YAML（1 ファイル）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。

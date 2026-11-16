@@ -18,6 +18,9 @@ import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.file.VariableLengthFile;
+import nablarch.test.tool.converter.xls.BlockHeader;
+import nablarch.test.tool.converter.xls.MarkerOnlyBlock;
+import nablarch.test.tool.converter.xls.MessageData;
 
 import org.junit.Test;
 

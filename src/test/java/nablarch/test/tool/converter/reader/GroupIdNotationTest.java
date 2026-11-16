@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.reader;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;

@@ -1,4 +1,4 @@
-package nablarch.test.core.file;
+package nablarch.test.tool.converter.reader;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +33,7 @@ public final class FragmentView {
      * @param lengths フィールド長（{@code null} 可）
      * @param values  データ行
      */
-    FragmentView(List<String> names, List<String> types, List<String> lengths,
+    public FragmentView(List<String> names, List<String> types, List<String> lengths,
                  List<Map<String, String>> values) {
         this.names = names;
         this.types = types;

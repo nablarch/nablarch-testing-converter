@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.reader;
 
 import java.sql.Types;
 
@@ -8,7 +8,7 @@ import nablarch.test.core.db.TableData;
 /**
  * 変換ツールの DB レスな読み込み経路で本体 Parser／ビルダの配線にのみ用いるスタブの{@link DbInfo}。
  * <p>
- * {@link TestCoreReaderAdapter}（Excel 経路）と {@link YamlTestCoreAdapter}（YAML 経路）の両方が、
+ * {@link nablarch.test.core.reader.TestCoreReaderAdapter}（Excel 経路）と {@link nablarch.test.tool.converter.yaml.YamlTestCoreAdapter}（YAML 経路）の両方が、
  * 値加工を伴わない生の本体器を取り出すために共有する。
  * </p>
  * <p>
@@ -25,7 +25,7 @@ import nablarch.test.core.db.TableData;
  *
  * @author kiyobot
  */
-final class StubDbInfo implements DbInfo {
+public final class StubDbInfo implements DbInfo {
 
     /** 読み込み経路から呼ばれてはならないメソッドが呼ばれた場合の例外を生成する。 */
     private static UnsupportedOperationException notOnReadPath(String method) {

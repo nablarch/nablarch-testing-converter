@@ -14,14 +14,9 @@ import java.util.logging.Logger;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
-import nablarch.test.core.file.FileView;
-import nablarch.test.core.file.FragmentView;
 import nablarch.test.core.file.TestCoreFileAdapter;
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.PoiXlsReader;
-import nablarch.test.core.reader.BlockHeader;
-import nablarch.test.core.reader.MarkerOnlyBlock;
-import nablarch.test.core.reader.MessageData;
 import nablarch.test.core.reader.TestCoreReaderAdapter;
 import nablarch.test.tool.converter.DirectiveUtil;
 import nablarch.test.tool.converter.TestDataFormatReader;
@@ -35,6 +30,8 @@ import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
 import nablarch.test.tool.converter.model.TestDataSection;
+import nablarch.test.tool.converter.reader.FileView;
+import nablarch.test.tool.converter.reader.FragmentView;
 
 /**
  * Excel（1 シート）を読み込み、中間モデル（{@link TestDataContainer}）へ写す IN リーダ。

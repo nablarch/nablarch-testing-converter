@@ -9,7 +9,7 @@ import java.util.TreeMap;
 import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.DataFileInspector;
-import nablarch.test.core.reader.YamlFrameworkOracle;
+import nablarch.test.tool.converter.yaml.YamlFrameworkOracle;
 
 /**
  * テスティングフレームワークが読んだ結果（{@code FrameworkOracle}・{@code YamlFrameworkOracle} の戻り値）を、

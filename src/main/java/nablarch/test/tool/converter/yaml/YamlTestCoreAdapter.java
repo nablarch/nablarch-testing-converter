@@ -1,4 +1,4 @@
-package nablarch.test.core.reader;
+package nablarch.test.tool.converter.yaml;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,17 +11,20 @@ import nablarch.test.core.db.TableData;
 import nablarch.test.core.file.DataFile;
 import nablarch.test.core.file.FixedLengthFile;
 import nablarch.test.core.messaging.MessagePool;
+import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.InterpreterResolver;
+import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlFileBuilder;
 import nablarch.test.core.reader.yaml.YamlLoader;
 import nablarch.test.core.reader.yaml.YamlMessageBuilder;
-import nablarch.test.core.reader.yaml.MessageContent;
 import nablarch.test.core.reader.yaml.YamlSection;
 import nablarch.test.core.reader.yaml.YamlTableDataBuilder;
+import nablarch.test.tool.converter.reader.GroupIdNotation;
+import nablarch.test.tool.converter.reader.StubDbInfo;
 
 /**
  * テストデータ変換ツール（{@code nablarch.test.tool.converter}）が、本体の YAML 読み込みを
- * 再利用して生の器を取り出すための薄いアダプタ。Excel 経路の {@link TestCoreReaderAdapter} と対称。
+ * 再利用して生の器を取り出すための薄いアダプタ。Excel 経路の {@link nablarch.test.core.reader.TestCoreReaderAdapter} と対称。
  *
  * <p>
  * 本体の YAML 読み込みは {@code reader.yaml} パッケージのビルダ
