@@ -95,6 +95,30 @@ final class YamlFormatHandler implements FormatHandler {
         return Collections.emptyList();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * YAML 形式は 1 セクションを 1 ファイルとして書き、出力先にある他のファイルには触れない。
+     * 変換元から消したシートや名前を変えたシートの YAML は残り、YAML から Excel へ戻すとシートとして復元される。
+     * 手で置いた YAML を消さないよう削除はせず、列挙だけする。
+     * </p>
+     */
+    @Override
+    public List<Path> strayPaths(TestDataContainer container, Path outputBase) {
+        if (!Files.isDirectory(outputBase)) {
+            return Collections.emptyList();
+        }
+        List<Path> written = outputPaths(container, outputBase);
+        List<Path> stray = new ArrayList<>();
+        for (Path existing : listYamlFiles(outputBase)) {
+            if (!written.contains(existing)) {
+                stray.add(existing);
+            }
+        }
+        return stray;
+    }
+
     private static List<Path> listYamlFiles(Path yamlDir) {
         TreeMap<String, Path> byName = new TreeMap<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(yamlDir)) {

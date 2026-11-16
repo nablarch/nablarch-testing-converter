@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import nablarch.test.tool.converter.model.TestDataContainer;
 
@@ -31,6 +33,9 @@ import nablarch.test.tool.converter.model.TestDataContainer;
  * @author kiyobot
  */
 public final class TestDataConverter {
+
+    /** ロガー。 */
+    private static final Logger LOGGER = Logger.getLogger(TestDataConverter.class.getName());
 
     /** ユーティリティクラスにつきインスタンス化不可。 */
     private TestDataConverter() {
@@ -78,6 +83,7 @@ public final class TestDataConverter {
             checkNotShadowed(target.shadowingPaths(container, outputBase));
             checkOverwrite(request, outputs);
             writer.write(container, outputBase.toString());
+            warnStrayOutputs(container, target.strayPaths(container, outputBase), outputBase);
             converted++;
         }
         return converted;
@@ -132,6 +138,32 @@ public final class TestDataConverter {
                         + " remove the .xls book or specify another output directory)");
             }
         }
+    }
+
+    /**
+     * 出力先に、今回の変換で書き出さなかった同じ形式のファイルがあれば警告する。
+     *
+     * <p>
+     * 変換元から消したシートや名前を変えたシートの YAML は出力先に残り、YAML から Excel へ戻すと
+     * シートとして復元される。手で置いたファイルの可能性もあるため削除はせず、利用者に知らせるだけにする。
+     * </p>
+     *
+     * @param container  出力したコンテナ
+     * @param stray      書き出さなかったファイル
+     * @param outputBase 出力先ディレクトリ
+     */
+    private static void warnStrayOutputs(TestDataContainer container, List<Path> stray, Path outputBase) {
+        if (stray.isEmpty()) {
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        for (Path path : stray) {
+            names.add(path.getFileName().toString());
+        }
+        LOGGER.warning("[" + container.getName() + "] 出力先 " + outputBase
+                + " に、今回の変換で書き出していないファイルがあります。"
+                + "変換元から消したシートや名前を変えたシートのものであれば、削除してください"
+                + "（残したまま Excel 形式へ変換すると、シートとして復元されます）: " + names);
     }
 
     /**

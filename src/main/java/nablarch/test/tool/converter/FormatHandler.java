@@ -90,4 +90,13 @@ interface FormatHandler {
      * @return 出力先にあってはならないファイルのリスト
      */
     List<Path> shadowingPaths(TestDataContainer container, Path outputBase);
+
+    /**
+     * 出力先にある本形式のファイルのうち、今回の変換で書き出さないものを列挙する（警告用）。
+     *
+     * @param container  出力するコンテナ
+     * @param outputBase 出力先ディレクトリ
+     * @return 書き出さないファイルのリスト（ファイル名の順）
+     */
+    List<Path> strayPaths(TestDataContainer container, Path outputBase);
 }

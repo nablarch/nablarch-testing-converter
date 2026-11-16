@@ -1,5 +1,6 @@
 package nablarch.test.tool.converter;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
@@ -14,6 +15,10 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import nablarch.test.core.reader.DataType;
 import nablarch.test.core.reader.yaml.YamlLoader;
@@ -583,6 +588,108 @@ public class TestDataConverterTest {
         try (OutputStream os = Files.newOutputStream(book)) {
             workbook.write(os);
         }
+    }
+
+    /**
+     * Given: シート {@code case1}・{@code case2} のブックを YAML へ変換したあと、{@code case2} を消したブック。
+     * When : 同じ出力先へ {@code overwrite=true} で変換し直す。
+     * Then : 残った {@code case2.yaml} は消さずに、ファイル名を含む警告を 1 件出す。
+     *
+     * <p>
+     * 残った YAML を Excel 形式へ戻すと、消したシートが復元される。手で置いた YAML の可能性もあるため、
+     * 削除はせずに知らせる。
+     * </p>
+     *
+     * <p>
+     * 2 回目の変換元は別のディレクトリに置く。本体の {@code PoiXlsReader} はブックをパスで
+     * キャッシュするため、同じ JVM で同じパスのブックを書き換えて読むと、古いシート名が返る。
+     * </p>
+     *
+     * @throws IOException 入出力エラー
+     */
+    @Test
+    public void warnsAndKeepsYamlOfSheetRemovedFromSource() throws IOException {
+        // Given
+        TestDataSection case1 = new TestDataSection("case1",
+                Collections.<TestDataBlock>singletonList(sampleTable("USERS")));
+        TestDataSection case2 = new TestDataSection("case2",
+                Collections.<TestDataBlock>singletonList(sampleTable("ROLES")));
+        writeXls(new TestDataContainer("BookA", Arrays.asList(case1, case2)), in);
+        TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+        Path edited = folder.newFolder("edited").toPath();
+        writeXls(new TestDataContainer("BookA", Collections.singletonList(case1)), edited);
+
+        // When
+        List<String> warnings = convertCapturingWarnings(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(edited).outputPath(out)
+                .overwrite(true)
+                .build());
+
+        // Then
+        assertThat("警告の件数", warnings.size(), is(1));
+        assertThat(warnings.get(0), containsString("[BookA]"));
+        assertThat(warnings.get(0), containsString("[case2.yaml]"));
+        assertThat("残った YAML は消さない", Files.exists(out.resolve("BookA/case2.yaml")), is(true));
+    }
+
+    /**
+     * Given: YAML へ変換済みで、変換元のシートが変わっていないブック。
+     * When : 同じ出力先へ {@code overwrite=true} で変換し直す。
+     * Then : 警告は出ない。
+     */
+    @Test
+    public void doesNotWarnWhenNoStrayYamlRemains() {
+        // Given
+        writeXls(oneTable("BookA", "case1", sampleTable("USERS")), in);
+        TestDataConverter.convert(DataFormat.XLS, DataFormat.YAML, in, out);
+
+        // When
+        List<String> warnings = convertCapturingWarnings(new ConversionRequest.Builder()
+                .sourceFormat(DataFormat.XLS).targetFormat(DataFormat.YAML)
+                .inputPath(in).outputPath(out)
+                .overwrite(true)
+                .build());
+
+        // Then
+        assertThat(warnings.size(), is(0));
+    }
+
+    /**
+     * {@link TestDataConverter} の WARN 以上のログを集めながら変換する。
+     *
+     * @param request 変換リクエスト
+     * @return 集めたメッセージ
+     */
+    private static List<String> convertCapturingWarnings(ConversionRequest request) {
+        List<String> messages = new ArrayList<>();
+        Handler handler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
+                    messages.add(record.getMessage());
+                }
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        Logger logger = Logger.getLogger(TestDataConverter.class.getName());
+        boolean useParent = logger.getUseParentHandlers();
+        logger.addHandler(handler);
+        logger.setUseParentHandlers(false);
+        try {
+            TestDataConverter.convert(request);
+        } finally {
+            logger.removeHandler(handler);
+            logger.setUseParentHandlers(useParent);
+        }
+        return messages;
     }
 
     /**

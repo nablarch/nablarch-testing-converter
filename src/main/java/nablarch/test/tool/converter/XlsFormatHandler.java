@@ -99,6 +99,16 @@ final class XlsFormatHandler implements FormatHandler {
         return Collections.singletonList(outputBase.resolve(container.getName() + XLS_EXTENSION));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Excel 形式は 1 コンテナを 1 ブックとして丸ごと書くため、書き出さずに残るファイルは無い。</p>
+     */
+    @Override
+    public List<Path> strayPaths(TestDataContainer container, Path outputBase) {
+        return Collections.emptyList();
+    }
+
     private static String parentOf(Path file) {
         Path parent = file.getParent();
         return parent == null ? "." : parent.toString();
