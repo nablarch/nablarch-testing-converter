@@ -9,6 +9,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.FrameworkOracle;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -271,6 +273,38 @@ public class XlsNotationSymmetryTest {
         assertThat("書き: どちらも半角で囲まずそのまま（値 ab は引用符記法ではない）",
                 dataRowCells(out()), is(Arrays.asList("ab", "ab")));
         assertThat("往復後も値は ab のまま", table(out()).getRows().get(0), is(Arrays.asList("ab", "ab")));
+    }
+
+    /**
+     * Given: {@code //} で始まる値を、先頭の列と途中の列に持つ 1 行（実 {@code .xlsx} では
+     *        {@code "//head"} のように囲んで書く）。
+     * When : 実 {@code .xlsx} 起点で読み、Excel 形式へ書き戻す。
+     * Then : 書き戻したセルも半角ダブルクォートで囲まれ、変換ツールでも本体でも元の値として読める。
+     *
+     * <p>
+     * 本体はコメントの判定（セルが {@code //} で始まるか）を値の解釈より先に行う。囲まずに書くと、
+     * 先頭の列の値は行ごと、途中の列の値はそのセルから右がすべてコメントとして読み飛ばされる。
+     * </p>
+     */
+    @Test
+    public void writesValueStartingWithCommentPrefixQuoted() {
+        // Given
+        List<String> notations = Arrays.asList("\"//head\"", "x", "\"//mid\"", "y");
+        writeBook(Arrays.asList("A", "B", "C", "D"), notations);
+        List<String> values = Arrays.asList("//head", "x", "//mid", "y");
+
+        // When
+        List<String> read = table(in()).getRows().get(0);
+        new XlsFormatWriter().write(read(), out().toString());
+
+        // Then
+        assertThat("読み: 外側の引用符が外れる", read, is(values));
+        assertThat("書き: // で始まる値は囲んで書く", dataRowCells(out()), is(notations));
+        assertThat("変換ツールで読み戻しても同じ値", table(out()).getRows().get(0), is(values));
+        assertThat("本体で読んでも同じ値",
+                FrameworkOracle.tableRows(out().toString(), BOOK + "/" + SHEET, "",
+                        DataType.SETUP_TABLE_DATA, "T"),
+                is(Arrays.asList(values)));
     }
 
     // ------------------------------------------------------------------ 実ファイル起点の往復

@@ -57,7 +57,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  * データ行の値は<b>解釈後の値から Excel 記法へ戻して</b>書く（{@link #toCellNotation}）。中間モデルが持つのは
  * テスティングフレームワークが解釈したあとの値（Java {@code null} または {@link String}）であり、
  * 読み（{@code XlsFormatReader}）で外した記法をここで戻すことで記法⇄値の写像を対称にする。
- * 戻すのは {@code null} リテラル・{@code \r}（CR）・引用符記法の 3 つで、
+ * 戻すのは {@code null} リテラル・{@code \r}（CR）・引用符記法の 3 つで、{@code //} で始まる値も引用符で囲む
+ * （囲まないと本体がコメントとして読み飛ばす）。
  * 値の途中のダブルクォート／2 文字の {@code \} ＋ {@code n}／LF は戻さない（記法の側でも素通しのため）。
  * </p>
  *
@@ -85,6 +86,9 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      * </p>
      */
     private static final String EMPTY_STRING_NOTATION = "\"\"";
+
+    /** 本体がコメントとみなすセルの接頭辞（{@code TestDataParsingTemplate} の判定と同じ）。 */
+    static final String COMMENT_PREFIX = "//";
 
     /** Excel がシート名に許す最大文字数。 */
     private static final int MAX_SHEET_NAME_LENGTH = 31;
@@ -658,11 +662,15 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
      *   <li>iii 前後が同じダブルクォート（半角 {@code "} または全角 {@code ”}）で囲まれた値 ——
      *       半角ダブルクォートでさらに囲む。囲まないと読み戻しで {@code QuotationTrimmer} が外側を外して
      *       しまう</li>
+     *   <li>iv {@code //} で始まる値 —— 半角ダブルクォートで囲む。本体はコメントの判定（セルが {@code //} で
+     *       始まるか）を値の解釈より先に行うため、囲まないとコメントとして読み飛ばされる
+     *       （先頭の列なら行ごと、それ以外ならそのセルから右がすべて）。囲めばコメントにならず、
+     *       {@code QuotationTrimmer} が外側を外して元の値に戻る</li>
      * </ul>
      *
      * <p>
-     * ii と iii は排他である（{@code null} は引用符で始まらない）。i は ii・iii の判定に影響しない
-     * （CR を {@code \} ＋ {@code r} へ置換しても値の先頭・末尾に引用符は生まれない）。
+     * ii・iii・iv は排他である（先頭の文字が異なる）。i は ii・iii・iv の判定に影響しない
+     * （CR を {@code \} ＋ {@code r} へ置換しても、値の先頭・末尾に引用符や {@code //} は生まれない）。
      * </p>
      *
      * <p>
@@ -679,7 +687,8 @@ public final class XlsFormatWriter implements TestDataFormatWriter {
             return NULL_LITERAL;
         }
         String notation = value.replace("\r", "\\r");
-        if (NULL_LITERAL.equalsIgnoreCase(notation) || isQuotationWrapped(notation)) {
+        if (NULL_LITERAL.equalsIgnoreCase(notation) || isQuotationWrapped(notation)
+                || notation.startsWith(COMMENT_PREFIX)) {
             return '"' + notation + '"';
         }
         return notation;

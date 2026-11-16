@@ -49,10 +49,27 @@ final class BlockLayout {
     /**
      * 1 行を追加する。
      *
+     * <p>
+     * {@code //} で始まるセルは、本体がコメントとして読み飛ばすため書けない。値は
+     * {@code XlsFormatWriter#toCellNotation} が引用符で囲むのでここへは届かず、届くのは名前の類
+     * （カラム名・レコード種別・フィールド名・データ型・フィールド長・ディレクティブ名・FW 制御ヘッダ名）である。
+     * 名前を引用符で囲む書き方は記法に定めが無いため、書き出せないものとして止める
+     * （シート名の文字数の上限を超える場合と同じ扱い）。
+     * </p>
+     *
      * @param kind  行種別
      * @param cells セル
+     * @throws IllegalArgumentException {@code //} で始まるセルがある場合
      */
     void add(RowKind kind, List<String> cells) {
+        for (String cell : cells) {
+            if (cell.startsWith(XlsFormatWriter.COMMENT_PREFIX)) {
+                throw new IllegalArgumentException(
+                        "// で始まる名前は、Excel 形式ではコメントとして読み飛ばされるため書き出せません。"
+                                + " dataType=" + dataType.getName() + ", identifier=" + identifier
+                                + ", name='" + cell + "'");
+            }
+        }
         rows.add(cells);
         kinds.add(kind);
         if (cells.size() > width) {

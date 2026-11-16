@@ -16,10 +16,16 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import nablarch.test.core.reader.DataType;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
 import nablarch.test.tool.converter.model.TableDataBlock;
 import nablarch.test.tool.converter.model.TestDataBlock;
 import nablarch.test.tool.converter.model.TestDataContainer;
@@ -97,6 +103,8 @@ import org.junit.rules.TemporaryFolder;
  * <b>本クラスのアサーションはすべて「実行して観測した現状の挙動」である。</b>
  * ただしシート名の文字数上限だけは例外で、31 文字超を黙って切り詰めていた挙動を
  * {@link XlsFormatWriter} で修正したうえで、仕様どおりの期待値を置いている。
+ * {@code //} で始まる名前（{@code #rejectsColumnNameStartingWithCommentPrefix}・
+ * {@code #rejectsFieldNameStartingWithCommentPrefix}）も、仕様どおりの期待値である。
  * </p>
  *
  * @author kiyobot
@@ -664,5 +672,80 @@ public class XlsFormatWriterInvalidOutputTest {
         assertThat("大文字小文字だけが違う名前も同名と判定される",
                 thrown.getMessage(), containsString("already contains a sheet of this name"));
         assertFalse("ブックは作られない", writtenBook(book).exists());
+    }
+
+    /**
+     * Given: カラム名が {@code //} で始まるテーブル。
+     * When : {@code write}。
+     * Then : {@code IllegalArgumentException} で失敗する。<b>ブックは作られない。</b>
+     *
+     * <p>
+     * 本体は {@code //} で始まるセルをコメントとして読み飛ばすため、そのまま書くとカラム名が消える。
+     * 名前を引用符で囲む書き方は記法に定めが無いため、書き出せないものとして止める。
+     * </p>
+     */
+    @Test
+    public void rejectsColumnNameStartingWithCommentPrefix() {
+        // Given
+        String book = "CommentColumn";
+        TableDataBlock table = new TableDataBlock(DataType.SETUP_TABLE_DATA, "", "T",
+                Arrays.asList("A", "//B"),
+                Collections.singletonList(Arrays.asList("1", "2")));
+
+        // When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container(book, table),
+                        folder.getRoot().getAbsolutePath()));
+
+        // Then
+        assertThat(thrown.getMessage(), containsString("// で始まる名前"));
+        assertThat(thrown.getMessage(), containsString("identifier=T"));
+        assertThat(thrown.getMessage(), containsString("name='//B'"));
+        assertFalse("ブックは作られない", writtenBook(book).exists());
+    }
+
+    /**
+     * Given: フィールド名が {@code //} で始まる可変長ファイル。
+     * When : {@code write}。
+     * Then : {@code IllegalArgumentException} で失敗する。<b>ブックは作られない。</b>
+     *
+     * <p>
+     * カラム名と同じく、名前の行に {@code //} で始まるセルを書くと本体に読み飛ばされるため止める。
+     * </p>
+     */
+    @Test
+    public void rejectsFieldNameStartingWithCommentPrefix() {
+        // Given
+        String book = "CommentField";
+        Map<String, String> directives = new LinkedHashMap<>();
+        directives.put("text-encoding", "UTF-8");
+        RecordLayout record = new RecordLayout("data",
+                Arrays.asList(new FieldDef("a", "X", null), new FieldDef("//b", "X", null)),
+                Collections.singletonList(Arrays.asList("1", "2")));
+        FileDataBlock file = new FileDataBlock(DataType.SETUP_VARIABLE, "", "out.csv",
+                directives, Collections.singletonList(record));
+
+        // When
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new XlsFormatWriter().write(container(book, file),
+                        folder.getRoot().getAbsolutePath()));
+
+        // Then
+        assertThat(thrown.getMessage(), containsString("// で始まる名前"));
+        assertThat(thrown.getMessage(), containsString("identifier=out.csv"));
+        assertThat(thrown.getMessage(), containsString("name='//b'"));
+        assertFalse("ブックは作られない", writtenBook(book).exists());
+    }
+
+    /**
+     * 1 ブロックだけのセクションを 1 つ持つコンテナを組み立てる。
+     *
+     * @param book  ブック名
+     * @param block ブロック
+     * @return コンテナ
+     */
+    private static TestDataContainer container(String book, TestDataBlock block) {
+        return new TestDataContainer(book, Collections.singletonList(
+                new TestDataSection(SHEET, Collections.singletonList(block))));
     }
 }
