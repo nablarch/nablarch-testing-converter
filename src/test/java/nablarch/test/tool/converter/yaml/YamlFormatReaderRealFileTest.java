@@ -1,0 +1,1232 @@
+package nablarch.test.tool.converter.yaml;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import nablarch.test.core.reader.DataType;
+import nablarch.test.core.reader.yaml.YamlLoader;
+import nablarch.test.tool.converter.model.FieldDef;
+import nablarch.test.tool.converter.model.FileDataBlock;
+import nablarch.test.tool.converter.model.ListMapBlock;
+import nablarch.test.tool.converter.model.MessageDataBlock;
+import nablarch.test.tool.converter.model.RecordLayout;
+import nablarch.test.tool.converter.model.TableDataBlock;
+import nablarch.test.tool.converter.model.TestDataBlock;
+import nablarch.test.tool.converter.model.TestDataContainer;
+
+import org.junit.After;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+/**
+ * YAML → 中間モデルの読み取りを実 {@code .yaml} で駆動し、データタイプ・ブロック実装・
+ * 中間モデルのフィールド・件数（0 件・1 件・複数件）を担保するテスト。
+ *
+ * <p>
+ * {@code YamlFormatReaderTest} 20 件は {@code loadRawMap} を in-memory {@code Map} へ差し替える経路であり、
+ * YAML テキストのパースとスキーマ検証を通らない。本クラスは {@link YamlFixture} が書き出した
+ * 実 {@code .yaml} を入力とし、本番配線の {@link YamlFormatReader} を通す。
+ * </p>
+ *
+ * <p>
+ * 空コレクション（{@code columnNames} / {@code rows} / {@code records}）は
+ * <b>スキーマが空配列を許す形でのみ到達できる</b>。到達できないもの
+ * （{@code FileDataBlock.directives} 空・{@code MessageDataBlock.directives} 空・
+ * {@code RecordLayout.fields} 空・{@code FieldDef.type} 省略）は、その根拠を本クラスまたは
+ * {@link YamlFormatReaderInvalidInputTest} が実行可能な形で示す。
+ * </p>
+ *
+ * <p>
+ * 各テストの Javadoc には、そのテストが担保する観点（データタイプ・ブロック実装・中間モデルのフィールド・件数）を記す。
+ * </p>
+ *
+ * <p>
+ * <b>本クラスのアサーションは、記法どおりの YAML 形式のテストデータを中間モデルへ写す規則である。</b>
+ * {@code group_id} を省略した送信同期エントリと、{@code FW_HEADER} を名乗るレコードも、記法どおりに読む。
+ * </p>
+ *
+ * @author kiyobot
+ */
+public class YamlFormatReaderRealFileTest {
+
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    /** 実 {@link YamlFormatReader} を通すため、{@link YamlLoader} の LRU キャッシュをテスト間で残さない。 */
+    @After
+    public void clearLoaderCache() {
+        YamlLoader.clearCacheForTest();
+    }
+
+    /**
+     * フィクスチャ {@code .yaml} の出力先ディレクトリ。読み書きとも本メソッドだけを使う。
+     *
+     * @return ディレクトリ
+     */
+    private Path dir() {
+        return folder.getRoot().toPath();
+    }
+
+    // ------------------------------------------------------------------ データタイプ
+
+    /**
+     * Given: 既知セクション 11 キーに 13 エントリを書いた 1 ファイル
+     *        （{@code setup_files} / {@code expected_files} は固定長・可変長を 1 件ずつ持つ）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code DataType.DEFAULT} を除く 13 種すべてが、YAML の記述順どおりに生成される。
+     *
+     * <p>
+     * <b>フィクスチャのセクションはスキーマの定義順と逆に並べてある。</b>
+     * {@code YamlFormatReader#read} は {@code yaml.keySet()} を走査するという実装であり、
+     * 定義順どおりに書いたフィクスチャでは「記述順に読んでいる」のか
+     * 「定義順で読んでいる」のかを区別できないためである。逆順にすることで、
+     * この 1 件が<b>記述順の保持</b>を固定する。
+     * </p>
+     *
+     * <p>
+     * {@code DEFAULT} は {@code YamlFormatReader#addBlocksForSection} が既知セクションキーのみを
+     * 分岐に持ち、いずれの分岐も {@code DEFAULT} を渡さないため YAML の読み取りでは到達不能である。
+     * </p>
+     *
+     * <p>担保する観点: データタイプ 13 種（{@code DEFAULT} を除く）／セクション内ブロック数 複数（13）。</p>
+     */
+    @Test
+    public void readsAllThirteenDataTypesFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), allSectionsYaml());
+
+        // Then
+        assertThat("DataType が増えたら気づけるよう総数も固定する（DEFAULT ＋ 13）",
+                DataType.values().length, is(14));
+        List<DataType> actual = new ArrayList<>();
+        for (TestDataBlock block : YamlFixture.blocks(container)) {
+            actual.add(block.getDataType());
+        }
+        assertThat("スキーマ定義順でも辞書順でもなく、YAML に書いた順であること", actual, is(Arrays.asList(
+                DataType.RESPONSE_BODY_MESSAGES,
+                DataType.RESPONSE_HEADER_MESSAGES,
+                DataType.EXPECTED_REQUEST_BODY_MESSAGES,
+                DataType.EXPECTED_REQUEST_HEADER_MESSAGES,
+                DataType.MESSAGE,
+                DataType.EXPECTED_FIXED,
+                DataType.EXPECTED_VARIABLE,
+                DataType.SETUP_FIXED,
+                DataType.SETUP_VARIABLE,
+                DataType.LIST_MAP,
+                DataType.EXPECTED_COMPLETED,
+                DataType.EXPECTED_TABLE_DATA,
+                DataType.SETUP_TABLE_DATA)));
+        List<String> identifiers = new ArrayList<>();
+        for (TestDataBlock block : YamlFixture.blocks(container)) {
+            identifiers.add(block.getIdentifier());
+        }
+        assertThat("データタイプだけでなく識別子も固定する（別セクションの器から組み立てても気づけるように）",
+                identifiers, is(Arrays.asList(
+                        "MSG4", "MSG3", "MSG2", "MSG1", "RM01",
+                        "ef.dat", "ev.csv", "sf.dat", "sv.csv", "lm", "T3", "T2", "T1")));
+    }
+
+    // ------------------------------------------------------------------ ブロック実装
+
+    /**
+     * Given: テーブル・LIST_MAP・ファイル・メッセージを 1 件ずつ書いた 1 ファイル。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code TestDataBlock} の具象 4 種がそれぞれ生成され、識別子も原文どおりになる。
+     *        テーブルと LIST_MAP はいずれも行 1 件を持つ。
+     *
+     * <p>担保する観点: ブロック実装 4 種／{@code identifier}／セクション内ブロック数 複数（4）／<b>ブロック内行数 1 件</b>。</p>
+     */
+    @Test
+    public void readsFourBlockImplementationsFromOneRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n"
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - K: \"v\"\n"
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n");
+
+        // Then
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat(blocks.size(), is(4));
+        assertThat(blocks.get(0), is(instanceOf(TableDataBlock.class)));
+        assertThat(blocks.get(0).getIdentifier(), is("T"));
+        assertThat("ブロック内行数（1 件）", ((TableDataBlock) blocks.get(0)).getRows().size(), is(1));
+        assertThat(blocks.get(1), is(instanceOf(ListMapBlock.class)));
+        assertThat(blocks.get(1).getIdentifier(), is("lm"));
+        assertThat("ブロック内行数（1 件。LIST_MAP 経路）",
+                ((ListMapBlock) blocks.get(1)).getRows().size(), is(1));
+        assertThat(blocks.get(2), is(instanceOf(FileDataBlock.class)));
+        assertThat(blocks.get(2).getIdentifier(), is("f.dat"));
+        assertThat(blocks.get(3), is(instanceOf(MessageDataBlock.class)));
+        assertThat(blocks.get(3).getIdentifier(), is("RM01"));
+    }
+
+    // ------------------------------------------------------------------ 中間モデルのフィールド・件数（空コレクション）
+
+    /**
+     * Given: {@code rows} を空配列にしたテーブルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : ブロックは生成され、{@code columnNames} も {@code rows} も空になる。
+     *
+     * <p>
+     * {@code columnNames} 空・{@code rows} 空（ブロック内行数 0 件）を同じ入力で通す。
+     * カラム名は行から導出されるため、行が無ければカラム名も 0 件になる。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_TABLE_DATA}／{@code TableDataBlock}／{@code identifier}／{@code columnNames} 空／
+     * {@code rows} 空／セクション内ブロック数 1 件／ブロック内行数 0 件。</p>
+     */
+    @Test
+    public void readsEmptyColumnNamesAndRowsFromTableWithoutRows() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(),
+                "setup_tables:\n  - table: \"T\"\n    rows: []\n");
+
+        // Then
+        TableDataBlock block = YamlFixture.onlyBlock(container, TableDataBlock.class);
+        assertThat(block.getDataType(), is(DataType.SETUP_TABLE_DATA));
+        assertThat(block.getIdentifier(), is("T"));
+        assertThat("group_id 省略時はグループ ID が空文字になる", block.getGroupId(), is(""));
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
+        assertThat("rows が空であること", block.getRows(), is(Collections.emptyList()));
+    }
+
+    /**
+     * Given: {@code rows} を空配列にした LIST_MAP エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : ブロックは生成され、{@code columnNames} も {@code rows} も空になる（テーブル経路と同じ）。
+     *
+     * <p>担保する観点: {@code LIST_MAP}／{@code ListMapBlock}／{@code identifier}／{@code columnNames} 空／
+     * {@code rows} 空／ブロック内行数 0 件。</p>
+     */
+    @Test
+    public void readsEmptyColumnNamesAndRowsFromListMapWithoutRows() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(),
+                "list_maps:\n  - id: \"lm\"\n    rows: []\n");
+
+        // Then
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
+        assertThat(block.getDataType(), is(DataType.LIST_MAP));
+        assertThat(block.getIdentifier(), is("lm"));
+        assertThat("columnNames が空であること", block.getColumnNames(), is(Collections.emptyList()));
+        assertThat("rows が空であること", block.getRows(), is(Collections.emptyList()));
+    }
+
+    /**
+     * Given: {@code records} を空配列にした固定長ファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : ブロックは生成され、{@code records} が空になる。
+     *
+     * <p>
+     * {@code FileDataBlock.records} 空（ファイル内レコードレイアウト数 0 件）を通す。
+     * スキーマ {@code $defs.file_data.properties.records.minItems} が 0 であるため到達できる
+     * （{@code message_data} / {@code group_message_data} / {@code expected_request_message_data} は
+     * いずれも {@code minItems: 1} のため
+     * メッセージ系では到達できない）。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／{@code fileType} 固定長／{@code records} 空
+     * （レコードレイアウト数 0 件）。</p>
+     */
+    @Test
+    public void readsEmptyRecordsFromFixedFileWithoutRecords() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(),
+                "setup_files:\n  - path: \"f.dat\"\n    type: \"fixed\"\n    records: []\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getDataType(), is(DataType.SETUP_FIXED));
+        assertThat(block.getFileType(), is(FileDataBlock.FileType.FIXED));
+        assertThat("records が空であること", block.getRecords(), is(Collections.emptyList()));
+    }
+
+    /**
+     * Given: フィールド定義は持つが {@code rows} を空配列にしたレコード断片。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : レコードレイアウトは生成され、{@code rows} が空になる（{@code fields} は 1 件のまま）。
+     *
+     * <p>
+     * {@code RecordLayout.rows} 空を通す。あわせて {@code record_type} を書かない場合に
+     * {@code RecordLayout.recordType} が {@code null} になることも実ファイル経路で確かめる。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／{@code recordType} 省略（{@code null}）／
+     * {@code RecordLayout.rows} 空／{@code FieldDef.name}／{@code FieldDef.length}／レコードレイアウト数 1 件。</p>
+     */
+    @Test
+    public void readsEmptyRowsFromRecordLayoutWithoutRows() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows: []\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getRecords().size(), is(1));
+        RecordLayout record = block.getRecords().get(0);
+        assertThat(record.getRecordType(), is(nullValue()));
+        assertThat(record.getFields().size(), is(1));
+        assertThat("RecordLayout.rows が空であること", record.getRows(), is(Collections.emptyList()));
+    }
+
+    /**
+     * Given: {@code record_type} に小文字の {@code "default"} を書いたレコード断片。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code RecordLayout.recordType} は {@code null} になる
+     *        （作成者が書いた {@code "default"} は中間モデルに残らない）。
+     *
+     * <p>
+     * {@code YamlFormatReader#normalizeRecordType} は {@code "Default"} と {@code "default"} の
+     * 2 つを {@code null} へ正規化する。{@code "Default"} 側は in-memory 経路の
+     * {@code YamlFormatReaderTest#readFile_recordTypeDefault_normalizedToNull} が通しているが、
+     * 小文字側は本テストが実 {@code .yaml} で通す。
+     * スキーマ {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、
+     * その description も「可読性のために任意の名前を記述してよい」と書いているため、
+     * {@code "default"} は<b>スキーマを通る仕様内の入力</b>である。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／{@code recordType}（{@code "default"}→null の正規化）。</p>
+     */
+    @Test
+    public void normalizesLowercaseDefaultRecordTypeToNull() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - record_type: \"default\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getRecords().size(), is(1));
+        RecordLayout record = block.getRecords().get(0);
+        assertThat("小文字の \"default\" も null へ正規化される", record.getRecordType(), is(nullValue()));
+        assertThat(record.getFields().get(0).getName(), is("f1"));
+        assertThat(record.getRows(), is(Arrays.asList(Arrays.asList("a"))));
+    }
+
+    /**
+     * Given: フィールド名を<b>辞書順と逆</b>（{@code zz} → {@code aa}）に書いたレコード断片。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code FieldDef} の並びも行の値の並びも<b>原文の記述順</b>になる。
+     *
+     * <p>
+     * <b>フィールド名を辞書順と逆にしてあるのは意図である。</b>{@code FieldDef} の並びは
+     * 原文 Map（{@code YamlFormatReader#toFieldDefs}）から、行の値の並びは器の
+     * {@code DataFileFragment#getNames()} から来る<b>別々の出所</b>であり、両者は位置で対応づけられる。
+     * 他のテストのフィールド名（{@code f1,f2,f3} ／ {@code c1,c2}）は記述順と辞書順が一致するため、
+     * どちらかがソートされても気づけない。
+     * </p>
+     *
+     * <p>担保する観点: {@code FieldDef.name}／{@code RecordLayout.rows} 値あり。
+     * フィールド並びと値の対応の担保。</p>
+     */
+    @Test
+    public void preservesFieldOrderAndValueAlignmentFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"zz\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"mm\", type: \"半角英字\", length: \"1\"}\n"
+                + "          - {name: \"aa\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"z\", \"m\", \"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        RecordLayout record = block.getRecords().get(0);
+        List<String> names = new ArrayList<>();
+        for (FieldDef field : record.getFields()) {
+            names.add(field.getName());
+        }
+        assertThat("辞書順（[aa, mm, zz]）ではなく原文の記述順であること",
+                names, is(Arrays.asList("zz", "mm", "aa")));
+        assertThat("値もフィールドの記述順に対応すること",
+                record.getRows(), is(Arrays.asList(Arrays.asList("z", "m", "a"))));
+    }
+
+    // ------------------------------------------------------------------ 中間モデルのフィールド（directives）
+
+    /**
+     * Given: {@code directives} を書かない固定長ファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code directives} は空にならず、器が注入する {@code file-type} を持つ。
+     *
+     * <p>
+     * 注入されるキーは<b>ファイル種別で違う</b>。固定長は {@code {file-type=Fixed}} の 1 件だが、
+     * 可変長は {@code {file-type=Variable, field-separator=,}} の 2 件になる。
+     * 本テストは固定長で 1 件であることを固定する。{@code directives} が空にならないという結論は両種別で成り立つ。
+     * </p>
+     *
+     * <p>
+     * <b>YAML の読み取りでは {@code FileDataBlock.directives} が空の中間モデルに到達できないことの根拠</b>である。
+     * Excel の読み取りでも同じ理由（本体 {@code DataFile} のコンストラクタが {@code file-type} を必ず注入する）で
+     * 到達できず、YAML 経路でも同じ器を使うため結果は変わらない。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／{@code directives} 空が到達不能であることの根拠。</p>
+     */
+    @Test
+    public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getDirectives().size(), is(1));
+        assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code directives} を書かないメッセージエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code directives} は空にならず、器が注入する {@code file-type} だけを持つ。
+     *
+     * <p>
+     * <b>YAML の読み取りでは {@code MessageDataBlock.directives} が空の中間モデルに到達できないことの根拠</b>である。
+     * ただし {@code MessageDataBlock} は {@code addMessageBlocks}（本テスト）と {@code addSendSyncBlocks}
+     * （{@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInSendSync}）の 2 か所で生成される。
+     * 根拠は両方で示す。
+     * </p>
+     *
+     * <p>担保する観点: {@code MESSAGE}／{@code MessageDataBlock}／{@code directives} 空が到達不能であることの根拠
+     * （受信メッセージ経路）。</p>
+     */
+    @Test
+    public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat(block.getDirectives().size(), is(1));
+        assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code directives} に {@code text-encoding} を書いたメッセージエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 書いたディレクティブが器の注入する {@code file-type} とともに中間モデルへ入る。
+     *
+     * <p>
+     * {@code MessageDataBlock.directives} 値ありを通す。
+     * </p>
+     *
+     * <p>担保する観点: {@code MESSAGE}／{@code MessageDataBlock}／{@code directives} 値あり。</p>
+     */
+    @Test
+    public void readsMessageDirectivesFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    directives:\n"
+                + "      text-encoding: \"Windows-31J\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat("器が既定ディレクティブを増やしたら気づけるよう件数も固定する",
+                block.getDirectives().size(), is(2));
+        assertThat(block.getDirectives().get("text-encoding"), is("Windows-31J"));
+        assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code record-length}（integer）と {@code required-decimal-point}（boolean）を書いた
+     *        固定長ファイルエントリ。スキーマ {@code $defs.directives} はこの 2 つを
+     *        文字列ではなく integer ／ boolean として定義している。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 中間モデルの {@code directives} には<b>文字列化した値</b>（{@code "3"} ／ {@code "true"}）が入る。
+     *
+     * <p>
+     * {@code YamlFormatReader#toStringDirectives} が {@code Object#toString()} に委ねているため。
+     * 行値（{@code rows}）と違い<b>ディレクティブ値は非文字列を書ける</b>ので、その型変換をここで固定する。
+     * </p>
+     *
+     * <p>担保する観点: {@code FileDataBlock.directives} 値ありを非文字列記法で確認したもの。</p>
+     */
+    @Test
+    public void stringifiesNonStringDirectiveValuesFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    directives:\n"
+                + "      record-length: 3\n"
+                + "      required-decimal-point: true\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"3\"}\n"
+                + "        rows:\n"
+                + "          - [\"abc\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("器が注入する file-type ＋ 書いた 2 件", block.getDirectives().size(), is(3));
+        assertThat("integer が文字列になる", block.getDirectives().get("record-length"), is("3"));
+        assertThat("boolean が文字列になる", block.getDirectives().get("required-decimal-point"), is("true"));
+    }
+
+    /**
+     * Given: {@code directives} を書かない<b>可変長</b>ファイルエントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 器が {@code file-type} に加えて {@code field-separator} も注入するため、
+     *        {@code directives} は 2 件になる。
+     *
+     * <p>
+     * {@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInFile}（固定長・1 件）との
+     * 差を固定する。「{@code directives} 空は到達不能」という結論は両種別で成り立つが、
+     * <b>注入されるキーはファイル種別で違う</b>。
+     * </p>
+     *
+     * <p>担保する観点: {@code FileDataBlock}／{@code fileType} 可変長／{@code directives} 空が到達不能であることの根拠
+     * （可変長側）／{@code FieldDef.length} 省略（{@code null}。実ファイル経路）。</p>
+     */
+    @Test
+    public void readsInjectedDirectivesEvenWhenDirectivesAreOmittedInVariableFile() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"v.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat(block.getFileType(), is(FileDataBlock.FileType.VARIABLE));
+        assertThat("可変長では field-separator も注入される", block.getDirectives().size(), is(2));
+        assertThat(block.getDirectives().get("file-type"), is("Variable"));
+        assertThat(block.getDirectives().get("field-separator"), is(","));
+        assertThat("省略時は length が null になる（可変長では length を書かない）",
+                block.getRecords().get(0).getFields().get(0).getLength(), is(nullValue()));
+    }
+
+    /**
+     * Given: {@code list_maps} に、辞書順と逆に並べた 2 カラム（{@code val} → {@code key}）と
+     *        マーカーカラム {@code "[no]"} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code columnNames} は<b>原文の記述順</b> {@code [val, key]} になり（辞書順なら {@code [key, val]}）、
+     *        マーカーカラムは除外される。
+     *
+     * <p>
+     * <b>カラム名を辞書順と逆にしてあるのは意図である。</b>以前「LIST_MAP のカラム順が
+     * アルファベット順になる」不具合を直しており、その再発を検知するには
+     * 記述順とソート順が食い違う入力でなければならない。
+     * </p>
+     *
+     * <p>
+     * あわせて {@code YamlFormatReader#nonMarkerColumns} を<b>実ファイル経路で</b>通す唯一のテストでもある
+     * （テーブル系のカラムは器の {@code TableData#getColumnNames()} 由来であり、このメソッドを通らない）。
+     * </p>
+     *
+     * <p>担保する観点: {@code ListMapBlock}／{@code columnNames} 値あり／{@code rows} 値あり。カラム順とマーカー除外の担保。</p>
+     */
+    @Test
+    public void preservesListMapColumnOrderAndExcludesMarkerFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - val: \"1\"\n"
+                + "        key: \"2\"\n"
+                + "        \"[no]\": \"9\"\n");
+
+        // Then
+        ListMapBlock block = YamlFixture.onlyBlock(container, ListMapBlock.class);
+        assertThat("辞書順（[key, val]）ではなく原文の記述順であること",
+                block.getColumnNames(), is(Arrays.asList("val", "key")));
+        assertThat("マーカーカラムは値ごと除外される", block.getRows(), is(Arrays.asList(Arrays.asList("1", "2"))));
+    }
+
+    /**
+     * Given: {@code response_body_messages}（送信系）に、{@code record_type: "FW_HEADER"} のレコードを
+     *        1 件だけ書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>落とされずに残る</b>（ファイル系と同じ扱いになる）。
+     *
+     * <p>
+     * <b>記法どおりの仕様を書いたテストである（{@code FW_HEADER} を名乗るレコードを捨てる挙動の修正で緑になった）。</b>
+     * スキーマ {@code $defs.record_fragment.properties.record_type} の description は
+     * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
+     * {@code $defs.message_data.properties.records} の description も
+     * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。ゆえに送信系でも
+     * この名前のレコードは落とされてはならない。
+     * </p>
+     *
+     * <p>
+     * 器（{@code nablarch-testing-yaml} の {@code YamlFileBuilder}）も {@code FW_HEADER} を名乗る断片を作り、
+     * {@code YamlFormatReader} もファイル系と同じ {@code #records(entry)} で原文のレコードを取る。
+     * 器の断片数と原文レコード数が揃うため、{@code #toRecordLayouts} の不整合チェックにも掛からない。
+     * </p>
+     *
+     * <p>
+     * <b>レコードは 1 件だけ書く。</b>電文のレコードレイアウトは 1 つであり、2 つ以上書くと
+     * YAML 側のスキーマ検証で落ちる（{@code YamlFrameworkAlignmentTest#rejectsMessageWithTwoRecords}）。
+     * 本テストが確かめたいのは「{@code FW_HEADER} という名前のレコードが落とされないこと」であり、
+     * レコードの件数ではない。
+     * </p>
+     *
+     * <p>担保する観点: 経路差（新しいデータタイプ・ブロック・フィールドの担保は与えない）。</p>
+     */
+    @Test
+    public void keepsFwHeaderNamedRecordInSendSyncFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"M1\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"h\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(1));
+        assertThat("レコード種別は原文のまま残る（ファイル系と同じ）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("h1"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("h"))));
+    }
+
+    /**
+     * Given: {@code setup_files} のレコードに {@code record_type: "FW_HEADER"} を書いた YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件）。
+     *
+     * <p>
+     * <b>3 経路で扱いが揃っていることの確認である。</b>同じ {@code record_type: "FW_HEADER"} を
+     * {@code messages}／送信系に書いてもレコードは残る
+     * （{@link #keepsFwHeaderNamedRecordInMessageFromRealYaml} ／
+     * {@link #keepsFwHeaderNamedRecordInSendSyncFromRealYaml}）。
+     * 修正前はファイル系だけが残っていた。メッセージ系の除外
+     * （旧 {@code YamlFormatReader#recordsWithoutFwHeader}）を廃止し、3 経路とも
+     * {@code #records(entry)} を使うようにしたためである。
+     * </p>
+     *
+     * <p>担保する観点: 経路差の固定（新しいデータタイプ・ブロック・フィールドの担保は与えない）。</p>
+     */
+    @Test
+    public void keepsFwHeaderNamedRecordInFileFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        assertThat("ファイル系では FW_HEADER 名のレコードも残る", block.getRecords().size(), is(1));
+        assertThat("レコード種別も原文のまま残る（正規化で消えない）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("a"))));
+    }
+
+    // ------------------------------------------------------------------ 件数
+
+    /**
+     * Given: ブロックを 1 件も持たない（既知セクションを書かない）YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : コンテナ名・セクション名はともにリソース名になり、セクションは 1 件・ブロックは 0 件になる。
+     *
+     * <p>
+     * コンテナ名・セクション 1 件・セクション名・ブロック 0 件を実ファイル経路で通す。
+     * セクション複数は {@code YamlFormatReader#read} が {@code Collections.singletonList(section)} を返す
+     * 1 リソース単位 API のため到達不能である。
+     * </p>
+     *
+     * <p>
+     * <b>入力は {@code setup_tables: []}（既知セクションを空配列で書く）である。</b>
+     * 空ファイルやコメントだけのファイルにすると {@code YamlLoader#load} が
+     * {@code loadFromInputStream} の {@code null} を受けて空 Map を早期 return し、
+     * <b>{@code JSON_SCHEMA.validate} に到達しない</b>。本テストはスキーマ検証を通る入力で
+     * 「ブロック 0 件」を担保するために、スキーマ上有効な空配列を用いる。
+     * 空ファイルそのもの（＝検証を迂回する分岐）は
+     * {@link YamlFormatReaderInvalidInputTest#readsEmptyFileAsContainerWithoutBlocks}（異常系の空ファイル）が担保する。
+     * </p>
+     *
+     * <p>担保する観点: {@code TestDataContainer.name}／{@code sections} 1 件／{@code TestDataSection.name}／
+     * {@code blocks} 空（セクション内ブロック数 0 件）／コンテナ内セクション数 1 件。</p>
+     */
+    @Test
+    public void namesContainerAndSectionByResourceNameWithoutBlocks() {
+        // Given / When: 既知セクションを空配列で書いた YAML（スキーマ検証を通る）
+        TestDataContainer container = YamlFixture.read(dir(), "setup_tables: []\n");
+
+        // Then
+        assertThat(container.getName(), is(YamlFixture.RESOURCE));
+        assertThat(container.getSections().size(), is(1));
+        assertThat(container.getSections().get(0).getName(), is(YamlFixture.RESOURCE));
+        assertThat("ブロックが 0 件であること", YamlFixture.blocks(container), is(Collections.emptyList()));
+    }
+
+    /**
+     * Given: 1 セクションに 3 ブロック・1 ブロックに 2 行・1 ファイルに 2 レコードレイアウトを持つ YAML。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 多重度がそのまま中間モデルへ入る。
+     *
+     * <p>
+     * セクション内ブロック数・ブロック内行数・ファイル内レコードレイアウト数の複数件を実ファイル経路で通す
+     * （1 件のケースは他のテストが通している）。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_TABLE_DATA}／{@code SETUP_FIXED}／{@code TableDataBlock}／{@code FileDataBlock}／
+     * {@code recordType} 値あり／ブロック数・行数・レコードレイアウト数の複数件。</p>
+     */
+    @Test
+    public void readsMultipleBlocksRowsAndRecordLayoutsFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_tables:\n"
+                + "  - table: \"T1\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n"
+                + "      - C: \"2\"\n"
+                + "  - table: \"T2\"\n"
+                + "    rows:\n"
+                + "      - C: \"3\"\n"
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - record_type: \"head\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "      - record_type: \"data\"\n"
+                + "        fields:\n"
+                + "          - {name: \"f2\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "          - [\"c\"]\n");
+
+        // Then
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat("セクション内ブロック数（複数）", blocks.size(), is(3));
+        assertThat("ブロック内行数（複数）", ((TableDataBlock) blocks.get(0)).getRows().size(), is(2));
+        FileDataBlock file = (FileDataBlock) blocks.get(2);
+        assertThat("ファイル内レコードレイアウト数（複数）", file.getRecords().size(), is(2));
+        assertThat(file.getRecords().get(0).getRecordType(), is("head"));
+        assertThat(file.getRecords().get(1).getRows().size(), is(2));
+    }
+
+    // ------------------------------------------------------------------ 中間モデルのフィールド（FW 制御ヘッダ・フィールド長）
+
+    /**
+     * Given: {@code fw_header:} に 2 キーを書いた {@code messages} エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : 書いたキーと値がそのまま {@code MessageDataBlock.fwHeaderFields} へ記述順で入る。
+     *
+     * <p>
+     * {@code MessageDataBlock.fwHeaderFields} 値ありを<b>実ファイル経路で</b>通す。
+     * これまでは in-memory 経路（{@code YamlFormatReaderTest#readMessage_mapsRawFwHeaderAndExcludesFwHeaderRecord}）
+     * の担保しか無かった。スキーマ上 {@code fw_header} は {@code messages} 専用であり
+     * （{@code $defs.message_data.properties.fw_header} の description）、値の型は
+     * {@code $defs.fw_header.additionalProperties.type} ＝ {@code string} である。
+     * </p>
+     *
+     * <p>担保する観点: {@code MESSAGE}／{@code MessageDataBlock}／{@code fwHeaderFields} 値あり。</p>
+     */
+    @Test
+    public void readsFwHeaderFieldsFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    fw_header:\n"
+                + "      userId: \"u1\"\n"
+                + "      requestId: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat("辞書順（[requestId, userId]）ではなく原文の記述順であること",
+                new ArrayList<>(block.getFwHeaderFields().keySet()),
+                is(Arrays.asList("userId", "requestId")));
+        assertThat(block.getFwHeaderFields().get("requestId"), is("RM01"));
+        assertThat(block.getFwHeaderFields().get("userId"), is("u1"));
+        // 本文レコードは fw_header の影響を受けない
+        assertThat(block.getRecords().size(), is(1));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("b1"));
+    }
+
+    /**
+     * Given: {@code length} を<b>引用符なしの整数</b>（{@code 10}）で書いたフィールド定義。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : スキーマを通り、{@code FieldDef.length} には文字列 {@code "10"} が入る。
+     *
+     * <p>
+     * スキーマ {@code $defs.field_def.properties.length} は
+     * {@code anyOf: [{type: integer, minimum: 0}, {type: string, pattern: "^([0-9]+|-)$"}]} であり、
+     * description も「integer 記法（10）も文字列記法（"10"）もどちらも有効」と明記している。
+     * すなわち<b>これは仕様内の入力である</b>（{@code rows} の値として引用符なし {@code 123} を書くと
+     * スキーマ違反になるのとは別の話）。
+     * 中間モデルで文字列になるのは {@code YamlSection#toStr} が {@code Object#toString()} で
+     * 文字列化するためであり、引用符の有無は中間モデルに残らない。
+     * </p>
+     *
+     * <p>担保する観点: {@code SETUP_FIXED}／{@code FileDataBlock}／{@code FieldDef.length} 値あり（integer 記法）。</p>
+     */
+    @Test
+    public void readsIntegerLengthNotationAsString() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "setup_files:\n"
+                + "  - path: \"f.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: 10}\n"
+                + "        rows:\n"
+                + "          - [\"abcdefghij\"]\n");
+
+        // Then
+        FileDataBlock block = YamlFixture.onlyBlock(container, FileDataBlock.class);
+        FieldDef field = block.getRecords().get(0).getFields().get(0);
+        assertThat(field.getName(), is("f1"));
+        assertThat(field.getType(), is("半角英字"));
+        assertThat(field.getLength(), is("10"));
+    }
+
+    // ------------------------------------------------------------------ 送信系の group_id 省略・FW_HEADER
+
+    /**
+     * Given: {@code directives} を書かない送信系（{@code response_header_messages}）エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code directives} は空にならず、器が注入する {@code file-type} だけを持つ。
+     *
+     * <p>
+     * {@code MessageDataBlock} は {@code YamlFormatReader#addMessageBlocks} と
+     * {@code #addSendSyncBlocks} の 2 か所で生成される。
+     * {@link #readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInMessage} が前者を通すのに対し、
+     * 本テストは<b>後者</b>を通す。したがって
+     * <b>YAML の読み取りでは {@code MessageDataBlock.directives} が空にならないことの根拠</b>は
+     * 2 つの生成経路の両方で示されている。
+     * </p>
+     *
+     * <p>担保する観点: {@code RESPONSE_HEADER_MESSAGES}／{@code MessageDataBlock}／{@code directives} 空が
+     * 到達不能であることの根拠（送信系経路）。</p>
+     */
+    @Test
+    public void readsInjectedFileTypeDirectiveEvenWhenDirectivesAreOmittedInSendSync() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n");
+
+        // Then
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat(block.getDataType(), is(DataType.RESPONSE_HEADER_MESSAGES));
+        assertThat(block.getDirectives().size(), is(1));
+        assertThat(block.getDirectives().get("file-type"), is("Fixed"));
+    }
+
+    /**
+     * Given: {@code group_id} を書かない送信系エントリ 1 件と、書いたエントリ 1 件。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : {@code group_id} 無しのエントリも<b>デフォルトグループ（グループ ID は空文字）</b>の
+     *        ブロックとして読み込まれ、記述順どおり 2 ブロックになる。
+     *
+     * <p>
+     * 記法はグループIDを省略した場合は、グループIDを持たないデータブロック（デフォルトグループ）が
+     * 対象になると定めており、省略は仕様内の記法である。
+     * デフォルトグループを空文字で表すのは、ファイル系・テーブル系（{@code formatGroup}）および
+     * Excel 中間と同じ規則。
+     * </p>
+     *
+     * <p>担保する観点: {@code RESPONSE_BODY_MESSAGES}／{@code MessageDataBlock}（{@code group_id} 省略の記法どおりの挙動）。</p>
+     */
+    @Test
+    public void readsSendSyncEntryWithoutGroupIdAsDefaultGroupFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "response_body_messages:\n"
+                + "  - id: \"DEFAULT\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"d1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"x\"]\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"KEEP\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"k1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"y\"]\n");
+
+        // Then: 2 件とも残る（デフォルトグループが先、個別グループが後）
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat(blocks.size(), is(2));
+
+        MessageDataBlock defaultGroup = (MessageDataBlock) blocks.get(0);
+        assertThat(defaultGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
+        assertThat(defaultGroup.getIdentifier(), is("DEFAULT"));
+        assertThat(defaultGroup.getGroupId(), is(""));
+        assertThat(defaultGroup.getRecords().size(), is(1));
+        assertThat(defaultGroup.getRecords().get(0).getFields().size(), is(1));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getName(), is("d1"));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getType(), is("半角英字"));
+        assertThat(defaultGroup.getRecords().get(0).getFields().get(0).getLength(), is("1"));
+        assertThat(defaultGroup.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("x"))));
+
+        MessageDataBlock namedGroup = (MessageDataBlock) blocks.get(1);
+        assertThat(namedGroup.getDataType(), is(DataType.RESPONSE_BODY_MESSAGES));
+        assertThat(namedGroup.getIdentifier(), is("KEEP"));
+        assertThat(namedGroup.getGroupId(), is("g"));
+        assertThat(namedGroup.getRecords().get(0).getFields().get(0).getName(), is("k1"));
+        assertThat(namedGroup.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("y"))));
+    }
+
+    /**
+     * Given: {@code record_type: "FW_HEADER"} のレコードだけを持ち {@code fw_header:} を書かない
+     *        {@code messages} エントリ。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : レコードは<b>捨てられずに残る</b>（{@code records} 1 件。ファイル系と同じ扱い）。
+     *
+     * <p>
+     * <b>記法どおりの仕様を書いたテストである（{@code FW_HEADER} を名乗るレコードを捨てる挙動の修正で緑になった）。</b>
+     * {@code $defs.record_fragment.properties.record_type} に {@code enum} は無く、その description は
+     * 「{@code FW_HEADER} のような予約値はない」「可読性のために任意の名前を記述してよい」と明記し、
+     * {@code $defs.message_data.properties.records} の description も
+     * 「旧形式の {@code record_type: FW_HEADER} は廃止」と書いている。
+     * 修正前は、本体器（yaml jar の {@code YamlFileBuilder} が {@code FW_HEADER} を断片にしない）と
+     * converter（旧 {@code YamlFormatReader#recordsWithoutFwHeader}）の双方がこの名前のレコードを落とし、
+     * レコードも FW 制御ヘッダも 0 件になっていた（書いたフィールド定義とデータ行が黙って消える）。
+     * </p>
+     *
+     * <p>
+     * 器（{@code nablarch-testing-yaml}）と {@code YamlFormatReader} の両方が {@code FW_HEADER} を名乗る
+     * レコードを特別扱いしない。片側だけが特別扱いすると器の断片数と原文レコード数が食い違い、
+     * {@code YamlFormatReader#toRecordLayouts} の不整合チェックが {@code IllegalStateException} を投げる。
+     * </p>
+     *
+     * <p>担保する観点: 経路差（新しいデータタイプ・ブロック・フィールドの担保は与えない）。</p>
+     */
+    @Test
+    public void keepsFwHeaderNamedRecordInMessageFromRealYaml() {
+        // Given / When
+        TestDataContainer container = YamlFixture.read(dir(), ""
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - record_type: \"FW_HEADER\"\n"
+                + "        fields:\n"
+                + "          - {name: \"requestId\", type: \"半角英字\", length: \"4\"}\n"
+                + "        rows:\n"
+                + "          - [\"RM01\"]\n");
+
+        // Then: 書いたレコードがそのまま残る
+        MessageDataBlock block = YamlFixture.onlyBlock(container, MessageDataBlock.class);
+        assertThat(block.getDataType(), is(DataType.MESSAGE));
+        assertThat(block.getIdentifier(), is("RM01"));
+        assertThat("FW_HEADER 名のレコードも落とさない", block.getRecords().size(), is(1));
+        assertThat("レコード種別は原文のまま残る（ファイル系と同じ）",
+                block.getRecords().get(0).getRecordType(), is("FW_HEADER"));
+        assertThat(block.getRecords().get(0).getFields().get(0).getName(), is("requestId"));
+        assertThat(block.getRecords().get(0).getRows(), is(Arrays.asList(Arrays.asList("RM01"))));
+        assertThat("fw_header: を書いていないので FW 制御ヘッダは空のまま",
+                block.getFwHeaderFields(), is(Collections.emptyMap()));
+    }
+
+    // ------------------------------------------------------------------ グループの並び替え
+
+    /**
+     * Given: 同じセクション配列の中で {@code group_id} を {@code g1} → {@code g2} → {@code g1} と
+     *        交互に書いたエントリ列（テーブル系・ファイル系・送信系の 3 セクション）。
+     * When : 実 {@code .yaml} を {@code read}。
+     * Then : <b>例外にも警告にもならず</b>、ブロックはグループの初出順にまとめ直されて
+     *        {@code T1, T3, T2} ／ {@code a.dat, c.dat, b.dat} ／ {@code M1, M3, M2} の順になる
+     *        （原文の記述順ではない）。値そのものは失われない。
+     *
+     * <p>
+     * <b>この入力はスキーマ上の仕様内である。</b>{@code $defs.table_data} ／ {@code $defs.file_data} ／
+     * {@code $defs.group_message_data} のいずれも、同じ {@code group_id} のエントリが配列内で
+     * 連続することを要求していない。
+     * </p>
+     *
+     * <p>
+     * 原因は、テーブル系・ファイル系は {@code YamlFormatReader#formattedGroupsInOrder} が、
+     * 送信系は {@code #rawGroupsInOrder} が、それぞれグループを初出順に重複排除し、
+     * {@code #addTableBlocks} ／ {@code #addFileBlocks} ／ {@code #addSendSyncBlocks} が
+     * <b>グループ単位で</b>ブロックを作ることである。
+     * 修正しない（{@code src/main} は無変更）。NTF の記法が定めるのはグループの収集方式であって、変換後の
+     * ファイルの中でエントリをどの順に並べるかではなく、値も 1 つも失われないためである。
+     * </p>
+     */
+    @Test
+    public void reordersBlocksByFirstAppearanceOfGroupIdFromRealYaml() {
+        // Given / When
+        YamlFixture.Reading reading = YamlFixture.readCapturingWarnings(dir(), ""
+                + "setup_tables:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    table: \"T1\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n"
+                + "  - group_id: \"g2\"\n"
+                + "    table: \"T2\"\n"
+                + "    rows:\n"
+                + "      - C: \"2\"\n"
+                + "  - group_id: \"g1\"\n"
+                + "    table: \"T3\"\n"
+                + "    rows:\n"
+                + "      - C: \"3\"\n"
+                + "setup_files:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    path: \"a.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - group_id: \"g2\"\n"
+                + "    path: \"b.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "  - group_id: \"g1\"\n"
+                + "    path: \"c.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"c\"]\n"
+                + "response_body_messages:\n"
+                + "  - group_id: \"g1\"\n"
+                + "    id: \"M1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - group_id: \"g2\"\n"
+                + "    id: \"M2\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "  - group_id: \"g1\"\n"
+                + "    id: \"M3\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"c\"]\n");
+
+        // Then: グループの初出順にまとめ直され、原文の記述順（T1, T2, T3 ほか）ではなくなる
+        TestDataContainer container = reading.container();
+        assertThat("警告も出ない", reading.warnings(), is(Collections.<String>emptyList()));
+        List<String> identifiers = new ArrayList<>();
+        List<String> groupIds = new ArrayList<>();
+        for (TestDataBlock block : YamlFixture.blocks(container)) {
+            identifiers.add(block.getIdentifier());
+            groupIds.add(block.getGroupId());
+        }
+        assertThat("原文の記述順ではなくグループの初出順に並ぶ", identifiers, is(Arrays.asList(
+                "T1", "T3", "T2",
+                "a.dat", "c.dat", "b.dat",
+                "M1", "M3", "M2")));
+        assertThat(groupIds, is(Arrays.asList(
+                "g1", "g1", "g2",
+                "g1", "g1", "g2",
+                "g1", "g1", "g2")));
+        // 値そのものは失われない（入れ替わるのは並びだけ）
+        List<TestDataBlock> blocks = YamlFixture.blocks(container);
+        assertThat("2 番目に来た T3 の値", ((TableDataBlock) blocks.get(1)).getRows(),
+                is(Arrays.asList(Arrays.asList("3"))));
+        assertThat("3 番目に来た T2 の値", ((TableDataBlock) blocks.get(2)).getRows(),
+                is(Arrays.asList(Arrays.asList("2"))));
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    /**
+     * {@code DEFAULT} を除く 13 データタイプすべてを 1 ファイルに書いた YAML を返す。
+     *
+     * @return YAML テキスト
+     */
+    private static String allSectionsYaml() {
+        return ""
+                + "response_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG4\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"b2\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"i\"]\n"
+                + "response_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG3\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"h2\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"h\"]\n"
+                + "expected_request_body_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG2\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"b1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"g\"]\n"
+                + "expected_request_header_messages:\n"
+                + "  - group_id: \"g\"\n"
+                + "    id: \"MSG1\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"h1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"f\"]\n"
+                + "messages:\n"
+                + "  - id: \"RM01\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"m1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"e\"]\n"
+                + "expected_files:\n"
+                + "  - path: \"ef.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f2\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"c\"]\n"
+                + "  - path: \"ev.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c2\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"d\"]\n"
+                + "setup_files:\n"
+                + "  - path: \"sf.dat\"\n"
+                + "    type: \"fixed\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"f1\", type: \"半角英字\", length: \"1\"}\n"
+                + "        rows:\n"
+                + "          - [\"a\"]\n"
+                + "  - path: \"sv.csv\"\n"
+                + "    type: \"variable\"\n"
+                + "    records:\n"
+                + "      - fields:\n"
+                + "          - {name: \"c1\", type: \"半角英字\"}\n"
+                + "        rows:\n"
+                + "          - [\"b\"]\n"
+                + "list_maps:\n"
+                + "  - id: \"lm\"\n"
+                + "    rows:\n"
+                + "      - K: \"v\"\n"
+                + "expected_complete_tables:\n"
+                + "  - table: \"T3\"\n"
+                + "    rows:\n"
+                + "      - C: \"3\"\n"
+                + "expected_tables:\n"
+                + "  - table: \"T2\"\n"
+                + "    rows:\n"
+                + "      - C: \"2\"\n"
+                + "setup_tables:\n"
+                + "  - table: \"T1\"\n"
+                + "    rows:\n"
+                + "      - C: \"1\"\n";
+    }
+}

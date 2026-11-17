@@ -1,0 +1,34 @@
+expected_request_header_messages:
+  - group_id: case1
+    id: MSG1
+    records:
+      - fields:
+          - {name: s1, type: 半角英字, length: "2"}
+        rows:
+          - ["${z}"]
+  - group_id: case1
+    id: MSG2
+    records:
+      - fields:
+          - {name: t1, type: 半角英字, length: "2"}
+        rows:
+          - ["pq"]
+  - id: MSG_DEFAULT1
+    records:
+      - fields:
+          - {name: d1, type: 半角英字, length: "2"}
+        rows:
+          - ["de"]
+  - group_id: case2
+    id: MSG3
+    records:
+      - fields:
+          - {name: u1, type: 半角英字, length: "2"}
+        rows:
+          - ["rs"]
+  - id: MSG_DEFAULT2
+    records:
+      - fields:
+          - {name: e1, type: 半角英字, length: "2"}
+        rows:
+          - ["fg"]
